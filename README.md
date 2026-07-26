@@ -16,6 +16,7 @@ events over a versioned WebView bridge.
 [Web SDK](https://github.com/seatlayer/seatlayer-sdk) ·
 [Flutter SDK](https://pub.dev/packages/seatlayer) ·
 [iOS SDK](https://github.com/seatlayer/seatlayer-ios) ·
+[Native Android SDK](https://github.com/seatlayer/seatlayer-android) ·
 [AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
 > **Public preview:** Validate `0.1.x` using a SeatLayer test event and physical
