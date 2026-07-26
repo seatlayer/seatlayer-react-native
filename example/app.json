@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "SeatLayer React Native",
+    "slug": "seatlayer-react-native-example",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "io.seatlayer.example"
+    }
+  }
+}

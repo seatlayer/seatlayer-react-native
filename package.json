@@ -1,0 +1,79 @@
+{
+  "name": "@seatlayer/react-native",
+  "version": "0.1.0",
+  "description": "Official React Native SDK for interactive SeatLayer reserved-seating maps on iOS and Android.",
+  "license": "MIT",
+  "homepage": "https://docs.seatlayer.io/buyer-sdk/mobile/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seatlayer/seatlayer-react-native.git"
+  },
+  "bugs": {
+    "url": "https://github.com/seatlayer/seatlayer-react-native/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "react-native": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "generate:web": "node scripts/generate-web-document.mjs",
+    "prebuild": "pnpm generate:web",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint:package": "publint && attw --pack .",
+    "validate": "pnpm generate:web && pnpm typecheck && pnpm test && pnpm build && pnpm lint:package",
+    "prepublishOnly": "pnpm validate"
+  },
+  "peerDependencies": {
+    "react": ">=18.2.0",
+    "react-native": ">=0.72.0",
+    "react-native-webview": ">=13.0.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@types/react": "19.2.17",
+    "publint": "0.3.21",
+    "react": "19.2.8",
+    "react-native": "0.86.0",
+    "react-native-webview": "14.0.1",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "ios",
+    "android",
+    "seat-map",
+    "reserved-seating",
+    "ticketing",
+    "webview",
+    "seatlayer"
+  ],
+  "engines": {
+    "node": ">=20.19.4"
+  },
+  "packageManager": "pnpm@11.10.0"
+}
