@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Re-vendored the buyer bundle at `seatlayer-js@0.35.0`
+  (sha256 `814657ba…`), up from 0.30.1. 0.1.0 shipped a renderer five
+  releases behind the published web SDK.
+
 ## 0.1.0
 
 - Initial React Native public preview.
