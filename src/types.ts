@@ -1,6 +1,6 @@
 import type { JsonObject, JsonValue } from './json';
 
-export const seatLayerSdkVersion = '0.1.0';
+export const seatLayerSdkVersion = '0.1.2';
 export const seatLayerBundledWebVersion = '0.30.1';
 
 export interface ProtocolRange {

@@ -36,7 +36,7 @@ describe('SeatLayerController', () => {
     expect(transport.frames[0]).toMatchObject({
       kind: 'init',
       payload: {
-        host: { platform: 'react-native', sdk: '0.1.0' },
+        host: { platform: 'react-native', sdk: '0.1.2' },
         config: { event: 'ev_test', currency: 'USD' },
       },
     });

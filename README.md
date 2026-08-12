@@ -164,7 +164,7 @@ before connecting a payment flow.
 
 ## How the bridge works
 
-The npm package embeds the verified `seatlayer-js@0.35.0` bundle (sha256 `814657ba…`) in generated
+The npm package embeds the verified `seatlayer-js@0.48.1` bundle (sha256 `b459b0b6…`) in generated
 inline HTML. This avoids the inconsistent local-file behavior of iOS and Android
 WebViews while keeping the SDK JavaScript independent of a runtime CDN download.
 Chart data and live inventory still come from the configured SeatLayer API.
@@ -206,6 +206,17 @@ tests, builds ESM/CommonJS/types, and validates the npm tarball.
 - [Complete checkout example](https://docs.seatlayer.io/examples/complete-checkout/)
 - [Agent-readable documentation](https://docs.seatlayer.io/llms.txt)
 - [SeatLayer GitHub organization](https://github.com/seatlayer)
+
+## SeatLayer SDK ecosystem
+
+| Surface | Package or source |
+| --- | --- |
+| JavaScript | [`@seatlayer/js`](https://www.npmjs.com/package/@seatlayer/js) |
+| React | [`@seatlayer/react`](https://www.npmjs.com/package/@seatlayer/react) |
+| Flutter | [`seatlayer`](https://pub.dev/packages/seatlayer) |
+| iOS | [`seatlayer-ios`](https://github.com/seatlayer/seatlayer-ios) |
+| Android | [`seatlayer-android`](https://github.com/seatlayer/seatlayer-android) |
+| Server SDKs | [Node.js, Python, PHP, Ruby, .NET, Java, and Go](https://docs.seatlayer.io/server-sdk/install/) |
 
 ## License
 
