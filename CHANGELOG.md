@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.3
+
+- Updated the vendored buyer runtime to `seatlayer-js@0.59.0` (sha256
+  `89bc29fb…`), pulled from the production CDN and byte-verified against the
+  published release. Brings the mobile buyer round — an always-visible price
+  rail, a locator that survives a filling cart, a venue overview that no longer
+  covers the seats, accessibility filters that cannot be missed — plus the
+  engine fixes that reach every surface: section focus frames the section
+  rather than its whole zone, the price filter dims section blocks and not only
+  seats, and map type is sized for the device.
+
 ## 0.1.2
 
 - Updated the vendored buyer runtime to `seatlayer-js@0.48.1` (sha256

@@ -165,7 +165,7 @@ before connecting a payment flow.
 
 ## How the bridge works
 
-The npm package embeds the verified `seatlayer-js@0.48.1` bundle (sha256 `b459b0b6…`) in generated
+The npm package embeds the verified `seatlayer-js@0.59.0` bundle (sha256 `89bc29fb…`) in generated
 inline HTML. This avoids the inconsistent local-file behavior of iOS and Android
 WebViews while keeping the SDK JavaScript independent of a runtime CDN download.
 Chart data and live inventory still come from the configured SeatLayer API.
