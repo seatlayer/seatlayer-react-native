@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import {
   WebView,
@@ -9,11 +9,8 @@ import {
 import type { BridgeTransport } from './bridge/client';
 import { encodeEnvelope, type Envelope } from './bridge/envelope';
 import { SeatLayerError } from './errors';
-import { seatLayerWebDocument } from './generated/webDocument';
-import type { ReadyInfo, SeatLayerConfiguration } from './types';
+import { seatLayerMobileOrigin, seatLayerMobilePageUrl, type ReadyInfo, type SeatLayerConfiguration } from './types';
 import type { SeatLayerController } from './controller';
-
-const documentBaseUrl = 'https://seatlayer.local/';
 
 export interface SeatLayerViewProps {
   controller: SeatLayerController;
@@ -38,6 +35,17 @@ const NativeWebView = WebView as unknown as React.ForwardRefExoticComponent<
   WebViewProps & React.RefAttributes<WebViewHandle>
 >;
 
+const configurationIds = new WeakMap<object, number>();
+let nextConfigurationId = 0;
+
+function configurationIdentity(configuration: object): number {
+  const existing = configurationIds.get(configuration);
+  if (existing !== undefined) return existing;
+  nextConfigurationId += 1;
+  configurationIds.set(configuration, nextConfigurationId);
+  return nextConfigurationId;
+}
+
 export function SeatLayerView({
   controller,
   configuration,
@@ -49,22 +57,27 @@ export function SeatLayerView({
   onLoadError,
 }: SeatLayerViewProps): React.ReactElement {
   const webView = useRef<WebViewHandle | null>(null);
-  const configurationKey = useMemo(
-    () => JSON.stringify(configuration),
-    [configuration],
-  );
-  const viewKey = `${configurationKey}:${String(reloadKey ?? '')}`;
+  const onReadyRef = useRef(onReady);
+  const onLoadErrorRef = useRef(onLoadError);
+  onReadyRef.current = onReady;
+  onLoadErrorRef.current = onLoadError;
+  // Credentials and provider functions must never be serialized into a React
+  // key. Depending on the configuration object reloads safely when either is
+  // replaced, without putting the token in a string, log, or native view key.
+  const viewKey = `${configurationIdentity(configuration)}:${String(
+    reloadKey ?? 'seatlayer',
+  )}`;
 
   useLayoutEffect(() => {
     const transport = new ReactNativeWebViewTransport(() => webView.current);
     let active = true;
     controller.beginHandshake(transport, configuration).then(
       (info) => {
-        if (active) onReady?.(info);
+        if (active) onReadyRef.current?.(info);
       },
       (error: unknown) => {
         if (!active) return;
-        onLoadError?.(
+        onLoadErrorRef.current?.(
           error instanceof SeatLayerError
             ? error
             : SeatLayerError.transport('SeatLayer handshake failed.', error),
@@ -78,10 +91,12 @@ export function SeatLayerView({
         false,
       );
     };
-  }, [configurationKey, controller, onLoadError, onReady, reloadKey]);
+  }, [configuration, controller, reloadKey]);
 
   const onMessage = (event: WebViewMessageEvent): void => {
-    controller.ingestRaw(event.nativeEvent.data);
+    if (event.nativeEvent.url === seatLayerMobilePageUrl) {
+      controller.ingestRaw(event.nativeEvent.data);
+    }
   };
 
   const reportLoadFailure = (message: string): void => {
@@ -95,8 +110,8 @@ export function SeatLayerView({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       style={[styles.webView, style]}
-      source={{ html: seatLayerWebDocument, baseUrl: documentBaseUrl }}
-      originWhitelist={['*']}
+      source={{ uri: seatLayerMobilePageUrl }}
+      originWhitelist={[seatLayerMobileOrigin]}
       javaScriptEnabled
       domStorageEnabled
       mixedContentMode="never"
@@ -118,9 +133,7 @@ export function SeatLayerView({
         )
       }
       onShouldStartLoadWithRequest={(request) =>
-        request.url === 'about:blank' ||
-        request.url.startsWith(documentBaseUrl) ||
-        request.url.startsWith('data:text/html')
+        request.url === seatLayerMobilePageUrl
       }
     />
   );

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+- Uses the pinned hosted `seatlayer-js@0.66.0/mobile.html` document at
+  `https://cdn.seatlayer.io`; buyer access tokens must be minted for that exact
+  allowed origin. Private configuration fails closed unless the bridge advertises
+  `native-access-provider`.
+- Adds programmatic selection/category controls, exact-count validators, typed
+  validity/access events, selected-object unavailability, and view-mode parity.
+- Reloads the WebView when configuration identity changes without serializing
+  credentials into React keys; callback-only rerenders no longer restart the
+  handshake.
+- Removes the unused legacy inline-document generation pipeline and reports the
+  production dependency as `seatLayerHostedWebVersion`.
+
 ## 0.1.3
 
 - Updated the vendored buyer runtime to `seatlayer-js@0.59.0` (sha256
