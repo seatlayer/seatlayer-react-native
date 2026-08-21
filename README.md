@@ -20,7 +20,7 @@ events over a versioned WebView bridge.
 [Native Android SDK](https://github.com/seatlayer/seatlayer-android) ·
 [AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
-> **Public preview:** Validate `0.1.x` using a SeatLayer test event and physical
+> **Public preview:** Validate `0.2.x` using a SeatLayer test event and physical
 > iOS and Android devices before production rollout.
 
 ## Install
@@ -117,8 +117,11 @@ try {
 
 `hold` · `resumeHold` · `extendHold` · `release` · `releaseLabels` ·
 `bestAvailable` · `holdGA` · `setSeatTier` · `getSelection` ·
-`getCurrentHold` · `getGAAreas` · `getFloors` · `setFloor` ·
-`setColorblindSafe` · `zoomIn` · `zoomOut` · `zoomToFit` · `destroy`
+`selectObjects` · `deselectObjects` · `clearSelection` · `selectCategories` ·
+`deselectCategories` · `setSelectableObjects` · `setMaxSelection` ·
+`getSelectionValidity` · `refreshAccess` · `getCurrentHold` · `getGAAreas` ·
+`getFloors` · `setFloor` · `setColorblindSafe` · `setViewMode` ·
+`getViewMode` · `zoomIn` · `zoomOut` · `zoomToFit` · `destroy`
 
 All asynchronous command failures reject with `SeatLayerError`. Inventory
 outcomes such as `sold_out`, `not_enough_together`, expired holds and conflicts
@@ -143,8 +146,10 @@ useEffect(() => {
 ```
 
 Events: `ready` · `selectionChanged` · `holdChanged` · `holdRestored` ·
-`holdExpired` · `error` · `hint` · `gaClick` · `seatHover` · `deckTap` ·
-`checkout` · `unknownEvent`
+`holdExpired` · `selectionValidityChanged` · `selectionValid` ·
+`selectionInvalid` · `selectionLimit` · `accessExpired` · `accessUnavailable` ·
+`selectedObjectsUnavailable` · `error` · `hint` · `gaClick` · `seatHover` ·
+`deckTap` · `checkout` · `unknownEvent`
 
 Unknown future events remain observable through `unknownEvent`; adding a bundle
 event does not crash an older app.
@@ -165,10 +170,15 @@ before connecting a payment flow.
 
 ## How the bridge works
 
-The npm package embeds the verified `seatlayer-js@0.59.0` bundle (sha256 `89bc29fb…`) in generated
-inline HTML. This avoids the inconsistent local-file behavior of iOS and Android
-WebViews while keeping the SDK JavaScript independent of a runtime CDN download.
-Chart data and live inventory still come from the configured SeatLayer API.
+The SDK loads the immutable hosted `seatlayer-js@0.66.0/mobile.html` document
+from `https://cdn.seatlayer.io`. This gives every platform the mintable HTTPS
+origin `https://cdn.seatlayer.io` and lets the browser runtime load its pinned
+lazy assets. Buyer-access sessions must be minted for that exact allowed origin;
+tokens never belong in a URL, JavaScript source, or app logs.
+
+Configure `buyerAccessTokenProvider` with a function that calls your own backend
+mint endpoint. Private configuration and selection policies fail closed if the
+loaded runtime does not advertise the required bridge capabilities.
 
 The protocol guarantees:
 
@@ -197,8 +207,9 @@ pnpm validate
 cd example && pnpm install && pnpm start
 ```
 
-`pnpm validate` regenerates the embedded document, type-checks, runs protocol
-tests, builds ESM/CommonJS/types, and validates the npm tarball.
+`pnpm validate` type-checks, runs protocol tests, builds ESM/CommonJS/types,
+and validates the npm tarball. Production loads the exact hosted runtime; the
+package no longer generates or ships an unused inline Web document.
 
 ## Related resources
 

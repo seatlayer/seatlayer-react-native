@@ -9,6 +9,8 @@ import {
 import { decodeProtocolRange, nativeProtocolRange } from './bridge/protocol';
 import type {
   BestAvailableResult,
+  BuyerAccessExpiredEvent,
+  BuyerAccessUnavailableEvent,
   BundleInfo,
   CategoryTier,
   FloorInfo,
@@ -18,7 +20,9 @@ import type {
   ReadyInfo,
   SeatCommercialAttributes,
   SeatHoverDetails,
+  SelectedObjectUnavailableEvent,
   SelectedSeat,
+  SelectionValidity,
 } from './types';
 
 function strings(value: unknown): string[] {
@@ -80,6 +84,86 @@ export function decodeSelectedSeat(value: unknown): SelectedSeat | undefined {
       ? {}
       : { commercial: decodeCommercial(object?.commercial) }),
   } as SelectedSeat;
+}
+
+export function decodeSelectionValidity(
+  value: unknown,
+): SelectionValidity | undefined {
+  const object = asObject(value);
+  const isValid = typeof object?.isValid === 'boolean' ? object.isValid : undefined;
+  const count = asInteger(object?.count);
+  const required = asInteger(object?.required);
+  const remaining = asInteger(object?.remaining);
+  if (
+    isValid === undefined ||
+    count === undefined ||
+    required === undefined ||
+    remaining === undefined
+  ) return undefined;
+  return {
+    isValid,
+    count,
+    required,
+    remaining,
+    seats: asArray(object?.seats)
+      .map(decodeSelectedSeat)
+      .filter((seat): seat is SelectedSeat => seat !== undefined),
+    violations: strings(object?.violations),
+  };
+}
+
+export function decodeBuyerAccessExpired(
+  value: unknown,
+): BuyerAccessExpiredEvent | undefined {
+  const object = asObject(value);
+  const reason = asString(object?.reason);
+  const refreshed = typeof object?.refreshed === 'boolean'
+    ? object.refreshed
+    : undefined;
+  if (!reason || refreshed === undefined) return undefined;
+  return {
+    reason,
+    refreshed,
+    ...(asString(object?.code) === undefined
+      ? {}
+      : { code: asString(object?.code) }),
+  };
+}
+
+export function decodeBuyerAccessUnavailable(
+  value: unknown,
+): BuyerAccessUnavailableEvent | undefined {
+  const object = asObject(value);
+  const reason = asString(object?.reason);
+  const retryable = typeof object?.retryable === 'boolean'
+    ? object.retryable
+    : undefined;
+  if (!reason || retryable === undefined) return undefined;
+  return {
+    reason,
+    retryable,
+    ...(asString(object?.code) === undefined
+      ? {}
+      : { code: asString(object?.code) }),
+    ...(asInteger(object?.status) === undefined
+      ? {}
+      : { status: asInteger(object?.status) }),
+  };
+}
+
+export function decodeSelectedObjectsUnavailable(
+  value: unknown,
+): SelectedObjectUnavailableEvent | undefined {
+  const object = asObject(value);
+  const reason = asString(object?.reason);
+  if (!reason) return undefined;
+  return {
+    labels: strings(object?.labels),
+    reason,
+    ...(asString(object?.code) === undefined
+      ? {}
+      : { code: asString(object?.code) }),
+  };
 }
 
 function decodeLineItem(value: unknown): HoldLineItem | undefined {
@@ -221,6 +305,7 @@ export function decodeBundleInfo(value: JsonValue | undefined): BundleInfo {
       : { version: asString(object?.bundle) }),
     commands: strings(object?.commands),
     events: strings(object?.events),
+    capabilities: strings(object?.capabilities),
     raw: value,
   };
 }

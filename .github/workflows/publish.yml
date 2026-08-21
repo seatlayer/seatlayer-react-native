@@ -28,5 +28,13 @@ jobs:
         run: |
           package_version="$(node -p "require('./package.json').version")"
           test "${GITHUB_REF_NAME#v}" = "$package_version"
+      - name: Verify deployed hosted runtime
+        run: |
+          runtime="$(sed -n "s/.*seatLayerHostedWebVersion = '\(.*\)';/\1/p" src/types.ts)"
+          metadata="$(curl --fail --silent --show-error "https://cdn.seatlayer.io/seatlayer-js@$runtime/release.json")"
+          METADATA="$metadata" RUNTIME="$runtime" node -e \
+            'const m=JSON.parse(process.env.METADATA); if(m.version!==process.env.RUNTIME || m.promotable!==true) process.exit(1)'
+          curl --fail --silent --show-error --output /dev/null \
+            "https://cdn.seatlayer.io/seatlayer-js@$runtime/mobile.html"
       - run: pnpm validate
       - run: npm publish --access public

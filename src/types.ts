@@ -1,7 +1,11 @@
 import type { JsonObject, JsonValue } from './json';
 
-export const seatLayerSdkVersion = '0.1.2';
-export const seatLayerBundledWebVersion = '0.30.1';
+export const seatLayerSdkVersion = '0.2.0';
+export const seatLayerHostedWebVersion = '0.66.0';
+/** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
+export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;
+export const seatLayerMobileOrigin = 'https://cdn.seatlayer.io';
+export const seatLayerMobilePageUrl = `${seatLayerMobileOrigin}/seatlayer-js@${seatLayerHostedWebVersion}/mobile.html`;
 
 export interface ProtocolRange {
   min: number;
@@ -15,13 +19,22 @@ export interface SeatLayerConfiguration {
   apiBase?: string;
   /** Reserved for future authenticated rendering. Never pass a secret key. */
   publicKey?: string;
+  /** Opaque buyer session minted by your backend for https://cdn.seatlayer.io. */
+  buyerAccessToken?: BuyerAccessToken;
+  /** Called only over the native bridge; its token is never put in a URL or event. */
+  buyerAccessTokenProvider?: BuyerAccessTokenProvider;
   maxSelection?: number;
+  selectedObjects?: string[];
+  selectableObjects?: string[] | null;
+  numberOfPlacesToSelect?: number;
+  selectionValidators?: SelectionValidator[];
   /** BCP 47 UI locale. Built-in bundles currently include en, es, de and fr. */
   locale?: string;
   messages?: Record<string, string>;
   /** ISO 4217 display currency. */
   currency?: string;
   colorblindSafe?: boolean;
+  initialView?: SeatLayerViewMode;
   /** Leave false when the app renders its own touch-friendly seat sheet. */
   showsWebSeatTooltip?: boolean;
   /** Native command deadline. Defaults to 15 seconds. */
@@ -32,12 +45,83 @@ export interface SeatLayerConfiguration {
   hostInfo?: Record<string, string>;
 }
 
+export type BuyerAccessRefreshReason =
+  | 'initial'
+  | 'expiring'
+  | 'expired'
+  | 'unauthorized'
+  | 'reconnect'
+  | 'manual'
+  | (string & {});
+
+export interface BuyerAccessToken {
+  token: string;
+  /** Epoch milliseconds. Omit to refresh reactively. */
+  expiresAt?: number;
+}
+
+export type BuyerAccessTokenProvider = (context: {
+  reason: BuyerAccessRefreshReason;
+}) => Promise<BuyerAccessToken> | BuyerAccessToken;
+
+export type BuyerAccessUnavailableReason =
+  | 'revoked'
+  | 'paused'
+  | 'invalid'
+  | 'origin_mismatch'
+  | 'event_mismatch'
+  | 'group_mismatch'
+  | 'mode_mismatch'
+  | 'channel_denied'
+  | 'invalid_scope'
+  | 'provider_failed'
+  | 'no_token'
+  | (string & {});
+
+export interface BuyerAccessExpiredEvent {
+  reason: BuyerAccessRefreshReason;
+  code?: string;
+  refreshed: boolean;
+}
+
+export interface BuyerAccessUnavailableEvent {
+  reason: BuyerAccessUnavailableReason;
+  code?: string;
+  status?: number;
+  retryable: boolean;
+}
+
+export interface SelectedObjectUnavailableEvent {
+  labels: string[];
+  reason: 'ineligible' | 'taken' | 'exhausted' | (string & {});
+  code?: string;
+}
+
+export type SeatLayerViewMode =
+  | 'flat'
+  | 'iso'
+  | 'perspective'
+  | (string & {});
+
+export type SelectionValidator =
+  | { type: 'minimumSelectedPlaces'; minimum: number }
+  | { type: 'consecutiveSeats' }
+  | { type: 'noOrphanSeats' };
+
+export type SelectionViolation =
+  | 'numberOfPlacesToSelect'
+  | 'minimumSelectedPlaces'
+  | 'consecutiveSeats'
+  | 'noOrphanSeats'
+  | (string & {});
+
 export interface BundleInfo {
   protocol: ProtocolRange;
   version?: string;
   platform?: string;
   commands: string[];
   events: string[];
+  capabilities: string[];
   raw: JsonValue | undefined;
 }
 
@@ -73,6 +157,15 @@ export interface SelectedSeat {
   tiers?: CategoryTier[];
   tierId?: string;
   commercial?: SeatCommercialAttributes;
+}
+
+export interface SelectionValidity {
+  isValid: boolean;
+  count: number;
+  required: number;
+  remaining: number;
+  seats: SelectedSeat[];
+  violations: SelectionViolation[];
 }
 
 export interface HoldLineItem {
@@ -154,5 +247,12 @@ export interface SeatLayerEventMap {
   gaClick: GAArea;
   seatHover: SeatHoverDetails | undefined;
   deckTap: string;
+  selectionValidityChanged: SelectionValidity;
+  selectionValid: SelectedSeat[];
+  selectionInvalid: SelectionValidity;
+  selectionLimit: number;
+  accessExpired: BuyerAccessExpiredEvent;
+  accessUnavailable: BuyerAccessUnavailableEvent;
+  selectedObjectsUnavailable: SelectedObjectUnavailableEvent;
   unknownEvent: UnknownEvent;
 }

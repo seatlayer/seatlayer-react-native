@@ -1,6 +1,6 @@
 {
   "name": "@seatlayer/react-native",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "Official React Native SDK for interactive SeatLayer reserved-seating maps on iOS and Android.",
   "license": "MIT",
   "homepage": "https://docs.seatlayer.io/buyer-sdk/mobile/",
@@ -35,14 +35,12 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "generate:web": "node scripts/generate-web-document.mjs",
-    "prebuild": "pnpm generate:web",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:package": "publint && attw --pack .",
-    "validate": "pnpm generate:web && pnpm typecheck && pnpm test && pnpm build && pnpm lint:package",
+    "validate": "pnpm typecheck && pnpm test && pnpm build && pnpm lint:package",
     "prepublishOnly": "pnpm validate"
   },
   "peerDependencies": {

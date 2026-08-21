@@ -7,13 +7,17 @@ import {
 } from './bridge/protocol';
 import {
   decodeBestAvailable,
+  decodeBuyerAccessExpired,
+  decodeBuyerAccessUnavailable,
   decodeBundleInfo,
   decodeFloor,
   decodeGAArea,
   decodeHold,
   decodeReadyInfo,
   decodeSeatHover,
+  decodeSelectedObjectsUnavailable,
   decodeSelectedSeat,
+  decodeSelectionValidity,
 } from './decode';
 import { TypedEmitter } from './emitter';
 import { SeatLayerError } from './errors';
@@ -36,7 +40,9 @@ import {
   type ReadyInfo,
   type SeatLayerConfiguration,
   type SeatLayerEventMap,
+  type SeatLayerViewMode,
   type SelectedSeat,
+  type SelectionValidity,
 } from './types';
 
 interface Handshake {
@@ -198,6 +204,29 @@ export class SeatLayerController {
     await this.run('setSeatTier', { seatId, tierId });
   }
 
+  async selectObjects(objects: string[]): Promise<SelectedSeat[]> {
+    const result = await this.run('selectObjects', { objects });
+    return asArray(asObject(result)?.seats).map(decodeSelectedSeat).filter((seat): seat is SelectedSeat => seat !== undefined);
+  }
+
+  async deselectObjects(objects: string[]): Promise<void> { await this.run('deselectObjects', { objects }); }
+  async clearSelection(): Promise<void> { await this.run('clearSelection'); }
+  async selectCategories(categoryKeys: string[]): Promise<SelectedSeat[]> {
+    const result = await this.run('selectCategories', { categoryKeys });
+    return asArray(asObject(result)?.seats).map(decodeSelectedSeat).filter((seat): seat is SelectedSeat => seat !== undefined);
+  }
+  async deselectCategories(categoryKeys: string[]): Promise<void> { await this.run('deselectCategories', { categoryKeys }); }
+  async setSelectableObjects(objects: string[] | null): Promise<void> { await this.run('setSelectableObjects', { objects }); }
+  async setMaxSelection(maxSelection: number): Promise<void> { await this.run('setMaxSelection', { maxSelection }); }
+  async getSelectionValidity(): Promise<SelectionValidity | undefined> {
+    const result = await this.run('getSelectionValidity');
+    return decodeSelectionValidity(asObject(result)?.validity);
+  }
+  async refreshAccess(): Promise<boolean> {
+    const result = await this.run('refreshAccess');
+    return asBoolean(asObject(result)?.refreshed) ?? false;
+  }
+
   async getSelection(): Promise<SelectedSeat[]> {
     const result = await this.run('getSelection');
     return asArray(asObject(result)?.seats)
@@ -230,6 +259,15 @@ export class SeatLayerController {
 
   async setColorblindSafe(on: boolean): Promise<void> {
     await this.run('setColorblindSafe', { on });
+  }
+
+  async setViewMode(mode: SeatLayerViewMode): Promise<void> {
+    await this.run('setViewMode', { mode });
+  }
+
+  async getViewMode(): Promise<SeatLayerViewMode> {
+    const result = await this.run('getViewMode');
+    return asString(asObject(result)?.mode) ?? 'flat';
   }
 
   async zoomIn(): Promise<void> {
@@ -296,15 +334,44 @@ export class SeatLayerController {
 
     const configuration = this.configuration;
     if (!configuration) return;
+    const privateAccess = configuration.buyerAccessToken !== undefined || configuration.buyerAccessTokenProvider !== undefined;
+    if (privateAccess && !info.capabilities.includes('native-access-provider')) {
+      this.finishHandshake(SeatLayerError.incompatible('The loaded web bundle cannot securely handle buyer access. Refusing to initialize private inventory.'));
+      return;
+    }
+    const selectionPolicy = configuration.selectedObjects !== undefined ||
+      configuration.selectableObjects !== undefined ||
+      configuration.numberOfPlacesToSelect !== undefined ||
+      configuration.selectionValidators !== undefined;
+    if (selectionPolicy &&
+      (!info.capabilities.includes('selection-controls') ||
+        !info.capabilities.includes('selection-validity'))) {
+      this.finishHandshake(SeatLayerError.incompatible(
+        'The loaded web bundle cannot enforce the configured selection policy.',
+      ));
+      return;
+    }
     const config = compactObject({
       event: configuration.event,
       apiBase: configuration.apiBase,
       publicKey: configuration.publicKey,
+      buyerAccessToken: configuration.buyerAccessToken === undefined
+        ? undefined
+        : compactObject({
+            token: configuration.buyerAccessToken.token,
+            expiresAt: configuration.buyerAccessToken.expiresAt,
+          }),
+      nativeAccessProvider: configuration.buyerAccessTokenProvider === undefined ? undefined : true,
       maxSelection: configuration.maxSelection,
+      selectedObjects: configuration.selectedObjects,
+      selectableObjects: configuration.selectableObjects,
+      numberOfPlacesToSelect: configuration.numberOfPlacesToSelect,
+      selectionValidators: configuration.selectionValidators,
       locale: configuration.locale,
       messages: configuration.messages,
       currency: configuration.currency,
       colorblindSafe: configuration.colorblindSafe,
+      initialView: configuration.initialView,
     });
     const host: JsonObject = {
       platform: 'react-native',
@@ -342,6 +409,70 @@ export class SeatLayerController {
       case 'sys.error':
         this.finishHandshake(SeatLayerError.bridge(payload));
         return;
+      case 'access.token.request': {
+        const requestId = asString(object?.requestId);
+        const reason = asString(object?.reason) ?? 'refresh';
+        const provider = this.configuration?.buyerAccessTokenProvider;
+        const client = this.client;
+        if (!requestId) return;
+        const answerUnavailable = () => {
+          void client?.command('access.token.unavailable', { requestId }).catch(() => {});
+        };
+        if (!provider) { answerUnavailable(); return; }
+        Promise.resolve().then(() => provider({ reason })).then((token) => {
+          if (!token || typeof token.token !== 'string' || !token.token ||
+            (token.expiresAt !== undefined && (!Number.isFinite(token.expiresAt)))) {
+            answerUnavailable();
+            return;
+          }
+          void client?.command('access.token.provide', {
+            requestId, token: token.token,
+            ...(token.expiresAt === undefined ? {} : { expiresAt: token.expiresAt }),
+          }).catch(() => {});
+        }, answerUnavailable);
+        return;
+      }
+      case 'selection.validity.changed': {
+        const validity = decodeSelectionValidity(object?.validity);
+        if (validity) this.events.emit('selectionValidityChanged', validity);
+        return;
+      }
+      case 'selection.valid':
+        this.events.emit(
+          'selectionValid',
+          asArray(object?.seats)
+            .map(decodeSelectedSeat)
+            .filter((item): item is SelectedSeat => item !== undefined),
+        );
+        return;
+      case 'selection.invalid': {
+        const validity = decodeSelectionValidity(object?.validity);
+        if (validity) this.events.emit('selectionInvalid', validity);
+        return;
+      }
+      case 'selection.limit': {
+        const maximum = typeof object?.maxSelection === 'number' &&
+          Number.isInteger(object.maxSelection)
+          ? object.maxSelection
+          : undefined;
+        if (maximum !== undefined) this.events.emit('selectionLimit', maximum);
+        return;
+      }
+      case 'access.expired': {
+        const event = decodeBuyerAccessExpired(payload);
+        if (event) this.events.emit('accessExpired', event);
+        return;
+      }
+      case 'access.unavailable': {
+        const event = decodeBuyerAccessUnavailable(payload);
+        if (event) this.events.emit('accessUnavailable', event);
+        return;
+      }
+      case 'selection.unavailable': {
+        const event = decodeSelectedObjectsUnavailable(payload);
+        if (event) this.events.emit('selectedObjectsUnavailable', event);
+        return;
+      }
       case 'selection.changed':
         this.events.emit(
           'selectionChanged',
