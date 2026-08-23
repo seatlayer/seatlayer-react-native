@@ -20,8 +20,9 @@ events over a versioned WebView bridge.
 [Native Android SDK](https://github.com/seatlayer/seatlayer-android) ·
 [AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
-> **Public preview:** Validate `0.2.x` using a SeatLayer test event and physical
-> iOS and Android devices before production rollout.
+> **Production SDK:** Pin the documented `0.2.x` release and validate your
+> event, checkout handoff, lifecycle, and supported physical devices before
+> rollout.
 
 ## Install
 
