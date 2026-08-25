@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- Documentation only. Refreshes the README and adds frequently asked
+  questions. No API or behaviour changes.
+
 ## 0.2.0
 
 - Uses the pinned hosted `seatlayer-js@0.66.0/mobile.html` document at
