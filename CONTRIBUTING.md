@@ -6,6 +6,6 @@
 4. Run `pnpm validate`.
 5. Open a pull request describing behavior, compatibility and verification.
 
-The WebView bridge is shared across SeatLayer mobile SDKs. Preserve envelope
+The venue-map bridge is shared across SeatLayer mobile SDKs. Preserve envelope
 versioning, protocol negotiation, command correlation, per-event ordering,
 unknown-field tolerance and the server-side booking boundary.

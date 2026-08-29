@@ -36,7 +36,21 @@ function decodeTier(value: unknown): CategoryTier | undefined {
   const id = asString(object?.id);
   const name = asString(object?.name);
   const price = asFiniteNumber(object?.price);
-  return id && name && price !== undefined ? { id, name, price } : undefined;
+  if (!id || !name || price === undefined) return undefined;
+  return {
+    id,
+    name,
+    price,
+    ...(asString(object?.currency) === undefined
+      ? {}
+      : { currency: asString(object?.currency) }),
+    ...(asString(object?.restriction) === undefined
+      ? {}
+      : { restriction: asString(object?.restriction) }),
+    ...(asString(object?.buyerMessage) === undefined
+      ? {}
+      : { buyerMessage: asString(object?.buyerMessage) }),
+  };
 }
 
 function decodeCommercial(
@@ -64,6 +78,10 @@ export function decodeSelectedSeat(value: unknown): SelectedSeat | undefined {
   const tiers = asArray(object?.tiers)
     .map(decodeTier)
     .filter((item): item is CategoryTier => item !== undefined);
+  const accessibility = asArray(object?.accessibility)
+    .map(asString)
+    .filter((item): item is string => item !== undefined);
+  const commercial = decodeCommercial(object?.commercial);
   return {
     id,
     label,
@@ -76,14 +94,50 @@ export function decodeSelectedSeat(value: unknown): SelectedSeat | undefined {
     ...(asFiniteNumber(object?.price) === undefined
       ? {}
       : { price: asFiniteNumber(object?.price) }),
-    ...(tiers.length === 0 ? {} : { tiers }),
+    ...(object?.tiers === undefined || object?.tiers === null ? {} : { tiers }),
     ...(asString(object?.tierId) === undefined
       ? {}
       : { tierId: asString(object?.tierId) }),
-    ...(decodeCommercial(object?.commercial) === undefined
+    ...decodeSelectedSeatStrings(object),
+    ...decodeSelectedSeatIntegers(object),
+    ...(object?.accessibility === undefined || object?.accessibility === null
       ? {}
-      : { commercial: decodeCommercial(object?.commercial) }),
+      : { accessibility }),
+    ...(commercial === undefined ? {} : { commercial }),
   } as SelectedSeat;
+}
+
+function decodeSelectedSeatStrings(
+  object: Record<string, unknown> | undefined,
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const key of [
+    'displayType',
+    'rowType',
+    'objectId',
+    'objectType',
+    'sectionLabel',
+    'rowLabel',
+    'seatNumber',
+    'currency',
+    'bookingMode',
+    'wheelchairSpaceType',
+  ]) {
+    const value = asString(object?.[key]);
+    if (value !== undefined) result[key] = value;
+  }
+  return result;
+}
+
+function decodeSelectedSeatIntegers(
+  object: Record<string, unknown> | undefined,
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const key of ['quantity', 'capacity', 'minOccupancy', 'maxOccupancy']) {
+    const value = asInteger(object?.[key]);
+    if (value !== undefined) result[key] = value;
+  }
+  return result;
 }
 
 export function decodeSelectionValidity(
@@ -250,7 +304,7 @@ export function decodeGAArea(value: unknown): GAArea | undefined {
     ...(asString(object?.currency) === undefined
       ? {}
       : { currency: asString(object?.currency) }),
-    ...(tiers.length === 0 ? {} : { tiers }),
+    ...(object?.tiers === undefined || object?.tiers === null ? {} : { tiers }),
   } as GAArea;
 }
 
@@ -260,6 +314,7 @@ export function decodeFloor(value: unknown): FloorInfo | undefined {
   if (!id) return undefined;
   return {
     id,
+    ...(asString(object?.name) === undefined ? {} : { name: asString(object?.name) }),
     ...(asString(object?.label) === undefined
       ? {}
       : { label: asString(object?.label) }),

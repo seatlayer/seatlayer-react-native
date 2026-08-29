@@ -1,7 +1,6 @@
 import type { JsonObject, JsonValue } from './json';
-
 export const seatLayerSdkVersion = '0.2.0';
-export const seatLayerHostedWebVersion = '0.66.0';
+export const seatLayerHostedWebVersion = '0.71.5';
 /** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
 export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;
 export const seatLayerMobileOrigin = 'https://cdn.seatlayer.io';
@@ -17,7 +16,7 @@ export interface SeatLayerConfiguration {
   event: string;
   /** API origin. Defaults to `https://api.seatlayer.io` in the bundle. */
   apiBase?: string;
-  /** Reserved for future authenticated rendering. Never pass a secret key. */
+  /** Publishable `pk_` key for public startup. Never pass a secret key. */
   publicKey?: string;
   /** Opaque buyer session minted by your backend for https://cdn.seatlayer.io. */
   buyerAccessToken?: BuyerAccessToken;
@@ -103,6 +102,7 @@ export type SeatLayerViewMode =
   | 'perspective'
   | (string & {});
 
+
 export type SelectionValidator =
   | { type: 'minimumSelectedPlaces'; minimum: number }
   | { type: 'consecutiveSeats' }
@@ -137,6 +137,9 @@ export interface CategoryTier {
   id: string;
   name: string;
   price: number;
+  currency?: string;
+  restriction?: string | (string & {});
+  buyerMessage?: string;
 }
 
 export interface SeatCommercialAttributes {
@@ -157,6 +160,21 @@ export interface SelectedSeat {
   tiers?: CategoryTier[];
   tierId?: string;
   commercial?: SeatCommercialAttributes;
+  displayType?: string;
+  rowType?: string;
+  objectId?: string;
+  objectType?: string | (string & {});
+  sectionLabel?: string;
+  rowLabel?: string;
+  seatNumber?: string;
+  currency?: string;
+  quantity?: number;
+  bookingMode?: string | (string & {});
+  capacity?: number;
+  minOccupancy?: number;
+  maxOccupancy?: number;
+  accessibility?: string[];
+  wheelchairSpaceType?: string | (string & {});
 }
 
 export interface SelectionValidity {
@@ -205,6 +223,7 @@ export interface GAArea {
 export interface FloorInfo {
   id: string;
   label?: string;
+  name?: string;
   level?: number;
 }
 

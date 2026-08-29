@@ -10,7 +10,7 @@ import {
 
 describe('runtime metadata', () => {
   it('keeps the hosted version and immutable page in lockstep', () => {
-    expect(seatLayerHostedWebVersion).toBe('0.66.0');
+    expect(seatLayerHostedWebVersion).toBe('0.71.5');
     expect(seatLayerMobilePageUrl).toBe(
       `https://cdn.seatlayer.io/seatlayer-js@${seatLayerHostedWebVersion}/mobile.html`,
     );
@@ -29,7 +29,7 @@ describe('SeatLayerController', () => {
     const controller = new SeatLayerController();
     const transport = new RecordingTransport();
     const ready = controller.beginHandshake(transport, {
-      event: 'ev_test',
+      event: 'fixture-event-controller',
       currency: 'USD',
     });
 
@@ -50,7 +50,7 @@ describe('SeatLayerController', () => {
       kind: 'init',
       payload: {
         host: { platform: 'react-native', sdk: '0.2.0' },
-        config: { event: 'ev_test', currency: 'USD' },
+        config: { event: 'fixture-event-controller', currency: 'USD' },
       },
     });
 
@@ -63,14 +63,14 @@ describe('SeatLayerController', () => {
         protocol: 1,
         mode: 'test',
         transport: 'rn',
-        chart: { event: 'ev_test' },
+        chart: { event: 'fixture-event-controller' },
       },
     });
     await expect(ready).resolves.toMatchObject({
       protocolRevision: 1,
       mode: 'test',
       platform: 'rn',
-      eventKey: 'ev_test',
+      eventKey: 'fixture-event-controller',
     });
 
     const selection = controller.getSelection();
@@ -116,7 +116,7 @@ describe('SeatLayerController', () => {
       },
     });
     const transport = new RecordingTransport();
-    const ready = controller.beginHandshake(transport, { event: 'ev_buffered' });
+    const ready = controller.beginHandshake(transport, { event: 'fixture-event-buffered' });
     expect(transport.frames[0]).toMatchObject({ kind: 'init' });
     controller.ingestRaw({
       sl: 1,
@@ -133,7 +133,7 @@ describe('SeatLayerController', () => {
     const controller = new SeatLayerController();
     const transport = new RecordingTransport();
     const ready = controller.beginHandshake(transport, {
-      event: 'ev_private',
+      event: 'fixture-event-private',
       numberOfPlacesToSelect: 2,
       selectionValidators: [{ type: 'consecutiveSeats' }],
       buyerAccessTokenProvider: async ({ reason }) => ({
@@ -161,7 +161,7 @@ describe('SeatLayerController', () => {
       kind: 'init',
       payload: {
         config: {
-          event: 'ev_private',
+          event: 'fixture-event-private',
           nativeAccessProvider: true,
           numberOfPlacesToSelect: 2,
           selectionValidators: [{ type: 'consecutiveSeats' }],

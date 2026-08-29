@@ -1,0 +1,238 @@
+import { seatLayerPickerTokens } from './tokens.g';
+
+export type SeatLayerPickerLayoutMode = 'adaptive' | 'phone' | 'wide' | (string & {});
+export type SeatLayerPickerResolvedLayoutMode = 'phone' | 'wide';
+type SeatLayerPickerKnownLayoutMode = 'adaptive' | SeatLayerPickerResolvedLayoutMode;
+
+/** Visibility choices for the ready-made composition only. */
+export interface SeatLayerPickerChromeOptions {
+  readonly header?: boolean;
+  readonly priceLegend?: boolean;
+  /** Wide-layout floor navigation ownership point. */
+  readonly floorSelector?: boolean;
+  /** Compact floor strip ownership point. */
+  readonly floorStrip?: boolean;
+  readonly mapControls?: boolean;
+  /** Auto: wide only. */
+  readonly overview?: boolean | null;
+  /** Auto: wide only. */
+  readonly zoom?: boolean | null;
+  /** Auto: wide only. */
+  readonly colorblind?: boolean | null;
+  readonly fit?: boolean;
+  readonly map3D?: boolean;
+  readonly accessibility?: boolean;
+  readonly cartSheet?: boolean;
+  readonly dock?: boolean;
+  readonly confirmCard?: boolean;
+  readonly venue3D?: boolean;
+  readonly seatViewChrome?: boolean;
+  readonly holdPill?: boolean;
+  readonly systemBars?: boolean;
+}
+
+/** Session behaviour owned by the ready-made picker. */
+export interface SeatLayerPickerBehaviorOptions {
+  readonly readOnly?: boolean;
+  readonly confirmSelection?: boolean;
+  readonly enableBestAvailable?: boolean;
+  readonly enable3D?: boolean;
+  readonly enableSeatView?: boolean;
+  readonly holdTtlMs?: number;
+  readonly initialHoldId?: string;
+  readonly max3DSeats?: number;
+  readonly hideEventDetails?: boolean;
+  readonly panelInitiallyCollapsed?: boolean;
+  readonly persistColorblindPreference?: boolean;
+  readonly refreshOnResume?: boolean;
+  readonly announceHoldLapse?: boolean;
+  readonly haptics?: boolean;
+}
+
+/** Typed options for the ready-made layout; themes, styles, wording and configuration stay top-level. */
+export interface SeatLayerPickerOptions extends SeatLayerPickerBehaviorOptions {
+  readonly layout?: SeatLayerPickerLayoutMode;
+  readonly chrome?: SeatLayerPickerChromeOptions;
+}
+
+export interface SeatLayerPickerResolvedChromeOptions {
+  readonly header: boolean;
+  readonly priceLegend: boolean;
+  readonly floorSelector: boolean;
+  readonly floorStrip: boolean;
+  readonly mapControls: boolean;
+  readonly overview: boolean;
+  readonly zoom: boolean;
+  readonly colorblind: boolean;
+  readonly fit: boolean;
+  readonly map3D: boolean;
+  readonly accessibility: boolean;
+  readonly cartSheet: boolean;
+  readonly dock: boolean;
+  readonly confirmCard: boolean;
+  readonly venue3D: boolean;
+  readonly seatViewChrome: boolean;
+  readonly holdPill: boolean;
+  readonly systemBars: boolean;
+}
+
+export interface SeatLayerPickerResolvedOptions {
+  readonly layout: SeatLayerPickerKnownLayoutMode;
+  readonly resolvedLayout: SeatLayerPickerResolvedLayoutMode;
+  readonly chrome: SeatLayerPickerResolvedChromeOptions;
+  readonly readOnly: boolean;
+  readonly confirmSelection: boolean;
+  readonly enableBestAvailable: boolean;
+  readonly enable3D: boolean;
+  readonly enableSeatView: boolean;
+  readonly holdTtlMs?: number;
+  readonly initialHoldId?: string;
+  readonly max3DSeats?: number;
+  readonly hideEventDetails: boolean;
+  readonly panelInitiallyCollapsed: boolean;
+  readonly persistColorblindPreference: boolean;
+  readonly refreshOnResume: boolean;
+  readonly announceHoldLapse: boolean;
+  readonly haptics: boolean;
+}
+
+/** Runtime-owned boot projection, distinct from the controller handshake wrapper. */
+export type SeatLayerPickerRuntimeConfig = Readonly<{
+  readonly holdTtlMs?: number;
+  readonly initialHoldId?: string;
+  readonly readOnly: boolean;
+  readonly confirmSelection: boolean;
+  readonly enableBestAvailable: boolean;
+  readonly enable3D: boolean;
+  readonly enableSeatView: boolean;
+  readonly max3DSeats?: number;
+  readonly hideEventDetails: boolean;
+  readonly panelCollapsed: boolean;
+}>;
+
+function ownData(source: unknown, key: string): unknown {
+  try {
+    if (typeof source !== 'object' || source === null || Array.isArray(source)) return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(source, key);
+    return descriptor?.enumerable && 'value' in descriptor ? descriptor.value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function booleanOr(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function autoBoolean(value: unknown, phone: boolean): boolean {
+  return typeof value === 'boolean' ? value : !phone;
+}
+
+function validDuration(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function validSeatLimit(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : undefined;
+}
+
+function validInitialHold(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function knownLayout(value: unknown): SeatLayerPickerKnownLayoutMode {
+  return value === 'phone' || value === 'wide' || value === 'adaptive' ? value : 'adaptive';
+}
+
+/** Resolves an explicit layout, otherwise the generated wide threshold. */
+export function resolveSeatLayerPickerLayoutMode(
+  mode: SeatLayerPickerLayoutMode | unknown = 'adaptive',
+  width?: number,
+): SeatLayerPickerResolvedLayoutMode {
+  const requested = knownLayout(mode);
+  if (requested === 'phone' || requested === 'wide') return requested;
+  if (typeof width !== 'number' || !Number.isFinite(width) || width < 0) return 'phone';
+  if (width < seatLayerPickerTokens.size.phoneBreakpoint) return 'phone';
+  return width >= seatLayerPickerTokens.size.wideBreakpoint ? 'wide' : 'phone';
+}
+
+/** Resolves only supported modes; unknown future strings remain safely adaptive. */
+export function resolveSeatLayerPickerChromeOptions(
+  input: SeatLayerPickerChromeOptions | unknown = {},
+  layout: SeatLayerPickerResolvedLayoutMode = 'phone',
+): SeatLayerPickerResolvedChromeOptions {
+  const phone = layout === 'phone';
+  return Object.freeze({
+    header: booleanOr(ownData(input, 'header'), true),
+    priceLegend: booleanOr(ownData(input, 'priceLegend'), true),
+    floorSelector: booleanOr(ownData(input, 'floorSelector'), true),
+    floorStrip: booleanOr(ownData(input, 'floorStrip'), true),
+    mapControls: booleanOr(ownData(input, 'mapControls'), true),
+    overview: autoBoolean(ownData(input, 'overview'), phone),
+    zoom: autoBoolean(ownData(input, 'zoom'), phone),
+    colorblind: autoBoolean(ownData(input, 'colorblind'), phone),
+    fit: booleanOr(ownData(input, 'fit'), true),
+    map3D: booleanOr(ownData(input, 'map3D'), true),
+    accessibility: booleanOr(ownData(input, 'accessibility'), true),
+    cartSheet: booleanOr(ownData(input, 'cartSheet'), true),
+    dock: booleanOr(ownData(input, 'dock'), true),
+    confirmCard: booleanOr(ownData(input, 'confirmCard'), true),
+    venue3D: booleanOr(ownData(input, 'venue3D'), true),
+    seatViewChrome: booleanOr(ownData(input, 'seatViewChrome'), true),
+    holdPill: booleanOr(ownData(input, 'holdPill'), true),
+    systemBars: booleanOr(ownData(input, 'systemBars'), true),
+  });
+}
+
+/** Normalizes untrusted options into a frozen, ready-made composition contract. */
+export function resolveSeatLayerPickerOptions(
+  input: SeatLayerPickerOptions | unknown = {},
+  width?: number,
+): SeatLayerPickerResolvedOptions {
+  const layout = knownLayout(ownData(input, 'layout'));
+  const resolvedLayout = resolveSeatLayerPickerLayoutMode(layout, width);
+  const chrome = resolveSeatLayerPickerChromeOptions(ownData(input, 'chrome'), resolvedLayout);
+  const resolved = {
+    layout,
+    resolvedLayout,
+    chrome,
+    readOnly: booleanOr(ownData(input, 'readOnly'), false),
+    confirmSelection: booleanOr(ownData(input, 'confirmSelection'), true),
+    enableBestAvailable: booleanOr(ownData(input, 'enableBestAvailable'), true),
+    enable3D: booleanOr(ownData(input, 'enable3D'), true),
+    enableSeatView: booleanOr(ownData(input, 'enableSeatView'), true),
+    holdTtlMs: validDuration(ownData(input, 'holdTtlMs')),
+    initialHoldId: validInitialHold(ownData(input, 'initialHoldId')),
+    max3DSeats: validSeatLimit(ownData(input, 'max3DSeats')),
+    hideEventDetails: booleanOr(ownData(input, 'hideEventDetails'), false),
+    panelInitiallyCollapsed: booleanOr(ownData(input, 'panelInitiallyCollapsed'), true),
+    persistColorblindPreference: booleanOr(ownData(input, 'persistColorblindPreference'), true),
+    refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
+    announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
+    haptics: booleanOr(ownData(input, 'haptics'), true),
+  } satisfies SeatLayerPickerResolvedOptions;
+  return Object.freeze(resolved);
+}
+
+/** The runtime receives only boot-owned fields, never native composition preferences. */
+export function seatLayerPickerBridgeConfigFromOptions(
+  options: SeatLayerPickerResolvedOptions | SeatLayerPickerOptions | unknown,
+): SeatLayerPickerRuntimeConfig {
+  const resolved = resolveSeatLayerPickerOptions(options);
+  return Object.freeze({
+    ...(resolved.holdTtlMs === undefined ? {} : { holdTtlMs: resolved.holdTtlMs }),
+    ...(resolved.initialHoldId === undefined ? {} : { initialHoldId: resolved.initialHoldId }),
+    readOnly: resolved.readOnly,
+    confirmSelection: resolved.confirmSelection,
+    enableBestAvailable: resolved.enableBestAvailable,
+    enable3D: resolved.enable3D,
+    enableSeatView: resolved.enableSeatView,
+    ...(resolved.max3DSeats === undefined ? {} : { max3DSeats: resolved.max3DSeats }),
+    hideEventDetails: resolved.hideEventDetails,
+    panelCollapsed: resolved.panelInitiallyCollapsed,
+  });
+}

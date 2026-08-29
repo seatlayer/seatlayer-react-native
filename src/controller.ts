@@ -1,8 +1,13 @@
 import { BridgeClient, type BridgeSignal, type BridgeTransport } from './bridge/client';
 import { decodeEnvelope, type Envelope } from './bridge/envelope';
 import {
+  chartBridgeProfile,
+  pickerBridgeProfile,
+  type BridgeProfile,
+  type PickerBridgeProfileOptions,
+} from './bridge/profile';
+import {
   decodeProtocolRange,
-  nativeProtocolRange,
   negotiateProtocol,
 } from './bridge/protocol';
 import {
@@ -44,6 +49,8 @@ import {
   type SelectedSeat,
   type SelectionValidity,
 } from './types';
+import { decodeSeatLayerPickerSnapshot } from './picker/decode';
+import type { SeatLayerPickerReadyInfo } from './picker/models';
 
 interface Handshake {
   resolve(value: ReadyInfo): void;
@@ -56,6 +63,7 @@ export class SeatLayerController {
   private readonly events = new TypedEmitter<SeatLayerEventMap>();
   private client: BridgeClient | undefined;
   private configuration: SeatLayerConfiguration | undefined;
+  private profile: BridgeProfile = chartBridgeProfile;
   private handshake: Handshake | undefined;
   private queuedFrames: Envelope[] = [];
   private disposed = false;
@@ -63,6 +71,9 @@ export class SeatLayerController {
   readyInfo: ReadyInfo | undefined;
   bundleInfo: BundleInfo | undefined;
   protocolRevision: number | undefined;
+  bundleCommands: readonly string[] = [];
+  bundleCapabilities: readonly string[] = [];
+  bundleEvents: readonly string[] = [];
 
   get isReady(): boolean {
     return this.readyInfo !== undefined;
@@ -79,6 +90,40 @@ export class SeatLayerController {
     transport: BridgeTransport,
     configuration: SeatLayerConfiguration,
   ): Promise<ReadyInfo> {
+    return this.beginHandshakeWithProfile(transport, configuration, chartBridgeProfile);
+  }
+
+  /** Starts the protocol-2 native-chrome picker without changing raw chart behaviour. */
+  beginPickerHandshake(
+    transport: BridgeTransport,
+    configuration: SeatLayerConfiguration,
+    options: PickerBridgeProfileOptions = {},
+  ): Promise<SeatLayerPickerReadyInfo> {
+    let profile: BridgeProfile;
+    try {
+      profile = pickerBridgeProfile(options);
+    } catch (error) {
+      return Promise.reject(
+        error instanceof SeatLayerError
+          ? error
+          : new SeatLayerError(
+            'bad_payload',
+            'SeatLayer picker bridge config is invalid.',
+          ),
+      );
+    }
+    return this.beginHandshakeWithProfile(
+      transport,
+      configuration,
+      profile,
+    ) as Promise<SeatLayerPickerReadyInfo>;
+  }
+
+  private beginHandshakeWithProfile(
+    transport: BridgeTransport,
+    configuration: SeatLayerConfiguration,
+    profile: BridgeProfile,
+  ): Promise<ReadyInfo> {
     if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
     if (!configuration.event.trim()) {
       return Promise.reject(
@@ -91,9 +136,13 @@ export class SeatLayerController {
       false,
     );
     this.configuration = configuration;
+    this.profile = profile;
     this.readyInfo = undefined;
     this.bundleInfo = undefined;
     this.protocolRevision = undefined;
+    this.bundleCommands = [];
+    this.bundleCapabilities = [];
+    this.bundleEvents = [];
 
     const client = new BridgeClient(
       transport,
@@ -290,6 +339,49 @@ export class SeatLayerController {
     }
   }
 
+  /** Runs one advertised picker command after the protocol-2 profile is ready. */
+  runPickerCommand(command: string, payload?: JsonValue): Promise<JsonValue | undefined> {
+    if (this.profile.surface !== 'picker') {
+      return Promise.reject(
+        SeatLayerError.incompatible('The attached SeatLayer surface is not a picker.'),
+      );
+    }
+    if (!this.readyInfo || this.protocolRevision !== 2) {
+      return Promise.reject(
+        SeatLayerError.incompatible('The protocol-2 picker handshake has not completed.'),
+      );
+    }
+    if (!this.supportsPickerCommand(command)) {
+      return Promise.reject(
+        SeatLayerError.incompatible(
+          `The loaded picker does not advertise '${command}'.`,
+        ),
+      );
+    }
+    return this.run(command, payload);
+  }
+
+  supportsPickerCommand(command: string): boolean {
+    return this.profile.surface === 'picker'
+      && this.readyInfo !== undefined
+      && this.protocolRevision === 2
+      && this.bundleCommands.includes(command);
+  }
+
+  supportsPickerCapability(capability: string): boolean {
+    return this.profile.surface === 'picker'
+      && this.readyInfo !== undefined
+      && this.protocolRevision === 2
+      && this.bundleCapabilities.includes(capability);
+  }
+
+  supportsPickerEvent(event: string): boolean {
+    return this.profile.surface === 'picker'
+      && this.readyInfo !== undefined
+      && this.protocolRevision === 2
+      && this.bundleEvents.includes(event);
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -321,8 +413,11 @@ export class SeatLayerController {
   private handleHello(payload: JsonValue | undefined): void {
     const info = decodeBundleInfo(payload);
     this.bundleInfo = info;
+    this.bundleCommands = Object.freeze([...info.commands]);
+    this.bundleCapabilities = Object.freeze([...info.capabilities]);
+    this.bundleEvents = Object.freeze([...info.events]);
     try {
-      negotiateProtocol(info.protocol);
+      negotiateProtocol(info.protocol, this.profile.protocolRange);
     } catch (error) {
       this.finishHandshake(
         SeatLayerError.incompatible(
@@ -334,6 +429,26 @@ export class SeatLayerController {
 
     const configuration = this.configuration;
     if (!configuration) return;
+    const missingCapabilities = this.profile.requiredCapabilities.filter(
+      (capability) => !info.capabilities.includes(capability),
+    );
+    const missingCommands = this.profile.requiredCommands.filter(
+      (command) => !info.commands.includes(command),
+    );
+    const missingEvents = this.profile.requiredEvents.filter(
+      (event) => !info.events.includes(event),
+    );
+    if (missingCapabilities.length || missingCommands.length || missingEvents.length) {
+      const missing = [
+        ...missingCapabilities.map((capability) => `capability ${capability}`),
+        ...missingCommands.map((command) => `command ${command}`),
+        ...missingEvents.map((event) => `event ${event}`),
+      ].join(', ');
+      this.finishHandshake(SeatLayerError.incompatible(
+        `The loaded picker does not satisfy the required protocol-2 contract: ${missing}.`,
+      ));
+      return;
+    }
     const privateAccess = configuration.buyerAccessToken !== undefined || configuration.buyerAccessTokenProvider !== undefined;
     if (privateAccess && !info.capabilities.includes('native-access-provider')) {
       this.finishHandshake(SeatLayerError.incompatible('The loaded web bundle cannot securely handle buyer access. Refusing to initialize private inventory.'));
@@ -380,12 +495,26 @@ export class SeatLayerController {
     };
     this.client?.sendInit({
       protocol: {
-        min: nativeProtocolRange.min,
-        max: nativeProtocolRange.max,
+        min: this.profile.protocolRange.min,
+        max: this.profile.protocolRange.max,
       },
       host,
-      chrome: { seatTooltip: configuration.showsWebSeatTooltip ?? false },
-      config,
+      chrome: this.profile.surface === 'picker'
+        ? {
+            owner: 'native', seatTooltip: false, testModeIndicator: false, attribution: false,
+            ...(info.capabilities.includes('native-seat-view-chrome-v1')
+              && info.events.includes('seatView.changed')
+              ? { seatViewTitle: false, seatViewCaption: false, seatViewBadge: false }
+              : {}),
+          }
+        : { seatTooltip: configuration.showsWebSeatTooltip ?? false },
+      config: this.profile.surface === 'picker'
+        ? { ...config, ...(this.profile.config ?? {}) }
+        : config,
+      ...(this.profile.surface === 'picker' ? {
+        surface: { kind: 'picker', stateContract: 1, chromeOwner: 'native' },
+        requirements: { capabilities: [...this.profile.requiredCapabilities] },
+      } : {}),
     });
   }
 
@@ -393,13 +522,28 @@ export class SeatLayerController {
     const object = asObject(payload);
     switch (name) {
       case 'sys.ready': {
-        const ready = decodeReadyInfo(payload);
+        const decodedReady = decodeReadyInfo(payload);
+        const snapshot = this.profile.surface === 'picker'
+          ? decodeSeatLayerPickerSnapshot(object?.snapshot)
+          : undefined;
+        const ready: SeatLayerPickerReadyInfo = {
+          ...decodedReady,
+          ...(snapshot === undefined ? {} : { snapshot }),
+        };
+        if (this.profile.surface === 'picker' && ready.protocolRevision !== 2) {
+          this.finishHandshake(
+            SeatLayerError.incompatible(
+              'The picker runtime did not confirm protocol revision 2.',
+            ),
+          );
+          return;
+        }
         this.finishHandshake(ready);
         return;
       }
       case 'sys.incompatible': {
         const web =
-          decodeProtocolRange(object?.web) ?? nativeProtocolRange;
+          decodeProtocolRange(object?.web) ?? this.profile.protocolRange;
         const message =
           asString(object?.message) ??
           `No shared SeatLayer protocol revision (web ${web.min}..${web.max}).`;
