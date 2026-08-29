@@ -1,7 +1,10 @@
 import { asInteger, asObject } from '../json';
 import type { ProtocolRange } from '../types';
 
-export const nativeProtocolRange: ProtocolRange = { min: 1, max: 1 };
+/** The raw chart remains protocol 1; picker chrome uses the v2 profile. */
+export const chartProtocolRange: ProtocolRange = { min: 1, max: 1 };
+export const pickerProtocolRange: ProtocolRange = { min: 2, max: 2 };
+export const nativeProtocolRange = chartProtocolRange;
 
 export function decodeProtocolRange(value: unknown): ProtocolRange | undefined {
   const revision = asInteger(value);

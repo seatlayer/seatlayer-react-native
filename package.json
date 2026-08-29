@@ -36,11 +36,15 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
+    "picker:design": "node scripts/generate-picker-design.mjs --tokens design/tokens.json --strings design/locale_strings.json --out-dir src/picker",
+    "picker:design:check": "node scripts/generate-picker-design.mjs --tokens design/tokens.json --strings design/locale_strings.json --out-dir src/picker --check",
+    "check:public-hygiene": "node scripts/check-public-hygiene.mjs",
+    "check:source-size": "node scripts/check-source-size.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:package": "publint && attw --pack .",
-    "validate": "pnpm typecheck && pnpm test && pnpm build && pnpm lint:package",
+    "validate": "pnpm picker:design:check && pnpm check:public-hygiene && pnpm check:source-size && pnpm typecheck && pnpm test && pnpm build && pnpm lint:package",
     "prepublishOnly": "pnpm validate"
   },
   "peerDependencies": {
@@ -51,10 +55,12 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
     "@types/react": "19.2.17",
+    "@types/react-test-renderer": "19.1.0",
     "publint": "0.3.21",
     "react": "19.2.8",
     "react-native": "0.86.0",
     "react-native-webview": "14.0.1",
+    "react-test-renderer": "19.2.8",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
     "vitest": "4.1.10"
@@ -67,7 +73,6 @@
     "seat-map",
     "reserved-seating",
     "ticketing",
-    "webview",
     "seatlayer"
   ],
   "engines": {

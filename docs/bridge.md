@@ -23,8 +23,8 @@ future native Android integrations:
 
 ## Handshake
 
-1. The WebView sends `hello` with its protocol range, bundle version, commands
-   and events.
+1. The hosted venue-map renderer sends `hello` with its protocol range, bundle
+   version, commands and events.
 2. React Native intersects that range with the SDK range.
 3. React Native sends `init` containing its supported range, public
    configuration, host diagnostics and requested web chrome.

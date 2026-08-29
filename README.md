@@ -63,15 +63,16 @@ import {
   useSeatLayerController,
 } from '@seatlayer/react-native';
 
-export function SeatMapScreen() {
+export function SeatMapScreen({ event }: { readonly event: string }) {
   const controller = useSeatLayerController();
   const configuration = useMemo(
     () => ({
-      event: 'ev_your_event_key',
+      event,
+      publicKey: 'pk_test_your_key',
       currency: 'USD',
       maxSelection: 8,
     }),
-    [],
+    [event],
   );
 
   useEffect(
@@ -124,13 +125,110 @@ for the exact allowed origin `https://cdn.seatlayer.io`:
 ```tsx
 const configuration = useMemo(
   () => ({
-    event: 'ev_private',
+    event,
     buyerAccessTokenProvider: (context) =>
       buyerBackend.mintSeatLayerAccess(context.reason),
   }),
-  [],
+  [event],
 );
 ```
+
+## Native picker integration levels
+
+The native picker uses one immutable latest snapshot as its seam. Choose the
+integration level that matches the amount of application UI you want to own;
+all three paths keep the same typed checkout handoff and capability-gated
+actions.
+
+### 1. Ready-made picker
+
+`SeatLayerPicker` fills its bounded parent with the adaptive SeatLayer venue
+map and native picker chrome.
+
+```tsx
+import { SeatLayerPicker } from '@seatlayer/react-native';
+
+<SeatLayerPicker
+  configuration={configuration}
+  themeMode="auto"
+  onCheckout={continueWithHandoff}
+/>
+```
+
+Use `SeatLayerPickerModal` for a controlled dialog or full-screen presentation.
+It uses the same scope, snapshot, and back ladder as the in-page picker.
+
+```tsx
+import { SeatLayerPickerModal } from '@seatlayer/react-native';
+
+<SeatLayerPickerModal
+  visible={isPickerOpen}
+  configuration={configuration}
+  onCheckout={continueWithHandoff}
+  onRequestClose={() => setPickerOpen(false)}
+  barrierDismissible
+/>
+```
+
+### 2. Customise the ready-made UI
+
+Use typed options, theme roles, string overrides, visual style slots, and
+complete-part builders to change native chrome without changing picker state or
+actions.
+
+```tsx
+<SeatLayerPicker
+  configuration={configuration}
+  themeMode="dark"
+  options={{
+    layout: 'adaptive',
+    chrome: { priceLegend: false },
+    haptics: true,
+  }}
+  strings={{ holdAndCheckout: 'Continue' }}
+  styles={{
+    headerContainer: { backgroundColor: '#172033' },
+    continueButton: { backgroundColor: '#5B4B8A' },
+  }}
+  builders={{ header: ({ defaultChild }) => defaultChild }}
+  onCheckout={continueWithHandoff}
+/>
+```
+
+### 3. Compose a custom layout
+
+`SeatLayerPickerScope` owns one command controller and one latest immutable
+snapshot. The standalone parts below read the same scoped theme, capabilities,
+presentation state, and actions.
+
+```tsx
+import {
+  SeatLayerCartSheet,
+  SeatLayerDockBar,
+  SeatLayerFloorStrip,
+  SeatLayerPickerChart,
+  SeatLayerPickerHeader,
+  SeatLayerPickerScope,
+  SeatLayerPriceLegend,
+} from '@seatlayer/react-native';
+
+<SeatLayerPickerScope configuration={configuration} themeMode="auto">
+  <SeatLayerPickerHeader />
+  <SeatLayerPriceLegend />
+  <SeatLayerFloorStrip />
+  <SeatLayerPickerChart style={{ flex: 1 }} />
+  <SeatLayerDockBar />
+  <SeatLayerCartSheet
+    expanded={isCartExpanded}
+    onExpandedChanged={setCartExpanded}
+    onCheckout={continueWithHandoff}
+  />
+</SeatLayerPickerScope>
+```
+
+Call `useSeatLayerPicker()` inside the scope when your own component needs the
+latest snapshot, resolved theme, capability availability, presentation state,
+or scoped actions.
 
 ## Run the example app
 
@@ -139,9 +237,11 @@ pnpm install
 cd example && pnpm install && pnpm start
 ```
 
-`example/App.tsx` is an Expo app that renders `SeatLayerView` full-screen and
-prints the live selection. It talks to the real SeatLayer API, so set
-`EXPO_PUBLIC_SEATLAYER_EVENT` to an event key you control. The browser-based
+`example/App.tsx` is an Expo app with raw map, ready-made picker, modal,
+customised picker, and scoped custom-layout paths. Set
+`EXPO_PUBLIC_SEATLAYER_EVENT` and, for public startup,
+`EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the event is absent,
+the example shows setup guidance and does not mount a picker. The browser-based
 [buyer seat-map demo](https://app.seatlayer.io/demo/play) is a preview of the
 wider SeatLayer buyer experience, not a React Native app.
 
@@ -150,27 +250,27 @@ wider SeatLayer buyer experience, not a React Native app.
 The React Native app **selects and holds** inventory. Your trusted backend
 **inspects and books** the hold after payment or order validation.
 
-- Never ship a SeatLayer secret key in JavaScript, the app bundle, or the WebView.
+- Never ship a SeatLayer secret key in JavaScript or the app bundle.
 - Send only the `holdId` and your normal checkout context to your backend.
 - Calculate the charge from server-inspected hold items, not device input.
 - Reuse your stable order id as the booking reference for safe booking retries.
-- Do not enable arbitrary navigation inside the SDK WebView.
+- Do not allow arbitrary navigation from the SDK renderer.
 
 Continue with
 [seat holds and secure server-side checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/)
 before connecting payment and booking.
 
-## React Native runtime and WebView architecture
+## React Native renderer architecture
 
-`SeatLayerView` is a React component backed by
-[`react-native-webview`](https://github.com/react-native-webview/react-native-webview).
-It loads the immutable, version-pinned `seatlayer-js@0.66.0/mobile.html`
-document and its lazy assets from `https://cdn.seatlayer.io`, which gives iOS
-and Android one canonical HTTPS origin for origin-bound buyer sessions. Buyer
-access tokens stay in memory and are never placed in a page URL, a React key, or
-an event payload.
+`SeatLayerView` is a React component that renders the SeatLayer venue map.
+It loads the immutable, version-pinned SeatLayer runtime and its lazy assets
+from the canonical CDN origin, which gives iOS and Android one canonical HTTPS
+origin for origin-bound buyer sessions. Register `https://cdn.seatlayer.io` on
+the publishable key used for public startup. For private inventory, omit
+`publicKey` and use `buyerAccessTokenProvider`; buyer access tokens stay in
+memory and are never placed in a page URL, a React key, or an event payload.
 
-Application code never touches the WebView. It works through a typed
+Application code never touches the renderer. It works through a typed
 TypeScript controller whose contract matches the Web, iOS, and Flutter SDKs:
 
 - range-negotiated protocol compatibility before the chart renders;
@@ -227,7 +327,7 @@ event does not crash an older app.
 - Use a fixed-height or full-screen parent; do not put the map inside a vertical
   `ScrollView`. The canvas owns pan and pinch for map navigation.
 - Keep `configuration` stable with `useMemo`.
-- Change `reloadKey` to deliberately rebuild the WebView and bridge.
+- Change `reloadKey` to deliberately rebuild the renderer and bridge.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
 
@@ -243,13 +343,13 @@ interactive seating chart with live availability; the
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/mobile/)
 covers lifecycle, commands, and events in depth.
 
-### Is this a native seat map component or a WebView?
+### Is this a native seat map component?
 
-`SeatLayerView` is a React Native component with a typed TypeScript controller,
-and it renders the SeatLayer buyer chart inside `react-native-webview`. The
-package contains no custom native module — no podspec, no Java, Kotlin, Swift,
-or Objective-C source — so application code only ever works through TypeScript
-commands, payloads, errors, and events, never through the WebView itself.
+`SeatLayerView` is a React Native component with a typed TypeScript controller
+and a SeatLayer venue-map renderer. The package contains no custom native
+module — no podspec, no Java, Kotlin, Swift, or Objective-C source — so
+application code works through TypeScript commands, payloads, errors, and
+events.
 
 ### Does it work with Expo?
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Adds the protocol-2 native picker with ready-made, customisable and
+  custom-layout integrations, generated themes and locale strings, standalone
+  scoped chrome, adaptive modal presentation, and capability-gated actions.
+- Preserves the protocol-1 raw venue-map surface and its existing public API.
+- Moves the immutable hosted runtime pin to `seatlayer-js@0.71.5`, matching the
+  reference picker contract and its availability-refresh, access-needs and
+  hold-lapse recovery capabilities.
+- Documents and wires the example's supported publishable-key bootstrap while
+  keeping private inventory on the buyer-token provider path.
+- Adds deterministic light/dark fixture coverage, the expanded Expo example,
+  and package, generated-file, source-size and public-copy validation gates.
+
 ## 0.2.1
 
 - Documentation only. Refreshes the README and adds frequently asked
@@ -13,9 +27,9 @@
   `native-access-provider`.
 - Adds programmatic selection/category controls, exact-count validators, typed
   validity/access events, selected-object unavailability, and view-mode parity.
-- Reloads the WebView when configuration identity changes without serializing
-  credentials into React keys; callback-only rerenders no longer restart the
-  handshake.
+- Reloads the hosted venue-map renderer when configuration identity changes
+  without serializing credentials into React keys; callback-only rerenders no
+  longer restart the handshake.
 - Removes the unused legacy inline-document generation pipeline and reports the
   production dependency as `seatLayerHostedWebVersion`.
 
@@ -46,7 +60,7 @@
 ## 0.1.0
 
 - Initial React Native public preview.
-- Typed iOS and Android WebView component.
+- Typed iOS and Android venue-map component.
 - Version-negotiated SeatLayer bridge with correlation, timeout and stale-event
   protection.
 - Selection, holds, best available, general admission, floors, zoom,
