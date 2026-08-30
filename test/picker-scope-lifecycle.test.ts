@@ -575,7 +575,7 @@ describe('picker scope production lifecycle', () => {
     native.reset();
     const first = new SeatLayerPickerController();
     const second = new SeatLayerPickerController();
-    const overview = vi.spyOn(second, 'overview').mockResolvedValue(undefined);
+    const zoomOut = vi.spyOn(second, 'zoomOut').mockResolvedValue(undefined);
     const capture: Capture = { current: undefined };
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(treeFor(first, capture, { hardware: true })); });
@@ -583,7 +583,7 @@ describe('picker scope production lifecycle', () => {
     act(() => { apply(second, snapshot(1, { rung: 'seats', focusedSectionId: 'A' })); });
     act(() => { expect(native.fire()).toBe(true); });
     await act(async () => undefined);
-    expect(overview).toHaveBeenCalledOnce();
+    expect(zoomOut).toHaveBeenCalledOnce();
     expect(native.addEventListener).toHaveBeenCalledOnce();
     act(() => tree.unmount());
   });
@@ -592,7 +592,7 @@ describe('picker scope production lifecycle', () => {
     const first = new SeatLayerPickerController();
     const second = new SeatLayerPickerController();
     let release!: () => void;
-    vi.spyOn(first, 'overview').mockImplementation(
+    vi.spyOn(first, 'zoomOut').mockImplementation(
       () => new Promise<undefined>((resolve) => { release = () => resolve(undefined); }),
     );
     const capture: Capture = { current: undefined };

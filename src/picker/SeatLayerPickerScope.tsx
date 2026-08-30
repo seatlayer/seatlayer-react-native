@@ -73,7 +73,6 @@ import {
   SeatLayerPickerScopeContext,
   useSeatLayerPickerScopeContext,
 } from './pickerScopeContext';
-
 import type {
   SeatLayerPickerAvailability,
   SeatLayerPickerScopeProps,

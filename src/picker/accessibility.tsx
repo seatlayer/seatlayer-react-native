@@ -1,15 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  type GestureResponderEvent,
-  I18nManager,
-  Pressable,
-  ScrollView,
-  type StyleProp,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  type ViewStyle,
+  type GestureResponderEvent, I18nManager, Pressable, ScrollView, type StyleProp,
+  StyleSheet, Text, useWindowDimensions, View, type ViewStyle,
 } from "react-native";
 
 import { seatLayerAccessNeedsCapability } from "./availability";
@@ -18,18 +10,13 @@ import { SeatLayerPickerPromptModal } from "./promptModal";
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
 import { seatLayerPickerColorAlpha } from "./colors";
 import {
-  resolveSeatLayerPickerStyles,
-  sanitizeSeatLayerPickerStyle,
-  type SeatLayerPickerStyles,
-  type SeatLayerPickerThemeStyles,
+  resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle,
+  type SeatLayerPickerStyles, type SeatLayerPickerThemeStyles,
 } from "./styles";
 import { supportsSeatLayerPickerSurface } from "./surfaces";
 import type { SeatLayerPickerSnapshot } from "./models";
 import { seatLayerPickerTokens } from "./tokens.g";
-import {
-  normalizeSeatLayerPickerSafeAreaInsets,
-  type SeatLayerPickerSafeAreaInsetInput,
-} from "./safeAreaInsets";
+import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsetInput } from "./safeAreaInsets";
 
 type AccessibilitySlots = Pick<
   SeatLayerPickerStyles,
@@ -42,7 +29,6 @@ type AccessibilitySlots = Pick<
   | "accessibilityAction"
   | "accessibilityActionText"
 >;
-
 type AccessNeed = Readonly<{ key: string; count?: number }>;
 type Draft = Readonly<
   { keys: ReadonlySet<string>; limited: boolean; colorblind: boolean }
