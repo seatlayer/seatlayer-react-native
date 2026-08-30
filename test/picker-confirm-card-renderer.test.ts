@@ -57,7 +57,7 @@ function setup(snapshot = pickerSnapshot()) {
       controller, snapshot: current, pendingSeat: pending, sessionId: 1, isBusy: false, readOnly,
       confirmPending: () => { confirmed += 1; pending = null as never; },
       cancelPending: async () => { if (!pending || pending.id !== current.selection[0]?.id) return false; cancelled += 1; pending = null as never; return true; },
-      reportError: (error: unknown) => errors.push(error), styles: {},
+      reportError: (error: unknown) => errors.push(error), styles: {}, formatMoney: (amount: number, currency: string) => `${currency === 'USD' ? '$' : `${currency} `}${amount}`,
       strings: { translate: (key: string, options?: { values?: Record<string, string> }) => {
         if (key === 'rowIdentity') return `Row ${options?.values?.row}`;
         if (key === 'seatNumberIdentity') return `Seat ${options?.values?.seat}`;
@@ -216,7 +216,7 @@ describe('SeatLayerConfirmCard', () => {
     expect(runtime.counts()).toEqual({ confirmed: 0, cancelled: 0 });
   });
 
-  it('keeps an inspection failure visible, contains its error, and protects 44/40/8 geometry', async () => {
+  it('keeps an inspection failure visible, contains its error, and protects 44/40 geometry without defeating host radius', async () => {
     const runtime = setup(pickerSnapshot({ capabilities: ['seatView'] })); runtime.controller.openSeatView = async () => { throw new Error('native failure'); };
     let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerConfirmCard, { style: { backgroundColor: '#123', height: 1 }, slots: { confirmCardPrimaryButton: { backgroundColor: '#456', borderRadius: 1, height: 1, minHeight: 1 } } })); });
@@ -227,7 +227,9 @@ describe('SeatLayerConfirmCard', () => {
     const primary = renderer.root.findByProps({ accessibilityLabel: 'select' });
     expect(primary.props.style.minHeight).toBe(44);
     const paint = primary.findByType('View' as any);
-    expect(paint.props.style[paint.props.style.length - 1]).toMatchObject({ borderRadius: 8 });
+    expect(paint.props.style[paint.props.style.length - 1]).toMatchObject({ backgroundColor: '#456', borderRadius: 1 });
+    expect(paint.props.style[paint.props.style.length - 1]).not.toHaveProperty('height');
+    expect(paint.props.style[paint.props.style.length - 1]).not.toHaveProperty('minHeight');
     expect(paint.props.style[0]).toMatchObject({ height: 40 });
   });
 

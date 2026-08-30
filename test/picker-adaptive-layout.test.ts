@@ -38,7 +38,7 @@ vi.mock('../src/picker/SeatLayerSeatPanoramaChrome', () => ({ SeatLayerSeatPanor
 vi.mock('../src/picker/SeatLayerVenue3DChrome', () => ({ SeatLayerVenue3DChrome: 'venue' }));
 vi.mock('../src/picker/actionError', () => ({ SeatLayerPickerActionError: 'action-error' }));
 vi.mock('../src/picker/status', () => ({
-  SeatLayerPickerErrorView: 'error', SeatLayerPickerLoadingView: 'loading', SeatLayerPickerTestModeIndicator: 'test-badge',
+  SeatLayerPickerEmptyView: 'empty', SeatLayerPickerErrorView: 'error', SeatLayerPickerLoadingView: 'loading', SeatLayerPickerTestModeIndicator: 'test-badge',
 }));
 vi.mock('../src/picker/attribution', () => ({ SeatLayerPickerAttribution: 'attribution' }));
 vi.mock('../src/picker/systemStatusBar', () => ({ SeatLayerPickerSystemStatusBar: 'system-bars' }));
@@ -68,7 +68,7 @@ function scope(overrides: Record<string, unknown> = {}): any {
     },
     sessionId: 1, snapshot: undefined, pendingSeat: null, isReady: true, error: undefined, readOnly: false,
     presentation: { prompt: null, sheet: 'collapsed' }, setPresentation: (event: unknown) => calls.push(event),
-    claimViewportInsetBand: () => lease, reportError: vi.fn(), resolvedTheme: { colors: { surface: '#fff' } }, styles: {}, strings: { translate: (key: string) => key },
+    claimViewportInsetBand: () => lease, reportError: vi.fn(), resolvedTheme: { colors: { background: '#f6f7fb', surface: '#fff' } }, styles: {}, strings: { translate: (key: string) => key },
     confirmPending: vi.fn(), calls, lease, ...overrides,
   };
 }
@@ -126,6 +126,28 @@ describe('adaptive picker composition', () => {
     const controller = {};
     expect(seatLayerPickerPendingCandidateEpochFor({ id: 'A', controller, scopeSessionId: 1, runtimeSessionId: 'one' }))
       .not.toBe(seatLayerPickerPendingCandidateEpochFor({ id: 'A', controller, scopeSessionId: 2, runtimeSessionId: 'two' }));
+  });
+
+  it('blocks a proven-empty map and removes impossible ticket actions while retaining attribution', async () => {
+    state.width = 320;
+    const current = scope({
+      snapshot: {
+        categories: [{ available: 0, notForSale: false }],
+        generalAdmissionAreas: [], selection: [], cartLines: [], capabilities: [],
+        event: { mode: 'live' }, map: { floors: [], buyerView: 'map' },
+      },
+    });
+    state.scope = current;
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout }));
+    });
+    expect(tree.root.findAllByType('empty' as any)).toHaveLength(1);
+    expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('checkout' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('attribution' as any)).toHaveLength(1);
+    expect(current.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
+    await act(async () => { tree.unmount(); });
   });
 
   it('keeps one chart instance across a theme rebuild, uses the phone band, and collapses a pending sheet', async () => {
@@ -187,6 +209,28 @@ describe('adaptive picker composition', () => {
     expect(state.scope.lease.remove).toHaveBeenCalledTimes(1);
     expect(state.scope.reportError.mock.calls.length).toBeGreaterThanOrEqual(2);
     await act(async () => { tree.unmount(); });
+  });
+
+  it('gives wide accessibility chrome one side-rail owner', async () => {
+    state.width = 920;
+    state.accessibility = true;
+    state.scope = scope({
+      snapshot: { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' } },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+        onCheckout: checkout,
+        options: { layout: 'wide' },
+      }));
+    });
+    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(1);
+    expect(tree.root.findByType('accessibility' as any).parent?.props.style).toMatchObject({
+      gap: 8,
+      paddingHorizontal: 16,
+    });
+    await act(async () => { tree.unmount(); });
+    state.accessibility = false;
   });
 
   it('routes only a typed GA click or a typed variable-table selection to its matching prompt', async () => {
@@ -400,7 +444,7 @@ describe('adaptive picker composition', () => {
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
     const accessStyle = access.parent?.props.style[1] as { bottom: number };
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 126, bottom: 168 });
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 168 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -493,6 +537,67 @@ describe('adaptive picker composition', () => {
     expect(inaccessible).toHaveBeenCalledTimes(1);
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
+  });
+
+  it('keeps passive panorama copy clear of irrelevant phone controls without bypassing the map-control builder', async () => {
+    const controlsBuilder = vi.fn(({ defaultChild }: { defaultChild: React.ReactNode }) => defaultChild);
+    const seatView = Object.freeze({
+      title: 'Guest Tables · T22 · Seat 1',
+      caption: 'View towards the stage',
+      real: true,
+      generated: false,
+    });
+    const snapshot = {
+      sessionId: 'panorama',
+      categories: [{ key: 'guest', label: 'Guest', priceMin: 95 }],
+      capabilities: ['seatView', 'venue3d'],
+      event: { mode: 'live' },
+      sections: [{ id: 'guest', label: 'Guest Tables' }],
+      map: {
+        buyerView: 'map',
+        rung: 'seats',
+        focusedSection: { id: 'guest', label: 'Guest Tables' },
+        floors: [{ id: 'ground' }, { id: 'balcony' }],
+      },
+    };
+    state.accessibility = true;
+    state.scope = scope({
+      controller: {
+        mapController: {
+          isReady: true,
+          supportsPickerCapability: () => true,
+          supportsPickerCommand: () => true,
+          supportsPickerEvent: (name: string) => name === 'seatView.changed',
+        },
+        setInteractionEnabled: vi.fn(() => Promise.resolve()),
+        getGACandidate: () => undefined,
+        subscribeGACandidate: () => () => undefined,
+        getSnapshot: () => snapshot,
+        getSeatView: () => seatView,
+        subscribeSeatView: () => () => undefined,
+      },
+      snapshot,
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout,
+      builders: { mapControls: controlsBuilder },
+    })); });
+    await act(async () => { tree.root.findByType('controls' as any).props.onViewModeLayout(128); });
+    expect(tree.root.findAllByType('panorama' as any)).toHaveLength(1);
+    expect(controlsBuilder).toHaveBeenCalled();
+    expect(tree.root.findByType('legend' as any).props.edgeFadeColor).toBe('#0F1522');
+    expect(tree.root.findByType('controls' as any).props).toMatchObject({
+      includeViewModeControl: true,
+      showOverviewControl: false,
+      showZoomControls: false,
+      showZoomToFitControl: false,
+    });
+    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    await act(async () => { tree.unmount(); });
+    state.accessibility = false;
   });
 
   it('keys panel initialization and interaction flights to the exact runtime opening', async () => {
@@ -621,6 +726,29 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('uses one floor navigator by default and preserves an explicit phone strip choice', async () => {
+    state.width = 320;
+    state.scope = scope({
+      snapshot: { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [{ id: 'ground' }, { id: 'upper' }], buyerView: 'map' } },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
+    await act(async () => { measure(tree, 900); });
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(1);
+    await act(async () => { tree.unmount(); });
+
+    state.width = 320;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout, options: { chrome: { floorSelector: false, floorStrip: true } },
+    })); });
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(1);
+    await act(async () => { tree.unmount(); });
+  });
+
   it('uses normalized parent-safe geometry for the breakpoint and all modal surfaces', async () => {
     const candidate = Object.freeze({ areaId: 'standing', clickEpoch: 1 });
     const controller = {
@@ -711,9 +839,10 @@ describe('adaptive picker composition', () => {
       onCheckout: checkout, options: { chrome: { overview: true } },
     })); });
     expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 62, right: 44, top: 8 });
-    expect(tree.root.findByType('floors' as any).parent?.props.style[1].top).toBe(54);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(106);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 126, bottom: 116 });
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
 
@@ -734,9 +863,10 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
     await act(async () => { controls.props.onViewModeLayout(280); });
     expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 62, right: 298, top: 8 });
-    expect(tree.root.findByType('floors' as any).parent?.props.style[1].top).toBe(54);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(106);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 126, bottom: 116 });
+    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
 

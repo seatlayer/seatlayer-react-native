@@ -83,9 +83,9 @@ export function SeatLayerPickerActionError(
           onPress={scope.clearError}
           style={styles.hit}
         >
-          <View style={[styles.paint, slots.statusAction, {
+          <View style={[styles.paint, {
             borderRadius: seatLayerPickerTokens.radius.button,
-          }]}>
+          }, slots.statusAction]}>
             <Text style={[styles.actionText, {
               color: scope.resolvedTheme.colors.text,
               fontFamily: scope.resolvedTheme.fontFamily,

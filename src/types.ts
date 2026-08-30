@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue } from './json';
-export const seatLayerSdkVersion = '0.2.0';
+export const seatLayerSdkVersion = '0.2.1';
 export const seatLayerHostedWebVersion = '0.71.5';
 /** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
 export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;

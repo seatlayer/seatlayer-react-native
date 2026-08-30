@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { seatLayerPickerEnglishAccessNeeds } from "./locale";
+import { seatLayerAccessNeedsCapability } from "./availability";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { SeatLayerPickerPromptModal } from "./promptModal";
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
@@ -292,9 +293,9 @@ function SeatLayerPickerAccessibilityFiltersView(
             backgroundColor: pressed
               ? props.theme.colors.background
               : props.theme.colors.surface,
+            borderRadius: seatLayerPickerTokens.radius.button,
           },
           slots.accessibilityControlButton,
-          { borderRadius: seatLayerPickerTokens.radius.button },
         ]}
       >
         <SeatLayerPickerAccessIcon
@@ -435,9 +436,9 @@ function SeatLayerPickerAccessibilityFiltersView(
                           backgroundColor: selected
                             ? props.theme.colors.accent
                             : props.theme.colors.surface,
+                          borderRadius: seatLayerPickerTokens.radius.button,
                         },
                         slots.accessibilityNeedButton,
-                        { borderRadius: seatLayerPickerTokens.radius.button },
                         pressed && !unavailable ? { opacity: 0.84 } : null,
                         unavailable ? { opacity: 0.5 } : null,
                       ]}
@@ -475,9 +476,8 @@ function SeatLayerPickerAccessibilityFiltersView(
                   onPress={dismiss}
                   style={[
                     styles.cancel,
-                    { borderColor: props.theme.colors.divider },
+                    { borderColor: props.theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button },
                     slots.accessibilityAction,
-                    { borderRadius: seatLayerPickerTokens.radius.button },
                   ]}
                 >
                   <Text
@@ -497,9 +497,8 @@ function SeatLayerPickerAccessibilityFiltersView(
                   onPress={apply}
                   style={[
                     styles.apply,
-                    { backgroundColor: props.theme.colors.accent },
+                    { backgroundColor: props.theme.colors.accent, borderRadius: seatLayerPickerTokens.radius.button },
                     slots.accessibilityAction,
-                    { borderRadius: seatLayerPickerTokens.radius.button },
                   ]}
                 >
                   <Text
@@ -590,7 +589,7 @@ export function SeatLayerPickerAccessibilityFilters(
   );
   const ready = accessibilityFilterAvailable || limitedAvailable || colorblindAvailable;
   const accessNeedsAvailable = scope.controller.mapController
-    .supportsPickerCapability("access-needs-v1");
+    .supportsPickerCapability(seatLayerAccessNeedsCapability);
   if (!ready) return null;
   const reported = scope.snapshot?.map.accessNeeds ?? [];
   // A capability only makes a non-empty runtime taxonomy authoritative. An

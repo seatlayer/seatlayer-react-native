@@ -37,6 +37,8 @@ import {
 } from '../src/picker/immersiveChrome';
 import { SeatLayerSeatPanoramaChromeView } from '../src/picker/SeatLayerSeatPanoramaChrome';
 import { SeatLayerVenue3DChromeView } from '../src/picker/SeatLayerVenue3DChrome';
+import { resolveSeatLayerPickerMapChromeTheme } from '../src/picker/mapChromeTheme';
+import { resolveSeatLayerPickerTheme } from '../src/picker/theme';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
 const theme = {
@@ -125,8 +127,14 @@ describe('immersive venue and panorama chrome', () => {
 
   it('renders a dark, fixed-target venue overlay despite hostile local geometry styles', () => {
     const immersive = resolveSeatLayerPickerImmersiveTheme(theme);
+    const mapChrome = resolveSeatLayerPickerMapChromeTheme(resolveSeatLayerPickerTheme({
+      themeMode: 'light',
+      theme: { colors: { accent: '#ffcc00' } },
+    }), snapshot());
     expect(immersive.themeMode).toBe('dark');
     expect(immersive.colors.accent).toBe('#ffcc00');
+    expect(mapChrome.colors.mapBackground).toBe(seatLayerPickerTokens.color.dark.mapBackground);
+    expect(mapChrome.colors.accent).toBe('#ffcc00');
     const onNavigation = vi.fn();
     let renderer: TestRenderer.ReactTestRenderer;
     act(() => {

@@ -127,6 +127,7 @@ export function SeatLayerPickerModal(props: SeatLayerPickerModalProps): React.Re
       themeMode={props.themeMode}
       themeOptions={props.themeOptions}
       styles={props.styles}
+      pricing={resolved.pricing}
       locale={props.locale}
       strings={props.strings}
     >

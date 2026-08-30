@@ -68,6 +68,7 @@ export function SeatLayerPicker(props: SeatLayerPickerProps): React.ReactElement
       themeMode={props.themeMode}
       themeOptions={props.themeOptions}
       styles={props.styles}
+      pricing={resolvedOptions.pricing}
       locale={props.locale}
       strings={props.strings}
     >

@@ -23,6 +23,7 @@ export type SeatLayerPickerPartName =
   | 'cartSheet'
   | 'venue3D'
   | 'seatViewChrome'
+  | 'holdCountdown'
   | 'holdLapse'
   | 'actionError'
   | 'checkoutBar'
@@ -93,7 +94,8 @@ const aliases: Readonly<Record<SeatLayerPickerPartName, readonly string[]>> = Ob
   cartSheet: Object.freeze(['cartSheet']),
   venue3D: Object.freeze(['venue3D']),
   seatViewChrome: Object.freeze(['seatViewChrome']),
-  holdLapse: Object.freeze(['holdLapse', 'holdCountdown']),
+  holdCountdown: Object.freeze(['holdCountdown']),
+  holdLapse: Object.freeze(['holdLapse']),
   actionError: Object.freeze(['actionError']),
   checkoutBar: Object.freeze(['checkoutBar']),
   loading: Object.freeze(['loading']),

@@ -27,6 +27,7 @@ const generator = join(process.cwd(), 'scripts/generate-picker-design.mjs');
 const designDirectory = join(process.cwd(), 'design');
 const canonicalTokens = join(designDirectory, 'tokens.json');
 const canonicalStrings = join(designDirectory, 'locale_strings.json');
+const canonicalSourceLock = join(designDirectory, 'source-lock.json');
 const generatedDirectory = join(process.cwd(), 'src/picker');
 const temporaryDirectories: string[] = [];
 
@@ -48,7 +49,10 @@ async function fixtureDirectory(): Promise<string> {
     size: { minimumHitTarget: 44, phoneBreakpoint: 640 },
     radius: { button: 8, card: 18 },
     strings: { close: 'Close' },
-    color: { light: { accent: '#111111' }, dark: { accent: '#eeeeee' } },
+    color: {
+      light: { accent: '#111111', divider: '#80112233' },
+      dark: { accent: '#eeeeee', divider: '#3DA5AEC2' },
+    },
   }));
   await writeFile(join(directory, 'strings.json'), JSON.stringify({ strings: { en: { welcome: 'Welcome {name}' } } }));
   return directory;
@@ -88,6 +92,8 @@ describe('picker design generator', () => {
     expect(firstStrings).toContain(`seatLayerPickerLocaleSourceSha256 = '${sha256(stringInput)}'`);
     expect(firstTokens).not.toContain('$schema');
     expect(firstTokens).not.toContain('Process-only prose');
+    expect(firstTokens).toContain('"divider": "#17203329"');
+    expect(firstTokens).toContain('"divider": "#A5AEC23D"');
     expect(firstStrings.split('\n').length).toBeLessThanOrEqual(800);
     expect(() => generate(canonicalTokens, canonicalStrings, directory, true)).not.toThrow();
     await writeFile(join(directory, 'tokens.g.ts'), '// stale\n');
@@ -123,6 +129,22 @@ describe('picker design generator', () => {
 });
 
 describe('checked-in picker design output', () => {
+  it('matches the approved cross-platform design source lock', async () => {
+    const [tokenInput, stringInput, lockInput] = await Promise.all([
+      readFile(canonicalTokens),
+      readFile(canonicalStrings),
+      readFile(canonicalSourceLock, 'utf8'),
+    ]);
+    const lock = JSON.parse(lockInput) as {
+      version?: number;
+      tokensSha256?: string;
+      localeStringsSha256?: string;
+    };
+    expect(lock.version).toBe(1);
+    expect(sha256(tokenInput)).toBe(lock.tokensSha256);
+    expect(sha256(stringInput)).toBe(lock.localeStringsSha256);
+  });
+
   it('contains all locale dictionaries and matches source-hash comments', async () => {
     const [tokenInput, stringInput, tokens, strings] = await Promise.all([
       readFile(canonicalTokens),
@@ -139,6 +161,11 @@ describe('checked-in picker design output', () => {
     expect(tokens).toContain(`SHA-256: ${seatLayerPickerTokenSourceSha256}`);
     expect(strings).toContain(`SHA-256: ${seatLayerPickerLocaleSourceSha256}`);
     expect(strings.split('\n').length).toBeLessThanOrEqual(800);
+  });
+
+  it('converts canonical Flutter ARGB alpha colours to React Native RGBA order', () => {
+    expect(seatLayerPickerTokens.color.light.divider).toBe('#17203329');
+    expect(seatLayerPickerTokens.color.dark.divider).toBe('#A5AEC23D');
   });
 
   it('keeps native-only cart, prompt, and immersive wording in the canonical token source', () => {

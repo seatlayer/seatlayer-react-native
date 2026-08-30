@@ -3,7 +3,7 @@
   "version": "0.2.1",
   "description": "Official React Native SDK for interactive SeatLayer reserved-seating maps on iOS and Android.",
   "license": "MIT",
-  "homepage": "https://docs.seatlayer.io/buyer-sdk/mobile/",
+  "homepage": "https://docs.seatlayer.io/buyer-sdk/react-native/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/seatlayer/seatlayer-react-native.git"

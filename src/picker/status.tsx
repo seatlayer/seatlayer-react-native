@@ -70,6 +70,9 @@ export interface SeatLayerPickerStatusProps {
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: StatusSlots;
 }
+export interface SeatLayerPickerEmptyStatusProps extends SeatLayerPickerStatusProps {
+  readonly message?: string;
+}
 interface StatusViewProps extends SeatLayerPickerStatusProps {
   readonly theme: SeatLayerPickerThemeData;
   readonly strings: SeatLayerPickerStringResolver;
@@ -92,7 +95,7 @@ export function SeatLayerPickerLoadingStatus({
       accessibilityLabel={strings.translate("loading")}
       style={[styles.root, slots.statusContainer, safeStyle]}
     >
-      <ActivityIndicator color={theme.colors.accent} />
+      <ActivityIndicator color={theme.colors.accent} size="large" />
       <Text
         style={[styles.text, {
           color: theme.colors.text,
@@ -123,6 +126,47 @@ export function SeatLayerPickerLoadingView(
       strings={scope.strings}
     />
   );
+}
+
+/** Context-free empty-inventory status with host-replaceable copy. */
+export function SeatLayerPickerEmptyStatus({
+  message,
+  slots: componentSlots,
+  style,
+  theme,
+  themeStyles,
+}: StatusViewProps & SeatLayerPickerEmptyStatusProps): React.ReactElement {
+  const slots = resolveSeatLayerPickerStyles(themeStyles, componentSlots);
+  const copy = typeof message === 'string' && message.trim()
+    ? message.trim()
+    : 'No selectable seats are currently available.';
+  return <View
+    accessibilityLiveRegion="polite"
+    style={[styles.root, slots.statusContainer, sanitizeSeatLayerPickerStyle(style)]}
+  >
+    <View accessible={false} style={[styles.emptyMark, { borderColor: theme.colors.mutedText }]}>
+      <View style={[styles.emptySeatBack, { borderColor: theme.colors.mutedText }]} />
+      <View style={[styles.emptySeatBase, { backgroundColor: theme.colors.mutedText }]} />
+    </View>
+    <Text style={[styles.text, {
+      color: theme.colors.text,
+      fontFamily: theme.fontFamily,
+    }, slots.statusText]}>{copy}</Text>
+  </View>;
+}
+
+/** Scoped standalone empty view for custom layouts and the proven-empty ready-made state. */
+export function SeatLayerPickerEmptyView(
+  props: SeatLayerPickerEmptyStatusProps,
+): React.ReactElement {
+  const scope = useSeatLayerPickerScope();
+  const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
+  return <SeatLayerPickerEmptyStatus
+    {...props}
+    strings={scope.strings}
+    theme={theme}
+    themeStyles={scope.styles}
+  />;
 }
 
 export interface SeatLayerPickerErrorStatusProps extends StatusViewProps {
@@ -235,11 +279,11 @@ export function SeatLayerPickerErrorStatus({
             {
               borderColor: theme.colors.divider,
               backgroundColor: pressed
-                ? theme.colors.background
-                : theme.colors.surface,
+                ? theme.colors.surface
+                : theme.colors.background,
+              borderRadius: seatLayerPickerTokens.radius.button,
             },
             slots.statusAction,
-            { borderRadius: seatLayerPickerTokens.radius.button },
           ]}
         >
           <Text
@@ -255,7 +299,7 @@ export function SeatLayerPickerErrorStatus({
     </View>
   );
 }
-/** Scoped error status requires the host's actual reload action. */
+/** Scoped error status defaults to the controller's real runtime reload. */
 export function SeatLayerPickerErrorView(
   props: SeatLayerPickerStatusProps & {
     readonly retry?: () => void | Promise<void>;
@@ -276,6 +320,7 @@ export function SeatLayerPickerErrorView(
       {...props}
       error={actualError}
       onActionError={scope.reportError}
+      retry={props.retry ?? scope.retry}
       sessionId={scope.sessionId}
       strings={scope.strings}
       theme={theme}
@@ -330,6 +375,21 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     transform: [{ rotate: "-35deg" }],
   },
+  emptyMark: {
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'flex-end',
+    width: 44,
+  },
+  emptySeatBack: {
+    borderBottomWidth: 0,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 2,
+    height: 22,
+    width: 28,
+  },
+  emptySeatBase: { borderRadius: 2, height: 4, marginTop: 4, width: 36 },
   retry: {
     minWidth: 128,
     minHeight: 44,

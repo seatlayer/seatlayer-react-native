@@ -1,7 +1,12 @@
 import { SeatLayerError } from '../errors';
 import type { JsonValue } from '../json';
 import type { ReadyInfo } from '../types';
-import { decodeSeatLayerPickerAvailabilityOutcome, type SeatLayerPickerAvailabilityOutcome } from './availability';
+import {
+  decodeSeatLayerPickerAvailabilityOutcome,
+  seatLayerAvailabilityRefreshCapability,
+  seatLayerHoldSelectionCapability,
+  type SeatLayerPickerAvailabilityOutcome,
+} from './availability';
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
 import { decodeSeatLayerPickerSnapshot } from './decode';
@@ -18,6 +23,8 @@ export interface SeatLayerPickerLifecycleResult {
 
 /** Public picker controller; recovery additions retain the original controller identity. */
 export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
+  private reloadGenerationValue = 0;
+  private readonly reloadListeners = new Set<() => void>();
   private availabilityRefreshFlight: Promise<SeatLayerPickerLifecycleResult | undefined> | undefined;
   private readonly chartLoads = new SeatLayerPickerChartLoadSubscriptions(
     () => this.mapController.isReady &&
@@ -43,18 +50,54 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     return this.chartLoads.subscribe(listener);
   }
 
+  /** Monotonic runtime-remount generation observed by an attached picker scope. */
+  getReloadGeneration = (): number => this.reloadGenerationValue;
+
+  /** @internal Subscribes an attached scope to explicit controller retries. */
+  subscribeReload = (listener: () => void): (() => void) => {
+    this.reloadListeners.add(listener);
+    return () => this.reloadListeners.delete(listener);
+  };
+
+  /**
+   * Recreates the embedded runtime without replacing this controller.
+   *
+   * Any live runtime gets a best-effort destroy acknowledgement first. The
+   * attached scope then retires stale native chrome and remounts the chart;
+   * selection and hold recovery remain runtime/server-authoritative.
+   */
+  retry(): Promise<void> {
+    return this.serial(async () => {
+      if (
+        this.mapController.isReady &&
+        this.mapController.supportsPickerCommand('picker.destroy')
+      ) {
+        try {
+          await this.command('picker.destroy');
+        } catch {
+          // Recovery still proceeds when the failed runtime is already gone.
+        }
+      }
+      if (this.disposed) throw SeatLayerError.destroyed();
+      this.resetForRuntimeReload();
+      this.reloadGenerationValue += 1;
+      for (const listener of this.reloadListeners) listener();
+    });
+  }
+
   override dispose(): void {
     this.unsubscribeChartLoad();
     this.chartLoads.dispose();
+    this.reloadListeners.clear();
     super.dispose();
   }
 
   get supportsAvailabilityRefresh(): boolean {
-    return this.available('availability-refresh-v1', 'picker.refreshAvailability');
+    return this.available(seatLayerAvailabilityRefreshCapability, 'picker.refreshAvailability');
   }
 
   get supportsHoldSelection(): boolean {
-    return this.available('hold-selection-v1', 'picker.holdSelection');
+    return this.available(seatLayerHoldSelectionCapability, 'picker.holdSelection');
   }
 
   /**

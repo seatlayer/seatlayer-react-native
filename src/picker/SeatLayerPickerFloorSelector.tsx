@@ -158,15 +158,19 @@ function FloorSelectorCurrent({
         onPress={show}
         style={[nativeStyles.target, { minWidth: target, minHeight: target }]}
       >
-        <View style={[nativeStyles.trigger, styles.floorStripContainer, sanitizeSeatLayerPickerStyle(props.style), {
+        <View style={[nativeStyles.trigger, {
           borderColor: scope.resolvedTheme.colors.divider,
           backgroundColor: blendSeatLayerPickerColor(scope.resolvedTheme.colors.surface, scope.resolvedTheme.colors.background, .94, scope.resolvedTheme.colors.surface),
           borderRadius: seatLayerPickerTokens.radius.button,
-        }]}>
+        }, styles.floorStripContainer, sanitizeSeatLayerPickerStyle(props.style)]}>
           <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.triggerText, {
             color: scope.resolvedTheme.colors.text,
             fontFamily: scope.resolvedTheme.fontFamily,
           }, styles.floorChipText]}>{selectedLabel}</Text>
+          <View accessible={false} style={[nativeStyles.chevron, {
+            borderBottomColor: actionBusy ? scope.resolvedTheme.colors.divider : scope.resolvedTheme.colors.mutedText,
+            borderRightColor: actionBusy ? scope.resolvedTheme.colors.divider : scope.resolvedTheme.colors.mutedText,
+          }]} />
         </View>
       </Pressable>
       <SeatLayerPickerPromptModal visible={visible}>
@@ -202,11 +206,11 @@ function Choice({ label, selected, busy, styles, scope, onPress }: Readonly<{
 }>): React.ReactElement {
   const target = seatLayerPickerTokens.size.minimumHitTarget;
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled: busy || selected, busy }} disabled={busy || selected} onPress={onPress} style={[nativeStyles.choiceTarget, { minWidth: target, minHeight: target }]}>
-    <View style={[nativeStyles.choicePaint, styles.floorChip, {
+    <View style={[nativeStyles.choicePaint, {
       backgroundColor: selected ? scope.resolvedTheme.colors.accent : scope.resolvedTheme.colors.background,
       borderColor: selected ? scope.resolvedTheme.colors.accent : scope.resolvedTheme.colors.divider,
       borderRadius: seatLayerPickerTokens.radius.button,
-    }]}>
+    }, styles.floorChip]}>
       <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.choiceText, { color: selected ? scope.resolvedTheme.colors.onAccent : scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.floorChipText]}>{label}</Text>
     </View>
   </Pressable>;
@@ -214,8 +218,9 @@ function Choice({ label, selected, busy, styles, scope, onPress }: Readonly<{
 
 const nativeStyles = StyleSheet.create({
   target: { justifyContent: 'center' },
-  trigger: { height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
-  triggerText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  trigger: { alignItems: 'center', flexDirection: 'row', height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  triggerText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '800' },
+  chevron: { borderBottomWidth: 1.5, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 },
   sheet: { padding: 8 },
   closeTarget: { alignSelf: 'flex-end', justifyContent: 'center' },
   closePaint: { height: 40, paddingHorizontal: 10, justifyContent: 'center' },

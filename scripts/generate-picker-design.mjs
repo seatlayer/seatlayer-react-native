@@ -40,6 +40,27 @@ function sortJson(value) {
   return value;
 }
 
+/**
+ * Flutter's canonical design source uses Color's #AARRGGBB notation, while
+ * React Native consumes eight-digit hex colours as #RRGGBBAA. Keep that
+ * platform conversion at generation time so host-supplied RN colours retain
+ * their normal syntax.
+ * @param {unknown} value
+ */
+function normalizeReactNativeColorTokens(value) {
+  if (Array.isArray(value)) return value.map(normalizeReactNativeColorTokens);
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, normalizeReactNativeColorTokens(child)]),
+    );
+  }
+  if (typeof value !== 'string') return value;
+  const match = /^#([0-9a-fA-F]{8})$/.exec(value);
+  if (!match) return value;
+  const argb = match[1];
+  return `#${argb.slice(2)}${argb.slice(0, 2)}`;
+}
+
 /** @param {string} path */
 async function readJson(path) {
   try {
@@ -82,13 +103,17 @@ function validateInputs(tokens, strings) {
 export function buildGeneratedDesignFiles(tokens, strings, sourceHashes) {
   validateInputs(tokens, strings);
   const { $schema: _schema, description: _description, ...runtimeTokens } = tokens;
-  const tokenHeader = `// This file is generated. Do not edit by hand.\n// Canonical token input SHA-256: ${sourceHashes.tokens}\n\n`;
+  const reactNativeTokens = {
+    ...runtimeTokens,
+    color: normalizeReactNativeColorTokens(runtimeTokens.color),
+  };
+  const tokenHeader = `// This file is generated. Do not edit by hand.\n// Canonical token input SHA-256: ${sourceHashes.tokens}\n// Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.\n\n`;
   const stringHeader = `// This file is generated. Do not edit by hand.\n// Canonical locale input SHA-256: ${sourceHashes.strings}\n\n`;
   const localeLines = Object.entries(sortJson(strings.strings))
     .map(([locale, dictionary]) => `  ${JSON.stringify(locale)}: ${JSON.stringify(dictionary)},`)
     .join('\n');
   return {
-    'tokens.g.ts': `${tokenHeader}export const seatLayerPickerTokenSourceSha256 = '${sourceHashes.tokens}' as const;\nexport const seatLayerPickerTokenVersion = ${JSON.stringify(runtimeTokens.version ?? null)} as const;\n\nexport const seatLayerPickerTokens = ${JSON.stringify(sortJson(runtimeTokens), null, 2)} as const;\n\nexport type SeatLayerPickerGeneratedTokens = typeof seatLayerPickerTokens;\n`,
+    'tokens.g.ts': `${tokenHeader}export const seatLayerPickerTokenSourceSha256 = '${sourceHashes.tokens}' as const;\nexport const seatLayerPickerTokenVersion = ${JSON.stringify(runtimeTokens.version ?? null)} as const;\n\nexport const seatLayerPickerTokens = ${JSON.stringify(sortJson(reactNativeTokens), null, 2)} as const;\n\nexport type SeatLayerPickerGeneratedTokens = typeof seatLayerPickerTokens;\n`,
     'strings.g.ts': `${stringHeader}export const seatLayerPickerLocaleSourceSha256 = '${sourceHashes.strings}' as const;\n\nexport const seatLayerPickerLocaleStrings = {\n${localeLines}\n} as const;\n\nexport type SeatLayerPickerGeneratedLocale = keyof typeof seatLayerPickerLocaleStrings;\n`,
   };
 }

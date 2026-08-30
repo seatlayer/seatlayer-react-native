@@ -15,7 +15,13 @@ export function focusedPickerSection(
   snapshot: SeatLayerPickerSnapshot | undefined,
 ): SeatLayerPickerSectionSummary | undefined {
   if (snapshot === undefined) return undefined;
-  if (snapshot.map.focusedSection !== undefined) return snapshot.map.focusedSection;
+  if (snapshot.map.focusedSection !== undefined) {
+    const focused = snapshot.map.focusedSection;
+    const summary = snapshot.sections.find((section) => section.id === focused.id);
+    return summary === undefined
+      ? focused
+      : Object.freeze({ ...summary, ...focused });
+  }
   const id = snapshot.map.focusedSectionId;
   return id === undefined ? undefined : snapshot.sections.find((section) => section.id === id);
 }

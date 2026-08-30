@@ -3,7 +3,7 @@ import { I18nManager, Pressable, Text, View, type StyleProp, type ViewStyle } fr
 
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { CartRemovalUndoCoordinator } from './cartRemovalUndoState';
-import { formatSeatLayerPickerMoney } from './format';
+import { chartSeatLayerPickerColor } from './chartColor';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
@@ -126,7 +126,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   return (
     <View style={[sanitizeSeatLayerPickerStyle(props.style), { direction: I18nManager.isRTL ? 'rtl' : 'ltr' }]}>
       {visibleRuns.map((run) => { const runKey = JSON.stringify(run.members.map((member) => [member.identity.lineKey, member.identity.removalLabel, member.identity.objectId, member.identity.seatId])); return <Run key={runKey} run={run} open={openRuns.has(runKey)} canRemove={canRemove} theme={theme} styles={styles} onToggle={() => setOpenRuns((value) => { const next = new Set(value); next.has(runKey) ? next.delete(runKey) : next.add(runKey); return next; })} onRemove={remove} />; })}
-      {visible.canToggle ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })} onPress={() => setShowAll((value) => !value)} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.denseLineText]}>{scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })}</Text></Pressable> : null}
+      {visible.canToggle ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })} onPress={() => setShowAll((value) => !value)} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '800' }, styles.denseLineText]}>{scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })}</Text></Pressable> : null}
       {undoActive?.phase === 'undo-window' ? <View accessibilityLiveRegion="polite" style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flexDirection: 'row', alignItems: 'center' }}><Text style={[{ flex: 1, color: theme.colors.text, fontFamily: theme.fontFamily }, styles.denseLineText]}>{scope.strings.translate('seatRemoved')}</Text><Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('undo')} onPress={() => { void undo(); }} style={[styles.denseLineRemoveButton, { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignItems: 'center', justifyContent: 'center' }]}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.denseLineRemoveButtonText]}>{scope.strings.translate('undo')}</Text></Pressable></View> : null}
       {props.children}
     </View>
@@ -141,9 +141,36 @@ function Run({ run, open, canRemove, theme, styles, onToggle, onRemove }: { read
 function DenseLine({ line, run, expanded, canRemove, theme, styles, onToggle, onRemove }: { readonly line: DenseTicketLine<SeatLayerPickerCartLine>; readonly run?: DenseTicketRun<SeatLayerPickerCartLine>; readonly expanded?: boolean; readonly canRemove: boolean; readonly theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>; readonly styles: SeatLayerPickerStyles; readonly onToggle?: () => void; readonly onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>) => void }): React.ReactElement {
   const scope = useSeatLayerPickerScope();
   const total = run?.total ?? line.total;
-  const amount = total === null || !line.currency ? '' : formatSeatLayerPickerMoney(total, line.currency);
-  const unit = line.unitPrice === null || !line.currency ? '' : formatSeatLayerPickerMoney(line.unitPrice, line.currency);
-  const quantityAmount = line.quantity > 1 && unit ? `${line.quantity} × ${unit} · ${amount}` : amount;
-  const identity = [line.categoryLabel, line.section, line.rowLabel, run?.seatsLabel ?? line.seatLabel].filter(Boolean).join(' · ');
-  return <View accessibilityLabel={`${identity} ${quantityAmount}`} style={[styles.denseLineContainer, { height: seatLayerPickerTokens.size.denseLineHeight, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderColor: theme.colors.divider }]}><Pressable accessibilityRole={onToggle ? 'button' : undefined} accessibilityLabel={identity} accessibilityState={onToggle ? { expanded } : undefined} onPress={onToggle} style={{ flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}><Text numberOfLines={1} style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 12 }, styles.denseLineText]}>{identity}</Text></Pressable><Text numberOfLines={1} style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '700' }, styles.denseLineText]}>{quantityAmount}</Text>{canRemove ? <Pressable accessibilityRole="button" accessibilityLabel={`${scope.strings.translate('removeSeat')} ${identity}`} onPress={() => onRemove(line)} style={{ minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }}><View style={[styles.denseLineRemoveButton, { width: seatLayerPickerTokens.size.denseLineHeight, height: seatLayerPickerTokens.size.denseLineHeight, borderRadius: seatLayerPickerTokens.radius.button, justifyContent: 'center', alignItems: 'center' }]}><Text style={[{ color: theme.colors.error, fontFamily: theme.fontFamily }, styles.denseLineRemoveButtonText]}>×</Text></View></Pressable> : null}</View>;
+  const amount = total === null || !line.currency ? '' : scope.formatMoney(total, line.currency);
+  const unit = line.unitPrice === null || !line.currency ? '' : scope.formatMoney(line.unitPrice, line.currency);
+  const seats = run?.seatsLabel ?? line.seatLabel;
+  const identityParts = [line.section, line.rowLabel, seats].filter(Boolean);
+  const identity = identityParts.join(' · ');
+  const quantity = run?.quantity ?? line.quantity;
+  const quantityAmount = quantity > 1 && unit ? `${quantity} × ${unit}` : '';
+  const category = scope.snapshot?.categories.find((item) => item.key === line.categoryKey);
+  const categoryColor = chartSeatLayerPickerColor(category?.color, theme.colors.accent);
+  const identityLabel = [line.categoryLabel, identity].filter(Boolean).join(', ');
+  return <View accessibilityLabel={`${identityLabel}, ${[quantityAmount, amount].filter(Boolean).join(', ')}`} style={[{
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+    flexDirection: 'row',
+    height: seatLayerPickerTokens.size.denseLineHeight,
+    paddingStart: onToggle ? 0 : 22,
+  }, styles.denseLineContainer]}>
+    <Pressable accessibilityRole={onToggle ? 'button' : undefined} accessibilityLabel={onToggle ? identity : undefined} accessibilityState={onToggle ? { expanded } : undefined} disabled={!onToggle} onPress={onToggle} style={{ alignItems: 'center', flex: 1, flexDirection: 'row', minHeight: seatLayerPickerTokens.size.minimumHitTarget }}>
+      {onToggle ? <Text accessible={false} style={{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 24, lineHeight: 24, textAlign: 'center', transform: [{ rotate: expanded ? '90deg' : '0deg' }], width: 18 }}>›</Text> : <View accessible={false} style={{ backgroundColor: categoryColor, borderRadius: 4, height: 8, width: 8 }} />}
+      <Text numberOfLines={1} style={[{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '600', marginStart: 8 }, styles.denseLineText]}><Text style={{ fontWeight: '800' }}>{identityParts[0]}</Text>{identityParts.slice(1).map((part) => ` · ${part}`).join('')}</Text>
+    </Pressable>
+    {quantityAmount ? <><Text numberOfLines={1} style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '700' }, styles.denseLineText]}>{quantityAmount}</Text><View style={{ width: 6 }} /></> : null}
+    <Text numberOfLines={1} style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.denseLineText]}>{amount}</Text>
+    {canRemove ? <Pressable accessibilityRole="button" accessibilityLabel={`${scope.strings.translate('removeSeat')} ${identity}`} onPress={() => onRemove(line)} style={{ alignItems: 'center', justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, minWidth: seatLayerPickerTokens.size.minimumHitTarget }}><View style={[{
+      alignItems: 'center',
+      borderRadius: seatLayerPickerTokens.radius.button,
+      height: 34,
+      justifyContent: 'center',
+      width: 34,
+    }, styles.denseLineRemoveButton]}><Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 18 }, styles.denseLineRemoveButtonText]}>×</Text></View></Pressable> : <View style={{ width: 8 }} />}
+  </View>;
 }

@@ -8,6 +8,7 @@ import {
   projectVisibleRuns,
   resolveDenseTicketLines,
   runMembersInSeatOrder,
+  ticketIsGroupable,
   type SeatLayerCartLineLike,
 } from '../src/picker/cartDense';
 
@@ -111,6 +112,9 @@ describe('dense cart grouping', () => {
       { id: 'seat-2', tiers: [{}, {}] },
     ]);
     expect(groupDenseTicketLines(tierControlled)).toHaveLength(2);
+    expect(ticketIsGroupable(seat())).toBe(true);
+    expect(ticketIsGroupable(seat({ objectType: 'ga', quantity: 2 }))).toBe(false);
+    expect(ticketIsGroupable(seat(), { tiers: [{}, {}] })).toBe(false);
   });
 
   it('does not invent a range for non-adjacent or duplicate seat labels', () => {

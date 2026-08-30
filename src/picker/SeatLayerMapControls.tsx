@@ -7,7 +7,7 @@ import {
 } from './accessibility';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
-import { focusedPickerSection, pickerColor, usePickerSingleFlight } from './pickerNavigation';
+import { blendSeatLayerPickerColor, focusedPickerSection, pickerColor, usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
@@ -271,7 +271,7 @@ function SeatLayerMapControlsView({
   const usableZoomInLabel = typeof zoomInLabel === 'string' ? zoomInLabel.trim() : '';
   const usableZoomOutLabel = typeof zoomOutLabel === 'string' ? zoomOutLabel.trim() : '';
   const control = (label: string, enabled: boolean, onPress: () => void, icon: ReactNode) => (
-    <MapButton
+    <SeatLayerMapControlButtonView
       enabled={enabled && !disabled}
       label={label}
       slots={slots}
@@ -280,34 +280,34 @@ function SeatLayerMapControlsView({
       onPress={onPress}
     >
       {icon}
-    </MapButton>
+    </SeatLayerMapControlButtonView>
   );
   const overview = control(
     strings.translate('backToVenue'),
     canOverview && !overviewBusy,
     onOverview,
-    <BackIcon color={theme.colors.text} />,
+    <SeatLayerPickerBackIcon color={theme.colors.text} />,
   );
   const zoomIn = !usableZoomInLabel ? null : control(
     usableZoomInLabel,
     canZoomIn && !zoomInBusy,
     onZoomIn,
-    <PlusIcon color={theme.colors.text} />,
+    <SeatLayerPickerPlusIcon color={theme.colors.text} />,
   );
   const zoomOut = !usableZoomOutLabel ? null : control(
     usableZoomOutLabel,
     canZoomOut && !zoomOutBusy,
     onZoomOut,
-    <MinusIcon color={theme.colors.text} />,
+    <SeatLayerPickerMinusIcon color={theme.colors.text} />,
   );
   const fit = control(
     strings.translate('fitVenue'),
     canFit && !fitBusy,
     onFit,
-    <FocusCornersIcon color={theme.colors.text} />,
+    <SeatLayerPickerFocusCornersIcon color={theme.colors.text} />,
   );
   const view = venue3DAvailable ? (
-    <ViewModeControl
+    <SeatLayerPickerViewModeControlView
       disabled={disabled || viewBusy}
       buyerView={buyerView}
       slots={slots}
@@ -373,20 +373,27 @@ function SeatLayerMapControlsView({
   );
 }
 
-function MapButton({
+export function SeatLayerMapControlButtonView({
   label,
   enabled,
+  active = false,
+  selected,
   theme,
   target,
   slots,
+  style,
   onPress,
   children,
 }: {
   readonly label: string;
   readonly enabled: boolean;
+  readonly active?: boolean;
+  /** Set only for true toggle controls; ordinary action buttons omit selection semantics. */
+  readonly selected?: boolean;
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly target: number;
   readonly slots: SeatLayerMapControlsProps['slots'];
+  readonly style?: StyleProp<ViewStyle>;
   readonly onPress: () => void;
   readonly children: ReactNode;
 }): React.ReactElement {
@@ -395,7 +402,10 @@ function MapButton({
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
-      accessibilityState={{ disabled: !enabled }}
+      accessibilityState={{
+        disabled: !enabled,
+        ...(selected === undefined ? {} : { selected }),
+      }}
       disabled={!enabled}
       onPress={onPress}
       style={({ pressed }) => ({
@@ -410,7 +420,9 @@ function MapButton({
         style={[
           {
             alignItems: 'center',
-            backgroundColor: pickerColor(theme.colors.surface, theme.colors.surface, 0.94),
+            backgroundColor: active
+              ? blendSeatLayerPickerColor(theme.colors.accent, theme.colors.surface, .13, theme.colors.surface)
+              : pickerColor(theme.colors.surface, theme.colors.surface, 0.94),
             borderColor: theme.colors.divider,
             borderRadius: theme.radii.button,
             borderWidth: 1,
@@ -424,7 +436,8 @@ function MapButton({
             width: size,
           },
           slots?.mapControlButton,
-          { borderRadius: theme.radii.button, height: size, width: size },
+          sanitizeSeatLayerPickerStyle(style),
+          { height: size, width: size },
         ]}
       >
         {children}
@@ -433,9 +446,10 @@ function MapButton({
   );
 }
 
-function ViewModeControl({
+export function SeatLayerPickerViewModeControlView({
   buyerView,
   disabled,
+  style,
   theme,
   slots,
   strings,
@@ -445,6 +459,7 @@ function ViewModeControl({
 }: {
   readonly buyerView: 'map' | 'venue3d' | undefined;
   readonly disabled: boolean;
+  readonly style?: StyleProp<ViewStyle>;
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly slots: SeatLayerMapControlsProps['slots'];
   readonly strings: ReturnType<typeof useSeatLayerPickerScope>['strings'];
@@ -509,7 +524,7 @@ function ViewModeControl({
       const width = event.nativeEvent.layout.width;
       if (!Number.isFinite(width) || width < 0) return;
       try { onLayout?.(width); } catch { /* Host observation remains isolated. */ }
-    }} style={{ height: target, position: 'relative' }}>
+    }} style={[{ height: target, position: 'relative' }, sanitizeSeatLayerPickerStyle(style), { height: target, position: 'relative' }]}>
       <View
         pointerEvents="none"
         style={{
@@ -548,7 +563,7 @@ function ViewModeControl({
   );
 }
 
-function PlusIcon({ color }: { readonly color: string }): React.ReactElement {
+export function SeatLayerPickerPlusIcon({ color }: { readonly color: string }): React.ReactElement {
   return (
     <View style={{ backgroundColor: color, height: 2, width: 14 }}>
       <View
@@ -565,11 +580,11 @@ function PlusIcon({ color }: { readonly color: string }): React.ReactElement {
   );
 }
 
-function MinusIcon({ color }: { readonly color: string }): React.ReactElement {
+export function SeatLayerPickerMinusIcon({ color }: { readonly color: string }): React.ReactElement {
   return <View style={{ backgroundColor: color, height: 2, width: 14 }} />;
 }
 
-function BackIcon({ color }: { readonly color: string }): React.ReactElement {
+export function SeatLayerPickerBackIcon({ color }: { readonly color: string }): React.ReactElement {
   return (
     <View style={{ height: 16, width: 18 }}>
       <View
@@ -599,7 +614,7 @@ function BackIcon({ color }: { readonly color: string }): React.ReactElement {
   );
 }
 
-function FocusCornersIcon({ color }: { readonly color: string }): React.ReactElement {
+export function SeatLayerPickerFocusCornersIcon({ color }: { readonly color: string }): React.ReactElement {
   const corner = (position: ViewStyle, rotate: string) => (
     <View
       key={rotate}
@@ -623,6 +638,15 @@ function FocusCornersIcon({ color }: { readonly color: string }): React.ReactEle
       {corner({ right: 0, top: 0 }, '90deg')}
       {corner({ bottom: 0, right: 0 }, '180deg')}
       {corner({ bottom: 0, left: 0 }, '270deg')}
+      <View style={{
+        backgroundColor: color,
+        borderRadius: 2,
+        height: 4,
+        left: 6,
+        position: 'absolute',
+        top: 6,
+        width: 4,
+      }} />
     </View>
   );
 }

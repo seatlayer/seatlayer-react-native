@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Image,
   type ImageSourcePropType,
@@ -52,6 +52,8 @@ export interface SeatLayerPickerHeaderProps {
   readonly slots?: HeaderSlots;
   readonly clock?: () => number;
   readonly holdRemainingLabel?: (remainingSeconds: number) => string;
+  /** Undefined uses the built-in pill; null hides it; a node replaces it. */
+  readonly holdCountdown?: ReactNode;
 }
 
 export interface SeatLayerPickerHeaderViewProps
@@ -197,7 +199,7 @@ export function SeatLayerPickerHeaderView(
       Number.isFinite(hold.expiresAt)
     ? hold.expiresAt
     : undefined;
-  const showHold = expiry !== undefined && !holdLapsed && showHoldPill &&
+  const showHold = props.holdCountdown === undefined && expiry !== undefined && !holdLapsed && showHoldPill &&
     options?.showHoldPill !== false;
   const slots = resolveSeatLayerPickerStyles(themeStyles, props.slots);
   const safeStyle = sanitizeSeatLayerPickerStyle(style);
@@ -315,10 +317,13 @@ export function SeatLayerPickerHeaderView(
           }
         }}
         resizeMode="contain"
-        style={[slots.headerLogo, {
+        style={[{
           width: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
           height: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
           borderRadius: compact ? 6 : 10,
+        }, slots.headerLogo, {
+          width: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
+          height: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
         }]}
       />
     );
@@ -376,8 +381,9 @@ export function SeatLayerPickerHeaderView(
             </View>
           )
           : <View style={styles.titleWrap} />}
-        {showHold
-          ? (
+        {props.holdCountdown !== undefined
+          ? props.holdCountdown
+          : showHold ? (
             <View
               accessible
               accessibilityLabel={spoken}
@@ -407,8 +413,7 @@ export function SeatLayerPickerHeaderView(
                 {heldFor}
               </Text>
             </View>
-          )
-          : null}
+          ) : null}
         {onClose
           ? (
             <Pressable
@@ -430,12 +435,12 @@ export function SeatLayerPickerHeaderView(
                   {
                     borderColor: theme.colors.divider,
                     backgroundColor: theme.colors.surface,
+                    borderRadius: seatLayerPickerTokens.radius.button,
                   },
                   slots.headerAction,
                   {
                     width: 40,
                     height: 40,
-                    borderRadius: seatLayerPickerTokens.radius.button,
                   },
                 ]}
               >

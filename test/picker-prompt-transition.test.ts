@@ -89,6 +89,10 @@ describe('picker prompt transition', () => {
     const current = renderer.root.findAllByType('AnimatedView' as any)[0]!;
     const transform = current.props.style[1].transform[0].translateY as Record<string, unknown>;
     expect(transform.outputRange).toEqual([7.000000000000001, 0]);
+    expect(current.props.style[0]).toMatchObject({
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
   });
 
   it('stops and settles an active transition when reduced motion changes', async () => {

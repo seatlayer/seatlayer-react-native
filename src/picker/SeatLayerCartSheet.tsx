@@ -36,7 +36,6 @@ import {
   isSeatLayerCartActionCurrent,
   projectSeatLayerCartSheet,
 } from './cartSheetUi';
-import { formatSeatLayerPickerCompactMoney, formatSeatLayerPickerMoney } from './format';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import {
@@ -120,7 +119,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
   const projection = projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat);
   const total = projection.totals.currency === null
     ? undefined
-    : formatSeatLayerPickerMoney(projection.totals.total, projection.totals.currency);
+    : scope.formatMoney(projection.totals.total, projection.totals.currency);
   const label = props.compact
     ? total
       ? scope.strings.translate('continueWithTotal', { values: { money: total } })
@@ -138,7 +137,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
     let handoff: SeatLayerPickerCheckoutHandoff | undefined;
     try {
       handoff = await before.controller.checkout();
-      if (!mountedRef.current || !isSeatLayerCartActionCurrent(lease, scopeRef.current)) {
+      if (!before.isSessionActive() || !isSeatLayerCartActionCurrent(lease, scopeRef.current)) {
         if (canRejectHandoff(before.controller)) {
           try { await before.controller.rejectHandoff(handoff.holdId); } catch { /* best effort */ }
         }
@@ -172,16 +171,23 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled}
       accessibilityState={{ disabled, busy }} onPress={() => { void checkout(); }}
-      style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}>
-      <View style={[sanitizeSeatLayerPickerStyle(props.style), styles.continueButton, {
-        height: seatLayerPickerTokens.size.confirmActionHeight,
+      style={props.compact ? {
+        justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget,
+      } : {
+        justifyContent: 'center', minHeight: 56, paddingBottom: 6, paddingHorizontal: 12, paddingTop: 4,
+      }}>
+      <View style={[{
+        height: props.compact ? seatLayerPickerTokens.size.confirmActionHeight : 46,
         minWidth: props.compact ? 100 : undefined,
         borderRadius: seatLayerPickerTokens.radius.button,
         backgroundColor: disabled ? theme.colors.divider : theme.colors.accent,
         justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12,
+      }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style), {
+        height: props.compact ? seatLayerPickerTokens.size.confirmActionHeight : 46,
+        minWidth: props.compact ? 100 : undefined,
       }]}>
         <Text numberOfLines={1} ellipsizeMode="tail"
-          style={[{ color: disabled ? theme.colors.mutedText : theme.colors.onAccent, fontFamily: theme.fontFamily, fontWeight: '700', flexShrink: 1 }, styles.continueButtonText]}>
+          style={[{ color: disabled ? theme.colors.mutedText : theme.colors.onAccent, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: props.compact ? 13 : 15, fontWeight: '800' }, styles.continueButtonText]}>
           {label}
         </Text>
       </View>
@@ -264,7 +270,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   };
   const total = projection.totals.currency === null
     ? undefined
-    : formatSeatLayerPickerMoney(projection.totals.total, projection.totals.currency);
+    : scope.formatMoney(projection.totals.total, projection.totals.currency);
   const cheapest = scope.snapshot?.categories.reduce<number | undefined>(
     (lowest, category) => !category.notForSale && Number.isFinite(category.priceMin)
       ? Math.min(lowest ?? category.priceMin, category.priceMin) : lowest,
@@ -278,7 +284,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
         : scope.strings.translate('ticketCount', { count: projection.totals.quantity, values: { count: projection.totals.quantity } })
     : cheapest === undefined
       ? scope.strings.translate('chooseTickets')
-      : scope.strings.translate('fromPrice', { values: { price: formatSeatLayerPickerCompactMoney(cheapest, scope.snapshot?.currency ?? '') } });
+      : scope.strings.translate('fromPrice', { values: { price: scope.formatMoney(cheapest, scope.snapshot?.currency ?? '') } });
   const bestShortcutEnabled = props.bestSeats !== null;
   const bestAllowed = bestShortcutEnabled && hasTickets && !scope.pendingSeat && !scope.readOnly && !scope.isBusy &&
     scope.isReady && !scope.snapshot?.event.salesClosed && scope.snapshot?.hold.owner !== 'host' &&
@@ -318,10 +324,17 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
         <Text accessible={false} style={{ color: theme.colors.mutedText, transform: [{ rotate: props.expanded ? '180deg' : '0deg' }] }}>⌃</Text>
       </View>
       {props.expanded ? <View style={{ maxHeight: bodyCap, flexShrink: 1 }}>
-        {hasTickets ? <ScrollView style={{ flexShrink: 1 }}>{main}</ScrollView> : <><Text accessibilityRole="text" style={{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }}>{scope.strings.translate('emptyTrayHint')}</Text><View>{main}</View></>}
-        {actionError}
-        {hasTickets ? checkoutBar : null}
-        <SeatLayerPickerAttribution compact />
+        {hasTickets ? <>
+          <ScrollView contentContainerStyle={{ paddingBottom: 6, paddingHorizontal: 12 }} style={{ flexShrink: 1 }}>{main}</ScrollView>
+          {actionError}
+          {checkoutBar}
+          <SeatLayerPickerAttribution compact />
+        </> : <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
+          <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
+          <View>{main}</View>
+          {actionError}
+          <SeatLayerPickerAttribution compact />
+        </View>}
       </View> : null}
       {bestShortcutEnabled ? <SeatLayerPickerPromptModal visible={bestPrompt !== undefined}>
         <SeatLayerPickerBottomSheetFrame

@@ -223,6 +223,33 @@ describe('picker scope production lifecycle', () => {
     act(() => tree.unmount());
     controller.dispose();
   });
+  it('retries a failed runtime without replacing its controller or retaining stale chrome', async () => {
+    const controller = new SeatLayerPickerController();
+    apply(controller, snapshot(1, {}, [{ id: 'A1', label: 'A1', objectId: 'A1' }]));
+    const capture: Capture = { current: undefined };
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(treeFor(controller, capture)); });
+    const priorSession = capture.current!.sessionId;
+    const priorController = capture.current!.controller;
+    act(() => {
+      capture.current!.reportError(new Error('initial load failed'));
+      capture.current!.setPresentation({ type: 'setSheet', sheet: 'expanded' });
+    });
+    expect(capture.current!.error).toBeInstanceOf(Error);
+    expect(capture.current!.presentation.sheet).toBe('expanded');
+
+    await act(async () => { await capture.current!.retry(); });
+
+    expect(controller.getReloadGeneration()).toBe(1);
+    expect(capture.current!.controller).toBe(priorController);
+    expect(capture.current!.sessionId).toBeGreaterThan(priorSession);
+    expect(capture.current!.error).toBeUndefined();
+    expect(capture.current!.isReady).toBe(false);
+    expect(capture.current!.pendingSeat).toBeNull();
+    expect(capture.current!.presentation.sheet).toBe('collapsed');
+    act(() => tree.unmount());
+    controller.dispose();
+  });
   it('routes the scope lifecycle through the availability sink so a lifecycle lapse needs no refresh', async () => {
     const { controller, transport } = await readyLifecycleController();
     const capture: Capture = { current: undefined };

@@ -118,12 +118,41 @@ function canChangeNavigationMode(
   });
 }
 
+function OrbitIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.orbitIcon}>
+    <View style={[styles.orbitTopArc, { borderColor: color }]} />
+    <View style={[styles.orbitBottomArc, { borderColor: color }]} />
+    <View style={[styles.orbitArrowLeft, { borderRightColor: color }]} />
+    <View style={[styles.orbitArrowRight, { borderLeftColor: color }]} />
+  </View>;
+}
+
+function FocusIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.focusIcon}>
+    <View style={[styles.focusCorner, { borderColor: color, left: 0, top: 0 }]} />
+    <View style={[styles.focusCorner, { borderColor: color, right: 0, top: 0, transform: [{ rotate: '90deg' }] }]} />
+    <View style={[styles.focusCorner, { borderColor: color, bottom: 0, right: 0, transform: [{ rotate: '180deg' }] }]} />
+    <View style={[styles.focusCorner, { borderColor: color, bottom: 0, left: 0, transform: [{ rotate: '270deg' }] }]} />
+  </View>;
+}
+
+function PanIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.panIcon}>
+    <View style={[styles.panHorizontal, { backgroundColor: color }]} />
+    <View style={[styles.panVertical, { backgroundColor: color }]} />
+    <View style={[styles.panArrowUp, { borderBottomColor: color }]} />
+    <View style={[styles.panArrowRight, { borderLeftColor: color }]} />
+    <View style={[styles.panArrowDown, { borderTopColor: color }]} />
+    <View style={[styles.panArrowLeft, { borderRightColor: color }]} />
+  </View>;
+}
+
 function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next' | 'reset' | 'recentre' | 'navigation'; readonly color: string; readonly rtl: boolean }): React.ReactElement {
-  if (kind === 'reset') return <View style={[styles.reset, { borderColor: color }]} />;
-  if (kind === 'recentre') return <View style={[styles.recentre, { borderColor: color }]} />;
-  if (kind === 'navigation') return <View style={[styles.navigation, { borderColor: color }]} />;
+  if (kind === 'reset') return <OrbitIcon color={color} />;
+  if (kind === 'recentre') return <FocusIcon color={color} />;
+  if (kind === 'navigation') return <PanIcon color={color} />;
   const pointsRight = (kind === 'next') !== rtl;
-  return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '-135deg' : '45deg' }] }]} />;
+  return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
 }
 
 function VenueButton({
@@ -303,10 +332,21 @@ const styles = {
   chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: 9, width: 9 } as ViewStyle,
   controls: { alignItems: 'center', gap: 8, justifyContent: 'center' } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,
+  focusCorner: { borderLeftWidth: 2, borderTopWidth: 2, height: 6, position: 'absolute', width: 6 } as ViewStyle,
+  focusIcon: { height: 16, width: 16 } as ViewStyle,
   labelButton: { paddingHorizontal: 12 } as ViewStyle,
-  navigation: { borderRadius: 9, borderWidth: 2, height: 15, width: 15 } as ViewStyle,
-  recentre: { borderRadius: 8, borderWidth: 2, height: 14, width: 14 } as ViewStyle,
-  reset: { borderRadius: 10, borderWidth: 2, height: 17, width: 17 } as ViewStyle,
+  orbitArrowLeft: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderRightWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, bottom: 0, height: 0, left: 0, position: 'absolute', width: 0 } as ViewStyle,
+  orbitArrowRight: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderLeftWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, position: 'absolute', right: 0, top: 0, width: 0 } as ViewStyle,
+  orbitBottomArc: { borderBottomWidth: 2, borderRadius: 9, bottom: 1, height: 10, left: 1, position: 'absolute', width: 16 } as ViewStyle,
+  orbitIcon: { height: 16, width: 18 } as ViewStyle,
+  orbitTopArc: { borderRadius: 9, borderTopWidth: 2, height: 10, left: 1, position: 'absolute', top: 1, width: 16 } as ViewStyle,
+  panArrowDown: { borderLeftColor: 'transparent', borderLeftWidth: 3, borderRightColor: 'transparent', borderRightWidth: 3, borderTopWidth: 4, bottom: 0, height: 0, left: 6, position: 'absolute', width: 0 } as ViewStyle,
+  panArrowLeft: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderRightWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, left: 0, position: 'absolute', top: 6, width: 0 } as ViewStyle,
+  panArrowRight: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderLeftWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, position: 'absolute', right: 0, top: 6, width: 0 } as ViewStyle,
+  panArrowUp: { borderBottomWidth: 4, borderLeftColor: 'transparent', borderLeftWidth: 3, borderRightColor: 'transparent', borderRightWidth: 3, height: 0, left: 6, position: 'absolute', top: 0, width: 0 } as ViewStyle,
+  panHorizontal: { height: 2, left: 3, position: 'absolute', top: 8, width: 12 } as ViewStyle,
+  panIcon: { height: 18, width: 18 } as ViewStyle,
+  panVertical: { height: 12, left: 8, position: 'absolute', top: 3, width: 2 } as ViewStyle,
   root: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   rootSafety: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
 } as const;

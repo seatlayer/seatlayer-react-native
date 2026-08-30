@@ -5,11 +5,7 @@ import { SeatLayerError } from '../errors';
 import { asInteger, asObject, type JsonObject, type JsonValue } from '../json';
 import type { SeatLayerConfiguration } from '../types';
 import type { SeatLayerPickerMapTheme, SeatLayerThemeMode } from './theme';
-import {
-  decodeSeatLayerPickerCheckoutHandoff,
-  decodeSeatLayerPickerSnapshot,
-  decodeSeatLayerSeatView,
-} from './decode';
+import { decodeSeatLayerPickerCheckoutHandoff, decodeSeatLayerPickerSnapshot, decodeSeatLayerSeatView } from './decode';
 import { seatLayerAllFloors } from './models';
 import { sameSeatView } from './seat-view';
 import type {
@@ -20,10 +16,7 @@ import type {
   SeatLayerPickerViewportInsets,
   SeatLayerSeatView,
 } from './models';
-import {
-  SeatLayerPickerGACandidateStore,
-  type SeatLayerPickerGACandidate,
-} from './ga-candidate-store';
+import { SeatLayerPickerGACandidateStore, type SeatLayerPickerGACandidate } from './ga-candidate-store';
 import { SeatLayerPickerSnapshotStore } from './snapshot-store';
 import {
   validateBoolean,
@@ -772,6 +765,15 @@ export class SeatLayerPickerControllerCore {
       () => undefined,
     );
     return next;
+  }
+  /** Clears runtime-derived state before the same controller starts a new chart. */
+  protected resetForRuntimeReload(): void {
+    this.snapshots.clear();
+    this.gaCandidates.reset();
+    if (this.currentSeatView !== undefined) {
+      this.currentSeatView = undefined;
+      this.notifySeatViewListeners();
+    }
   }
   protected available(capability: string, command: string): boolean {
     return this.mapController.isReady &&

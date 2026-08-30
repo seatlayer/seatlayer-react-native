@@ -1,5 +1,6 @@
 node_modules/
 dist/
 coverage/
+example/.expo/
 .DS_Store
 *.tgz

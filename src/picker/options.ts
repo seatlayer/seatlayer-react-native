@@ -1,8 +1,16 @@
 import { seatLayerPickerTokens } from './tokens.g';
+import type { SeatLayerPickerMoneyFormatter } from './format';
+
+export type { SeatLayerPickerMoneyFormatter } from './format';
 
 export type SeatLayerPickerLayoutMode = 'adaptive' | 'phone' | 'wide' | (string & {});
 export type SeatLayerPickerResolvedLayoutMode = 'phone' | 'wide';
 type SeatLayerPickerKnownLayoutMode = 'adaptive' | SeatLayerPickerResolvedLayoutMode;
+
+/** Native-chrome money presentation. Runtime inventory and totals remain authoritative. */
+export interface SeatLayerPickerPricing {
+  readonly formatter?: SeatLayerPickerMoneyFormatter;
+}
 
 /** Visibility choices for the ready-made composition only. */
 export interface SeatLayerPickerChromeOptions {
@@ -53,6 +61,10 @@ export interface SeatLayerPickerBehaviorOptions {
 export interface SeatLayerPickerOptions extends SeatLayerPickerBehaviorOptions {
   readonly layout?: SeatLayerPickerLayoutMode;
   readonly chrome?: SeatLayerPickerChromeOptions;
+  /** BCP 47 language tags offered by the runtime language control. */
+  readonly languages?: readonly string[];
+  /** Global money formatting for native chrome; runtime amounts remain authoritative. */
+  readonly pricing?: SeatLayerPickerPricing;
 }
 
 export interface SeatLayerPickerResolvedChromeOptions {
@@ -94,6 +106,8 @@ export interface SeatLayerPickerResolvedOptions {
   readonly refreshOnResume: boolean;
   readonly announceHoldLapse: boolean;
   readonly haptics: boolean;
+  readonly languages: readonly string[];
+  readonly pricing?: SeatLayerPickerPricing;
 }
 
 /** Runtime-owned boot projection, distinct from the controller handshake wrapper. */
@@ -108,6 +122,7 @@ export type SeatLayerPickerRuntimeConfig = Readonly<{
   readonly max3DSeats?: number;
   readonly hideEventDetails: boolean;
   readonly panelCollapsed: boolean;
+  readonly languages?: string[];
 }>;
 
 function ownData(source: unknown, key: string): unknown {
@@ -142,6 +157,40 @@ function validSeatLimit(value: unknown): number | undefined {
 
 function validInitialHold(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function safeOwnStrings(value: unknown, maximum = 64): readonly string[] {
+  if (!Array.isArray(value)) return Object.freeze([]);
+  try {
+    const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
+    if (typeof length !== 'number' || !Number.isSafeInteger(length) || length < 0 || length > maximum) {
+      return Object.freeze([]);
+    }
+    const output: string[] = [];
+    const seen = new Set<string>();
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      const entry = descriptor && 'value' in descriptor ? descriptor.value : undefined;
+      if (typeof entry !== 'string') continue;
+      const normalized = entry.trim();
+      const key = normalized.toLocaleLowerCase();
+      if (!normalized || normalized.length > 128 || seen.has(key)) continue;
+      seen.add(key);
+      output.push(normalized);
+    }
+    return Object.freeze(output);
+  } catch {
+    return Object.freeze([]);
+  }
+}
+
+/** Snapshots a safe own-data formatter without allowing accessors into render paths. */
+export function resolveSeatLayerPickerPricing(input: SeatLayerPickerPricing | unknown): SeatLayerPickerPricing | undefined {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
+  const formatter = ownData(input, 'formatter');
+  return typeof formatter === 'function'
+    ? Object.freeze({ formatter: formatter as SeatLayerPickerMoneyFormatter })
+    : undefined;
 }
 
 function knownLayout(value: unknown): SeatLayerPickerKnownLayoutMode {
@@ -214,6 +263,8 @@ export function resolveSeatLayerPickerOptions(
     refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
     announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
     haptics: booleanOr(ownData(input, 'haptics'), true),
+    languages: safeOwnStrings(ownData(input, 'languages')),
+    pricing: resolveSeatLayerPickerPricing(ownData(input, 'pricing')),
   } satisfies SeatLayerPickerResolvedOptions;
   return Object.freeze(resolved);
 }
@@ -234,5 +285,6 @@ export function seatLayerPickerBridgeConfigFromOptions(
     ...(resolved.max3DSeats === undefined ? {} : { max3DSeats: resolved.max3DSeats }),
     hideEventDetails: resolved.hideEventDetails,
     panelCollapsed: resolved.panelInitiallyCollapsed,
+    ...(resolved.languages.length === 0 ? {} : { languages: [...resolved.languages] }),
   });
 }

@@ -35,15 +35,21 @@ import { planSeatLayerMapBottomControls } from '../src/picker/SeatLayerMapContro
 import {
   priceLegendEdges,
   priceLegendFadeSteps,
+  priceLegendVisualContentWidth,
   priceLegendMeasurementSignature,
 } from '../src/picker/SeatLayerPriceLegend';
 import { resolveSeatLayerPickerLayout } from '../src/picker/layout';
 import { sanitizeSeatLayerPickerStyle, seatLayerPickerMinimumTargetStyle } from '../src/picker/styles';
 import { resolveSeatLayerPickerStyles } from '../src/picker/styles';
 import { SeatLayerPickerHeaderView } from '../src/picker/header';
+import { SeatLayerPickerHoldCountdownView } from '../src/picker/SeatLayerPickerHoldCountdown';
 import { SeatLayerPickerErrorStatus, SeatLayerPickerTestModeIndicatorView } from '../src/picker/status';
 import { SeatLayerPickerAttributionView } from '../src/picker/attribution';
-import { usePickerSingleFlight } from '../src/picker/pickerNavigation';
+import {
+  focusedPickerSection,
+  seatsLeftInPickerSection,
+  usePickerSingleFlight,
+} from '../src/picker/pickerNavigation';
 
 function FlightHarness({
   sessionId,
@@ -155,6 +161,8 @@ describe('picker chrome pure plans', () => {
     expect(priceLegendFadeSteps(false, false)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(true, true)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(false, true)).toEqual([1, 0.5, 0.12]);
+    expect(priceLegendVisualContentWidth(122)).toBe(100);
+    expect(priceLegendVisualContentWidth(18)).toBe(0);
     expect(priceLegendMeasurementSignature(
       [{ key: 'a|b', label: 'Front', priceMin: 20 }], 'USD', false, false, 'auto', 44, 11,
     )).not.toBe(priceLegendMeasurementSignature(
@@ -172,6 +180,23 @@ describe('picker chrome pure plans', () => {
     expect(seatLayerDockInitialOpacity()).toBe(0);
     expect(shouldRetainSeatLayerDock(false, true, 1, 2)).toBe(false);
     expect(shouldRetainSeatLayerDock(false, true, 2, 2)).toBe(true);
+  });
+
+  it('fills a sparse focused-map record from the matching section summary', () => {
+    const snapshot = {
+      map: { focusedSection: { id: 'guest', label: 'Guest Tables' } },
+      sections: [{
+        id: 'guest', label: 'Guest tables', displayLabel: 'Guest Tables',
+        seatsLeft: 88, dominantCategoryKey: 'guest', color: '#D45C87',
+      }],
+      selection: [{ sectionLabel: 'Guest Tables' }],
+    } as any;
+    const section = focusedPickerSection(snapshot)!;
+    expect(section).toMatchObject({
+      id: 'guest', label: 'Guest Tables', seatsLeft: 88,
+      dominantCategoryKey: 'guest', color: '#D45C87',
+    });
+    expect(seatsLeftInPickerSection(section, snapshot)).toBe(87);
   });
 
   it('publishes a first-frame header reservation and avoids hidden-hold formatters', () => {
@@ -194,6 +219,32 @@ describe('picker chrome pure plans', () => {
     expect(heldFor).not.toHaveBeenCalled();
     act(() => renderer!.unmount());
     expect(removeInset).toHaveBeenCalledOnce();
+  });
+
+  it('renders the standalone hold countdown only for a live hold and keeps tabular clock copy replaceable', () => {
+    const heldFor = vi.fn((clock: string) => `Held ${clock}`);
+    const theme = {
+      colors: { accent: '#111111', surface: '#ffffff', text: '#111111' },
+      fontFamily: undefined,
+    } as any;
+    let renderer!: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(SeatLayerPickerHoldCountdownView, {
+        clock: () => 100_000,
+        heldFor,
+        hold: { active: true, expiresAt: 130_000 },
+        theme,
+      }));
+    });
+    expect(renderer.root.findByProps({ accessibilityLabel: 'Held 00:30' })).toBeTruthy();
+    expect(renderer.root.findByType('Text' as any).children).toEqual(['Held 00:30']);
+    act(() => renderer.update(React.createElement(SeatLayerPickerHoldCountdownView, {
+      clock: () => 100_000,
+      heldFor,
+      hold: { active: false },
+      theme,
+    })));
+    expect(renderer.toJSON()).toBeNull();
   });
 
   it('keeps its header lease through top-inset and layout measurement changes', () => {

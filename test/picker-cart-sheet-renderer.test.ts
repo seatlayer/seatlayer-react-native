@@ -30,10 +30,11 @@ function setup(hostHold = false) {
   const bestCalls: unknown[][] = [];
   const insets: unknown[] = [];
   const insetLeases: Array<{ retired: boolean }> = [];
+  let sessionActive = true;
   const snapshot: any = { sessionId: 's', revision: 1, event: { salesClosed: false }, branding: { attributionRequired: false }, map: { buyerView: 'map', categoryFilter: [] }, cartLines: [{ lineKey: 'one', label: 'A-1', objectId: 'one', quantity: 1, unitPrice: 20, currency: 'USD' }], selection: [], categories: [], bestAvailableZones: [], sections: [], hold: { active: true, owner: hostHold ? 'host' : 'picker' }, maxSelection: 4, currency: 'USD', selectionValidity: { isValid: true } };
   const controller = { getSnapshot: () => snapshot, checkout: async () => ({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 }), rejectHandoff: async (...args: unknown[]) => { calls.push(args); }, bestAvailable: async (...args: unknown[]) => { bestCalls.push(args); }, mapController: { isReady: true, supportsPickerCapability: (key: string) => key === 'checkout-handoff-v1' || key === 'checkout-handoff-reject-v1' || key === 'picker-actions-v1', supportsPickerCommand: (key: string) => key === 'picker.continue' || key === 'picker.rejectHandoff' || key === 'picker.bestAvailable' } };
-  scope = { controller, snapshot, sessionId: 1, pendingSeat: null, readOnly: false, isBusy: false, isReady: true, isHoldLapseBusy: false, holdLapse: undefined, dismissHoldLapse: () => {}, reselectHoldLapse: async () => false, clearError: () => {}, presentation: { prompt: null }, back: async () => { scope = { ...scope, presentation: { prompt: null } }; }, claimViewportInsetBand: () => { const lease = { retired: false }; insetLeases.push(lease); return { set: (value: unknown) => { if (!lease.retired) insets.push(value); }, remove: () => { lease.retired = true; } }; }, claimPrompt: () => undefined, resolvedTheme: { colors: { onAccent: '#fff', text: '#111', accent: '#06f', divider: '#ccc', surface: '#fff', mutedText: '#555', error: '#b00' }, roles: { sheet: { background: '#fff', border: '#ccc' }, notice: { background: '#fff', border: '#ccc' } }, radii: { sheet: 14 }, fontFamily: undefined }, styles: {}, strings: { translate: (key: string, value?: any) => key === 'continueWithTotal' ? `Continue · ${value?.values?.money}` : key }, reportError: () => {} };
-  return { calls, bestCalls, controller, insets, insetLeases, snapshot };
+  scope = { controller, snapshot, sessionId: 1, isSessionActive: () => sessionActive, pendingSeat: null, readOnly: false, isBusy: false, isReady: true, isHoldLapseBusy: false, holdLapse: undefined, dismissHoldLapse: () => {}, reselectHoldLapse: async () => false, clearError: () => {}, presentation: { prompt: null }, back: async () => { scope = { ...scope, presentation: { prompt: null } }; }, claimViewportInsetBand: () => { const lease = { retired: false }; insetLeases.push(lease); return { set: (value: unknown) => { if (!lease.retired) insets.push(value); }, remove: () => { lease.retired = true; } }; }, claimPrompt: () => undefined, resolvedTheme: { colors: { onAccent: '#fff', text: '#111', accent: '#06f', divider: '#ccc', surface: '#fff', mutedText: '#555', error: '#b00' }, roles: { sheet: { background: '#fff', border: '#ccc' }, notice: { background: '#fff', border: '#ccc' } }, radii: { sheet: 14 }, fontFamily: undefined }, styles: {}, formatMoney: (amount: number, currency: string) => `${currency === 'USD' ? '$' : `${currency} `}${amount}`, strings: { translate: (key: string, value?: any) => key === 'continueWithTotal' ? `Continue · ${value?.values?.money}` : key }, reportError: () => {} };
+  return { calls, bestCalls, controller, endSession: () => { sessionActive = false; }, insets, insetLeases, snapshot };
 }
 
 describe('cart checkout renderer', () => {
@@ -64,7 +65,7 @@ describe('cart checkout renderer', () => {
     expect(runtime.calls).toEqual([['origin']]);
   });
 
-  it('rejects an exact deferred handoff after unmount without calling the host observer', async () => {
+  it('delivers an exact deferred handoff after its CTA unmounts while the picker scope remains active', async () => {
     const runtime = setup();
     let resolve!: (handoff: any) => void;
     let callbacks = 0;
@@ -73,6 +74,23 @@ describe('cart checkout renderer', () => {
       onCheckout: () => { callbacks += 1; },
     }));
     await act(async () => { renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress(); });
+    await act(async () => { renderer.unmount(); });
+    resolve({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(callbacks).toBe(1);
+    expect(runtime.calls).toEqual([]);
+  });
+
+  it('rejects an exact deferred handoff after the picker scope retires', async () => {
+    const runtime = setup();
+    let resolve!: (handoff: any) => void;
+    let callbacks = 0;
+    runtime.controller.checkout = () => new Promise((done) => { resolve = done; });
+    const renderer = await render(React.createElement(SeatLayerBookButton, {
+      onCheckout: () => { callbacks += 1; },
+    }));
+    await act(async () => { renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress(); });
+    runtime.endSession();
     await act(async () => { renderer.unmount(); });
     resolve({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -274,7 +292,27 @@ describe('cart checkout renderer', () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [{ lineKey: 'two', label: 'A-2', objectId: 'two', quantity: 2, unitPrice: 20, currency: 'USD', rowLabel: 'A', seatNumber: '2' }];
     const renderer = await render(React.createElement(SeatLayerCartList));
-    expect(JSON.stringify(renderer.toJSON())).toContain('2 × $20 · $40');
+    const output = JSON.stringify(renderer.toJSON());
+    expect(output).toContain('2 × $20');
+    expect(output).toContain('$40');
+    expect(output).toContain('2 × $20, $40');
+  });
+
+  it('folds a seat run without repeating its category and keeps unit and total columns', async () => {
+    const runtime = setup();
+    runtime.snapshot.categories = [{ key: 'guest', label: 'Guest tables', color: '#D45C87' }];
+    runtime.snapshot.cartLines = [1, 2, 3].map((number) => ({
+      categoryKey: 'guest', currency: 'USD', label: `T22-${number}`,
+      lineKey: `line-${number}`, objectId: `seat-${number}`, objectType: 'seat',
+      quantity: 1, rowLabel: 'T22', seatNumber: String(number),
+      sectionLabel: 'Guest Tables', unitPrice: 20,
+    }));
+    const renderer = await render(React.createElement(SeatLayerCartList));
+    expect(renderer.root.findByProps({ accessibilityLabel: 'Guest Tables · T22 · 1–3' })).toBeTruthy();
+    const output = JSON.stringify(renderer.toJSON());
+    expect(output).toContain('3 × $20');
+    expect(output).toContain('$60');
+    expect(output).not.toContain('Guest tables · Guest Tables');
   });
 
   it('uses the scoped action-error surface, including its Close control', async () => {
