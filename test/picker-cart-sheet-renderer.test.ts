@@ -3,7 +3,19 @@ import { act, create } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-vi.mock('react-native', () => ({ Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View', useWindowDimensions: () => ({ width: 390, height: 800 }), I18nManager: { isRTL: false }, StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value } }));
+vi.mock('react-native', () => ({
+  AccessibilityInfo: { addEventListener: () => ({ remove: () => {} }), isReduceMotionEnabled: async () => false },
+  Animated: {
+    View: 'Animated.View',
+    Value: class { interpolate() { return 'rotation'; } setValue() {} stopAnimation() {} },
+    timing: () => ({ start: () => {}, stop: () => {} }),
+  },
+  Easing: { bezier: () => 'easing' },
+  LayoutAnimation: { configureNext: () => {} },
+  Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  useWindowDimensions: () => ({ width: 390, height: 800 }), I18nManager: { isRTL: false },
+  StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value },
+}));
 let scope: Record<string, any>;
 vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: () => scope, SeatLayerPickerScopeReprovider: ({ children }: { children?: React.ReactNode }) => React.createElement('ScopeReprovider', undefined, children) }));
 import { SeatLayerBookButton, SeatLayerCartSheet } from '../src/picker/SeatLayerCartSheet';
@@ -123,6 +135,24 @@ describe('cart checkout renderer', () => {
     expect(form.root.findAllByProps({ accessibilityRole: 'button' }).length).toBeGreaterThan(0);
   });
 
+  it('makes the disclosure arrow a full hit target for both opening and closing', async () => {
+    setup();
+    const changes: boolean[] = [];
+    const props = (expanded: boolean) => React.createElement(SeatLayerCartSheet, {
+      expanded, onExpandedChanged: (value: boolean) => { changes.push(value); }, onCheckout: () => {},
+    });
+    const renderer = await render(props(false));
+    let disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
+    expect(disclosure.props.accessibilityLabel).toBe('expandCart');
+    expect(disclosure.props.style({ pressed: false })).toMatchObject({ width: 44, minHeight: 44, zIndex: 1 });
+    await act(async () => { disclosure.props.onPress(); });
+    await act(async () => { renderer.update(props(true)); });
+    disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
+    expect(disclosure.props.accessibilityLabel).toBe('collapseCart');
+    await act(async () => { disclosure.props.onPress(); });
+    expect(changes).toEqual([true, false]);
+  });
+
   it('uses the composition defaults only when their values are omitted', async () => {
     const runtime = setup();
     const sheet = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
@@ -204,7 +234,7 @@ describe('cart checkout renderer', () => {
     const renderer = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
-    expect(renderer.root.findAll((node) => Array.isArray(node.props.style) && node.props.style[node.props.style.length - 1]?.paddingBottom === 12)).toHaveLength(1);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
     expect(runtime.insets).toContainEqual({ bottom: 62 });
   });
 

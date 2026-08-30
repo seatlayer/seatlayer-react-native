@@ -770,7 +770,7 @@ describe('adaptive picker composition', () => {
     const expected = resolveSeatLayerPickerAdaptiveSafeLayout({ width: 900, height: 400 }, input).insets;
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-phone' })).toBeTruthy();
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' }).props.style[1]).toMatchObject({
-      paddingBottom: 18, paddingEnd: 30, paddingStart: 40, paddingTop: 12,
+      paddingBottom: 0, paddingEnd: 30, paddingStart: 40, paddingTop: 12,
     });
     const forwarded = tree.root.findByType('ga-prompt' as any).props.safeAreaInsets;
     expect(forwarded).toEqual(expected);
@@ -893,7 +893,7 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('has one phone bottom-safe owner and never transports the device inset as a map band', async () => {
+  it('gives the phone cart or footer sole ownership of the bottom safe area', async () => {
     const input = { bottom: 18, left: 6, right: 6, top: 12 };
     state.scope = scope({ snapshot: { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' } } });
     let tree!: TestRenderer.ReactTestRenderer;
@@ -901,15 +901,16 @@ describe('adaptive picker composition', () => {
       onCheckout: checkout, safeAreaInsets: input, options: { chrome: { mapControls: false } },
     })); });
     const outer = tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' });
-    expect(outer.props.style[1]).toMatchObject({ paddingBottom: 18, paddingEnd: 6, paddingStart: 6, paddingTop: 12 });
-    expect(tree.root.findByType('cart-sheet' as any).props.reserveBottomInset).toBe(false);
+    expect(outer.props.style[1]).toMatchObject({ paddingBottom: 0, paddingEnd: 6, paddingStart: 6, paddingTop: 12 });
+    expect(tree.root.findByType('cart-sheet' as any).props.reserveBottomInset).toBe(true);
     expect(state.scope.lease.set).not.toHaveBeenCalled();
     await act(async () => { tree.unmount(); });
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       onCheckout: checkout, safeAreaInsets: input, options: { chrome: { cartSheet: false, mapControls: false } },
     })); });
     expect(tree.root.findByProps({ testID: 'seatlayer-phone-footer' })).toBeTruthy();
-    expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' }).props.style[1].paddingBottom).toBe(18);
+    expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' }).props.style[1].paddingBottom).toBe(0);
+    expect(tree.root.findByProps({ testID: 'seatlayer-phone-footer' }).props.style[1].paddingBottom).toBe(18);
     expect(state.scope.lease.set).not.toHaveBeenCalled();
     await act(async () => { tree.unmount(); });
   });

@@ -7,6 +7,9 @@ import React, {
   type ReactNode,
 } from 'react';
 import {
+  Animated,
+  Easing,
+  LayoutAnimation,
   Pressable,
   ScrollView,
   Text,
@@ -37,6 +40,8 @@ import {
   projectSeatLayerCartSheet,
 } from './cartSheetUi';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
+import { resolveSeatLayerPickerMotion } from './motion';
+import { useSeatLayerPickerReducedMotion } from './reducedMotion';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import {
   resolveSeatLayerPickerStyles,
@@ -199,7 +204,9 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
 export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactElement {
   const scope = useSeatLayerPickerScope();
   const window = useWindowDimensions();
+  const reducedMotion = useSeatLayerPickerReducedMotion();
   const measurement = useRef(new CartSheetMeasurementCoordinator());
+  const disclosureProgress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current;
   const [sheetHeight, setSheetHeight] = useState(0);
   const [bestPrompt, setBestPrompt] = useState<PromptHandle | undefined>();
   const runtimeSession = scope.snapshot?.sessionId;
@@ -224,8 +231,9 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const hasTickets = projection.confirmed.items.length > 0;
   const maxSheet = Math.max(0, window.height * seatLayerPickerTokens.size.sheetMaxHeightFraction);
   const bodyCap = hasTickets
-    ? cartSheetMaximumBodyHeight(window.height, inset)
-    : Math.min(cartSheetMaximumBodyHeight(window.height, inset), seatLayerPickerTokens.size.emptyTrayMaxHeight);
+    ? cartSheetMaximumBodyHeight(window.height, 0)
+    : Math.min(cartSheetMaximumBodyHeight(window.height, 0), seatLayerPickerTokens.size.emptyTrayMaxHeight);
+  const promptBodyCap = cartSheetMaximumBodyHeight(window.height, inset);
   const key = measurement.current.begin({
     controller: scope.controller, sessionId: scope.sessionId, runtimeSessionId: runtimeSession, expanded: props.expanded, ownsChrome: true,
   }, 0);
@@ -263,6 +271,27 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     if (!insetLease) return undefined;
     return () => insetLease.remove();
   }, [insetLease]);
+  useEffect(() => {
+    const motion = resolveSeatLayerPickerMotion(
+      'sheet',
+      reducedMotion,
+      props.expanded ? 'easeEnter' : 'easeExit',
+    );
+    disclosureProgress.stopAnimation();
+    if (motion.durationMs === 0) {
+      disclosureProgress.setValue(props.expanded ? 1 : 0);
+      return undefined;
+    }
+    const [x1, y1, x2, y2] = motion.curve.cubicBezier;
+    const animation = Animated.timing(disclosureProgress, {
+      duration: motion.durationMs,
+      easing: Easing.bezier(x1, y1, x2, y2),
+      toValue: props.expanded ? 1 : 0,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [disclosureProgress, props.expanded, reducedMotion]);
 
   const onSheetLayout = (event: LayoutChangeEvent) => {
     const next = measurement.current.measure(key.revision, event.nativeEvent.layout.height);
@@ -297,6 +326,21 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     if (handle?.open()) setBestPrompt(handle);
   };
   const changeExpanded = () => {
+    const motion = resolveSeatLayerPickerMotion(
+      'sheet',
+      reducedMotion,
+      props.expanded ? 'easeExit' : 'easeEnter',
+    );
+    if (motion.durationMs > 0) {
+      try {
+        LayoutAnimation.configureNext({
+          duration: motion.durationMs,
+          create: { type: 'easeInEaseOut', property: 'opacity' },
+          update: { type: 'easeInEaseOut' },
+          delete: { type: 'easeInEaseOut', property: 'opacity' },
+        });
+      } catch { /* Layout motion is optional on unsupported native hosts. */ }
+    }
     try { void Promise.resolve(props.onExpandedChanged(!props.expanded)).catch(() => {}); } catch { /* controlled callback */ }
   };
   const main = hasTickets
@@ -308,38 +352,58 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const holdLapse = props.holdLapse === undefined ? <SeatLayerHoldLapseNotice /> : props.holdLapse;
   const actionError = props.actionError === undefined ? <SeatLayerPickerActionError /> : props.actionError;
   const checkoutBar = props.checkoutBar === undefined ? <SeatLayerBookButton onCheckout={props.onCheckout} /> : props.checkoutBar;
+  const toggleLabel = scope.strings.translate(props.expanded ? 'collapseCart' : 'expandCart');
   return (
     <View onLayout={onSheetLayout} style={[sanitizeSeatLayerPickerStyle(props.style), styles.sheetContainer, {
       maxHeight: maxSheet, backgroundColor: theme.roles.sheet.background,
-      borderTopColor: theme.roles.sheet.border, borderTopWidth: 1, paddingBottom: inset,
+      borderTopColor: theme.roles.sheet.border, borderTopWidth: 1,
     }]}>
       {holdLapse}
-      <View style={[styles.peekContainer, { height: seatLayerPickerTokens.size.peekHeight, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate(props.expanded ? 'collapseCart' : 'expandCart')} onPress={changeExpanded} style={{ flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}>
-          <View style={{ width: 32, height: 3, borderRadius: 2, backgroundColor: theme.colors.mutedText, alignSelf: 'center', marginBottom: 2 }} />
-          <Text numberOfLines={1} style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.peekSummaryText]}>{summary}</Text>
+      <View style={[styles.peekContainer, { height: seatLayerPickerTokens.size.peekHeight, flexDirection: 'row', alignItems: 'center', paddingStart: 14 }]}>
+        <View pointerEvents="none" style={{ position: 'absolute', top: 5, left: 0, right: 0, alignItems: 'center' }}>
+          <View style={{ width: 32, height: 3, borderRadius: 2, backgroundColor: theme.colors.mutedText, opacity: .5 }} />
+        </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}
+          accessibilityState={{ expanded: props.expanded }} hitSlop={6} onPress={changeExpanded}
+          style={{ flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingTop: 6 }}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.peekSummaryText]}>{summary}</Text>
         </Pressable>
         {props.expanded && bestAllowed ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('bestSeats')} onPress={openBest} style={{ minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: theme.colors.accent }}>✦</Text></Pressable> : null}
         {!props.expanded && hasTickets && props.checkoutBar !== null ? <SeatLayerBookButton compact onCheckout={props.onCheckout} /> : null}
-        <Text accessible={false} style={{ color: theme.colors.mutedText, transform: [{ rotate: props.expanded ? '180deg' : '0deg' }] }}>⌃</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}
+          accessibilityState={{ expanded: props.expanded }} onPress={changeExpanded}
+          style={({ pressed }) => ({
+            width: seatLayerPickerTokens.size.minimumHitTarget,
+            minHeight: seatLayerPickerTokens.size.minimumHitTarget,
+            justifyContent: 'center', alignItems: 'center', marginStart: 4,
+            opacity: pressed ? .62 : 1, zIndex: 1,
+          })}
+          testID="seatlayer-cart-disclosure">
+          <Animated.View style={{
+            width: 10, height: 10, borderBottomColor: theme.colors.text,
+            borderBottomWidth: 2, borderRightColor: theme.colors.text, borderRightWidth: 2,
+            transform: [{ rotate: disclosureProgress.interpolate({ inputRange: [0, 1], outputRange: ['225deg', '45deg'] }) }],
+          }} />
+        </Pressable>
       </View>
       {props.expanded ? <View style={{ maxHeight: bodyCap, flexShrink: 1 }}>
         {hasTickets ? <>
           <ScrollView contentContainerStyle={{ paddingBottom: 6, paddingHorizontal: 12 }} style={{ flexShrink: 1 }}>{main}</ScrollView>
           {actionError}
           {checkoutBar}
-          <SeatLayerPickerAttribution compact />
         </> : <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
           <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
           <View>{main}</View>
           {actionError}
-          <SeatLayerPickerAttribution compact />
         </View>}
-      </View> : null}
+        <View testID="seatlayer-cart-safe-footer" style={{ height: Math.max(inset, seatLayerPickerTokens.size.attributionHeight), justifyContent: 'center' }}>
+          <SeatLayerPickerAttribution compact />
+        </View>
+      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ height: inset }} /> : null}
       {bestShortcutEnabled ? <SeatLayerPickerPromptModal visible={bestPrompt !== undefined}>
         <SeatLayerPickerBottomSheetFrame
           borderColor={theme.roles.sheet.border}
-          maxHeight={bodyCap}
+          maxHeight={promptBodyCap}
           radius={theme.radii.sheet}
           safeAreaInsets={safeInsets}
           scrimColor="rgba(0, 0, 0, 0.45)"

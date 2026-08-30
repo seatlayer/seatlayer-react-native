@@ -377,7 +377,7 @@ export function SeatLayerPickerAdaptiveLayout({
     ? part(builders, scope, 'cartSheet', withSafeArea(SeatLayerCartSheet, safeLayout.insets, {
       expanded: scope.presentation.sheet === 'expanded',
       onExpandedChanged: (expanded: boolean) => scope.setPresentation({ type: 'setSheet', sheet: expanded ? 'expanded' : 'collapsed' }),
-      onCheckout, reserveBottomInset: false, cartList, bestSeats: bestAvailable,
+      onCheckout, reserveBottomInset: true, cartList, bestSeats: bestAvailable,
       checkoutBar: checkout, actionError, holdLapse,
     }))
     : null;
@@ -389,7 +389,7 @@ export function SeatLayerPickerAdaptiveLayout({
       {presentationActive ? <SeatLayerPickerScopeBackHandler /> : null}
       <View style={[styles.safeAreaContent, {
         backgroundColor: scope.resolvedTheme.colors.surface,
-        paddingBottom: safeLayout.insets.bottom,
+        paddingBottom: wide ? safeLayout.insets.bottom : 0,
         paddingEnd: safeLayout.insets.right,
         paddingStart: safeLayout.insets.left,
         paddingTop: safeLayout.insets.top,
@@ -437,7 +437,7 @@ export function SeatLayerPickerAdaptiveLayout({
           {ticketPanelVisible ? actionError : null}
           <SeatLayerPickerAttribution compact={false} />
           {ticketPanelVisible ? checkout : null}
-        </View> : <>{cartSheet}<View pointerEvents="box-none" style={styles.phoneFooter} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<SeatLayerPickerAttribution /></> : null}</View></>}
+        </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<SeatLayerPickerAttribution /></> : null}</View></>}
         </View>
       </View>
     </View>
