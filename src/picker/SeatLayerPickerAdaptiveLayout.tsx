@@ -179,6 +179,11 @@ export function SeatLayerPickerAdaptiveLayout({
     scope.controller.mapController.isReady && nativeChrome &&
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
   const testBadgeVisible = snapshot?.event.mode === 'test' && nativeChrome;
+  const [testBadgeWidth, setTestBadgeWidth] = useState<number | undefined>(undefined);
+  const testBadgeCopy = testBadgeVisible ? scope.strings.translate('testMode') : '';
+  useLayoutEffect(() => {
+    setTestBadgeWidth(undefined);
+  }, [scope.sessionId, snapshot?.sessionId, testBadgeCopy, testBadgeVisible]);
   const accessibilityVisible = !venueMode && !panoramaVisible && nativeChrome && plan.options.chrome.accessibility &&
     canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
   const priceRailAvailable = plan.options.chrome.priceLegend && categoriesVisible;
@@ -190,9 +195,16 @@ export function SeatLayerPickerAdaptiveLayout({
   const immersiveTopInset = priceRailAvailable ? seatLayerPickerPhoneLegendHeight : seatLayerPickerMapControlsEdgeInset;
   const topControlsHeight = phoneControls.left || phoneControls.right ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerPhoneChromeTop : 0;
   const legendTop = seatLayerPickerPhoneRailTop;
-  const legendLeft = phoneControls.left
+  const baseLegendLeft = phoneControls.left
     ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerTokens.size.minimumHitTarget + seatLayerPickerPhoneRailGap
     : 0;
+  // TEST MODE is the first item in the top-left anchor region, beside the
+  // price rail—not a second row floating over the venue. Reserve a stable
+  // first-frame estimate until native text measurement supplies the exact width.
+  const badgeSharesTopRail = !(venueMode && venueVisible);
+  const legendLeft = testBadgeVisible && badgeSharesTopRail
+    ? Math.max(baseLegendLeft, 10 + (testBadgeWidth ?? 76) + seatLayerPickerPhoneRailGap)
+    : baseLegendLeft;
   const legendRight = phoneControls.right && viewModeWidth !== undefined
     ? seatLayerPickerMapControlsEdgeInset + viewModeWidth + seatLayerPickerPhoneRailGap
     : seatLayerPickerTokens.size.minimumHitTarget;
@@ -200,8 +212,13 @@ export function SeatLayerPickerAdaptiveLayout({
   const topRailHeight = venueMode && venueVisible
     ? immersiveTopInset + seatLayerPickerTokens.size.minimumHitTarget
     : Math.max(legendHeight > 0 ? legendTop + legendHeight : 0, topControlsHeight, floorTop + floorHeight);
-  const badgeTop = topRailHeight > 0 ? topRailHeight + seatLayerPickerPhoneRailGap : seatLayerPickerPhoneRailTop;
-  const topHeight = testBadgeVisible ? badgeTop + seatLayerPickerTestModeIndicatorCompactHeight : topRailHeight;
+  const badgeTop = badgeSharesTopRail
+    ? seatLayerPickerPhoneRailTop
+    : topRailHeight + seatLayerPickerPhoneRailGap;
+  const topHeight = Math.max(
+    topRailHeight,
+    testBadgeVisible ? badgeTop + seatLayerPickerTestModeIndicatorCompactHeight : 0,
+  );
   const bottomInset = phoneDockVisible ? seatLayerPickerTokens.size.dockBarHeight : 0;
   const phoneBands = planSeatLayerPickerPhoneBands({
     topHeight,
@@ -402,7 +419,15 @@ export function SeatLayerPickerAdaptiveLayout({
             <View pointerEvents="box-none" style={[styles.legendRail, { left: legendLeft, right: legendRight, top: legendTop }]}>{legend}</View>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
-            {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.testRail, { top: badgeTop }]}><SeatLayerPickerTestModeIndicator compact /></View> : null}
+            {testBadgeVisible ? <View
+              onLayout={(event) => {
+                const next = event.nativeEvent.layout.width;
+                if (!Number.isFinite(next) || next <= 0) return;
+                setTestBadgeWidth((current) => current !== undefined && Math.abs(current - next) < .5 ? current : next);
+              }}
+              pointerEvents="box-none"
+              style={[styles.testRail, { top: badgeTop }]}
+            ><SeatLayerPickerTestModeIndicator compact /></View> : null}
             <View pointerEvents="box-none" style={[styles.accessRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>{accessibility}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorSelectorRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset + Math.max(
               accessibilityVisible ? seatLayerPickerTokens.size.minimumHitTarget : 0,

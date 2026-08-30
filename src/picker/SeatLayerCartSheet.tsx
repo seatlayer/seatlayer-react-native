@@ -54,6 +54,7 @@ import type { SeatLayerPickerCheckoutHandoff } from './models';
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type PromptHandle = Exclude<ReturnType<Scope['claimPrompt']>, undefined>;
 type BookSlots = Pick<SeatLayerPickerStyles, 'continueButton' | 'continueButtonText'>;
+const peekContinuePaintHeight = 34;
 
 export interface SeatLayerCartSheetProps {
   readonly expanded: boolean;
@@ -182,13 +183,13 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
         justifyContent: 'center', minHeight: 56, paddingBottom: 6, paddingHorizontal: 12, paddingTop: 4,
       }}>
       <View style={[{
-        height: props.compact ? seatLayerPickerTokens.size.confirmActionHeight : 46,
+        height: props.compact ? peekContinuePaintHeight : 46,
         minWidth: props.compact ? 100 : undefined,
         borderRadius: seatLayerPickerTokens.radius.button,
         backgroundColor: disabled ? theme.colors.divider : theme.colors.accent,
         justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12,
       }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style), {
-        height: props.compact ? seatLayerPickerTokens.size.confirmActionHeight : 46,
+        height: props.compact ? peekContinuePaintHeight : 46,
         minWidth: props.compact ? 100 : undefined,
       }]}>
         <Text numberOfLines={1} ellipsizeMode="tail"
@@ -360,7 +361,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     }]}>
       {holdLapse}
       <View style={[styles.peekContainer, { height: seatLayerPickerTokens.size.peekHeight, flexDirection: 'row', alignItems: 'center', paddingStart: 14 }]}>
-        <View pointerEvents="none" style={{ position: 'absolute', top: 5, left: 0, right: 0, alignItems: 'center' }}>
+        <View
+          pointerEvents="none"
+          testID="seatlayer-cart-handle-rail"
+          style={{ position: 'absolute', top: 5, left: 0, width: '100%', alignItems: 'center' }}
+        >
           <View style={{ width: 32, height: 3, borderRadius: 2, backgroundColor: theme.colors.mutedText, opacity: .5 }} />
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}

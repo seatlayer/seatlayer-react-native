@@ -444,7 +444,7 @@ describe('adaptive picker composition', () => {
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
     const accessStyle = access.parent?.props.style[1] as { bottom: number };
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 168 });
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 168 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -838,11 +838,13 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       onCheckout: checkout, options: { chrome: { overview: true } },
     })); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 62, right: 44, top: 8 });
+    const badgeRail = tree.root.findByType('test-badge' as any).parent!;
+    await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
+    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 44, top: 8 });
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 116 });
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
 
@@ -862,11 +864,13 @@ describe('adaptive picker composition', () => {
     const controls = tree.root.findByType('controls' as any);
     expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
     await act(async () => { controls.props.onViewModeLayout(280); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 62, right: 298, top: 8 });
+    const badgeRail = tree.root.findByType('test-badge' as any).parent!;
+    await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
+    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 298, top: 8 });
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 116 });
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
 

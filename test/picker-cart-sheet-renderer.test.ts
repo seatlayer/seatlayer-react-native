@@ -142,6 +142,12 @@ describe('cart checkout renderer', () => {
       expanded, onExpandedChanged: (value: boolean) => { changes.push(value); }, onCheckout: () => {},
     });
     const renderer = await render(props(false));
+    const compactButton = renderer.root.findByProps({ accessibilityLabel: 'Continue · $20' });
+    expect(compactButton.findAll((node) => Array.isArray(node.props.style) &&
+      node.props.style.some((style: unknown) => Boolean(style) && typeof style === 'object' &&
+        (style as { height?: unknown }).height === 34))).toHaveLength(1);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-handle-rail' }).props.style)
+      .toMatchObject({ left: 0, top: 5, width: '100%' });
     let disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
     expect(disclosure.props.accessibilityLabel).toBe('expandCart');
     expect(disclosure.props.style({ pressed: false })).toMatchObject({ width: 44, minHeight: 44, zIndex: 1 });
