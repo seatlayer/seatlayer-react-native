@@ -28,7 +28,6 @@ const eventListQuery = `
         slug
         title
         isSeatEvent
-        seatEngine
         cityName
         eventStartDate
         eventStartTime
@@ -182,11 +181,16 @@ export async function fetchDemoEvents(): Promise<readonly DesiPassEventSummary[]
   const data = await request<EventListData>(eventListQuery, {
     filterType: 'UPCOMING',
     page: 1,
-    limit: 10,
+    // Development events are mixed with ordinary inventory; a wider first
+    // page ensures the small validation list can find assigned-seat events.
+    limit: 50,
     upcomingFilterType: 'ALL',
   });
+  // The event-list projection only exposes whether an event uses assigned
+  // seating. The concrete seat engine is available on the event-detail type
+  // and is verified before the picker route can open.
   const seatLayerEvents = (data.getUserEventList?.events ?? [])
-    .filter((event) => event.isSeatEvent && event.seatEngine === 'SEATLAYER');
+    .filter((event) => event.isSeatEvent);
   const today = new Date().toISOString().slice(0, 10);
   const futureEvents = seatLayerEvents.filter(
     (event) => event.eventStartDate >= today,

@@ -16,9 +16,12 @@ import {
 import {
   SeatLayerPicker,
   type SeatLayerConfiguration,
-  type SeatLayerPickerCallbacks,
   type SeatLayerPickerCheckoutHandoff,
 } from '@seatlayer/react-native';
+import {
+  SafeAreaProvider,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 import {
   createSeatLayerAccess,
@@ -62,7 +65,11 @@ const desiPassInk = '#3B2D4C';
 
 export default function App() {
   if (visualFixture) return <SeatLayerPickerVisualFixture {...visualFixture} />;
-  return <DesiPassDemo />;
+  return (
+    <SafeAreaProvider>
+      <DesiPassDemo />
+    </SafeAreaProvider>
+  );
 }
 
 function DesiPassDemo() {
@@ -305,13 +312,12 @@ function EventPickerScreen({
   const [attempt, setAttempt] = useState(0);
   const [access, setAccess] = useState<DesiPassSeatLayerAccess>();
   const [accessError, setAccessError] = useState<string>();
-  const [status, setStatus] = useState('Authorising seat map…');
+  const safeAreaInsets = useSafeAreaInsets();
 
   useEffect(() => {
     let active = true;
     setAccess(undefined);
     setAccessError(undefined);
-    setStatus('Authorising seat map…');
     createSeatLayerAccess(event.id)
       .then((nextAccess) => {
         if (active) setAccess(nextAccess);
@@ -335,34 +341,36 @@ function EventPickerScreen({
     };
   }, [access, event.currency, event.seatEventKey]);
 
-  const callbacks = useMemo<SeatLayerPickerCallbacks>(() => ({
-    onReady: () => setStatus('Choose your seats'),
-    onError: (error) => setStatus(error.message || `Picker error: ${error.code}`),
-    onAccessUnavailable: () => setStatus('Seat map authorisation expired. Try again.'),
-  }), []);
+  if (accessError) {
+    return (
+      <SafeAreaView style={styles.pickerScreen}>
+        <StatusBar barStyle="dark-content" />
+        <BackBar title={event.title} onBack={onBack} />
+        <ErrorState message={accessError} onRetry={() => setAttempt((value) => value + 1)} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!configuration) {
+    return (
+      <SafeAreaView style={styles.pickerScreen}>
+        <StatusBar barStyle="dark-content" />
+        <BackBar title={event.title} onBack={onBack} />
+        <LoadingState label="Authorising seat map…" />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.pickerScreen}>
-      <StatusBar barStyle="dark-content" />
-      <BackBar title={event.title} subtitle={status} onBack={onBack} />
-      <View style={styles.pickerBody}>
-        {accessError ? (
-          <ErrorState message={accessError} onRetry={() => setAttempt((value) => value + 1)} />
-        ) : configuration ? (
-          <SeatLayerPicker
-            callbacks={callbacks}
-            configuration={configuration}
-            options={{ layout: 'adaptive', haptics: true }}
-            strings={{ holdAndCheckout: 'Continue' }}
-            styles={{ continueButton: { backgroundColor: desiPassRed } }}
-            onCheckout={async (nextHandoff) => onCheckout(nextHandoff)}
-            style={styles.picker}
-          />
-        ) : (
-          <LoadingState label="Authorising seat map…" />
-        )}
-      </View>
-    </SafeAreaView>
+    <View style={styles.pickerScreen}>
+      <SeatLayerPicker
+        configuration={configuration}
+        onCheckout={onCheckout}
+        onClose={onBack}
+        safeAreaInsets={safeAreaInsets}
+        style={styles.picker}
+      />
+    </View>
   );
 }
 
@@ -631,7 +639,6 @@ const styles = StyleSheet.create({
   },
   bookButtonLabel: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.6 },
   buttonDisabled: { backgroundColor: '#D8D3DC' },
-  pickerBody: { flex: 1 },
   picker: { flex: 1 },
   state: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
   compactState: { flex: 0, marginTop: 22, paddingVertical: 20 },
