@@ -84,7 +84,7 @@ function allMeasured(widths: MeasuredWidths): boolean {
   return Object.values(widths).every((width) => Number.isFinite(width) && width >= 0);
 }
 
-/** Fixed fallback ladder: long count, short, no count, icon. */
+/** Fixed fallback ladder: long count, short, then no count. Venue stays labelled. */
 export function planSeatLayerDock(
   width: number,
   widths: MeasuredWidths,
@@ -108,11 +108,12 @@ export function planSeatLayerDock(
       return { count, labelled: true, lines: 1 };
     }
   }
-  if (widths.name <= roomFor(0, minimumTarget)) {
-    return { count: 'hidden', labelled: false, lines: 1 };
+  if (widths.name <= roomFor(0, labelledOverview)) {
+    return { count: 'hidden', labelled: true, lines: 1 };
   }
-  // The final rung is always two 12pt lines and then ellipsis—never one line.
-  return { count: 'hidden', labelled: false, lines: 2 };
+  // Preserve the explicit Venue action even when the section name must wrap
+  // and ellipsize. Three adjacent chevrons are not distinguishable navigation.
+  return { count: 'hidden', labelled: true, lines: 2 };
 }
 
 function MeasureText({
@@ -466,8 +467,11 @@ function SeatLayerDockBarView({
   // Measurements arrive after the first commit; never leave focused buyers
   // with a blank dock while native text metrics settle.
   const displayPlan: DockPlan = plan ?? {
-    count: 'hidden', labelled: false, lines: 2,
+    count: 'hidden', labelled: true, lines: 2,
   };
+  const overviewWidth = Number.isFinite(widths.overview)
+    ? Math.max(64, 20 + 18 + 8 + widths.overview)
+    : 84;
   const measure = (key: keyof MeasuredWidths) => (event: TextLayoutEvent) => {
     if (activeMeasurementRef.current !== measurementToken) return;
     const next = textWidth(event);
@@ -603,30 +607,25 @@ function SeatLayerDockBarView({
           </DockButton>
           <View style={{ width: overviewGap }} />
           <DockButton
-            label={strings.translate('overview')}
+            label={strings.translate('backToVenue')}
             enabled={overviewEnabled}
             onPress={onOverview}
-            width={displayPlan.labelled
-              ? Math.max(64, 20 + 18 + 8 + widths.overview)
-              : target}
+            width={overviewWidth}
             target={target}
-            paintBox={!displayPlan.labelled}
             radius={theme.radii.button}
           >
-            {displayPlan.labelled ? (
-              <View
-                style={{
-                  alignItems: 'center',
-                  flexDirection: leftToRight ? 'row' : 'row-reverse',
-                }}
-              >
-                <Chevron color={theme.colors.text} pointsForward={!leftToRight} />
-                <View style={{ width: 8 }} />
-                <Text numberOfLines={1} style={textStyle}>
-                  {strings.translate('overview')}
-                </Text>
-              </View>
-            ) : <Chevron color={theme.colors.text} pointsForward={!leftToRight} />}
+            <View
+              style={{
+                alignItems: 'center',
+                flexDirection: leftToRight ? 'row' : 'row-reverse',
+              }}
+            >
+              <VenueOverviewIcon color={theme.colors.text} />
+              <View style={{ width: 8 }} />
+              <Text numberOfLines={1} style={textStyle}>
+                {strings.translate('overview')}
+              </Text>
+            </View>
           </DockButton>
           <View style={{ width: trailingWidth }} />
         </>
@@ -708,5 +707,31 @@ function Chevron({
         width: 9,
       }}
     />
+  );
+}
+
+function VenueOverviewIcon({ color }: { readonly color: string }): React.ReactElement {
+  return (
+    <View
+      testID="seatlayer-dock-venue-icon"
+      style={{
+        alignItems: 'center',
+        borderColor: color,
+        borderRadius: 3,
+        borderWidth: 1.5,
+        height: 16,
+        justifyContent: 'space-evenly',
+        paddingHorizontal: 3,
+        paddingVertical: 2,
+        width: 18,
+      }}
+    >
+      <View style={{ backgroundColor: color, borderRadius: 1, height: 2, width: 8 }} />
+      <View style={{ flexDirection: 'row', gap: 2 }}>
+        <View style={{ backgroundColor: color, borderRadius: 2, height: 3, width: 3 }} />
+        <View style={{ backgroundColor: color, borderRadius: 2, height: 3, width: 3 }} />
+        <View style={{ backgroundColor: color, borderRadius: 2, height: 3, width: 3 }} />
+      </View>
+    </View>
   );
 }

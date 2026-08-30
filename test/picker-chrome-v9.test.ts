@@ -173,7 +173,8 @@ describe('picker chrome pure plans', () => {
     )).not.toBe(priceLegendMeasurementSignature(
       [{ key: 'a', label: 'Front', priceMin: 20 }], 'USD', true, false, 'auto', 52, 13,
     ));
-    expect(planSeatLayerDock(240, { name: 50, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toEqual({ count: 'hidden', labelled: false, lines: 1 });
+    expect(planSeatLayerDock(240, { name: 50, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toEqual({ count: 'hidden', labelled: true, lines: 2 });
+    expect(planSeatLayerDock(390, { name: 70, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toMatchObject({ labelled: true });
     expect(resolveSeatLayerDockMotionDuration(true, 240)).toBe(0);
     expect(resolveSeatLayerDockMotionDuration(false, 240)).toBe(240);
     expect(seatLayerDockTravelDistance(52, 18)).toBe(70);
