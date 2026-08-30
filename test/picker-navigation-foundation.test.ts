@@ -68,9 +68,9 @@ describe('picker presentation and back ladder', () => {
       focusedSection: { sectionId: 'balcony' },
       isOverview: false,
     });
-    expect(focused.action.type).toBe('showOverview');
+    expect(focused.action.type).toBe('stepOut');
     expect(focused.state).toMatchObject({ focusedSection: { sectionId: 'balcony' }, isOverview: false });
-    expect(reduceSeatLayerPickerBack({ ...seatLayerPickerInitialPresentationState, isOverview: false }).action.type).toBe('showOverview');
+    expect(reduceSeatLayerPickerBack({ ...seatLayerPickerInitialPresentationState, isOverview: false }).action.type).toBe('stepOut');
     expect(reduceSeatLayerPickerBack(seatLayerPickerInitialPresentationState).action.type).toBe('delegateToHost');
   });
 });

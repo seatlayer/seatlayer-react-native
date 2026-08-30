@@ -141,6 +141,22 @@ describe('pending confirmation state', () => {
     }
   });
 
+  it('does not let a newly active hold answer an existing pending inspection', () => {
+    const selected = [seat('seat-1', 'A-1')];
+    const pending = applyPendingConfirmationSnapshot(
+      initialPendingConfirmationState(),
+      snapshot('session-1', 1, selected),
+    );
+    const held = applyPendingConfirmationSnapshot(
+      pending,
+      { ...snapshot('session-1', 2, selected), hold: { active: true, owner: 'picker' } },
+    );
+
+    expect(held.pending).toMatchObject({ id: 'seat-1', label: 'A-1' });
+    expect(confirmedCartForPending(held, [line('seat-1', 'A-1')]))
+      .toMatchObject({ quantity: 0, total: 0 });
+  });
+
   it('keeps authoritative selection and cart projection while confirmation is disabled or read-only', () => {
     const selected = [seat('seat-1', 'A-1')];
     for (const policy of [

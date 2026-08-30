@@ -46,6 +46,7 @@ describe('picker prompt transition', () => {
     await act(async () => { renderer.update(transition(null, null)); });
     expect(timings[1]!.config.duration).toBe(180);
     expect(renderer.root.findAllByType('Text' as any).map((node) => node.children.join(''))).toEqual(['A']);
+    expect(renderer.root.findByType('View' as any).props.pointerEvents).toBe('none');
     await act(async () => { timings[1]!.callback?.({ finished: true }); });
     expect(renderer.root.findAllByType('Text' as any)).toHaveLength(0);
     expect(renderer.root.findByType('View' as any).props.pointerEvents).toBe('none');
@@ -89,6 +90,10 @@ describe('picker prompt transition', () => {
     const current = renderer.root.findAllByType('AnimatedView' as any)[0]!;
     const transform = current.props.style[1].transform[0].translateY as Record<string, unknown>;
     expect(transform.outputRange).toEqual([7.000000000000001, 0]);
+    expect(current.props.style[0]).toMatchObject({
+      alignItems: 'center',
+      justifyContent: 'center',
+    });
   });
 
   it('stops and settles an active transition when reduced motion changes', async () => {

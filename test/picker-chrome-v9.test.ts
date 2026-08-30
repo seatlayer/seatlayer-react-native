@@ -20,6 +20,7 @@ vi.mock('react-native', () => ({
 import {
   planSeatLayerPickerAccessibilityMutations,
   resolveSeatLayerPickerAccessNeeds,
+  shouldFocusSeatLayerAccessibilityResults,
 } from '../src/picker/accessibility';
 import { parseSeatLayerPickerColor, pickerColor, seatLayerPickerColorAlpha } from '../src/picker/colors';
 import { chartSeatLayerPickerColor } from '../src/picker/chartColor';
@@ -35,15 +36,21 @@ import { planSeatLayerMapBottomControls } from '../src/picker/SeatLayerMapContro
 import {
   priceLegendEdges,
   priceLegendFadeSteps,
+  priceLegendVisualContentWidth,
   priceLegendMeasurementSignature,
 } from '../src/picker/SeatLayerPriceLegend';
 import { resolveSeatLayerPickerLayout } from '../src/picker/layout';
 import { sanitizeSeatLayerPickerStyle, seatLayerPickerMinimumTargetStyle } from '../src/picker/styles';
 import { resolveSeatLayerPickerStyles } from '../src/picker/styles';
 import { SeatLayerPickerHeaderView } from '../src/picker/header';
+import { SeatLayerPickerHoldCountdownView } from '../src/picker/SeatLayerPickerHoldCountdown';
 import { SeatLayerPickerErrorStatus, SeatLayerPickerTestModeIndicatorView } from '../src/picker/status';
 import { SeatLayerPickerAttributionView } from '../src/picker/attribution';
-import { usePickerSingleFlight } from '../src/picker/pickerNavigation';
+import {
+  focusedPickerSection,
+  seatsLeftInPickerSection,
+  usePickerSingleFlight,
+} from '../src/picker/pickerNavigation';
 
 function FlightHarness({
   sessionId,
@@ -137,11 +144,25 @@ describe('picker chrome pure plans', () => {
     ]);
   });
 
-  it('uses a non-empty runtime access taxonomy and otherwise retains every fallback choice', () => {
+  it('uses only access needs reported by the event inventory', () => {
     expect(resolveSeatLayerPickerAccessNeeds([{ key: 'wheelchair', count: 2 }], true))
       .toEqual([{ key: 'wheelchair', count: 2 }]);
-    expect(resolveSeatLayerPickerAccessNeeds([], true).length).toBeGreaterThan(1);
-    expect(resolveSeatLayerPickerAccessNeeds([], false).length).toBeGreaterThan(1);
+    expect(resolveSeatLayerPickerAccessNeeds([], true)).toEqual([]);
+    expect(resolveSeatLayerPickerAccessNeeds([{ key: 'wheelchair', count: 2 }], false)).toEqual([]);
+  });
+
+  it('focuses matching seats only when an active map filter is being enabled', () => {
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'accessibility', keys: ['wheelchair'] },
+    ])).toBe(true);
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'limited', on: true },
+    ])).toBe(true);
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'accessibility', keys: [] },
+      { kind: 'limited', on: false },
+      { kind: 'colorblind', on: true },
+    ])).toBe(false);
   });
 
   it('keeps floor/all, dock, legend RTL, and phone control plans deterministic', () => {
@@ -155,6 +176,8 @@ describe('picker chrome pure plans', () => {
     expect(priceLegendFadeSteps(false, false)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(true, true)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(false, true)).toEqual([1, 0.5, 0.12]);
+    expect(priceLegendVisualContentWidth(122)).toBe(100);
+    expect(priceLegendVisualContentWidth(18)).toBe(0);
     expect(priceLegendMeasurementSignature(
       [{ key: 'a|b', label: 'Front', priceMin: 20 }], 'USD', false, false, 'auto', 44, 11,
     )).not.toBe(priceLegendMeasurementSignature(
@@ -165,13 +188,31 @@ describe('picker chrome pure plans', () => {
     )).not.toBe(priceLegendMeasurementSignature(
       [{ key: 'a', label: 'Front', priceMin: 20 }], 'USD', true, false, 'auto', 52, 13,
     ));
-    expect(planSeatLayerDock(240, { name: 50, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toEqual({ count: 'hidden', labelled: false, lines: 1 });
+    expect(planSeatLayerDock(240, { name: 50, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toEqual({ count: 'hidden', labelled: true, lines: 2 });
+    expect(planSeatLayerDock(390, { name: 70, longCount: 80, shortCount: 20, overview: 45 }, true, 44)).toMatchObject({ labelled: true });
     expect(resolveSeatLayerDockMotionDuration(true, 240)).toBe(0);
     expect(resolveSeatLayerDockMotionDuration(false, 240)).toBe(240);
     expect(seatLayerDockTravelDistance(52, 18)).toBe(70);
     expect(seatLayerDockInitialOpacity()).toBe(0);
     expect(shouldRetainSeatLayerDock(false, true, 1, 2)).toBe(false);
     expect(shouldRetainSeatLayerDock(false, true, 2, 2)).toBe(true);
+  });
+
+  it('fills a sparse focused-map record from the matching section summary', () => {
+    const snapshot = {
+      map: { focusedSection: { id: 'guest', label: 'Guest Tables' } },
+      sections: [{
+        id: 'guest', label: 'Guest tables', displayLabel: 'Guest Tables',
+        seatsLeft: 88, dominantCategoryKey: 'guest', color: '#D45C87',
+      }],
+      selection: [{ sectionLabel: 'Guest Tables' }],
+    } as any;
+    const section = focusedPickerSection(snapshot)!;
+    expect(section).toMatchObject({
+      id: 'guest', label: 'Guest Tables', seatsLeft: 88,
+      dominantCategoryKey: 'guest', color: '#D45C87',
+    });
+    expect(seatsLeftInPickerSection(section, snapshot)).toBe(87);
   });
 
   it('publishes a first-frame header reservation and avoids hidden-hold formatters', () => {
@@ -194,6 +235,32 @@ describe('picker chrome pure plans', () => {
     expect(heldFor).not.toHaveBeenCalled();
     act(() => renderer!.unmount());
     expect(removeInset).toHaveBeenCalledOnce();
+  });
+
+  it('renders the standalone hold countdown only for a live hold and keeps tabular clock copy replaceable', () => {
+    const heldFor = vi.fn((clock: string) => `Held ${clock}`);
+    const theme = {
+      colors: { accent: '#111111', surface: '#ffffff', text: '#111111' },
+      fontFamily: undefined,
+    } as any;
+    let renderer!: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(SeatLayerPickerHoldCountdownView, {
+        clock: () => 100_000,
+        heldFor,
+        hold: { active: true, expiresAt: 130_000 },
+        theme,
+      }));
+    });
+    expect(renderer.root.findByProps({ accessibilityLabel: 'Held 00:30' })).toBeTruthy();
+    expect(renderer.root.findByType('Text' as any).children).toEqual(['Held 00:30']);
+    act(() => renderer.update(React.createElement(SeatLayerPickerHoldCountdownView, {
+      clock: () => 100_000,
+      heldFor,
+      hold: { active: false },
+      theme,
+    })));
+    expect(renderer.toJSON()).toBeNull();
   });
 
   it('keeps its header lease through top-inset and layout measurement changes', () => {

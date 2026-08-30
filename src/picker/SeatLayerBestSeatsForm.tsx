@@ -17,6 +17,7 @@ import {
 
 import { SeatLayerPickerBottomSheetFrame } from './SeatLayerPickerBottomSheetFrame';
 import { SeatLayerPickerPromptModal } from './promptModal';
+import { blendSeatLayerPickerColor } from './colors';
 import type { SeatLayerPickerSafeAreaInsetInput } from './safeAreaInsets';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import {
@@ -208,8 +209,9 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={!allowed}
       accessibilityState={{ disabled: !allowed }} onPress={() => openChoice(kind)}
       style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flex: 1, justifyContent: 'center' }}>
-      <View style={[styles.bestSeatsSelector, { height: seatLayerPickerTokens.size.selectorHeight, borderRadius: seatLayerPickerTokens.radius.button, borderWidth: 1, borderColor: theme.colors.divider, justifyContent: 'center', paddingHorizontal: 10 }]}>
-        <Text numberOfLines={1} style={{ color: theme.colors.text, fontFamily: theme.fontFamily }}>{value}</Text>
+      <View style={[{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.base - 4, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.selectorHeight, paddingHorizontal: 10 }, styles.bestSeatsSelector]}>
+        <Text numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '700' }}>{value}</Text>
+        <View accessible={false} style={{ borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 }} />
       </View>
     </Pressable>
   );
@@ -239,18 +241,25 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
     </SeatLayerPickerBottomSheetFrame>
   );
   return (
-    <View style={[sanitizeSeatLayerPickerStyle(props.style), styles.bestSeatsContainer, { gap: 8 }]}>
+    <View style={[{ gap: 8 }, styles.bestSeatsContainer, sanitizeSeatLayerPickerStyle(props.style)]}>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         {selector(scope.strings.translate('ticketType'), categoryText, 'category')}
         {selector(scope.strings.translate('venueZone'), zoneText, 'zone')}
       </View>
       <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-        <StepButton theme={theme} label={scope.strings.translate('fewerTickets')} disabled={!allowed || count <= 1} onPress={() => setQuantity((value) => Math.max(1, value - 1))}>−</StepButton>
-        <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.text, fontFamily: theme.fontFamily }}>{scope.strings.translate('ticketCount', { count, values: { count } })}</Text>
-        <StepButton theme={theme} label={scope.strings.translate('moreTickets')} disabled={!allowed || count >= maximum} onPress={() => setQuantity((value) => Math.min(maximum, value + 1))}>+</StepButton>
+        <BestSeatsStepper
+          allowed={allowed}
+          count={count}
+          maximum={maximum}
+          onDecrease={() => setQuantity((value) => Math.max(1, value - 1))}
+          onIncrease={() => setQuantity((value) => Math.min(maximum, value + 1))}
+          scope={scope}
+          theme={theme}
+        />
         <Pressable accessibilityRole="button" disabled={!allowed} accessibilityState={{ disabled: !allowed, busy: submitting }} onPress={() => { void submit(); }} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flex: 1, justifyContent: 'center' }}>
-          <View style={[styles.bestSeatsButton, { height: seatLayerPickerTokens.size.confirmActionHeight, borderRadius: seatLayerPickerTokens.radius.button, backgroundColor: allowed ? theme.colors.accent : theme.colors.divider, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 }]}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontWeight: '700', flexShrink: 1 }, styles.bestSeatsButtonText]}>{scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
+          <View style={[{ alignItems: 'center', backgroundColor: allowed ? theme.colors.accent : theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button, flexDirection: 'row', gap: 6, height: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', paddingHorizontal: 8 }, styles.bestSeatsButton]}>
+            <Text accessible={false} style={{ color: allowed ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
+            <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed ? theme.colors.onAccent : theme.colors.mutedText, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.bestSeatsButtonText]}>{scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
           </View>
         </Pressable>
       </View>
@@ -259,6 +268,24 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
   );
 }
 
-function StepButton({ label, disabled, onPress, children, theme }: { readonly label: string; readonly disabled: boolean; readonly onPress: () => void; readonly children: string; readonly theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme> }): React.ReactElement {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} accessibilityState={{ disabled }} onPress={onPress} style={{ minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignItems: 'center', justifyContent: 'center' }}><View style={{ width: seatLayerPickerTokens.size.selectorHeight, height: seatLayerPickerTokens.size.selectorHeight, borderRadius: seatLayerPickerTokens.radius.button, alignItems: 'center', justifyContent: 'center', backgroundColor: disabled ? theme.colors.divider : theme.colors.surface, borderWidth: 1, borderColor: theme.colors.divider }}><Text style={{ color: disabled ? theme.colors.mutedText : theme.colors.text, fontFamily: theme.fontFamily }}>{children}</Text></View></Pressable>;
+function BestSeatsStepper({ allowed, count, maximum, onDecrease, onIncrease, scope, theme }: Readonly<{
+  allowed: boolean;
+  count: number;
+  maximum: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+  scope: Scope;
+  theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
+}>): React.ReactElement {
+  const decreaseDisabled = !allowed || count <= 1;
+  const increaseDisabled = !allowed || count >= maximum;
+  return <View style={{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.base - 4, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.selectorHeight }}>
+    <StepperButton label={scope.strings.translate('fewerTickets')} disabled={decreaseDisabled} onPress={onDecrease} theme={theme}>−</StepperButton>
+    <Text accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '800', textAlign: 'center', width: 24 }}>{count}</Text>
+    <StepperButton label={scope.strings.translate('moreTickets')} disabled={increaseDisabled} onPress={onIncrease} theme={theme}>+</StepperButton>
+  </View>;
+}
+
+function StepperButton({ label, disabled, onPress, children, theme }: Readonly<{ label: string; disabled: boolean; onPress: () => void; children: string; theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme> }>): React.ReactElement {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} accessibilityState={{ disabled }} onPress={onPress} style={{ alignItems: 'center', justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, width: seatLayerPickerTokens.size.minimumHitTarget }}><Text style={{ color: disabled ? theme.colors.mutedText : theme.colors.text, fontFamily: theme.fontFamily, fontSize: 18 }}>{children}</Text></Pressable>;
 }

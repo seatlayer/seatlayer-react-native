@@ -20,6 +20,7 @@ import {
   SeatLayerRendererHandshakeLease,
 } from './rendererHandshake';
 import { captureSeatLayerRendererUnmount } from './rendererCleanup';
+import { isSeatLayerRendererMessageSource } from './rendererMessageSource';
 
 export interface SeatLayerRendererController {
   beginHandshake(
@@ -121,7 +122,7 @@ export function SeatLayerRenderer({
   }, [configuration, controller, reloadKey]);
 
   const onMessage = (event: WebViewMessageEvent): void => {
-    if (event.nativeEvent.url === seatLayerMobilePageUrl) {
+    if (isSeatLayerRendererMessageSource(event.nativeEvent.url)) {
       controller.ingestRaw(event.nativeEvent.data);
     }
   };

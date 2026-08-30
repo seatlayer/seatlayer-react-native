@@ -71,7 +71,7 @@ function setup(value = snapshot()) {
     },
     back: async () => { activeLease = undefined; publishPrompt(null); return { type: 'dismissPrompt' }; },
     resolvedTheme: { colors: { onAccent: '#fff', text: '#111', accent: '#06f', divider: '#ccc', surface: '#fff', mutedText: '#555', error: '#b00' }, fontFamily: undefined },
-    styles: {}, strings: { translate: (key: string, options?: { values?: Record<string, unknown> }) => key === 'tierCompanionGuidance' ? 'Requires the adjacent wheelchair place.' : key === 'placesAvailable' ? `${options?.values?.count} places` : key },
+    styles: {}, formatMoney: (amount: number, currency: string) => `${currency === 'USD' ? '$' : `${currency} `}${amount}`, strings: { translate: (key: string, options?: { values?: Record<string, unknown> }) => key === 'tierCompanionGuidance' ? 'Requires the adjacent wheelchair place.' : key === 'placesAvailable' ? `${options?.values?.count} places` : key },
   };
   return {
     controller, commands, setSnapshot: (next: SeatLayerPickerSnapshot) => { currentSnapshot = next; scope = { ...scope, snapshot: next }; },

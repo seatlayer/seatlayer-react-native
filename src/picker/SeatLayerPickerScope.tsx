@@ -19,12 +19,13 @@ import {
 } from './backNavigation';
 import { SeatLayerPickerController } from './controller';
 import type { SeatLayerPickerSnapshot } from './models';
+import { formatSeatLayerPickerMoney } from './format';
+import { resolveSeatLayerPickerPricing } from './options';
 import {
   applyPendingConfirmationSnapshot,
   confirmPending as confirmPendingState,
   initialPendingConfirmationState,
   resetPendingConfirmationState, seatLayerPickerPendingConfirmationPolicy,
-  type PendingConfirmationState,
 } from './pendingConfirmationState';
 import { SeatLayerPickerPendingCancelCoordinator } from './pendingConfirmationActions';
 import {
@@ -60,98 +61,28 @@ import {
   createSeatLayerPickerScopeStrings,
   prepareSeatLayerPickerScopeStringInputs,
   resolveSeatLayerPickerScopeStringResolution,
-  type SeatLayerPickerScopeStringProps,
 } from './scopeStrings';
-import type { SeatLayerPickerStringResolver } from './locale';
-import {
-  type SeatLayerPickerThemeData,
-  type SeatLayerThemeMode,
-  type SeatLayerPickerThemeOptions,
-} from './theme';
 import type { SeatLayerPickerViewportInsetInput } from './viewportInsets';
-import type { SeatLayerPickerThemeStyles } from './styles';
 import { SeatLayerPickerInsetOwnership, type SeatLayerPickerInsetLease } from './insetOwnership';
-import { SeatLayerPickerPromptOwnership, type SeatLayerPickerPromptLease } from './promptOwnership';
+import { SeatLayerPickerPromptOwnership } from './promptOwnership';
 import type { SeatLayerPickerPromptKind } from './presentationState';
 import { resolveSeatLayerPickerBackState } from './scopeBackState';
 import { safeSeatLayerPickerPresentationInput } from './scopePresentationInput';
-import type { SeatLayerChartLoad } from './chartLoad';
 import type { SeatLayerChartLoadListener } from './chartLoadSubscription';
 import {
   SeatLayerPickerScopeContext,
   useSeatLayerPickerScopeContext,
 } from './pickerScopeContext';
-
-export interface SeatLayerPickerAvailability {
-  readonly floorStack: boolean;
-  readonly viewportInsets: boolean;
-  readonly venue3D: boolean;
-  readonly seatView: boolean;
-  readonly nativeSeatViewChrome: boolean;
-}
-
-export interface SeatLayerPickerScopeValue {
-  readonly controller: SeatLayerPickerController;
-  readonly snapshot: SeatLayerPickerSnapshot | undefined;
-  readonly configuration: SeatLayerConfiguration;
-  /** Deep-frozen init config of the active runtime, never an unvalidated prop. */
-  readonly bridgeConfig: JsonObject;
-  readonly themeMode: SeatLayerThemeMode;
-  readonly resolvedTheme: SeatLayerPickerThemeData;
-  readonly styles: SeatLayerPickerThemeStyles;
-  /** Immutable native-chrome wording resolved for the active locale. */
-  readonly strings: SeatLayerPickerStringResolver;
-  readonly presentation: SeatLayerPickerPresentationState;
-  readonly error: unknown;
-  readonly isBusy: boolean;
-  readonly isReady: boolean;
-  readonly readOnly: boolean;
-  readonly availability: SeatLayerPickerAvailability;
-  readonly sessionId: number;
-  readonly pendingSeat: PendingConfirmationState['pending'];
-  /** Remains true after the notice is dismissed so stale hold copy cannot return. */
-  readonly holdLapsed: boolean;
-  readonly holdLapse: SeatLayerPickerHoldLapse | undefined;
-  readonly isHoldLapseBusy: boolean;
-  readonly setPresentation: (event: SeatLayerPickerLocalPresentationEvent) => void;
-  readonly reportError: (error: unknown) => void;
-  readonly clearError: () => void;
-  readonly markReady: (info?: ReadyInfo) => void;
-  /** Subscribes to future runtime chart-load records without replay. */
-  readonly subscribeChartLoad: (listener: SeatLayerChartLoadListener) => () => void;
-  readonly confirmPending: () => void;
-  readonly cancelPending: () => Promise<boolean>;
-  readonly dismissHoldLapse: () => void;
-  readonly reselectHoldLapse: () => Promise<boolean>;
-  readonly setViewportInsetBand: (
-    band: string,
-    insets: SeatLayerPickerViewportInsetInput,
-  ) => void;
-  readonly removeViewportInsetBand: (band: string) => void;
-  /** Claims a band for one mounted chrome owner; stale owners cannot clear it. */
-  readonly claimViewportInsetBand: (band: string) => SeatLayerPickerInsetLease;
-  readonly claimPrompt: (
-    owner: string, kind: SeatLayerPickerPromptKind, context?: unknown,
-  ) => Readonly<{ lease: SeatLayerPickerPromptLease; open(): boolean; dismiss(): boolean }> | undefined;
-  /** Synchronous BackHandler decision from the latest snapshot/coordinator state. */
-  readonly canHandleBack: () => boolean;
-  readonly back: () => Promise<SeatLayerPickerBackAction>;
-}
-
-export interface SeatLayerPickerScopeProps extends PropsWithChildren, SeatLayerPickerScopeStringProps {
-  readonly configuration: SeatLayerConfiguration;
-  readonly controller?: SeatLayerPickerController;
-  readonly bridgeConfig?: JsonObject;
-  readonly themeMode?: SeatLayerThemeMode;
-  readonly themeOptions?: Omit<SeatLayerPickerThemeOptions, 'themeMode' | 'systemThemeMode'>;
-  /** Host chrome slots; each consumer also applies its own safe-style copy. */
-  readonly styles?: SeatLayerPickerThemeStyles;
-  readonly readOnly?: boolean;
-  /** Foreground catch-up refreshes availability unless the host opts out. */
-  readonly refreshOnResume?: boolean;
-  /** Receives one advertised runtime chart-load record for this active scope session. */
-  readonly onChartLoad?: (load: SeatLayerChartLoad) => unknown;
-}
+import type {
+  SeatLayerPickerAvailability,
+  SeatLayerPickerScopeProps,
+  SeatLayerPickerScopeValue,
+} from './pickerScopeTypes';
+export type {
+  SeatLayerPickerAvailability,
+  SeatLayerPickerScopeProps,
+  SeatLayerPickerScopeValue,
+} from './pickerScopeTypes';
 
 function fallbackFrame(callback: () => void): ReturnType<typeof setTimeout> {
   return setTimeout(callback, 0);
@@ -196,6 +127,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     themeMode = 'auto',
     themeOptions,
     styles: suppliedStyles = {},
+    pricing: suppliedPricing,
     readOnly = false, refreshOnResume = true,
     onChartLoad,
     children,
@@ -294,6 +226,11 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     activeController.getSnapshot,
     activeController.getSnapshot,
   );
+  const reloadGeneration = useSyncExternalStore(
+    activeController.subscribeReload,
+    activeController.getReloadGeneration,
+    activeController.getReloadGeneration,
+  );
   const deviceMode = useColorScheme() === 'dark' ? 'dark' : 'light';
   const pendingConfirmationPolicy = useMemo(() => seatLayerPickerPendingConfirmationPolicy(activeBridgeConfig, activeReadOnly), [activeBridgeConfig, activeReadOnly]);
   const resolvedTheme = useMemo(
@@ -316,9 +253,22 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
   const reportError = useCallback((nextError: unknown) => {
     if (aliveRef.current && generationRef.current === sessionId) setError(nextError);
   }, [sessionId]);
+  const pricing = useMemo(
+    () => resolveSeatLayerPickerPricing(suppliedPricing),
+    [suppliedPricing],
+  );
+  const formatMoney = useCallback(
+    (amount: number, currency: string) =>
+      formatSeatLayerPickerMoney(amount, currency, pricing?.formatter, reportError),
+    [pricing?.formatter, reportError],
+  );
   const clearError = useCallback(() => {
     if (aliveRef.current && generationRef.current === sessionId) setError(undefined);
   }, [sessionId]);
+  const isSessionActive = useCallback(
+    () => aliveRef.current && generationRef.current === sessionId,
+    [sessionId],
+  );
   useLayoutEffect(() => {
     aliveRef.current = true;
     return () => { aliveRef.current = false; };
@@ -520,6 +470,52 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     return activeController.subscribe(applyLatestSnapshot);
   }, [activeController, pendingConfirmationPolicy, sessionId]);
   const snapshotPresentationKeyRef = useRef<string | undefined>(undefined);
+  const observedReloadRef = useRef(Object.freeze({
+    controller: activeController,
+    generation: reloadGeneration,
+  }));
+  useLayoutEffect(() => {
+    const observed = observedReloadRef.current;
+    observedReloadRef.current = Object.freeze({
+      controller: activeController,
+      generation: reloadGeneration,
+    });
+    if (
+      observed.controller !== activeController ||
+      observed.generation === reloadGeneration
+    ) return;
+
+    // Match a fresh scope session without replacing the public controller.
+    // Every outstanding callback/action lease is invalid before the chart key
+    // changes, so a retired runtime cannot write into the new loading state.
+    ownershipEpochRef.current += 1;
+    promptOwnershipRef.current.reset();
+    insetOwnershipRef.current.reset();
+    insetBandsRef.current.clear();
+    snapshotPresentationKeyRef.current = undefined;
+    generationRef.current += 1;
+    backCoordinatorRef.current.reset();
+    pendingCancelCoordinatorRef.current?.dispose();
+    holdLapseRef.current.reset();
+    holdLapseFlightRef.current = undefined;
+    setHoldLapsed(false);
+    setHoldLapse(undefined);
+    setHoldLapseBusy(false);
+    setBusy(false);
+    readyRef.current = false;
+    setReady(false);
+    setError(undefined);
+    setPresentation({ type: 'setSheet', sheet: 'collapsed' });
+    setPresentation({ type: 'dismissPrompt' });
+    setPresentation({ type: 'setPendingConfirmation', pendingConfirmation: null });
+    setPresentation({ type: 'setFocusedSection', focusedSection: null });
+    setPresentation({ type: 'setOverview', isOverview: true });
+    setPresentation({ type: 'syncSnapshot', rung: 'overview', focusedSectionId: null });
+    const resetPending = resetPendingConfirmationState();
+    pendingRef.current = resetPending;
+    setPendingConfirmation(resetPending);
+    setSessionId((value) => value + 1);
+  }, [activeController, reloadGeneration]);
   // Renderer-driven focus/rung is snapshot truth too: keep the native back
   // ladder synchronized without allocating equivalent focus state repeatedly.
   useEffect(() => {
@@ -574,6 +570,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     },
     [activeController, sessionId],
   );
+  const retry = useCallback((): Promise<void> => activeController.retry(), [activeController]);
   const confirmPending = useCallback(() => {
     if (!aliveRef.current || generationRef.current !== sessionId) return;
     setPendingConfirmation((current) => {
@@ -671,9 +668,10 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       if (result.action.type === 'dismissPendingConfirmation') {
         await cancelPending();
       } else {
-        await activeController.overview();
-        setPresentation({ type: 'setFocusedSection', focusedSection: null });
-        setPresentation({ type: 'setOverview', isOverview: true });
+        // Match the web rung ladder: one Back press walks exactly one camera
+        // level (seat -> section -> venue). The next snapshot remains the
+        // authority for whether another local rung is still available.
+        await activeController.zoomOut();
       }
     } catch (nextError) {
       reportError(nextError);
@@ -696,6 +694,8 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
         themeMode,
         resolvedTheme,
         styles: suppliedStyles,
+        pricing,
+        formatMoney,
         strings,
         presentation: presentationForScope,
         error,
@@ -704,6 +704,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
         readOnly: activeReadOnly,
         availability: availabilityOf(activeController),
         sessionId,
+        isSessionActive,
         pendingSeat: pendingConfirmation.pending,
         holdLapsed,
         holdLapse,
@@ -711,6 +712,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
         setPresentation: setScopedPresentation,
         reportError,
         clearError,
+        retry,
         markReady,
         subscribeChartLoad,
         confirmPending,
@@ -735,11 +737,14 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       clearError,
       dismissHoldLapse,
       error,
+      formatMoney,
       holdLapsed,
       holdLapse,
       holdLapseBusy,
+      isSessionActive,
       markReady,
       presentationForScope,
+      pricing,
       pendingConfirmation.pending,
       activeReadOnly,
       ready,
@@ -748,6 +753,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       claimPrompt,
       canHandleBack,
       reportError,
+      retry,
       reselectHoldLapse,
       resolvedTheme,
       suppliedStyles,

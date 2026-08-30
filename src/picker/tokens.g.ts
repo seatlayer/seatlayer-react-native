@@ -1,7 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: 197dde65991cb28a111d90a715d1121b68cc486852b4c2906bd4a8d3d073f841
+// Canonical token input SHA-256: 0667fdddab037b3f63eaf18b4ba099f477cb630edc93f9ea90f90862609e492f
+// Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = '197dde65991cb28a111d90a715d1121b68cc486852b4c2906bd4a8d3d073f841' as const;
+export const seatLayerPickerTokenSourceSha256 = '0667fdddab037b3f63eaf18b4ba099f477cb630edc93f9ea90f90862609e492f' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -9,7 +10,7 @@ export const seatLayerPickerTokens = {
     "dark": {
       "accent": "#9B8AFB",
       "background": "#0F1522",
-      "divider": "#3DA5AEC2",
+      "divider": "#A5AEC23D",
       "error": "#FF6B6B",
       "mapBackground": "#0F1522",
       "mapRowLabel": "#D7DEEA",
@@ -24,7 +25,7 @@ export const seatLayerPickerTokens = {
     "light": {
       "accent": "#5B4B8A",
       "background": "#F6F7FB",
-      "divider": "#29172033",
+      "divider": "#17203329",
       "error": "#B42318",
       "mapBackground": "#E9EDF4",
       "mapRowLabel": "#334155",
@@ -124,7 +125,7 @@ export const seatLayerPickerTokens = {
     "legendChipFontSize": 11,
     "mapControlSize": 36,
     "minimumHitTarget": 44,
-    "peekHeight": 50,
+    "peekHeight": 44,
     "phoneBreakpoint": 640,
     "selectorHeight": 40,
     "sheetMaxHeightFraction": 0.6,

@@ -164,8 +164,6 @@ export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
   // information to avoid treating unlike currency amounts as identical.
   const amountText = nonBlank(display?.amountText)
     ?? (total === null ? '' : currency === null ? String(total) : `${currency} · ${total}`);
-  const tierOptionCount = selected?.tierOptionCount ?? selected?.tiers?.length;
-
   return {
     item,
     identity,
@@ -185,11 +183,21 @@ export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
     // The runtime treats its object type as an open enum: only GA is known to
     // carry a quantity control by contract. Booth and future objects preserve
     // their type and retain the same dense-list rule.
-    groupable: item.objectType !== 'ga'
-      && quantity <= 1
-      && (tierOptionCount == null || tierOptionCount <= 1)
-      && identity.removalLabel !== null,
+    groupable: ticketIsGroupable(item, selected),
   };
+}
+
+/** Whether a ticket can safely fold into a neighbouring dense run. */
+export function ticketIsGroupable(
+  item: SeatLayerCartLineLike,
+  selection: SeatLayerSelectedSeatLike | null = null,
+): boolean {
+  const quantity = validQuantity(item.quantity);
+  const tierOptionCount = selection?.tierOptionCount ?? selection?.tiers?.length;
+  return item.objectType !== 'ga'
+    && quantity <= 1
+    && (tierOptionCount == null || tierOptionCount <= 1)
+    && ticketIdentityOf(item).removalLabel !== null;
 }
 
 export function resolveDenseTicketLines<T extends SeatLayerCartLineLike>(

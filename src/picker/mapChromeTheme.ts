@@ -20,7 +20,7 @@ function groundRole(
   });
 }
 
-/** Uses immersive dark chrome while retaining the authored map role and map theme. */
+/** Uses immersive dark chrome while retaining the authored brand accent. */
 export function resolveSeatLayerPickerMapChromeTheme(
   theme: SeatLayerPickerThemeData,
   snapshot: SeatLayerPickerSnapshot | undefined,
@@ -66,6 +66,10 @@ export function resolveSeatLayerPickerMapChromeTheme(
       mutedText: ground.mutedText,
       divider: ground.divider,
       error: ground.error,
+      mapBackground: ground.mapBackground,
+      mapRowLabel: ground.mapRowLabel,
+      mapSelection: ground.mapSelection,
+      mapText: ground.mapText,
     }),
   });
 }

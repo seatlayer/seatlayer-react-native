@@ -41,7 +41,7 @@ function setup(options: Readonly<{ categoryColor?: unknown; section?: string; co
     get supportsSeatView() { return true; }, get supportsVenue3D() { return true; }, get supportsNativeSeatViewChrome() { return false; },
     setSeatTier: async (...args: unknown[]) => { calls.push(['tier', ...args]); }, openSeatView: async (id: string) => { calls.push(['seatView', id]); }, setBuyerView: async (...args: unknown[]) => { calls.push(['venue3d', ...args]); }, getSeatView: () => undefined, subscribeSeatView: () => () => {},
   };
-  const publish = () => { scope = { controller, snapshot: current, pendingSeat: pending, sessionId: 1, isBusy: false, readOnly: false, confirmPending: () => { confirmed += 1; pending = undefined; }, cancelPending: async () => { pending = undefined; return true; }, reportError: () => {}, styles: {}, strings: { translate: (key: string) => key, accessNeed: (need: string) => `access:${need}` }, resolvedTheme: { colors: { surface: '#fff', divider: '#ccc', accent: '#06f', text: '#111', onAccent: '#fff', mutedText: '#555', warning: '#c80' }, fontFamily: 'Brand' } }; };
+  const publish = () => { scope = { controller, snapshot: current, pendingSeat: pending, sessionId: 1, isBusy: false, readOnly: false, confirmPending: () => { confirmed += 1; pending = undefined; }, cancelPending: async () => { pending = undefined; return true; }, reportError: () => {}, styles: {}, formatMoney: (amount: number, currency: string) => `${currency === 'USD' ? '$' : `${currency} `}${amount}`, strings: { translate: (key: string) => key, accessNeed: (need: string) => `access:${need}` }, resolvedTheme: { colors: { surface: '#fff', divider: '#ccc', accent: '#06f', text: '#111', onAccent: '#fff', mutedText: '#555', warning: '#c80' }, fontFamily: 'Brand' } }; };
   publish();
   return { calls, counts: () => confirmed, replace: () => { scope = { ...scope, controller: { ...controller } }; } };
 }
@@ -64,6 +64,8 @@ describe('SeatLayerPickerSeatConfirmation', () => {
     const runtime = setup(); const observed: unknown[] = []; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerSeatConfirmation, { onAction: (event) => { observed.push(event); } })); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'chooseChildTier' }).props.onPress(); });
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$20')).toBe(true);
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$40')).toBe(false);
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'select' }).props.onPress(); await Promise.resolve(); await Promise.resolve(); });
     expect(runtime.calls).toEqual([['tier', 'seat-a', 'child']]);
     expect(runtime.counts()).toBe(1);

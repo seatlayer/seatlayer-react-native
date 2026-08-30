@@ -26,7 +26,6 @@ import {
   sanitizeSeatLayerPickerStyle,
   type SeatLayerPickerStyles,
 } from './styles';
-import { formatSeatLayerPickerMoney } from './format';
 import {
   normalizeSeatLayerPickerDecisionPromptInsets,
   type SeatLayerPickerDecisionPromptInsetInput,
@@ -289,12 +288,12 @@ function TierChoices({
   const currency = decision.kind === 'ga' ? decision.area.currency ?? scope.snapshot?.currency ?? 'USD' : decision.seat.currency ?? scope.snapshot?.currency ?? 'USD';
   return <View accessibilityRole="radiogroup" style={stylesNative.tiers}>{tiers.map((tier) => {
     const selected = tier.id === value; const guidance = tierGuidance(scope, tier);
-    const decisionText = [tier.name, formatSeatLayerPickerMoney(tier.price, tier.currency ?? currency), guidance].filter((part): part is string => typeof part === 'string' && part.length > 0).join(' · ');
+    const decisionText = [tier.name, scope.formatMoney(tier.price, tier.currency ?? currency), guidance].filter((part): part is string => typeof part === 'string' && part.length > 0).join(' · ');
     return <Pressable key={tier.id} accessibilityRole="radio" accessibilityLabel={decisionText} accessibilityValue={{ text: decisionText }} accessibilityState={{ checked: selected, disabled }} disabled={disabled} onPress={() => onChange(tier.id)} style={stylesNative.tierHit}>
       <View style={[stylesNative.tierPaint, { borderColor: selected ? scope.resolvedTheme.colors.accent : scope.resolvedTheme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button }, styles.card]}>
         <Text style={[stylesNative.tierName, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{tier.name}</Text>
         {guidance ? <Text style={[stylesNative.guidance, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{guidance}</Text> : null}
-        <Text style={[stylesNative.tierPrice, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{formatSeatLayerPickerMoney(tier.price, tier.currency ?? currency)}</Text>
+        <Text style={[stylesNative.tierPrice, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{scope.formatMoney(tier.price, tier.currency ?? currency)}</Text>
       </View>
     </Pressable>;
   })}</View>;

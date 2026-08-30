@@ -26,13 +26,15 @@ class RecordingTransport implements BridgeTransport {
 
 describe('SeatLayerController', () => {
   it('negotiates, reports ready and runs a typed command', async () => {
-    const controller = new SeatLayerController();
+    let now = 100;
+    const controller = new SeatLayerController(() => now);
     const transport = new RecordingTransport();
     const ready = controller.beginHandshake(transport, {
       event: 'fixture-event-controller',
       currency: 'USD',
     });
 
+    now = 160;
     controller.ingestRaw(
       JSON.stringify({
         sl: 1,
@@ -49,11 +51,12 @@ describe('SeatLayerController', () => {
     expect(transport.frames[0]).toMatchObject({
       kind: 'init',
       payload: {
-        host: { platform: 'react-native', sdk: '0.2.0' },
+        host: { platform: 'react-native', sdk: '0.2.1' },
         config: { event: 'fixture-event-controller', currency: 'USD' },
       },
     });
 
+    now = 490;
     controller.ingestRaw({
       sl: 1,
       k: 'evt',
@@ -71,6 +74,8 @@ describe('SeatLayerController', () => {
       mode: 'test',
       platform: 'rn',
       eventKey: 'fixture-event-controller',
+      timeToHelloMs: 60,
+      timeToReadyMs: 390,
     });
 
     const selection = controller.getSelection();

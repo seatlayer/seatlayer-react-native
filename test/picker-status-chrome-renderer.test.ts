@@ -14,10 +14,12 @@ vi.mock("../src/picker/SeatLayerPickerScope", () => ({ useSeatLayerPickerScope: 
 import { SeatLayerPickerActionError } from "../src/picker/actionError";
 import { SeatLayerPickerAttribution } from "../src/picker/attribution";
 import {
+  SeatLayerPickerEmptyStatus,
   SeatLayerPickerErrorStatus,
   SeatLayerPickerErrorView,
   SeatLayerPickerLoadingView,
 } from "../src/picker/status";
+import { isSeatLayerPickerSnapshotEmpty } from "../src/picker/emptyState";
 import { SeatLayerPickerTestModeIndicator } from "../src/picker/testModeIndicator";
 
 function snapshot(mode = "sale", required = false): Record<string, unknown> {
@@ -65,6 +67,7 @@ function setup(): { readonly errors: unknown[]; readonly clear: () => number } {
     },
     clearError: () => { clears += 1; },
     reportError: (error: unknown) => { errors.push(error); },
+    retry: vi.fn(async () => undefined),
   };
   return { errors, clear: () => clears };
 }
@@ -72,12 +75,35 @@ function setup(): { readonly errors: unknown[]; readonly clear: () => number } {
 beforeEach(() => { setup(); });
 
 describe("picker status chrome", () => {
+  it("shows empty chrome only from explicit zero-availability evidence", async () => {
+    const base = snapshot() as any;
+    expect(isSeatLayerPickerSnapshotEmpty(base)).toBe(false);
+    expect(isSeatLayerPickerSnapshotEmpty({ ...base, categories: [{ available: 0, notForSale: false }] })).toBe(true);
+    expect(isSeatLayerPickerSnapshotEmpty({ ...base, categories: [{ available: 1, notForSale: false }] })).toBe(false);
+    expect(isSeatLayerPickerSnapshotEmpty({ ...base, generalAdmissionAreas: [{ id: "ga" }] })).toBe(false);
+    expect(isSeatLayerPickerSnapshotEmpty({ ...base, categories: [{ available: 0, notForSale: false }], selection: [{ id: "seat" }] })).toBe(false);
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerPickerEmptyStatus, {
+        message: "  Sold out for now  ", style: { backgroundColor: "#fff", height: 1 },
+        theme: scope.resolvedTheme, strings: scope.strings,
+      }));
+    });
+    expect(renderer.root.findByType("Text" as any).children).toEqual(["Sold out for now"]);
+    expect(renderer.root.findAllByType("View" as any)[0]!.props.style).toEqual(expect.arrayContaining([
+      expect.objectContaining({ backgroundColor: "#fff" }),
+    ]));
+    expect(renderer.root.findAllByType("View" as any)[0]!.props.style).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ height: 1 }),
+    ]));
+  });
+
   it("keeps loading through an early snapshot and hides only after readiness", async () => {
     let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerLoadingView)); });
     scope = { ...scope, snapshot: snapshot() };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
-    expect(renderer.root.findByType("ActivityIndicator" as any)).toBeTruthy();
+    expect(renderer.root.findByType("ActivityIndicator" as any).props.size).toBe("large");
     scope = { ...scope, isReady: true };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
     expect(renderer.toJSON()).toBeNull();
@@ -91,13 +117,20 @@ describe("picker status chrome", () => {
     expect(renderer.toJSON()).toBeNull();
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerErrorView)); });
     expect(renderer.root.findByProps({ accessibilityRole: "alert" })).toBeTruthy();
-    scope = { ...scope, isReady: true, error: { buyerMessage: "A very long buyer-safe command message that remains limited to two lines" } };
+    const retry = renderer.root.findByProps({ accessibilityLabel: "Retry" });
+    await act(async () => { retry.props.onPress(); });
+    expect(scope.retry).toHaveBeenCalledTimes(1);
+    scope = { ...scope, isReady: true, styles: { statusAction: { borderRadius: 3 } }, error: { buyerMessage: "A very long buyer-safe command message that remains limited to two lines" } };
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerActionError)); });
     const close = renderer.root.findByProps({ accessibilityLabel: "Close" });
     expect(renderer.root.findByProps({ numberOfLines: 2 })).toBeTruthy();
     expect(close.props.style.minHeight).toBe(44);
     const paint = close.findByType("View" as any);
-    expect(paint.props.style[2].borderRadius).toBe(8);
+    expect(paint.props.style).toEqual(expect.arrayContaining([
+      expect.objectContaining({ borderRadius: 8 }),
+      expect.objectContaining({ borderRadius: 3 }),
+    ]));
+    expect(paint.props.style.at(-1).borderRadius).toBe(3);
     await act(async () => { close.props.onPress(); });
     expect(clear()).toBe(1);
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerActionError, { clearable: false })); });

@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue } from './json';
-export const seatLayerSdkVersion = '0.2.0';
+export const seatLayerSdkVersion = '0.2.1';
 export const seatLayerHostedWebVersion = '0.71.5';
 /** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
 export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;
@@ -130,6 +130,10 @@ export interface ReadyInfo {
   mode?: string;
   platform?: string;
   eventKey?: string;
+  /** Milliseconds from arming the native handshake to the runtime's `hello`. */
+  timeToHelloMs?: number;
+  /** Milliseconds from arming the native handshake to `sys.ready`. */
+  timeToReadyMs?: number;
   raw: JsonValue | undefined;
 }
 

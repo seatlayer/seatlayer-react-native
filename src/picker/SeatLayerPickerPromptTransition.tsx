@@ -82,12 +82,13 @@ export function SeatLayerPickerPromptTransition({
   }, [enterAnimation, exitAnimation]);
 
   const present = surfaces.current !== null || surfaces.outgoing !== null;
+  const interactive = prompt !== null;
   return (
     <View onLayout={(event) => {
       if (sessionRef.current !== sessionId) return;
       const next = event.nativeEvent.layout.height;
       if (typeof next === 'number' && Number.isFinite(next)) setHeight(Math.max(0, next));
-    }} pointerEvents={present ? 'auto' : 'none'} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
+    }} pointerEvents={interactive ? 'auto' : 'none'} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
       {surfaces.outgoing === null ? null : <Animated.View pointerEvents="none" style={[styles.surface, exitStyle(exit, height * promptProjectionRatio)]}>{surfaces.outgoing}</Animated.View>}
       {surfaces.current === null ? null : <Animated.View pointerEvents="auto" style={[styles.surface, enterStyle(enter, height * promptProjectionRatio)]}>{surfaces.current}</Animated.View>}
     </View>
@@ -140,4 +141,7 @@ function easingFor(curve: readonly number[]): (value: number) => number {
 }
 
 const fill = { position: 'absolute' as const, top: 0, right: 0, bottom: 0, left: 0 };
-const styles = StyleSheet.create({ root: fill, surface: fill });
+const styles = StyleSheet.create({
+  root: fill,
+  surface: { ...fill, alignItems: 'center', justifyContent: 'center' },
+});

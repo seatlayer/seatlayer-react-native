@@ -87,6 +87,22 @@ describe('ready-made picker options and part builders', () => {
     expect(resolveSeatLayerPickerOptions({ max3DSeats: -1 }).max3DSeats).toBeUndefined();
   });
 
+  it('carries safe language tags into boot and freezes global native money formatting', () => {
+    const formatter = (amount: number, currency: string) => `${currency}:${amount}`;
+    const resolved = resolveSeatLayerPickerOptions({
+      languages: [' en-GB ', 'fr', 'EN-gb', '', 4 as never],
+      pricing: { formatter },
+    });
+
+    expect(resolved.languages).toEqual(['en-GB', 'fr']);
+    expect(resolved.pricing?.formatter).toBe(formatter);
+    expect(Object.isFrozen(resolved.languages)).toBe(true);
+    expect(Object.isFrozen(resolved.pricing)).toBe(true);
+    expect(seatLayerPickerBridgeConfigFromOptions(resolved)).toMatchObject({
+      languages: ['en-GB', 'fr'],
+    });
+  });
+
   it('keeps floor selector and compact floor strip as independent chrome ownership points', () => {
     const chrome = resolveSeatLayerPickerChromeOptions({ floorSelector: false, floorStrip: true });
     expect(chrome).toMatchObject({ floorSelector: false, floorStrip: true });
@@ -140,6 +156,9 @@ describe('ready-made picker options and part builders', () => {
     expect(resolveSeatLayerPickerPartBuilder({ confirmCard: alias }, 'seatConfirmation')).toBeUndefined();
     expect(resolveSeatLayerPickerPartBuilder({ floorSelector: primary }, 'floorSelector')).toBe(primary);
     expect(resolveSeatLayerPickerPartBuilder({ sectionNavigator: primary }, 'sectionNavigator')).toBe(primary);
+    expect(resolveSeatLayerPickerPartBuilder({ holdCountdown: primary, holdLapse: alias }, 'holdCountdown')).toBe(primary);
+    expect(resolveSeatLayerPickerPartBuilder({ holdCountdown: primary, holdLapse: alias }, 'holdLapse')).toBe(alias);
+    expect(resolveSeatLayerPickerPartBuilder({ holdCountdown: primary }, 'holdLapse')).toBeUndefined();
     const inherited = Object.create({ header: primary });
     Object.defineProperty(inherited, 'legend', { enumerable: true, get: () => { throw new Error('getter'); } });
     expect(resolveSeatLayerPickerPartBuilder(inherited, 'header')).toBeUndefined();

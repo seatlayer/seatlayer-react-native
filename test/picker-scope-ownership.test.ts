@@ -97,7 +97,7 @@ describe('picker scope ownership', () => {
     expect(coordinator.begin(sheet, false).action).toEqual({ type: 'collapseSheet' });
     const focused = { ...seatLayerPickerInitialPresentationState, isOverview: false, focusedSection: { sectionId: 'a' } };
     const show = coordinator.begin(focused, false);
-    expect(show.action).toEqual({ type: 'showOverview' });
+    expect(show.action).toEqual({ type: 'stepOut' });
     coordinator.complete(show.action);
     const pending = coordinator.begin({ ...seatLayerPickerInitialPresentationState, pendingConfirmation: {} }, false);
     expect(pending.action)
@@ -117,13 +117,13 @@ describe('picker scope ownership', () => {
       focusedSection: { sectionId: 'A' },
     };
     const inFlight = coordinator.begin(focused);
-    expect(inFlight.action).toEqual({ type: 'showOverview' });
+    expect(inFlight.action).toEqual({ type: 'stepOut' });
     const prompt = coordinator.begin({ ...focused, prompt: { kind: 'accessibility' } });
     expect(prompt).toMatchObject({ action: { type: 'dismissPrompt' }, started: true });
     const sheet = coordinator.begin({ ...focused, sheet: 'expanded' });
     expect(sheet).toMatchObject({ action: { type: 'collapseSheet' }, started: true });
     expect(coordinator.begin(seatLayerPickerInitialPresentationState)).toMatchObject({
-      action: { type: 'showOverview' }, started: false,
+      action: { type: 'stepOut' }, started: false,
     });
   });
 

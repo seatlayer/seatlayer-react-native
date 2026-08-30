@@ -32,7 +32,7 @@ describe('cart sheet projections', () => {
       unitPrice: 20, currency: 'USD', sectionLabel: `Section ${index}`, seatNumber: String(index),
     })) ), null);
     expect(visibleSeatLayerCartRuns(result, false)).toMatchObject({ hiddenCount: 1, canToggle: true });
-    expect(cartSheetMaximumBodyHeight(1_000, 34)).toBe(516);
+    expect(cartSheetMaximumBodyHeight(1_000, 34)).toBe(522);
     expect(cartSheetMaximumBodyHeight(-10, 34)).toBe(0);
   });
 });

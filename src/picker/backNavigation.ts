@@ -7,7 +7,7 @@ export type SeatLayerPickerBackAction =
   | { readonly type: 'dismissPrompt' }
   | { readonly type: 'collapseSheet' }
   | { readonly type: 'dismissPendingConfirmation' }
-  | { readonly type: 'showOverview' }
+  | { readonly type: 'stepOut' }
   | { readonly type: 'delegateToHost' };
 
 export interface SeatLayerPickerBackResult {
@@ -51,7 +51,7 @@ export class SeatLayerPickerBackCoordinator {
     const result = immediate;
     if (
       result.action.type === 'dismissPendingConfirmation' ||
-      result.action.type === 'showOverview'
+      result.action.type === 'stepOut'
     ) {
       this.inFlight = result.action;
     }
@@ -79,7 +79,7 @@ export class SeatLayerPickerBackCoordinator {
 
 /**
  * Consumes exactly one back rung: prompt, sheet, confirmation, focused
- * section/overview, then the host. It remains pure so no host navigation or
+ * map level, then the host. It remains pure so no host navigation or
  * bridge command can accidentally occur from this coordinator.
  */
 export function reduceSeatLayerPickerBack(
@@ -106,7 +106,7 @@ export function reduceSeatLayerPickerBack(
   if (state.focusedSection !== null || !state.isOverview) {
     return {
       state,
-      action: { type: 'showOverview' },
+      action: { type: 'stepOut' },
     };
   }
   return { state, action: { type: 'delegateToHost' } };

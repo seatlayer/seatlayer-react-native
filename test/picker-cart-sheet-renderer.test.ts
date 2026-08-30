@@ -3,7 +3,21 @@ import { act, create } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-vi.mock('react-native', () => ({ Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View', useWindowDimensions: () => ({ width: 390, height: 800 }), I18nManager: { isRTL: false }, StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value } }));
+vi.mock('react-native', () => ({
+  AccessibilityInfo: { addEventListener: () => ({ remove: () => {} }), isReduceMotionEnabled: async () => false },
+  Animated: {
+    View: 'Animated.View',
+    Value: class { interpolate() { return 'rotation'; } setValue() {} stopAnimation() {} },
+    delay: () => ({ start: () => {}, stop: () => {} }),
+    sequence: () => ({ start: () => {}, stop: () => {} }),
+    timing: () => ({ start: () => {}, stop: () => {} }),
+  },
+  Easing: { bezier: () => 'easing' },
+  LayoutAnimation: { configureNext: () => {} },
+  Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  useWindowDimensions: () => ({ width: 390, height: 800 }), I18nManager: { isRTL: false },
+  StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value },
+}));
 let scope: Record<string, any>;
 vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: () => scope, SeatLayerPickerScopeReprovider: ({ children }: { children?: React.ReactNode }) => React.createElement('ScopeReprovider', undefined, children) }));
 import { SeatLayerBookButton, SeatLayerCartSheet } from '../src/picker/SeatLayerCartSheet';
@@ -30,10 +44,11 @@ function setup(hostHold = false) {
   const bestCalls: unknown[][] = [];
   const insets: unknown[] = [];
   const insetLeases: Array<{ retired: boolean }> = [];
+  let sessionActive = true;
   const snapshot: any = { sessionId: 's', revision: 1, event: { salesClosed: false }, branding: { attributionRequired: false }, map: { buyerView: 'map', categoryFilter: [] }, cartLines: [{ lineKey: 'one', label: 'A-1', objectId: 'one', quantity: 1, unitPrice: 20, currency: 'USD' }], selection: [], categories: [], bestAvailableZones: [], sections: [], hold: { active: true, owner: hostHold ? 'host' : 'picker' }, maxSelection: 4, currency: 'USD', selectionValidity: { isValid: true } };
   const controller = { getSnapshot: () => snapshot, checkout: async () => ({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 }), rejectHandoff: async (...args: unknown[]) => { calls.push(args); }, bestAvailable: async (...args: unknown[]) => { bestCalls.push(args); }, mapController: { isReady: true, supportsPickerCapability: (key: string) => key === 'checkout-handoff-v1' || key === 'checkout-handoff-reject-v1' || key === 'picker-actions-v1', supportsPickerCommand: (key: string) => key === 'picker.continue' || key === 'picker.rejectHandoff' || key === 'picker.bestAvailable' } };
-  scope = { controller, snapshot, sessionId: 1, pendingSeat: null, readOnly: false, isBusy: false, isReady: true, isHoldLapseBusy: false, holdLapse: undefined, dismissHoldLapse: () => {}, reselectHoldLapse: async () => false, clearError: () => {}, presentation: { prompt: null }, back: async () => { scope = { ...scope, presentation: { prompt: null } }; }, claimViewportInsetBand: () => { const lease = { retired: false }; insetLeases.push(lease); return { set: (value: unknown) => { if (!lease.retired) insets.push(value); }, remove: () => { lease.retired = true; } }; }, claimPrompt: () => undefined, resolvedTheme: { colors: { onAccent: '#fff', text: '#111', accent: '#06f', divider: '#ccc', surface: '#fff', mutedText: '#555', error: '#b00' }, roles: { sheet: { background: '#fff', border: '#ccc' }, notice: { background: '#fff', border: '#ccc' } }, radii: { sheet: 14 }, fontFamily: undefined }, styles: {}, strings: { translate: (key: string, value?: any) => key === 'continueWithTotal' ? `Continue · ${value?.values?.money}` : key }, reportError: () => {} };
-  return { calls, bestCalls, controller, insets, insetLeases, snapshot };
+  scope = { controller, snapshot, sessionId: 1, isSessionActive: () => sessionActive, pendingSeat: null, readOnly: false, isBusy: false, isReady: true, isHoldLapseBusy: false, holdLapse: undefined, dismissHoldLapse: () => {}, reselectHoldLapse: async () => false, clearError: () => {}, presentation: { prompt: null }, back: async () => { scope = { ...scope, presentation: { prompt: null } }; }, claimViewportInsetBand: () => { const lease = { retired: false }; insetLeases.push(lease); return { set: (value: unknown) => { if (!lease.retired) insets.push(value); }, remove: () => { lease.retired = true; } }; }, claimPrompt: () => undefined, resolvedTheme: { colors: { onAccent: '#fff', text: '#111', accent: '#06f', divider: '#ccc', surface: '#fff', mutedText: '#555', error: '#b00' }, roles: { sheet: { background: '#fff', border: '#ccc' }, notice: { background: '#fff', border: '#ccc' } }, radii: { sheet: 14 }, fontFamily: undefined }, styles: {}, formatMoney: (amount: number, currency: string) => `${currency === 'USD' ? '$' : `${currency} `}${amount}`, strings: { translate: (key: string, value?: any) => key === 'continueWithTotal' ? `Continue · ${value?.values?.money}` : key }, reportError: () => {} };
+  return { calls, bestCalls, controller, endSession: () => { sessionActive = false; }, insets, insetLeases, snapshot };
 }
 
 describe('cart checkout renderer', () => {
@@ -64,7 +79,7 @@ describe('cart checkout renderer', () => {
     expect(runtime.calls).toEqual([['origin']]);
   });
 
-  it('rejects an exact deferred handoff after unmount without calling the host observer', async () => {
+  it('delivers an exact deferred handoff after its CTA unmounts while the picker scope remains active', async () => {
     const runtime = setup();
     let resolve!: (handoff: any) => void;
     let callbacks = 0;
@@ -73,6 +88,23 @@ describe('cart checkout renderer', () => {
       onCheckout: () => { callbacks += 1; },
     }));
     await act(async () => { renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress(); });
+    await act(async () => { renderer.unmount(); });
+    resolve({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 });
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); });
+    expect(callbacks).toBe(1);
+    expect(runtime.calls).toEqual([]);
+  });
+
+  it('rejects an exact deferred handoff after the picker scope retires', async () => {
+    const runtime = setup();
+    let resolve!: (handoff: any) => void;
+    let callbacks = 0;
+    runtime.controller.checkout = () => new Promise((done) => { resolve = done; });
+    const renderer = await render(React.createElement(SeatLayerBookButton, {
+      onCheckout: () => { callbacks += 1; },
+    }));
+    await act(async () => { renderer.root.findByProps({ accessibilityRole: 'button' }).props.onPress(); });
+    runtime.endSession();
     await act(async () => { renderer.unmount(); });
     resolve({ holdId: 'origin', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 });
     await act(async () => { await Promise.resolve(); await Promise.resolve(); });
@@ -103,6 +135,30 @@ describe('cart checkout renderer', () => {
     runtime.snapshot.cartLines = [];
     const form = await render(React.createElement(SeatLayerBestSeatsForm));
     expect(form.root.findAllByProps({ accessibilityRole: 'button' }).length).toBeGreaterThan(0);
+  });
+
+  it('makes the disclosure arrow a full hit target for both opening and closing', async () => {
+    setup();
+    const changes: boolean[] = [];
+    const props = (expanded: boolean) => React.createElement(SeatLayerCartSheet, {
+      expanded, onExpandedChanged: (value: boolean) => { changes.push(value); }, onCheckout: () => {},
+    });
+    const renderer = await render(props(false));
+    const compactButton = renderer.root.findByProps({ accessibilityLabel: 'Continue · $20' });
+    expect(compactButton.findAll((node) => Array.isArray(node.props.style) &&
+      node.props.style.some((style: unknown) => Boolean(style) && typeof style === 'object' &&
+        (style as { height?: unknown }).height === 34))).toHaveLength(1);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-handle-rail' }).props.style)
+      .toMatchObject({ left: 0, top: 5, width: '100%' });
+    let disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
+    expect(disclosure.props.accessibilityLabel).toBe('expandCart');
+    expect(disclosure.props.style({ pressed: false })).toMatchObject({ width: 44, minHeight: 44, zIndex: 1 });
+    await act(async () => { disclosure.props.onPress(); });
+    await act(async () => { renderer.update(props(true)); });
+    disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
+    expect(disclosure.props.accessibilityLabel).toBe('collapseCart');
+    await act(async () => { disclosure.props.onPress(); });
+    expect(changes).toEqual([true, false]);
   });
 
   it('uses the composition defaults only when their values are omitted', async () => {
@@ -178,7 +234,7 @@ describe('cart checkout renderer', () => {
     const layout = renderer.root.findAll((node) => typeof node.props.onLayout === 'function')[0]!;
     await act(async () => { layout.props.onLayout({ nativeEvent: { layout: { height: 350 } } }); });
     await act(async () => { renderer.update(React.createElement(SeatLayerCartSheet, { expanded: false, onExpandedChanged: () => {}, onCheckout: () => {} })); });
-    expect(runtime.insets).toContainEqual({ bottom: 50 });
+    expect(runtime.insets).toContainEqual({ bottom: 44 });
   });
 
   it('keeps the legacy bottom-only inset when no full safe-area input is supplied', async () => {
@@ -186,8 +242,26 @@ describe('cart checkout renderer', () => {
     const renderer = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
-    expect(renderer.root.findAll((node) => Array.isArray(node.props.style) && node.props.style[node.props.style.length - 1]?.paddingBottom === 12)).toHaveLength(1);
-    expect(runtime.insets).toContainEqual({ bottom: 62 });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
+    expect(runtime.insets).toContainEqual({ bottom: 56 });
+  });
+
+  it('uses the collapsed safe-area band for required attribution and hides it from backend branding', async () => {
+    const runtime = setup();
+    runtime.snapshot.branding.attributionRequired = true;
+    const props = () => React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 34,
+    });
+    const renderer = await render(props());
+    expect(renderer.root.findByProps({ accessibilityLabel: 'poweredBy' })).toBeTruthy();
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
+      .toMatchObject({ height: 34, justifyContent: 'center' });
+
+    runtime.snapshot.branding.attributionRequired = false;
+    await act(async () => { renderer.update(props()); });
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
+      .toMatchObject({ height: 34 });
   });
 
   it('keeps its active inset lease after an expand-collapse-expand cycle and ignores stale layout', async () => {
@@ -274,7 +348,27 @@ describe('cart checkout renderer', () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [{ lineKey: 'two', label: 'A-2', objectId: 'two', quantity: 2, unitPrice: 20, currency: 'USD', rowLabel: 'A', seatNumber: '2' }];
     const renderer = await render(React.createElement(SeatLayerCartList));
-    expect(JSON.stringify(renderer.toJSON())).toContain('2 × $20 · $40');
+    const output = JSON.stringify(renderer.toJSON());
+    expect(output).toContain('2 × $20');
+    expect(output).toContain('$40');
+    expect(output).toContain('2 × $20, $40');
+  });
+
+  it('folds a seat run without repeating its category and keeps unit and total columns', async () => {
+    const runtime = setup();
+    runtime.snapshot.categories = [{ key: 'guest', label: 'Guest tables', color: '#D45C87' }];
+    runtime.snapshot.cartLines = [1, 2, 3].map((number) => ({
+      categoryKey: 'guest', currency: 'USD', label: `T22-${number}`,
+      lineKey: `line-${number}`, objectId: `seat-${number}`, objectType: 'seat',
+      quantity: 1, rowLabel: 'T22', seatNumber: String(number),
+      sectionLabel: 'Guest Tables', unitPrice: 20,
+    }));
+    const renderer = await render(React.createElement(SeatLayerCartList));
+    expect(renderer.root.findByProps({ accessibilityLabel: 'Guest Tables · T22 · 1–3' })).toBeTruthy();
+    const output = JSON.stringify(renderer.toJSON());
+    expect(output).toContain('3 × $20');
+    expect(output).toContain('$60');
+    expect(output).not.toContain('Guest tables · Guest Tables');
   });
 
   it('uses the scoped action-error surface, including its Close control', async () => {

@@ -93,9 +93,21 @@ export function applyPendingConfirmationSnapshot(
     answered,
     confirmationEnabled,
   } as const;
-  return confirmationEnabled && snapshot.hold?.active !== true
-    ? withPending(next)
-    : Object.freeze({ ...next, pending: null });
+  if (!confirmationEnabled) return Object.freeze({ ...next, pending: null });
+  if (snapshot.hold?.active !== true) return withPending(next);
+
+  // A hold already present when this scope/session appears is authoritative
+  // and must not manufacture a confirmation card. A hold that begins while an
+  // exact card is already unanswered is different: inspection did not answer
+  // Select/Cancel, so retain only that same structural seat through the newer
+  // snapshot and continue excluding it from buyer-facing cart totals.
+  const retainedKey = sessionChanged || state.pending === null
+    ? null
+    : selectionKey(state.pending);
+  const retained = retainedKey === null || answered.includes(retainedKey)
+    ? undefined
+    : selection.find((seat) => selectionKey(seat) === retainedKey);
+  return Object.freeze({ ...next, pending: retained ?? null });
 }
 
 /** Only an explicit bridge opt-out or an active read-only lease suppresses cards. */

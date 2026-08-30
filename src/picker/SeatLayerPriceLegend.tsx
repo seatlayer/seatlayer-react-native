@@ -28,6 +28,8 @@ import { supportsSeatLayerPickerSurface } from './surfaces';
 
 export interface SeatLayerPriceLegendProps {
   readonly compact?: boolean;
+  /** Backdrop sampled by the overflow fade when the rail sits over custom media. */
+  readonly edgeFadeColor?: string;
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: Pick<
     SeatLayerPickerStyles,
@@ -52,6 +54,13 @@ type LegendMetrics = Readonly<{
 const edgeWidth = 22;
 function clamp(value: number, maximum: number): number {
   return Math.max(0, Math.min(maximum, value));
+}
+
+/** End breathing room helps the final chip clear the fade but is not hidden content itself. */
+export function priceLegendVisualContentWidth(contentWidth: number, trailingPadding = edgeWidth): number {
+  if (!Number.isFinite(contentWidth)) return 0;
+  const padding = Number.isFinite(trailingPadding) ? Math.max(0, trailingPadding) : 0;
+  return Math.max(0, contentWidth - padding);
 }
 
 function metricFromScroll(event: NativeScrollEvent): LegendMetrics {
@@ -158,6 +167,7 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
   );
   const visible = categories.length > 0 && nativeOwned;
   const compact = props.compact ?? false;
+  const moneyFormatter = props.moneyFormatter ?? scope.pricing?.formatter;
   const rtl = props.rtl ?? I18nManager.isRTL;
   const rtlOffsetMode = props.rtlOffsetMode ?? 'auto';
   const measurementSignature = priceLegendMeasurementSignature(
@@ -172,12 +182,12 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
   const measurementToken = useMemo(() => Object.freeze({
     session: scope.sessionId,
     signature: measurementSignature,
-    moneyFormatter: props.moneyFormatter,
+    moneyFormatter,
     fontFamily: scope.resolvedTheme.fontFamily,
     slots: props.slots,
     style: props.style,
     styles: scope.styles,
-  }), [measurementSignature, props.moneyFormatter, props.slots, props.style, scope.resolvedTheme.fontFamily, scope.sessionId, scope.styles]);
+  }), [measurementSignature, moneyFormatter, props.slots, props.style, scope.resolvedTheme.fontFamily, scope.sessionId, scope.styles]);
   const bandTokenRef = useRef(measurementToken);
   useLayoutEffect(() => {
     bandTokenRef.current = measurementToken;
@@ -202,6 +212,8 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
       disabled={scope.isBusy || localBusy || !canFilter}
       selectedKeys={snapshot.map.categoryFilter}
       measurementToken={measurementToken}
+      moneyFormatter={moneyFormatter}
+      onFormatterError={scope.reportError}
       slots={styles}
       theme={resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, snapshot)}
       onHeight={(event, token) => {
@@ -222,6 +234,7 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
 
 function SeatLayerPriceLegendView({
   compact = false,
+  edgeFadeColor,
   style,
   slots,
   moneyFormatter,
@@ -235,6 +248,7 @@ function SeatLayerPriceLegendView({
   onToggle,
   onHeight,
   measurementToken,
+  onFormatterError,
 }: SeatLayerPriceLegendProps & {
   readonly categories: ReadonlyArray<{
     readonly key: string;
@@ -248,6 +262,7 @@ function SeatLayerPriceLegendView({
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly onToggle: (key: string) => void;
   readonly measurementToken: object;
+  readonly onFormatterError: (error: unknown) => void;
   readonly onHeight: (event: LayoutChangeEvent, token: object) => void;
 }): React.ReactElement {
   const [edges, setEdges] = useState<LegendEdges>({ leading: false, trailing: false });
@@ -262,12 +277,6 @@ function SeatLayerPriceLegendView({
     const next = priceLegendEdges(metricsRef.current, rtl, rtlOffsetMode);
     setEdges((current) => sameEdges(current, next) ? current : next);
   }, [rtl, rtlOffsetMode]);
-  const reportFormatterError = useCallback((error: unknown) => {
-    // Formatting is host observation. The formatter helper already falls
-    // back; a hostile formatter cannot turn a readable legend into picker UI
-    // error state.
-    void error;
-  }, []);
   const onLayout = (event: LayoutChangeEvent) => {
     if (activeMeasurementRef.current !== measurementToken) return;
     const layoutWidth = event.nativeEvent.layout.width;
@@ -277,16 +286,26 @@ function SeatLayerPriceLegendView({
   };
   const onContentSizeChange = (contentWidth: number) => {
     if (activeMeasurementRef.current !== measurementToken) return;
-    metricsRef.current = { ...metricsRef.current, contentWidth };
+    metricsRef.current = {
+      ...metricsRef.current,
+      contentWidth: priceLegendVisualContentWidth(contentWidth),
+    };
     updateEdges();
   };
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (activeMeasurementRef.current !== measurementToken) return;
-    metricsRef.current = metricFromScroll(event.nativeEvent);
+    const metrics = metricFromScroll(event.nativeEvent);
+    metricsRef.current = {
+      ...metrics,
+      contentWidth: priceLegendVisualContentWidth(metrics.contentWidth),
+    };
     updateEdges();
   };
   const target = theme.layout.minimumHitTarget;
   const paintHeight = compact ? 30 : 40;
+  // Compact legends sit over the renderer. Fade into that canvas rather than
+  // painting an opaque sheet-coloured block across the final price chip.
+  const fadeColor = edgeFadeColor ?? (compact ? theme.colors.mapBackground : theme.colors.surface);
   return (
     <View
       onLayout={onLayout}
@@ -304,9 +323,9 @@ function SeatLayerPriceLegendView({
           contentContainerStyle={{
             alignItems: 'center',
             flexDirection: rtl ? 'row-reverse' : 'row',
-            gap: 6,
+            gap: compact ? 5 : 6,
             paddingEnd: edgeWidth,
-            paddingStart: compact ? 10 : 12,
+            paddingStart: compact ? 8 : 12,
           }}
           onContentSizeChange={onContentSizeChange}
           onScroll={onScroll}
@@ -318,7 +337,7 @@ function SeatLayerPriceLegendView({
               category.priceMin,
               currency,
               moneyFormatter,
-              reportFormatterError,
+              onFormatterError,
             );
             return (
               <LegendChip
@@ -354,8 +373,8 @@ function SeatLayerPriceLegendView({
               top: 0,
             }}
           >
-            {edges.leading ? <LegendEdgeFade color={theme.colors.surface} leading rtl={rtl} /> : <View />}
-            {edges.trailing ? <LegendEdgeFade color={theme.colors.surface} leading={false} rtl={rtl} /> : <View />}
+            {edges.leading ? <LegendEdgeFade color={fadeColor} leading rtl={rtl} /> : <View />}
+            {edges.trailing ? <LegendEdgeFade color={fadeColor} leading={false} rtl={rtl} /> : <View />}
           </View>
         ) : null}
       </View>
@@ -443,7 +462,7 @@ function LegendChip({
             borderWidth: 1,
             flexDirection: 'row',
             height: paintHeight,
-            paddingHorizontal: compact ? 8 : 10,
+            paddingHorizontal: compact ? 6 : 10,
           },
           slots?.legendChipContainer,
           { height: paintHeight },

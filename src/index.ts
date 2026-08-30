@@ -55,7 +55,19 @@ export type {
   SeatLayerPickerBehaviorOptions,
   SeatLayerPickerChromeOptions,
   SeatLayerPickerLayoutMode,
+  SeatLayerPickerMoneyFormatter,
   SeatLayerPickerOptions,
+  SeatLayerPickerPricing,
+  SeatLayerPickerResolvedChromeOptions,
+  SeatLayerPickerResolvedLayoutMode,
+  SeatLayerPickerResolvedOptions,
+  SeatLayerPickerRuntimeConfig,
+} from './picker/options';
+export {
+  resolveSeatLayerPickerChromeOptions,
+  resolveSeatLayerPickerLayoutMode,
+  resolveSeatLayerPickerOptions,
+  seatLayerPickerBridgeConfigFromOptions,
 } from './picker/options';
 export {
   deriveSeatLayerPickerOnAccent,
@@ -66,10 +78,12 @@ export {
   type SeatLayerPickerColorTokens,
   type SeatLayerPickerLogoInput,
   type SeatLayerPickerMapTheme,
+  type SeatLayerPickerMapTheme as SeatLayerMapThemeData,
   type SeatLayerPickerOrganizerBranding,
   type SeatLayerPickerResolvedMapTheme,
   type SeatLayerPickerResolvedRadii,
   type SeatLayerPickerThemeData,
+  type SeatLayerPickerThemeData as SeatLayerResolvedPickerTheme,
   type SeatLayerPickerThemeOptions,
   type SeatLayerPickerThemeOverrides,
   type SeatLayerPickerThemeRole,
@@ -101,6 +115,7 @@ export {
   type SeatLayerPickerStringKey,
   type SeatLayerPickerStringOverride,
   type SeatLayerPickerStringOverrides,
+  type SeatLayerPickerStringOverrides as SeatLayerPickerStrings,
   type SeatLayerPickerStringResolver,
   type SeatLayerPickerStringValues,
   type SeatLayerPickerTranslationOptions,
@@ -181,6 +196,17 @@ export type {
   SeatLayerPickerViewportInsetInput,
 } from './picker/viewportInsets';
 export type { SeatLayerPickerHoldLapse } from './picker/holdLapse';
+export {
+  decodeSeatLayerPickerAvailabilityOutcome,
+  recoveryOf as seatLayerPickerRecoveryOf,
+  seatLayerAccessNeedsCapability,
+  seatLayerAvailabilityRefreshCapability,
+  seatLayerHoldSelectionCapability,
+  type SeatLayerPickerAvailabilityOutcome,
+  type SeatLayerPickerAvailabilityOutcome as SeatLayerAvailabilityRefresh,
+  type SeatLayerPickerRecovery,
+  type SeatLayerPickerRecovery as SeatLayerRecovery,
+} from './picker/availability';
 export type { SeatLayerChartLoadListener } from './picker/chartLoadSubscription';
 export type { SeatLayerPickerInsetLease } from './picker/insetOwnership';
 export type { SeatLayerPickerPromptLease } from './picker/promptOwnership';
@@ -189,10 +215,18 @@ export type { SeatLayerPickerPromptLease } from './picker/promptOwnership';
 export {
   SeatLayerPickerChart,
   SeatLayerPickerChart as SeatLayerChart,
+  SeatLayerPickerChart as SeatLayerPickerMap,
   type SeatLayerPickerChartProps,
   type SeatLayerPickerChartProps as SeatLayerChartProps,
+  type SeatLayerPickerChartProps as SeatLayerPickerMapProps,
 } from './picker/SeatLayerPickerChart';
 export { SeatLayerPickerHeader, type SeatLayerPickerHeaderProps } from './picker/header';
+export {
+  SeatLayerPickerHoldCountdown,
+  SeatLayerPickerHoldCountdownView,
+  type SeatLayerPickerHoldCountdownProps,
+  type SeatLayerPickerHoldCountdownViewProps,
+} from './picker/SeatLayerPickerHoldCountdown';
 export {
   SeatLayerPriceLegend,
   SeatLayerPriceLegend as SeatLayerPickerPriceRail,
@@ -216,12 +250,24 @@ export type {
   SeatLayerPickerConfirmationActions,
 } from './picker/seatConfirmationState';
 export {
+  SeatLayerPickerSeat3DButton,
+  SeatLayerPickerSeatViewButton,
+  type SeatLayerPickerSeatInspectionButtonProps,
+} from './picker/SeatLayerPickerSeatInspectionButtons';
+export {
   SeatLayerBookButton,
+  SeatLayerBookButton as SeatLayerPickerCheckoutBar,
   SeatLayerCartSheet,
   type SeatLayerBookButtonProps,
+  type SeatLayerBookButtonProps as SeatLayerPickerCheckoutBarProps,
   type SeatLayerCartSheetProps,
 } from './picker/SeatLayerCartSheet';
-export { SeatLayerCartList, type SeatLayerCartListProps } from './picker/SeatLayerCartList';
+export {
+  SeatLayerCartList,
+  SeatLayerCartList as SeatLayerPickerSelectionTray,
+  type SeatLayerCartListProps,
+  type SeatLayerCartListProps as SeatLayerPickerSelectionTrayProps,
+} from './picker/SeatLayerCartList';
 export {
   SeatLayerBestSeatsForm,
   SeatLayerBestSeatsForm as SeatLayerPickerBestAvailablePanel,
@@ -237,7 +283,24 @@ export {
   SeatLayerPickerSectionNavigator,
   type SeatLayerPickerSectionNavigatorProps,
 } from './picker/SeatLayerPickerSectionNavigator';
-export { SeatLayerMapControls, type SeatLayerMapControlsProps } from './picker/SeatLayerMapControls';
+export {
+  SeatLayerMapControls,
+  SeatLayerMapControls as SeatLayerPickerMapControls,
+  type SeatLayerMapControlsProps,
+  type SeatLayerMapControlsProps as SeatLayerPickerMapControlsProps,
+} from './picker/SeatLayerMapControls';
+export {
+  SeatLayerPicker3DNavigationModeButton,
+  SeatLayerPickerColorblindButton,
+  SeatLayerPickerOverviewButton,
+  SeatLayerPickerViewModeButton,
+  SeatLayerPickerViewModeControl,
+  SeatLayerPickerZoomInButton,
+  SeatLayerPickerZoomOutButton,
+  SeatLayerPickerZoomToFitButton,
+  type SeatLayerPickerMapControlButtonProps,
+  type SeatLayerPickerViewModeControlProps,
+} from './picker/SeatLayerPickerMapButtons';
 export {
   SeatLayerPickerAccessibilityFilters,
   type SeatLayerPickerAccessibilityFiltersProps,
@@ -245,6 +308,7 @@ export {
 } from './picker/accessibility';
 export {
   SeatLayerPickerGAPrompt,
+  SeatLayerPickerGAPrompt as SeatLayerPickerGeneralAdmissionPrompt,
   SeatLayerPickerSeatTierSelector,
   SeatLayerPickerTablePrompt,
   type SeatLayerPickerDecisionObservation,
@@ -268,6 +332,44 @@ export type {
   SeatLayerPickerDecisionPromptInsetInput,
   SeatLayerPickerDecisionPromptInsets,
 } from './picker/decisionPromptInputs';
+export {
+  assertSeatLayerPickerMotionBudget,
+  getSeatLayerPickerMotionCurve,
+  getSeatLayerPickerMotionDuration,
+  resolveSeatLayerPickerMotion,
+  seatLayerPickerMotionBudgetMs,
+  seatLayerPickerUndoWindowMs,
+  type SeatLayerPickerMotionCurve,
+  type SeatLayerPickerMotionEffect,
+  type SeatLayerPickerResolvedMotion,
+} from './picker/motion';
+export {
+  formatSeatRunLabel,
+  formatSeatRunLabel as runSeatsLabel,
+  groupDenseTicketLines,
+  groupDenseTicketLines as groupTicketLines,
+  projectCartTotals,
+  projectConfirmedCart,
+  projectVisibleRuns,
+  resolveDenseTicketLine,
+  resolveDenseTicketLines,
+  runMembersInSeatOrder,
+  ticketIdentityOf,
+  ticketIsGroupable,
+  type CartTotalsProjection,
+  type ConfirmedCartProjection,
+  type DenseTicketDisplayEnrichment,
+  type DenseTicketLine,
+  type DenseTicketLine as SeatLayerTicketLine,
+  type DenseTicketRun,
+  type DenseTicketRun as SeatLayerTicketRun,
+  type ResolveDenseTicketLineOptions,
+  type ResolveDenseTicketLinesOptions,
+  type SeatLayerCartLineLike,
+  type SeatLayerSelectedSeatLike,
+  type TicketIdentity,
+  type VisibleRunProjection,
+} from './picker/cartDense';
 export {
   SeatLayerSeatPanoramaChrome,
   SeatLayerSeatViewChrome,
@@ -296,9 +398,15 @@ export {
   type SeatLayerPickerAttributionProps,
 } from './picker/attribution';
 export {
+  SeatLayerPickerEmptyStatus,
+  SeatLayerPickerEmptyView,
+  SeatLayerPickerErrorStatus,
   SeatLayerPickerErrorView,
+  SeatLayerPickerLoadingStatus,
   SeatLayerPickerLoadingView,
   type SeatLayerPickerBuyerError,
+  type SeatLayerPickerEmptyStatusProps,
+  type SeatLayerPickerErrorStatusProps,
   type SeatLayerPickerStatusProps,
 } from './picker/status';
 export {

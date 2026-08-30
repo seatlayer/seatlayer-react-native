@@ -15,7 +15,9 @@ import {
   planSeatLayerVenue3DAction,
   dispatchSeatLayerVenue3DAction,
   dispatchSeatLayerVenue3DBackOverride,
+  dispatchSeatLayerVenue3DCameraAction,
   dispatchSeatLayerVenue3DNavigationMode,
+  dispatchSeatLayerVenue3DSeatView,
   resolveSeatLayerPickerImmersiveTheme,
   seatLayerImmersiveDuration,
   seatLayerImmersiveInsetPlan,
@@ -58,11 +60,16 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly topInset: number;
   readonly bottomInset: number;
   readonly caption?: string;
+  readonly backVisible: boolean;
   readonly backLabel: string;
-  readonly resetLabel: string;
+  readonly targeted: boolean;
+  readonly primaryVisible: boolean;
+  readonly primaryLabel: string;
   readonly previousLabel: string;
   readonly nextLabel: string;
   readonly recentreLabel: string;
+  readonly zoomInLabel: string;
+  readonly zoomOutLabel: string;
   readonly navigationLabel?: string;
   readonly previousEnabled: boolean;
   readonly nextEnabled: boolean;
@@ -72,8 +79,10 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly onBack: () => void;
   readonly onPrevious: () => void;
   readonly onNext: () => void;
-  readonly onReset: () => void;
+  readonly onPrimary: () => void;
   readonly onRecentre: () => void;
+  readonly onZoomIn: () => void;
+  readonly onZoomOut: () => void;
   readonly onNavigation?: () => void;
 }
 
@@ -118,19 +127,51 @@ function canChangeNavigationMode(
   });
 }
 
-function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next' | 'reset' | 'recentre' | 'navigation'; readonly color: string; readonly rtl: boolean }): React.ReactElement {
-  if (kind === 'reset') return <View style={[styles.reset, { borderColor: color }]} />;
-  if (kind === 'recentre') return <View style={[styles.recentre, { borderColor: color }]} />;
-  if (kind === 'navigation') return <View style={[styles.navigation, { borderColor: color }]} />;
+function OrbitIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.orbitIcon}>
+    <View style={[styles.orbitTopArc, { borderColor: color }]} />
+    <View style={[styles.orbitBottomArc, { borderColor: color }]} />
+    <View style={[styles.orbitArrowLeft, { borderRightColor: color }]} />
+    <View style={[styles.orbitArrowRight, { borderLeftColor: color }]} />
+  </View>;
+}
+
+function FocusIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.focusIcon}>
+    <View style={[styles.focusCorner, { borderColor: color, left: 0, top: 0 }]} />
+    <View style={[styles.focusCorner, { borderColor: color, right: 0, top: 0, transform: [{ rotate: '90deg' }] }]} />
+    <View style={[styles.focusCorner, { borderColor: color, bottom: 0, right: 0, transform: [{ rotate: '180deg' }] }]} />
+    <View style={[styles.focusCorner, { borderColor: color, bottom: 0, left: 0, transform: [{ rotate: '270deg' }] }]} />
+  </View>;
+}
+
+function PanIcon({ color }: { readonly color: string }): React.ReactElement {
+  return <View style={styles.panIcon}>
+    <View style={[styles.panHorizontal, { backgroundColor: color }]} />
+    <View style={[styles.panVertical, { backgroundColor: color }]} />
+    <View style={[styles.panArrowUp, { borderBottomColor: color }]} />
+    <View style={[styles.panArrowRight, { borderLeftColor: color }]} />
+    <View style={[styles.panArrowDown, { borderTopColor: color }]} />
+    <View style={[styles.panArrowLeft, { borderRightColor: color }]} />
+  </View>;
+}
+
+function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next' | 'seatView' | 'fit' | 'recentre' | 'navigation' | 'zoomIn' | 'zoomOut'; readonly color: string; readonly rtl: boolean }): React.ReactElement {
+  if (kind === 'seatView') return <OrbitIcon color={color} />;
+  if (kind === 'fit' || kind === 'recentre') return <FocusIcon color={color} />;
+  if (kind === 'navigation') return <PanIcon color={color} />;
+  if (kind === 'zoomIn' || kind === 'zoomOut') {
+    return <Text style={{ color, fontSize: 22, fontWeight: '500', lineHeight: 24 }}>{kind === 'zoomIn' ? '+' : '−'}</Text>;
+  }
   const pointsRight = (kind === 'next') !== rtl;
-  return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '-135deg' : '45deg' }] }]} />;
+  return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
 }
 
 function VenueButton({
   label, kind, enabled, onPress, theme, slots, rtl, labelled = false,
 }: {
   readonly label: string;
-  readonly kind: 'back' | 'previous' | 'next' | 'reset' | 'recentre' | 'navigation';
+  readonly kind: 'back' | 'previous' | 'next' | 'seatView' | 'fit' | 'recentre' | 'navigation' | 'zoomIn' | 'zoomOut';
   readonly enabled: boolean;
   readonly onPress: () => void;
   readonly theme: SeatLayerVenue3DChromeViewProps['theme'];
@@ -165,7 +206,7 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   return <View pointerEvents="box-none" style={[styles.root, slots?.immersiveChromeContainer, sanitizeSeatLayerPickerStyle(props.style), styles.rootSafety]}>
     <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
-      <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} />
+      {props.backVisible ? <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} /> : null}
       {props.navigationLabel && props.onNavigation ? <VenueButton enabled={!props.disabled && props.navigationEnabled === true} kind="navigation" label={props.navigationLabel} onPress={props.onNavigation} rtl={rtl} slots={slots} theme={props.theme} /> : null}
     </View>
     <View pointerEvents="box-none" style={[styles.deck, { bottom: props.bottomInset }]}>
@@ -173,10 +214,16 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
         <Text numberOfLines={1} style={[styles.captionText, { color: props.theme.colors.text, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
       </View> : null}
       <View pointerEvents="box-none" style={[styles.controls, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
-        <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled} kind="reset" label={props.resetLabel} labelled onPress={props.onReset} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled && props.nextEnabled} kind="next" label={props.nextLabel} onPress={props.onNext} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled && props.recentreEnabled} kind="recentre" label={props.recentreLabel} onPress={props.onRecentre} rtl={rtl} slots={slots} theme={props.theme} />
+        {props.targeted ? <>
+          <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
+          {props.primaryVisible ? <VenueButton enabled={!props.disabled} kind="seatView" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} /> : null}
+          <VenueButton enabled={!props.disabled && props.nextEnabled} kind="next" label={props.nextLabel} onPress={props.onNext} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled && props.recentreEnabled} kind="recentre" label={props.recentreLabel} onPress={props.onRecentre} rtl={rtl} slots={slots} theme={props.theme} />
+        </> : <>
+          <VenueButton enabled={!props.disabled} kind="zoomOut" label={props.zoomOutLabel} onPress={props.onZoomOut} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled} kind="fit" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled} kind="zoomIn" label={props.zoomInLabel} onPress={props.onZoomIn} rtl={rtl} slots={slots} theme={props.theme} />
+        </>}
       </View>
     </View>
   </View>;
@@ -193,9 +240,10 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
   const theme = useMemo(() => resolveSeatLayerPickerImmersiveTheme(scope.resolvedTheme), [scope.resolvedTheme]);
   const slots = useMemo(() => resolveSeatLayerPickerStyles(scope.styles, props.slots), [props.slots, scope.styles]);
   const requestRef = useRef<Readonly<{
-    action: SeatLayerVenue3DAction | 'backOverride' | 'navigation';
+    action: SeatLayerVenue3DAction | 'backOverride' | 'navigation' | 'seatView' | 'zoomIn' | 'zoomOut' | 'fit';
     controller: ReturnType<typeof useSeatLayerPickerScope>['controller'];
     mode?: string;
+    seatId?: string;
     onBackToVenue?: () => Promise<unknown> | unknown;
     sessionId: number;
     runtimeSession?: string;
@@ -214,6 +262,17 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     } else if (request.action === 'navigation') {
       if (!request.mode || !canChangeNavigationMode(controller, current)) return undefined;
       await dispatchSeatLayerVenue3DNavigationMode(controller, request.mode);
+    } else if (request.action === 'seatView') {
+      if (!current || !request.seatId || current.map.view3DTargetSeatId !== request.seatId ||
+        current.capabilities.includes('seatView') !== true ||
+        !supportsSeatLayerPickerSurface(controller, ['native-chrome-contract-v1', 'seat-view-v1'], ['picker.openSeatView'])) return undefined;
+      await dispatchSeatLayerVenue3DSeatView(controller, request.seatId);
+    } else if (request.action === 'zoomIn' || request.action === 'zoomOut' || request.action === 'fit') {
+      const command = request.action === 'zoomIn' ? 'picker.zoomIn'
+        : request.action === 'zoomOut' ? 'picker.zoomOut' : 'picker.zoomToFit';
+      if (!canOwnVenue(controller, current) ||
+        !supportsSeatLayerPickerSurface(controller, ['native-chrome-contract-v1', 'zoom'], [command])) return undefined;
+      await dispatchSeatLayerVenue3DCameraAction(controller, request.action);
     } else {
       if (!canOwnVenue(controller, current)) return undefined;
       const plan = planSeatLayerVenue3DAction(request.action, current);
@@ -247,6 +306,8 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     run();
   };
   const navigationAvailable = canChangeNavigationMode(scope.controller, snapshot);
+  const seatViewAvailable = seats.targetSeatId !== undefined && snapshot.capabilities.includes('seatView') &&
+    supportsSeatLayerPickerSurface(scope.controller, ['native-chrome-contract-v1', 'seat-view-v1'], ['picker.openSeatView']);
   const moving = snapshot.map.view3DNavigationMode === 'pan';
   const sectionId = seats.target === undefined ? undefined : snapshot.sections.find((section) =>
     section.label === seats.target?.sectionLabel || section.displayLabel === seats.target?.sectionLabel,
@@ -261,27 +322,49 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     });
     run();
   };
+  const camera = (action: 'zoomIn' | 'zoomOut' | 'fit') => () => {
+    requestRef.current = Object.freeze({
+      action, controller: scope.controller, sessionId: scope.sessionId,
+      runtimeSession: snapshot.sessionId,
+    });
+    run();
+  };
+  const openSeatView = () => {
+    requestRef.current = Object.freeze({
+      action: 'seatView', controller: scope.controller, seatId: seats.targetSeatId,
+      sessionId: scope.sessionId, runtimeSession: snapshot.sessionId,
+    });
+    run();
+  };
+  const targeted = seats.targetSeatId !== undefined;
   return <Animated.View style={[styles.animatedRoot, { opacity }]} pointerEvents="box-none">
     <SeatLayerVenue3DChromeView
+      backVisible={targeted}
       backLabel={scope.strings.translate('backToVenue')}
       bottomInset={bottomInset}
       caption={seatLayerVenue3DCaption(seats.target, sectionId, scope.strings.translate, scope.strings.translate('viewFromYourSeat'))}
       disabled={scope.isBusy || busy}
-      nextEnabled={seats.next !== undefined}
+      nextEnabled={seats.nextSeatId !== undefined}
       nextLabel={scope.strings.translate('nextSeat')}
       onBack={act('back')}
       onNext={act('next')}
       onPrevious={act('previous')}
       onRecentre={act('recentre')}
-      onReset={act('reset')}
+      onPrimary={targeted ? openSeatView : camera('fit')}
+      onZoomIn={camera('zoomIn')}
+      onZoomOut={camera('zoomOut')}
       navigationEnabled={navigationAvailable}
       navigationLabel={navigationAvailable ? scope.strings.translate(moving ? 'moveVenue' : 'rotateVenue') : undefined}
       onNavigation={navigationAvailable ? changeNavigation : undefined}
-      previousEnabled={seats.previous !== undefined}
+      previousEnabled={seats.previousSeatId !== undefined}
       previousLabel={scope.strings.translate('previousSeat')}
-      recentreEnabled={seats.target !== undefined}
+      recentreEnabled={targeted}
       recentreLabel={scope.strings.translate('recentre')}
-      resetLabel={scope.strings.translate('openVenue360')}
+      primaryVisible={!targeted || seatViewAvailable}
+      primaryLabel={scope.strings.translate(targeted ? 'viewFromHere' : 'fitVenue')}
+      targeted={targeted}
+      zoomInLabel="Zoom in"
+      zoomOutLabel="Zoom out"
       slots={slots}
       style={props.style}
       theme={theme}
@@ -303,10 +386,21 @@ const styles = {
   chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: 9, width: 9 } as ViewStyle,
   controls: { alignItems: 'center', gap: 8, justifyContent: 'center' } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,
+  focusCorner: { borderLeftWidth: 2, borderTopWidth: 2, height: 6, position: 'absolute', width: 6 } as ViewStyle,
+  focusIcon: { height: 16, width: 16 } as ViewStyle,
   labelButton: { paddingHorizontal: 12 } as ViewStyle,
-  navigation: { borderRadius: 9, borderWidth: 2, height: 15, width: 15 } as ViewStyle,
-  recentre: { borderRadius: 8, borderWidth: 2, height: 14, width: 14 } as ViewStyle,
-  reset: { borderRadius: 10, borderWidth: 2, height: 17, width: 17 } as ViewStyle,
+  orbitArrowLeft: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderRightWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, bottom: 0, height: 0, left: 0, position: 'absolute', width: 0 } as ViewStyle,
+  orbitArrowRight: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderLeftWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, position: 'absolute', right: 0, top: 0, width: 0 } as ViewStyle,
+  orbitBottomArc: { borderBottomWidth: 2, borderRadius: 9, bottom: 1, height: 10, left: 1, position: 'absolute', width: 16 } as ViewStyle,
+  orbitIcon: { height: 16, width: 18 } as ViewStyle,
+  orbitTopArc: { borderRadius: 9, borderTopWidth: 2, height: 10, left: 1, position: 'absolute', top: 1, width: 16 } as ViewStyle,
+  panArrowDown: { borderLeftColor: 'transparent', borderLeftWidth: 3, borderRightColor: 'transparent', borderRightWidth: 3, borderTopWidth: 4, bottom: 0, height: 0, left: 6, position: 'absolute', width: 0 } as ViewStyle,
+  panArrowLeft: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderRightWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, left: 0, position: 'absolute', top: 6, width: 0 } as ViewStyle,
+  panArrowRight: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderLeftWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, position: 'absolute', right: 0, top: 6, width: 0 } as ViewStyle,
+  panArrowUp: { borderBottomWidth: 4, borderLeftColor: 'transparent', borderLeftWidth: 3, borderRightColor: 'transparent', borderRightWidth: 3, height: 0, left: 6, position: 'absolute', top: 0, width: 0 } as ViewStyle,
+  panHorizontal: { height: 2, left: 3, position: 'absolute', top: 8, width: 12 } as ViewStyle,
+  panIcon: { height: 18, width: 18 } as ViewStyle,
+  panVertical: { height: 12, left: 8, position: 'absolute', top: 3, width: 2 } as ViewStyle,
   root: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   rootSafety: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
 } as const;

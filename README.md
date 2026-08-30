@@ -13,9 +13,9 @@ availability, create temporary holds, find best-available seats, and hand
 secure booking to your trusted server through a typed TypeScript API.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/mobile/) ·
-[SeatLayer reserved-seating platform](https://seatlayer.io/) ·
-[Buyer seat-map demo (web)](https://app.seatlayer.io/demo/play) ·
+[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
+[SeatLayer SDK and API overview](https://seatlayer.io/developers/) ·
+[Buyer seat-map demo (web)](https://app.seatlayer.io/demo/play/grand-theatre) ·
 [SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
 [SeatLayer Android seat map SDK](https://github.com/seatlayer/seatlayer-android) ·
 [SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
@@ -184,7 +184,16 @@ actions.
     layout: 'adaptive',
     chrome: { priceLegend: false },
     haptics: true,
+    languages: ['en-GB', 'fr-FR'],
+    pricing: {
+      formatter: (amount, currency) =>
+        new Intl.NumberFormat('fr-FR', {
+          style: 'currency',
+          currency,
+        }).format(amount),
+    },
   }}
+  locale="fr-FR"
   strings={{ holdAndCheckout: 'Continue' }}
   styles={{
     headerContainer: { backgroundColor: '#172033' },
@@ -195,6 +204,26 @@ actions.
 />
 ```
 
+The customization layers have distinct ownership:
+
+- `options` controls session behaviour and which ready-made parts are visible.
+- `themeMode` and `themeOptions` map app colours, typography, radii, logos, and
+  map colours into one resolved theme.
+- `locale` selects generated native wording; `strings` overrides any individual
+  label or plural formatter. `options.languages` supplies the runtime language
+  choices.
+- `styles` provides 62 typed, aesthetic-only slots. Colour, type, borders,
+  radii, shadows, and opacity may change; SDK-owned placement, safe areas,
+  viewport insets, and 44-point minimum targets remain intact.
+- `builders` replaces any of 25 complete parts and receives the live scope plus
+  `defaultChild`. Use a builder when structure or placement must change.
+
+`options.pricing.formatter` formats every native amount: confirmation, ticket
+rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
+It changes presentation only. Runtime selection, hold totals, and the trusted
+server checkout remain authoritative; the SDK never recalculates inventory
+prices from display text.
+
 ### 3. Compose a custom layout
 
 `SeatLayerPickerScope` owns one command controller and one latest immutable
@@ -202,21 +231,35 @@ snapshot. The standalone parts below read the same scoped theme, capabilities,
 presentation state, and actions.
 
 ```tsx
+import { View } from 'react-native';
 import {
   SeatLayerCartSheet,
   SeatLayerDockBar,
   SeatLayerFloorStrip,
+  SeatLayerMapControls,
+  SeatLayerPickerAccessibilityFilters,
   SeatLayerPickerChart,
   SeatLayerPickerHeader,
+  SeatLayerPickerHoldCountdown,
   SeatLayerPickerScope,
+  SeatLayerPickerViewModeControl,
   SeatLayerPriceLegend,
 } from '@seatlayer/react-native';
 
 <SeatLayerPickerScope configuration={configuration} themeMode="auto">
   <SeatLayerPickerHeader />
+  <SeatLayerPickerHoldCountdown />
   <SeatLayerPriceLegend />
   <SeatLayerFloorStrip />
-  <SeatLayerPickerChart style={{ flex: 1 }} />
+  <View style={{ flex: 1, position: 'relative' }}>
+    <SeatLayerPickerChart style={{ flex: 1 }} />
+    <SeatLayerPickerViewModeControl />
+    <SeatLayerMapControls
+      includeViewModeControl={false}
+      showAccessibilityControl={false}
+    />
+    <SeatLayerPickerAccessibilityFilters />
+  </View>
   <SeatLayerDockBar />
   <SeatLayerCartSheet
     expanded={isCartExpanded}
@@ -230,6 +273,14 @@ Call `useSeatLayerPicker()` inside the scope when your own component needs the
 latest snapshot, resolved theme, capability availability, presentation state,
 or scoped actions.
 
+The same scope also supports standalone confirmation and seat-view actions,
+best seats, section navigation, floor selection, GA/table prompts, dense cart
+lists, hold-lapse recovery, loading/error/empty states, attribution, venue 3D,
+and panorama chrome. Custom ticket trays can reuse the exported
+`resolveDenseTicketLines`, `groupTicketLines`, `runSeatsLabel`, and
+`ticketIsGroupable` utilities instead of reimplementing the pick-order and
+folding rules.
+
 ## Run the example app
 
 ```bash
@@ -242,7 +293,7 @@ customised picker, and scoped custom-layout paths. Set
 `EXPO_PUBLIC_SEATLAYER_EVENT` and, for public startup,
 `EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the event is absent,
 the example shows setup guidance and does not mount a picker. The browser-based
-[buyer seat-map demo](https://app.seatlayer.io/demo/play) is a preview of the
+[buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) is a preview of the
 wider SeatLayer buyer experience, not a React Native app.
 
 ## Security boundary
@@ -340,7 +391,7 @@ alongside `react-native-webview`, create a controller with
 `useSeatLayerController()`, and render `<SeatLayerView>` with your event key in a
 full-screen or fixed-height parent. The quick start above is a complete
 interactive seating chart with live availability; the
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/mobile/)
+[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
 covers lifecycle, commands, and events in depth.
 
 ### Is this a native seat map component?
@@ -386,7 +437,7 @@ outputs from one build.
 
 ## Continue your React Native integration
 
-- [Follow the React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/mobile/)
+- [Follow the React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
   for setup, lifecycle, commands, events, and runtime requirements.
 - [Connect seat holds to secure server-side checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/)
   without exposing booking credentials in the app.

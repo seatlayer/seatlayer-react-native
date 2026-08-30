@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { I18nManager, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 
-import { formatSeatLayerPickerMoney } from './format';
 import { blendSeatLayerPickerColor, parseSeatLayerPickerColor, pickerColor } from './colors';
 import { SeatLayerPickerSeatTierSelector } from './SeatLayerPickerDecisionPrompts';
 import {
   SeatLayerPickerConfirmationState,
+  seatLayerPickerConfirmationPrice,
   type SeatLayerPickerConfirmationActionEvent,
   type SeatLayerPickerConfirmationActions,
   type SeatLayerPickerConfirmationModel,
@@ -43,7 +43,10 @@ function WideCard({ model, props }: Readonly<{ model: SeatLayerPickerConfirmatio
   const wheelchair = Boolean(seat.wheelchairSpaceType) || (seat.accessibility ?? []).some((value) => value.toLocaleLowerCase().includes('wheelchair'));
   const limitedMessage = clean(seat.commercial?.note);
   const accessibilityMessage = wheelchair ? scope.strings.accessNeed('wheelchair') : undefined;
-  const price = typeof seat.price === 'number' && Number.isFinite(seat.price) ? formatSeatLayerPickerMoney(seat.price, seat.currency ?? scope.snapshot!.currency) : undefined;
+  const selectedPrice = seatLayerPickerConfirmationPrice(seat, tierId);
+  const price = selectedPrice
+    ? scope.formatMoney(selectedPrice.amount, selectedPrice.currency ?? scope.snapshot?.currency ?? 'USD')
+    : undefined;
   const rtl = I18nManager.isRTL;
   const stackInspection = parentWidth !== undefined && parentWidth < 330;
   return <View style={nativeStyles.center}><View onLayout={(event) => setParentWidth(layoutWidth(event))} style={[nativeStyles.hit, { maxHeight: Math.max(0, height * .72) }]}><View style={[nativeStyles.card, { backgroundColor: scope.resolvedTheme.colors.surface, borderColor: scope.resolvedTheme.colors.divider, borderRadius: seatLayerPickerTokens.radius.card }, styles.confirmCardContainer, sanitizeSeatLayerPickerStyle(props.style)]}>

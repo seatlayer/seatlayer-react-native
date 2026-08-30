@@ -161,9 +161,10 @@ function FloorChip({ label, selected, disabled, busy, compact, paint, target, sc
         height: paint,
         backgroundColor: selected ? scope.resolvedTheme.colors.accent : blendSeatLayerPickerColor(scope.resolvedTheme.colors.text, scope.resolvedTheme.colors.surface, .04, scope.resolvedTheme.colors.surface),
         borderColor: selected ? scope.resolvedTheme.colors.accent : scope.resolvedTheme.colors.divider,
+        borderRadius: scope.resolvedTheme.radii.chip,
       },
       styles.floorChip,
-      { height: paint, borderRadius: scope.resolvedTheme.radii.chip },
+      { height: paint },
     ]}>
       <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.label, { color: selected ? scope.resolvedTheme.colors.onAccent : scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily, fontSize: compact ? seatLayerPickerTokens.size.legendChipFontSize : 12 }, styles.floorChipText]}>{label}</Text>
     </View>

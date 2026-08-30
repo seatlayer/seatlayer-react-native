@@ -1,35 +1,22 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  type GestureResponderEvent,
-  I18nManager,
-  Pressable,
-  ScrollView,
-  type StyleProp,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-  type ViewStyle,
+  type GestureResponderEvent, I18nManager, Pressable, ScrollView, type StyleProp,
+  StyleSheet, Text, useWindowDimensions, View, type ViewStyle,
 } from "react-native";
 
-import { seatLayerPickerEnglishAccessNeeds } from "./locale";
+import { seatLayerAccessNeedsCapability } from "./availability";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { SeatLayerPickerPromptModal } from "./promptModal";
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
 import { seatLayerPickerColorAlpha } from "./colors";
 import {
-  resolveSeatLayerPickerStyles,
-  sanitizeSeatLayerPickerStyle,
-  type SeatLayerPickerStyles,
-  type SeatLayerPickerThemeStyles,
+  resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle,
+  type SeatLayerPickerStyles, type SeatLayerPickerThemeStyles,
 } from "./styles";
 import { supportsSeatLayerPickerSurface } from "./surfaces";
 import type { SeatLayerPickerSnapshot } from "./models";
 import { seatLayerPickerTokens } from "./tokens.g";
-import {
-  normalizeSeatLayerPickerSafeAreaInsets,
-  type SeatLayerPickerSafeAreaInsetInput,
-} from "./safeAreaInsets";
+import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsetInput } from "./safeAreaInsets";
 
 type AccessibilitySlots = Pick<
   SeatLayerPickerStyles,
@@ -42,7 +29,6 @@ type AccessibilitySlots = Pick<
   | "accessibilityAction"
   | "accessibilityActionText"
 >;
-
 type AccessNeed = Readonly<{ key: string; count?: number }>;
 type Draft = Readonly<
   { keys: ReadonlySet<string>; limited: boolean; colorblind: boolean }
@@ -72,21 +58,22 @@ export function canRenderSeatLayerPickerAccessibilityFilters(
   controller: ReturnType<typeof useSeatLayerPickerScope>["controller"],
   snapshot: SeatLayerPickerSnapshot | undefined,
 ): boolean {
-  return supportsSnapshotAccessibilityOperation(
+  const inventoryOffersAccessNeeds = controller.mapController
+    .supportsPickerCapability(seatLayerAccessNeedsCapability) &&
+    (snapshot?.map.accessNeeds?.length ?? 0) > 0;
+  return (inventoryOffersAccessNeeds && supportsSnapshotAccessibilityOperation(
     controller, snapshot, "accessibilityFilter", "picker.setAccessibilityFilter",
-  ) || supportsSnapshotAccessibilityOperation(
+  )) || supportsSnapshotAccessibilityOperation(
     controller, snapshot, "limitedViewFilter", "picker.setLimitedViewFilter",
   ) || supportsHelloAccessibilityOperation(controller, "picker.setColorblindSafe");
 }
 
-/** Runtime taxonomy wins only when it actually supplies buyer choices. */
+/** Seat-type choices are inventory truth; never invent absent event options. */
 export function resolveSeatLayerPickerAccessNeeds(
   reported: readonly Readonly<{ key: string; count?: number }>[],
   hasRuntimeTaxonomy: boolean,
 ): readonly Readonly<{ key: string; count?: number }>[] {
-  return hasRuntimeTaxonomy && reported.length > 0
-    ? reported
-    : Object.freeze(Object.keys(seatLayerPickerEnglishAccessNeeds).map((key) => Object.freeze({ key })));
+  return hasRuntimeTaxonomy ? reported : Object.freeze([]);
 }
 
 export type SeatLayerPickerAccessibilityMutation = Readonly<
@@ -112,6 +99,15 @@ export function planSeatLayerPickerAccessibilityMutations(
     plan.push({ kind: "colorblind", on: draft.colorblind });
   }
   return Object.freeze(plan);
+}
+
+/** A filtering action should reveal the seats it just narrowed the chart to. */
+export function shouldFocusSeatLayerAccessibilityResults(
+  plan: readonly SeatLayerPickerAccessibilityMutation[],
+): boolean {
+  return plan.some((mutation) =>
+    (mutation.kind === "accessibility" && mutation.keys.length > 0) ||
+    (mutation.kind === "limited" && mutation.on));
 }
 
 export interface SeatLayerPickerAccessibilityFiltersProps {
@@ -292,9 +288,9 @@ function SeatLayerPickerAccessibilityFiltersView(
             backgroundColor: pressed
               ? props.theme.colors.background
               : props.theme.colors.surface,
+            borderRadius: seatLayerPickerTokens.radius.button,
           },
           slots.accessibilityControlButton,
-          { borderRadius: seatLayerPickerTokens.radius.button },
         ]}
       >
         <SeatLayerPickerAccessIcon
@@ -435,9 +431,9 @@ function SeatLayerPickerAccessibilityFiltersView(
                           backgroundColor: selected
                             ? props.theme.colors.accent
                             : props.theme.colors.surface,
+                          borderRadius: seatLayerPickerTokens.radius.button,
                         },
                         slots.accessibilityNeedButton,
-                        { borderRadius: seatLayerPickerTokens.radius.button },
                         pressed && !unavailable ? { opacity: 0.84 } : null,
                         unavailable ? { opacity: 0.5 } : null,
                       ]}
@@ -475,9 +471,8 @@ function SeatLayerPickerAccessibilityFiltersView(
                   onPress={dismiss}
                   style={[
                     styles.cancel,
-                    { borderColor: props.theme.colors.divider },
+                    { borderColor: props.theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button },
                     slots.accessibilityAction,
-                    { borderRadius: seatLayerPickerTokens.radius.button },
                   ]}
                 >
                   <Text
@@ -497,9 +492,8 @@ function SeatLayerPickerAccessibilityFiltersView(
                   onPress={apply}
                   style={[
                     styles.apply,
-                    { backgroundColor: props.theme.colors.accent },
+                    { backgroundColor: props.theme.colors.accent, borderRadius: seatLayerPickerTokens.radius.button },
                     slots.accessibilityAction,
-                    { borderRadius: seatLayerPickerTokens.radius.button },
                   ]}
                 >
                   <Text
@@ -588,15 +582,14 @@ export function SeatLayerPickerAccessibilityFilters(
   const colorblindAvailable = supportsHelloAccessibilityOperation(
     scope.controller, "picker.setColorblindSafe",
   );
-  const ready = accessibilityFilterAvailable || limitedAvailable || colorblindAvailable;
   const accessNeedsAvailable = scope.controller.mapController
-    .supportsPickerCapability("access-needs-v1");
-  if (!ready) return null;
+    .supportsPickerCapability(seatLayerAccessNeedsCapability);
   const reported = scope.snapshot?.map.accessNeeds ?? [];
-  // A capability only makes a non-empty runtime taxonomy authoritative. An
-  // empty list cannot leave buyers without the supported fallback choices.
   const usesReportedNeeds = accessNeedsAvailable && reported.length > 0;
   const needs: readonly AccessNeed[] = resolveSeatLayerPickerAccessNeeds(reported, accessNeedsAvailable);
+  const accessibilityAvailable = accessibilityFilterAvailable && needs.length > 0;
+  const ready = accessibilityAvailable || limitedAvailable || colorblindAvailable;
+  if (!ready) return null;
   const apply = async (
     draft: Draft,
     initial: Draft,
@@ -611,6 +604,7 @@ export function SeatLayerPickerAccessibilityFilters(
     });
     const available = availability(scope.snapshot);
     const plan = planSeatLayerPickerAccessibilityMutations(draft, initial, available);
+    const shouldFocusSeats = shouldFocusSeatLayerAccessibilityResults(plan);
     const snapshotSession = scope.snapshot?.sessionId;
     const current = () => session.current === activeSession && isCurrent() &&
       controller === scope.controller && controller.getSnapshot()?.sessionId === snapshotSession;
@@ -628,6 +622,17 @@ export function SeatLayerPickerAccessibilityFilters(
         } else {
           await controller.setColorblindSafe(mutation.on);
         }
+        if (!current()) return false;
+      }
+      if (
+        shouldFocusSeats &&
+        current() &&
+        supportsSeatLayerPickerSurface(
+          controller, [nativeChromeCapability], ["picker.setRung"],
+        ) &&
+        controller.getSnapshot()?.map.rung !== "seats"
+      ) {
+        await controller.setRung("seats");
         if (!current()) return false;
       }
       return current();
@@ -663,7 +668,7 @@ export function SeatLayerPickerAccessibilityFilters(
       {...props}
       active={scope.snapshot?.map.accessibilityFilter ?? []}
       activeCount={activeCount}
-      accessibilityAvailable={accessibilityFilterAvailable}
+      accessibilityAvailable={accessibilityAvailable}
       apply={apply}
       applyLabel={scope.strings.translate("applyFilters")}
       busy={scope.isBusy}

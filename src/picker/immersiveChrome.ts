@@ -104,21 +104,41 @@ export function seatLayerPanoramaHasContent(view: SeatLayerSeatView | undefined)
 }
 
 export function seatLayerVenue3DNeighbours(snapshot: SeatLayerPickerSnapshot | undefined): Readonly<{
-  previous?: SelectedSeat;
+  previousSeatId?: string;
   target?: SelectedSeat;
-  next?: SelectedSeat;
+  targetSeatId?: string;
+  nextSeatId?: string;
 }> {
   const targetId = snapshot?.map.view3DTargetSeatId;
   const index = targetId === undefined || snapshot === undefined
     ? -1
     : snapshot.selection.findIndex((seat) => seat.id === targetId);
+  const reportsRowNeighbours = snapshot?.map.view3DPreviousSeatId !== undefined ||
+    snapshot?.map.view3DNextSeatId !== undefined;
   return Object.freeze({
-    previous: index > 0 ? snapshot?.selection[index - 1] : undefined,
-    target: index >= 0 ? snapshot?.selection[index] : undefined,
-    next: index >= 0 && index + 1 < (snapshot?.selection.length ?? 0)
-      ? snapshot?.selection[index + 1]
-      : undefined,
+    previousSeatId: reportsRowNeighbours
+      ? snapshot?.map.view3DPreviousSeatId ?? undefined
+      : index > 0 ? snapshot?.selection[index - 1]?.id : undefined,
+    target: snapshot?.map.view3DTargetSeat ?? (index >= 0 ? snapshot?.selection[index] : undefined),
+    targetSeatId: targetId,
+    nextSeatId: reportsRowNeighbours
+      ? snapshot?.map.view3DNextSeatId ?? undefined
+      : index >= 0 && index + 1 < (snapshot?.selection.length ?? 0)
+        ? snapshot?.selection[index + 1]?.id
+        : undefined,
   });
+}
+
+/** True while 3D is below its whole-venue camera, even before a seat is selected. */
+export function seatLayerVenue3DHasFocusedView(
+  snapshot: SeatLayerPickerSnapshot | undefined,
+): boolean {
+  const map = snapshot?.map;
+  if (map?.view3DFocusedSectionId !== undefined) {
+    return map.view3DTargetSeatId !== undefined || map.view3DFocusedSectionId !== null;
+  }
+  return map?.view3DTargetSeatId !== undefined || map?.focusedSectionId !== undefined ||
+    map?.focusedSection !== undefined || map?.rung === 'seats';
 }
 
 /** Exact contract payload plan; unavailable boundaries deliberately return nothing. */
@@ -128,18 +148,21 @@ export function planSeatLayerVenue3DAction(
 ): SeatLayerVenue3DActionPlan | undefined {
   if (snapshot?.map.buyerView !== 'venue3d') return undefined;
   const seats = seatLayerVenue3DNeighbours(snapshot);
-  if (action === 'back') return Object.freeze({ view: 'map' });
+  if (action === 'back') {
+    return seatLayerVenue3DHasFocusedView(snapshot)
+      ? Object.freeze({ view: 'venue3d', options: Object.freeze({ resetView: true }) })
+      : Object.freeze({ view: 'map' });
+  }
   if (action === 'reset') return Object.freeze({ view: 'venue3d', options: Object.freeze({ resetView: true }) });
-  if (action === 'previous' && seats.previous) {
-    return Object.freeze({ view: 'venue3d', options: Object.freeze({ flyToSeatId: seats.previous.id }) });
+  if (action === 'previous' && seats.previousSeatId) {
+    return Object.freeze({ view: 'venue3d', options: Object.freeze({ flyToSeatId: seats.previousSeatId }) });
   }
-  if (action === 'next' && seats.next) {
-    return Object.freeze({ view: 'venue3d', options: Object.freeze({ flyToSeatId: seats.next.id }) });
+  if (action === 'next' && seats.nextSeatId) {
+    return Object.freeze({ view: 'venue3d', options: Object.freeze({ flyToSeatId: seats.nextSeatId }) });
   }
-  if (action === 'recentre' && seats.target) {
+  if (action === 'recentre' && seats.targetSeatId) {
     return Object.freeze({
-      view: 'venue3d',
-      options: Object.freeze({ flyToSeatId: seats.target.id, resetView: true }),
+      view: 'venue3d', options: Object.freeze({ flyToSeatId: seats.targetSeatId, resetView: true }),
     });
   }
   return undefined;
@@ -174,6 +197,28 @@ export async function dispatchSeatLayerVenue3DNavigationMode(
   mode: string,
 ): Promise<void> {
   await controller.setVenue3DNavigationMode(mode);
+}
+
+/** The target panorama uses the existing lazy seat-view command. */
+export async function dispatchSeatLayerVenue3DSeatView(
+  controller: Readonly<{ openSeatView(seatId: string): Promise<unknown> }>,
+  seatId: string,
+): Promise<void> {
+  await controller.openSeatView(seatId);
+}
+
+/** 3D zoom/fit commands route to the mounted immersive scene in the runtime. */
+export async function dispatchSeatLayerVenue3DCameraAction(
+  controller: Readonly<{
+    zoomIn(): Promise<unknown>;
+    zoomOut(): Promise<unknown>;
+    zoomToFit(): Promise<unknown>;
+  }>,
+  action: 'zoomIn' | 'zoomOut' | 'fit',
+): Promise<void> {
+  if (action === 'zoomIn') await controller.zoomIn();
+  else if (action === 'zoomOut') await controller.zoomOut();
+  else await controller.zoomToFit();
 }
 
 /** The host replacement is deliberately isolated from the built-in map command. */

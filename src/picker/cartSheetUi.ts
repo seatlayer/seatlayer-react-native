@@ -57,11 +57,16 @@ export function visibleSeatLayerCartRuns(
   );
 }
 
-export function cartSheetMaximumBodyHeight(viewportHeight: unknown, bottomInset: unknown): number {
+export function cartSheetMaximumBodyHeight(
+  viewportHeight: unknown,
+  bottomInset: unknown,
+  peekHeight: unknown = seatLayerPickerTokens.size.peekHeight,
+): number {
   const viewport = finiteNonNegative(viewportHeight);
   const inset = finiteNonNegative(bottomInset);
+  const peek = finiteNonNegative(peekHeight);
   const maxSheet = viewport * seatLayerPickerTokens.size.sheetMaxHeightFraction;
-  return Math.max(0, maxSheet - seatLayerPickerTokens.size.peekHeight - inset);
+  return Math.max(0, maxSheet - peek - inset);
 }
 
 export function finiteNonNegative(value: unknown): number {

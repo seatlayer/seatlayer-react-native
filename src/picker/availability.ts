@@ -1,5 +1,14 @@
 import type { SeatLayerPickerSnapshot } from "./models";
 
+/** Advertised by a runtime that can re-read live availability. */
+export const seatLayerAvailabilityRefreshCapability = "availability-refresh-v1";
+
+/** Advertised by a runtime that reports its access-needs taxonomy. */
+export const seatLayerAccessNeedsCapability = "access-needs-v1";
+
+/** Advertised by a runtime that can hold the current selection without checkout. */
+export const seatLayerHoldSelectionCapability = "hold-selection-v1";
+
 export interface SeatLayerPickerAvailabilityOutcome {
   readonly refreshed: boolean;
   readonly lostLabels: readonly string[];
