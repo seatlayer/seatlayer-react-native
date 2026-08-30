@@ -15,7 +15,9 @@ import {
   planSeatLayerVenue3DAction,
   dispatchSeatLayerVenue3DAction,
   dispatchSeatLayerVenue3DBackOverride,
+  dispatchSeatLayerVenue3DCameraAction,
   dispatchSeatLayerVenue3DNavigationMode,
+  dispatchSeatLayerVenue3DSeatView,
   resolveSeatLayerPickerImmersiveTheme,
   seatLayerImmersiveDuration,
   seatLayerImmersiveInsetPlan,
@@ -58,11 +60,16 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly topInset: number;
   readonly bottomInset: number;
   readonly caption?: string;
+  readonly backVisible: boolean;
   readonly backLabel: string;
-  readonly resetLabel: string;
+  readonly targeted: boolean;
+  readonly primaryVisible: boolean;
+  readonly primaryLabel: string;
   readonly previousLabel: string;
   readonly nextLabel: string;
   readonly recentreLabel: string;
+  readonly zoomInLabel: string;
+  readonly zoomOutLabel: string;
   readonly navigationLabel?: string;
   readonly previousEnabled: boolean;
   readonly nextEnabled: boolean;
@@ -72,8 +79,10 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly onBack: () => void;
   readonly onPrevious: () => void;
   readonly onNext: () => void;
-  readonly onReset: () => void;
+  readonly onPrimary: () => void;
   readonly onRecentre: () => void;
+  readonly onZoomIn: () => void;
+  readonly onZoomOut: () => void;
   readonly onNavigation?: () => void;
 }
 
@@ -147,10 +156,13 @@ function PanIcon({ color }: { readonly color: string }): React.ReactElement {
   </View>;
 }
 
-function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next' | 'reset' | 'recentre' | 'navigation'; readonly color: string; readonly rtl: boolean }): React.ReactElement {
-  if (kind === 'reset') return <OrbitIcon color={color} />;
-  if (kind === 'recentre') return <FocusIcon color={color} />;
+function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next' | 'seatView' | 'fit' | 'recentre' | 'navigation' | 'zoomIn' | 'zoomOut'; readonly color: string; readonly rtl: boolean }): React.ReactElement {
+  if (kind === 'seatView') return <OrbitIcon color={color} />;
+  if (kind === 'fit' || kind === 'recentre') return <FocusIcon color={color} />;
   if (kind === 'navigation') return <PanIcon color={color} />;
+  if (kind === 'zoomIn' || kind === 'zoomOut') {
+    return <Text style={{ color, fontSize: 22, fontWeight: '500', lineHeight: 24 }}>{kind === 'zoomIn' ? '+' : '−'}</Text>;
+  }
   const pointsRight = (kind === 'next') !== rtl;
   return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
 }
@@ -159,7 +171,7 @@ function VenueButton({
   label, kind, enabled, onPress, theme, slots, rtl, labelled = false,
 }: {
   readonly label: string;
-  readonly kind: 'back' | 'previous' | 'next' | 'reset' | 'recentre' | 'navigation';
+  readonly kind: 'back' | 'previous' | 'next' | 'seatView' | 'fit' | 'recentre' | 'navigation' | 'zoomIn' | 'zoomOut';
   readonly enabled: boolean;
   readonly onPress: () => void;
   readonly theme: SeatLayerVenue3DChromeViewProps['theme'];
@@ -194,7 +206,7 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   return <View pointerEvents="box-none" style={[styles.root, slots?.immersiveChromeContainer, sanitizeSeatLayerPickerStyle(props.style), styles.rootSafety]}>
     <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
-      <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} />
+      {props.backVisible ? <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} /> : null}
       {props.navigationLabel && props.onNavigation ? <VenueButton enabled={!props.disabled && props.navigationEnabled === true} kind="navigation" label={props.navigationLabel} onPress={props.onNavigation} rtl={rtl} slots={slots} theme={props.theme} /> : null}
     </View>
     <View pointerEvents="box-none" style={[styles.deck, { bottom: props.bottomInset }]}>
@@ -202,10 +214,16 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
         <Text numberOfLines={1} style={[styles.captionText, { color: props.theme.colors.text, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
       </View> : null}
       <View pointerEvents="box-none" style={[styles.controls, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
-        <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled} kind="reset" label={props.resetLabel} labelled onPress={props.onReset} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled && props.nextEnabled} kind="next" label={props.nextLabel} onPress={props.onNext} rtl={rtl} slots={slots} theme={props.theme} />
-        <VenueButton enabled={!props.disabled && props.recentreEnabled} kind="recentre" label={props.recentreLabel} onPress={props.onRecentre} rtl={rtl} slots={slots} theme={props.theme} />
+        {props.targeted ? <>
+          <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
+          {props.primaryVisible ? <VenueButton enabled={!props.disabled} kind="seatView" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} /> : null}
+          <VenueButton enabled={!props.disabled && props.nextEnabled} kind="next" label={props.nextLabel} onPress={props.onNext} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled && props.recentreEnabled} kind="recentre" label={props.recentreLabel} onPress={props.onRecentre} rtl={rtl} slots={slots} theme={props.theme} />
+        </> : <>
+          <VenueButton enabled={!props.disabled} kind="zoomOut" label={props.zoomOutLabel} onPress={props.onZoomOut} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled} kind="fit" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} />
+          <VenueButton enabled={!props.disabled} kind="zoomIn" label={props.zoomInLabel} onPress={props.onZoomIn} rtl={rtl} slots={slots} theme={props.theme} />
+        </>}
       </View>
     </View>
   </View>;
@@ -222,9 +240,10 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
   const theme = useMemo(() => resolveSeatLayerPickerImmersiveTheme(scope.resolvedTheme), [scope.resolvedTheme]);
   const slots = useMemo(() => resolveSeatLayerPickerStyles(scope.styles, props.slots), [props.slots, scope.styles]);
   const requestRef = useRef<Readonly<{
-    action: SeatLayerVenue3DAction | 'backOverride' | 'navigation';
+    action: SeatLayerVenue3DAction | 'backOverride' | 'navigation' | 'seatView' | 'zoomIn' | 'zoomOut' | 'fit';
     controller: ReturnType<typeof useSeatLayerPickerScope>['controller'];
     mode?: string;
+    seatId?: string;
     onBackToVenue?: () => Promise<unknown> | unknown;
     sessionId: number;
     runtimeSession?: string;
@@ -243,6 +262,17 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     } else if (request.action === 'navigation') {
       if (!request.mode || !canChangeNavigationMode(controller, current)) return undefined;
       await dispatchSeatLayerVenue3DNavigationMode(controller, request.mode);
+    } else if (request.action === 'seatView') {
+      if (!current || !request.seatId || current.map.view3DTargetSeatId !== request.seatId ||
+        current.capabilities.includes('seatView') !== true ||
+        !supportsSeatLayerPickerSurface(controller, ['native-chrome-contract-v1', 'seat-view-v1'], ['picker.openSeatView'])) return undefined;
+      await dispatchSeatLayerVenue3DSeatView(controller, request.seatId);
+    } else if (request.action === 'zoomIn' || request.action === 'zoomOut' || request.action === 'fit') {
+      const command = request.action === 'zoomIn' ? 'picker.zoomIn'
+        : request.action === 'zoomOut' ? 'picker.zoomOut' : 'picker.zoomToFit';
+      if (!canOwnVenue(controller, current) ||
+        !supportsSeatLayerPickerSurface(controller, ['native-chrome-contract-v1', 'zoom'], [command])) return undefined;
+      await dispatchSeatLayerVenue3DCameraAction(controller, request.action);
     } else {
       if (!canOwnVenue(controller, current)) return undefined;
       const plan = planSeatLayerVenue3DAction(request.action, current);
@@ -276,6 +306,8 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     run();
   };
   const navigationAvailable = canChangeNavigationMode(scope.controller, snapshot);
+  const seatViewAvailable = seats.targetSeatId !== undefined && snapshot.capabilities.includes('seatView') &&
+    supportsSeatLayerPickerSurface(scope.controller, ['native-chrome-contract-v1', 'seat-view-v1'], ['picker.openSeatView']);
   const moving = snapshot.map.view3DNavigationMode === 'pan';
   const sectionId = seats.target === undefined ? undefined : snapshot.sections.find((section) =>
     section.label === seats.target?.sectionLabel || section.displayLabel === seats.target?.sectionLabel,
@@ -290,27 +322,49 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     });
     run();
   };
+  const camera = (action: 'zoomIn' | 'zoomOut' | 'fit') => () => {
+    requestRef.current = Object.freeze({
+      action, controller: scope.controller, sessionId: scope.sessionId,
+      runtimeSession: snapshot.sessionId,
+    });
+    run();
+  };
+  const openSeatView = () => {
+    requestRef.current = Object.freeze({
+      action: 'seatView', controller: scope.controller, seatId: seats.targetSeatId,
+      sessionId: scope.sessionId, runtimeSession: snapshot.sessionId,
+    });
+    run();
+  };
+  const targeted = seats.targetSeatId !== undefined;
   return <Animated.View style={[styles.animatedRoot, { opacity }]} pointerEvents="box-none">
     <SeatLayerVenue3DChromeView
+      backVisible={targeted}
       backLabel={scope.strings.translate('backToVenue')}
       bottomInset={bottomInset}
       caption={seatLayerVenue3DCaption(seats.target, sectionId, scope.strings.translate, scope.strings.translate('viewFromYourSeat'))}
       disabled={scope.isBusy || busy}
-      nextEnabled={seats.next !== undefined}
+      nextEnabled={seats.nextSeatId !== undefined}
       nextLabel={scope.strings.translate('nextSeat')}
       onBack={act('back')}
       onNext={act('next')}
       onPrevious={act('previous')}
       onRecentre={act('recentre')}
-      onReset={act('reset')}
+      onPrimary={targeted ? openSeatView : camera('fit')}
+      onZoomIn={camera('zoomIn')}
+      onZoomOut={camera('zoomOut')}
       navigationEnabled={navigationAvailable}
       navigationLabel={navigationAvailable ? scope.strings.translate(moving ? 'moveVenue' : 'rotateVenue') : undefined}
       onNavigation={navigationAvailable ? changeNavigation : undefined}
-      previousEnabled={seats.previous !== undefined}
+      previousEnabled={seats.previousSeatId !== undefined}
       previousLabel={scope.strings.translate('previousSeat')}
-      recentreEnabled={seats.target !== undefined}
+      recentreEnabled={targeted}
       recentreLabel={scope.strings.translate('recentre')}
-      resetLabel={scope.strings.translate('openVenue360')}
+      primaryVisible={!targeted || seatViewAvailable}
+      primaryLabel={scope.strings.translate(targeted ? 'viewFromHere' : 'fitVenue')}
+      targeted={targeted}
+      zoomInLabel="Zoom in"
+      zoomOutLabel="Zoom out"
       slots={slots}
       style={props.style}
       theme={theme}

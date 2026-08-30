@@ -28,6 +28,8 @@ export interface SeatLayerMapControlsProps {
   readonly bottomInset?: number;
   readonly enable3D?: boolean;
   readonly showZoomControls?: boolean;
+  /** On compact layouts, replace Fit with one level of map return while zoomed in. */
+  readonly showStepOutControl?: boolean;
   readonly showZoomToFitControl?: boolean;
   readonly showOverviewControl?: boolean;
   readonly showAccessibilityControl?: boolean;
@@ -136,6 +138,10 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   const zoomPairAvailable = snapshot !== undefined && buyerView === 'map' &&
     props.showZoomControls === true && zoomLabelsAvailable &&
     supports('picker.zoomIn', ['zoom']) && supports('picker.zoomOut', ['zoom']);
+  const stepOutAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
+    props.showZoomToFitControl !== false && props.showStepOutControl !== false &&
+    !zoomPairAvailable && focusedPickerSection(snapshot) !== undefined &&
+    supports('picker.overview');
   const fitAvailable = snapshot !== undefined && buyerView === 'map' &&
     props.showZoomToFitControl !== false && supports('picker.zoomToFit', ['zoom']);
   const showOverview = props.showOverviewControl ?? !compact;
@@ -145,9 +151,9 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   const accessAvailable = buyerView === 'map' &&
     props.showAccessibilityControl !== false &&
     canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
-  const ownsVisibleControl = viewAvailable || fitAvailable || zoomPairAvailable ||
+  const ownsVisibleControl = viewAvailable || fitAvailable || stepOutAvailable || zoomPairAvailable ||
     overviewAvailable || accessAvailable;
-  const bottomPlan = planSeatLayerMapBottomControls(fitAvailable, zoomPairAvailable, accessAvailable, target);
+  const bottomPlan = planSeatLayerMapBottomControls(fitAvailable || stepOutAvailable, zoomPairAvailable, accessAvailable, target);
   const insetLease = useMemo(
     () => props.reserveInset ? scope.claimViewportInsetBand('mapControls') : undefined,
     [props.reserveInset, scope.claimViewportInsetBand, scope.sessionId],
@@ -199,6 +205,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       venue3DAvailable={viewAvailable}
       onViewModeLayout={props.onViewModeLayout}
       zoomPairAvailable={zoomPairAvailable}
+      stepOutAvailable={stepOutAvailable}
       zoomInBusy={actionBusy}
       zoomOutBusy={actionBusy}
       fitBusy={actionBusy}
@@ -224,6 +231,7 @@ function SeatLayerMapControlsView({
   canFit,
   canOverview,
   zoomPairAvailable,
+  stepOutAvailable,
   venue3DAvailable,
   zoomInBusy,
   zoomOutBusy,
@@ -250,6 +258,7 @@ function SeatLayerMapControlsView({
   readonly canFit: boolean;
   readonly canOverview: boolean;
   readonly zoomPairAvailable: boolean;
+  readonly stepOutAvailable: boolean;
   readonly venue3DAvailable: boolean;
   readonly onViewModeLayout?: (width: number) => void;
   readonly zoomInBusy: boolean;
@@ -299,6 +308,12 @@ function SeatLayerMapControlsView({
     canZoomOut && !zoomOutBusy,
     onZoomOut,
     <SeatLayerPickerMinusIcon color={theme.colors.text} />,
+  );
+  const stepOut = control(
+    strings.translate('backToVenue'),
+    stepOutAvailable && !overviewBusy,
+    onOverview,
+    <SeatLayerPickerBackIcon color={theme.colors.text} />,
   );
   const fit = control(
     strings.translate('fitVenue'),
@@ -350,8 +365,10 @@ function SeatLayerMapControlsView({
       {onMap && accessibilityControl ? (
         <View style={{ bottom, position: 'absolute', start: edgeInset }}>{accessibilityControl}</View>
       ) : null}
-      {onMap && canFit ? (
-        <View style={{ bottom, end: edgeInset, position: 'absolute' }}>{fit}</View>
+      {onMap && (stepOutAvailable || canFit) ? (
+        <View style={{ bottom, end: edgeInset, position: 'absolute' }}>
+          {stepOutAvailable ? stepOut : fit}
+        </View>
       ) : null}
       {onMap && zoomPairAvailable && zoomIn !== null && zoomOut !== null ? (
         <View

@@ -75,7 +75,7 @@ function setup(snapshot = pickerSnapshot()) {
     setReadOnly: (next: boolean) => { readOnly = next; publishScope(); },
     setNativeSeatChrome: (next: boolean) => { nativeSeatChrome = next; },
     setVenueTarget: (id: string | undefined) => { current = { ...current, map: { ...current.map, buyerView: 'venue3d', view3DTargetSeatId: id } }; publishScope(); },
-    mountSeatView: (id: string) => { seatView = { seatId: id }; for (const listener of seatViewListeners) listener(); },
+    mountSeatView: (id?: string) => { seatView = id === undefined ? undefined : { seatId: id }; for (const listener of seatViewListeners) listener(); },
   };
 }
 
@@ -155,12 +155,14 @@ describe('SeatLayerConfirmCard', () => {
     let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerConfirmCard)); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'chooseChildTier' }).props.onPress(); });
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$20')).toBe(true);
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$42')).toBe(false);
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'select' }).props.onPress(); });
     expect(runtime.commands).toEqual([['tier', 'seat-a', 'child']]);
     expect(runtime.counts().confirmed).toBe(1);
   });
 
-  it('gates inspection actions and confirms only after their observable surface is mounted', async () => {
+  it('gates inspection actions, keeps the candidate pending, and restores it after Seat View closes', async () => {
     const runtime = setup(pickerSnapshot({ capabilities: ['seatView', 'venue3d'] })); const observed: string[] = []; let renderer!: ReactTestRenderer;
     runtime.setNativeSeatChrome(true);
     await act(async () => { renderer = create(React.createElement(SeatLayerConfirmCard, { onAction: ({ action }) => { observed.push(action); } })); });
@@ -169,20 +171,25 @@ describe('SeatLayerConfirmCard', () => {
     expect(runtime.counts().confirmed).toBe(0);
     expect(renderer.root.findByProps({ accessibilityLabel: 'select' }).props.accessibilityState.busy).toBe(true);
     await act(async () => { runtime.mountSeatView('seat-a'); });
-    expect(runtime.counts().confirmed).toBe(1);
+    expect(runtime.counts().confirmed).toBe(0);
+    expect(renderer.toJSON()).toBeNull();
     expect(observed).toEqual(['seatView']);
+    await act(async () => { runtime.mountSeatView(); });
+    expect(renderer.root.findByProps({ accessibilityLabel: 'select' })).toBeTruthy();
+    expect(runtime.counts().confirmed).toBe(0);
   });
 
-  it('treats a successful command-only Seat View response as the fallback mounted signal', async () => {
+  it('keeps a command-only Seat View candidate pending without exposing it in the cart', async () => {
     const runtime = setup(pickerSnapshot({ capabilities: ['seatView'] })); const observed: string[] = []; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerConfirmCard, { onAction: ({ action }) => { observed.push(action); } })); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'viewFromHere' }).props.onPress(); });
     expect(runtime.commands).toEqual([['seatView', 'seat-a']]);
-    expect(runtime.counts().confirmed).toBe(1);
+    expect(runtime.counts().confirmed).toBe(0);
+    expect(renderer.root.findByProps({ accessibilityLabel: 'select' })).toBeTruthy();
     expect(observed).toEqual(['seatView']);
   });
 
-  it('requires the exact Venue 3D target before confirming and reports one missing-target result', async () => {
+  it('requires the exact Venue 3D target while keeping inspection pending', async () => {
     const runtime = setup(pickerSnapshot({ capabilities: ['venue3d'] })); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerConfirmCard)); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'venue3D' }).props.onPress(); });
@@ -190,7 +197,14 @@ describe('SeatLayerConfirmCard', () => {
     expect(runtime.errors).toHaveLength(1);
     runtime.controller.setBuyerView = async () => { runtime.setVenueTarget('seat-a'); };
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'venue3D' }).props.onPress(); });
-    expect(runtime.counts().confirmed).toBe(1);
+    expect(runtime.counts().confirmed).toBe(0);
+    await act(async () => { renderer.update(React.createElement(SeatLayerConfirmCard)); });
+    expect(renderer.toJSON()).toBeNull();
+    await act(async () => {
+      runtime.update(pickerSnapshot({ capabilities: ['venue3d'] }));
+      renderer.update(React.createElement(SeatLayerConfirmCard));
+    });
+    expect(renderer.root.findByProps({ accessibilityLabel: 'select' })).toBeTruthy();
   });
 
   it('quarantines a retired in-flight inspection completion, error, and observer callback', async () => {

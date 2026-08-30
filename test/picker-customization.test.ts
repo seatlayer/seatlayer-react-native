@@ -17,7 +17,7 @@ describe('picker customization foundation', () => {
     expect(seatLayerPickerDefaultLayout).toMatchObject({
       headerHeight: 56,
       dockBarHeight: 52,
-      peekHeight: 50,
+      peekHeight: 44,
       sheetMaxHeightFraction: 0.6,
       denseLineHeight: 40,
       confirmActionHeight: 40,
@@ -43,7 +43,7 @@ describe('picker customization foundation', () => {
       unexpected: 99,
     } as unknown as Record<string, number>);
     expect(layout.headerHeight).toBe(56);
-    expect(layout.peekHeight).toBe(50);
+    expect(layout.peekHeight).toBe(44);
     expect(layout.sheetMaxHeightFraction).toBe(0.6);
     expect(layout.denseVisibleLines).toBe(5);
     expect(layout.minimumHitTarget).toBe(44);

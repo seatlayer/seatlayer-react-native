@@ -130,6 +130,10 @@ export interface ReadyInfo {
   mode?: string;
   platform?: string;
   eventKey?: string;
+  /** Milliseconds from arming the native handshake to the runtime's `hello`. */
+  timeToHelloMs?: number;
+  /** Milliseconds from arming the native handshake to `sys.ready`. */
+  timeToReadyMs?: number;
   raw: JsonValue | undefined;
 }
 

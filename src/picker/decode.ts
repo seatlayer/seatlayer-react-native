@@ -280,7 +280,16 @@ export function decodeSeatLayerPickerSnapshot(
   const selectionValidity = decodeSelectionValidity(selection?.validity);
   const activeFloorId = asString(map?.activeFloorId) ?? asString(map?.floorId);
   const targetSeatId = asString(map?.view3dTargetSeatId);
+  const targetSeat = decodeSelectedSeat(map?.view3dTargetSeat);
+  const previousSeatId = asString(map?.view3dPreviousSeatId);
+  const nextSeatId = asString(map?.view3dNextSeatId);
+  const view3DFocusedSectionId = asString(map?.view3dFocusedSectionId);
+  const reportsPreviousSeat = map !== undefined && Object.prototype.hasOwnProperty.call(map, 'view3dPreviousSeatId');
+  const reportsNextSeat = map !== undefined && Object.prototype.hasOwnProperty.call(map, 'view3dNextSeatId');
+  const reportsView3DFocus = map !== undefined && Object.prototype.hasOwnProperty.call(map, 'view3dFocusedSectionId');
   const focusedSection = decodeSection(map?.focusedSection);
+  const rung = asString(map?.rung) ?? 'overview';
+  const focusedSectionId = asString(map?.focusedSectionId);
   const viewportInsets = decodeInsets(map?.viewportInsets);
   const floors = asArray(map?.floors)
     .map(decodePickerFloor)
@@ -335,7 +344,7 @@ export function decodeSeatLayerPickerSnapshot(
     generalAdmissionAreas,
     bestAvailableZones,
     map: {
-      rung: asString(map?.rung) ?? 'overview',
+      rung,
       viewMode: asString(map?.viewMode) ?? asString(map?.projection) ?? 'flat',
       buyerView: asString(map?.buyerView) ?? 'map',
       view3DNavigationMode: asString(map?.view3dNavigationMode) ?? 'orbit',
@@ -343,6 +352,18 @@ export function decodeSeatLayerPickerSnapshot(
       ...(targetSeatId === undefined
         ? {}
         : { view3DTargetSeatId: targetSeatId }),
+      ...(targetSeat === undefined
+        ? {}
+        : { view3DTargetSeat: freeze(targetSeat) }),
+      ...(reportsPreviousSeat
+        ? { view3DPreviousSeatId: previousSeatId ?? null }
+        : {}),
+      ...(reportsNextSeat
+        ? { view3DNextSeatId: nextSeatId ?? null }
+        : {}),
+      ...(reportsView3DFocus
+        ? { view3DFocusedSectionId: view3DFocusedSectionId ?? null }
+        : {}),
       ...optionalStrings(map, [
         'focusedSectionId',
         'floorMode',
@@ -352,7 +373,12 @@ export function decodeSeatLayerPickerSnapshot(
       colorblindSafe: asBoolean(map?.colorblindSafe) ?? false,
       hideLimitedView: asBoolean(map?.hideLimitedView) ?? false,
       canZoomIn: asBoolean(map?.canZoomIn) ?? true,
-      canZoomOut: asBoolean(map?.canZoomOut) ?? true,
+      // Older hosted runtimes reported `false` while the buyer was already on
+      // the seats rung. Keep the native escape hatch trustworthy during a
+      // rolling web/native rollout; the new explicit semantic flag still wins
+      // everywhere else.
+      canZoomOut: asBoolean(map?.canZoomOut) === true || rung === 'seats' ||
+        focusedSectionId !== undefined || focusedSection !== undefined,
       categoryFilter: uniqueStrings(map?.categoryFilter),
       accessibilityFilter: uniqueStrings(map?.accessibilityFilter),
       accessNeeds: freeze(accessNeeds),

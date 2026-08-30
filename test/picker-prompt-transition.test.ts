@@ -46,6 +46,7 @@ describe('picker prompt transition', () => {
     await act(async () => { renderer.update(transition(null, null)); });
     expect(timings[1]!.config.duration).toBe(180);
     expect(renderer.root.findAllByType('Text' as any).map((node) => node.children.join(''))).toEqual(['A']);
+    expect(renderer.root.findByType('View' as any).props.pointerEvents).toBe('none');
     await act(async () => { timings[1]!.callback?.({ finished: true }); });
     expect(renderer.root.findAllByType('Text' as any)).toHaveLength(0);
     expect(renderer.root.findByType('View' as any).props.pointerEvents).toBe('none');

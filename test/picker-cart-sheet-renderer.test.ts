@@ -8,6 +8,8 @@ vi.mock('react-native', () => ({
   Animated: {
     View: 'Animated.View',
     Value: class { interpolate() { return 'rotation'; } setValue() {} stopAnimation() {} },
+    delay: () => ({ start: () => {}, stop: () => {} }),
+    sequence: () => ({ start: () => {}, stop: () => {} }),
     timing: () => ({ start: () => {}, stop: () => {} }),
   },
   Easing: { bezier: () => 'easing' },
@@ -232,7 +234,7 @@ describe('cart checkout renderer', () => {
     const layout = renderer.root.findAll((node) => typeof node.props.onLayout === 'function')[0]!;
     await act(async () => { layout.props.onLayout({ nativeEvent: { layout: { height: 350 } } }); });
     await act(async () => { renderer.update(React.createElement(SeatLayerCartSheet, { expanded: false, onExpandedChanged: () => {}, onCheckout: () => {} })); });
-    expect(runtime.insets).toContainEqual({ bottom: 50 });
+    expect(runtime.insets).toContainEqual({ bottom: 44 });
   });
 
   it('keeps the legacy bottom-only inset when no full safe-area input is supplied', async () => {
@@ -241,7 +243,25 @@ describe('cart checkout renderer', () => {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
-    expect(runtime.insets).toContainEqual({ bottom: 62 });
+    expect(runtime.insets).toContainEqual({ bottom: 56 });
+  });
+
+  it('uses the collapsed safe-area band for required attribution and hides it from backend branding', async () => {
+    const runtime = setup();
+    runtime.snapshot.branding.attributionRequired = true;
+    const props = () => React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 34,
+    });
+    const renderer = await render(props());
+    expect(renderer.root.findByProps({ accessibilityLabel: 'poweredBy' })).toBeTruthy();
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
+      .toMatchObject({ height: 34, justifyContent: 'center' });
+
+    runtime.snapshot.branding.attributionRequired = false;
+    await act(async () => { renderer.update(props()); });
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
+      .toMatchObject({ height: 34 });
   });
 
   it('keeps its active inset lease after an expand-collapse-expand cycle and ignores stale layout', async () => {

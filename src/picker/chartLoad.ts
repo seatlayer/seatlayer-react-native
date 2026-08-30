@@ -205,11 +205,15 @@ function freezeReadyInfo(value: ReadyInfo | undefined): Readonly<ReadyInfo> | nu
   const mode = ownData(value, 'mode');
   const platform = ownData(value, 'platform');
   const eventKey = ownData(value, 'eventKey');
+  const timeToHelloMs = safeMs(ownData(value, 'timeToHelloMs'));
+  const timeToReadyMs = safeMs(ownData(value, 'timeToReadyMs'));
   return Object.freeze({
     protocolRevision: safeProtocolRevision,
     ...(typeof mode === 'string' ? { mode } : {}),
     ...(typeof platform === 'string' ? { platform } : {}),
     ...(typeof eventKey === 'string' ? { eventKey } : {}),
+    ...(timeToHelloMs === null ? {} : { timeToHelloMs }),
+    ...(timeToReadyMs === null ? {} : { timeToReadyMs }),
     raw: rawClone?.value,
   });
 }

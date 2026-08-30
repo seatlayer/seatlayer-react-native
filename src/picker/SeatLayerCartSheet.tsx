@@ -208,6 +208,8 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const reducedMotion = useSeatLayerPickerReducedMotion();
   const measurement = useRef(new CartSheetMeasurementCoordinator());
   const disclosureProgress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current;
+  const summaryArrival = useRef(new Animated.Value(0)).current;
+  const previousConfirmedQuantity = useRef<number | undefined>(undefined);
   const [sheetHeight, setSheetHeight] = useState(0);
   const [bestPrompt, setBestPrompt] = useState<PromptHandle | undefined>();
   const runtimeSession = scope.snapshot?.sessionId;
@@ -230,11 +232,20 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     [scope.pendingSeat, scope.snapshot],
   );
   const hasTickets = projection.confirmed.items.length > 0;
+  const confirmedQuantity = projection.totals.quantity;
+  const attributionRequired = scope.snapshot?.branding.attributionRequired === true;
+  const attributionHeight = attributionRequired
+    ? theme.layout?.attributionHeight ?? seatLayerPickerTokens.size.attributionHeight
+    : 0;
+  const peekHeight = Math.max(
+    seatLayerPickerTokens.size.minimumHitTarget,
+    theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
+  );
   const maxSheet = Math.max(0, window.height * seatLayerPickerTokens.size.sheetMaxHeightFraction);
   const bodyCap = hasTickets
-    ? cartSheetMaximumBodyHeight(window.height, 0)
-    : Math.min(cartSheetMaximumBodyHeight(window.height, 0), seatLayerPickerTokens.size.emptyTrayMaxHeight);
-  const promptBodyCap = cartSheetMaximumBodyHeight(window.height, inset);
+    ? cartSheetMaximumBodyHeight(window.height, 0, peekHeight)
+    : Math.min(cartSheetMaximumBodyHeight(window.height, 0, peekHeight), seatLayerPickerTokens.size.emptyTrayMaxHeight);
+  const promptBodyCap = cartSheetMaximumBodyHeight(window.height, inset, peekHeight);
   const key = measurement.current.begin({
     controller: scope.controller, sessionId: scope.sessionId, runtimeSessionId: runtimeSession, expanded: props.expanded, ownsChrome: true,
   }, 0);
@@ -244,12 +255,33 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   );
   useLayoutEffect(() => {
     setSheetHeight(0);
+    previousConfirmedQuantity.current = undefined;
+    summaryArrival.stopAnimation();
+    summaryArrival.setValue(0);
     bestPrompt?.dismiss();
     setBestPrompt(undefined);
     if (!props.expanded && insetLease) {
-      insetLease.set({ bottom: seatLayerPickerTokens.size.peekHeight + inset });
+      insetLease.set({ bottom: peekHeight + inset });
     }
-  }, [inset, insetLease, props.expanded, runtimeSession, scope.controller, scope.sessionId]);
+  }, [inset, insetLease, peekHeight, props.expanded, runtimeSession, scope.controller, scope.sessionId]);
+  useEffect(() => {
+    const previous = previousConfirmedQuantity.current;
+    previousConfirmedQuantity.current = confirmedQuantity;
+    if (previous === undefined || confirmedQuantity <= previous) return undefined;
+    const motion = resolveSeatLayerPickerMotion('pop', reducedMotion, 'spring');
+    summaryArrival.stopAnimation();
+    summaryArrival.setValue(0);
+    if (motion.durationMs === 0) return undefined;
+    const [x1, y1, x2, y2] = motion.curve.cubicBezier;
+    const animation = Animated.timing(summaryArrival, {
+      duration: motion.durationMs,
+      easing: Easing.bezier(x1, y1, x2, y2),
+      toValue: 1,
+      useNativeDriver: true,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [confirmedQuantity, reducedMotion, summaryArrival]);
   useLayoutEffect(() => {
     if (bestPrompt && scope.presentation.prompt?.context !== bestPrompt.lease.context) {
       setBestPrompt(undefined);
@@ -263,11 +295,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   }, [bestPrompt, props.bestSeats]);
   useEffect(() => {
     if (!insetLease) return;
-    const fallback = seatLayerPickerTokens.size.peekHeight + inset;
+    const fallback = peekHeight + inset;
     insetLease.set({ bottom: props.expanded
       ? Math.min(maxSheet, sheetHeight || fallback)
       : fallback });
-  }, [inset, insetLease, maxSheet, props.expanded, runtimeSession, scope.controller, scope.sessionId, sheetHeight]);
+  }, [inset, insetLease, maxSheet, peekHeight, props.expanded, runtimeSession, scope.controller, scope.sessionId, sheetHeight]);
   useEffect(() => {
     if (!insetLease) return undefined;
     return () => insetLease.remove();
@@ -360,7 +392,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
       borderTopColor: theme.roles.sheet.border, borderTopWidth: 1,
     }]}>
       {holdLapse}
-      <View style={[styles.peekContainer, { height: seatLayerPickerTokens.size.peekHeight, flexDirection: 'row', alignItems: 'center', paddingStart: 14 }]}>
+      <View style={[styles.peekContainer, { height: peekHeight, flexDirection: 'row', alignItems: 'center', paddingStart: 14 }]}>
         <View
           pointerEvents="none"
           testID="seatlayer-cart-handle-rail"
@@ -371,7 +403,9 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
         <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}
           accessibilityState={{ expanded: props.expanded }} hitSlop={6} onPress={changeExpanded}
           style={{ flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingTop: 6 }}>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.peekSummaryText]}>{summary}</Text>
+          <Animated.View style={{ alignSelf: 'flex-start', transform: [{ scale: summaryArrival.interpolate({ inputRange: [0, .55, 1], outputRange: [1, 1.08, 1] }) }] }}>
+            <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.peekSummaryText]}>{summary}</Text>
+          </Animated.View>
         </Pressable>
         {props.expanded && bestAllowed ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('bestSeats')} onPress={openBest} style={{ minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: theme.colors.accent }}>✦</Text></Pressable> : null}
         {!props.expanded && hasTickets && props.checkoutBar !== null ? <SeatLayerBookButton compact onCheckout={props.onCheckout} /> : null}
@@ -401,10 +435,12 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           <View>{main}</View>
           {actionError}
         </View>}
-        <View testID="seatlayer-cart-safe-footer" style={{ height: Math.max(inset, seatLayerPickerTokens.size.attributionHeight), justifyContent: 'center' }}>
+        <View testID="seatlayer-cart-safe-footer" style={{ height: Math.max(inset, attributionHeight), justifyContent: 'center' }}>
           <SeatLayerPickerAttribution compact />
         </View>
-      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ height: inset }} /> : null}
+      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ height: inset, justifyContent: 'center' }}>
+        <SeatLayerPickerAttribution compact />
+      </View> : null}
       {bestShortcutEnabled ? <SeatLayerPickerPromptModal visible={bestPrompt !== undefined}>
         <SeatLayerPickerBottomSheetFrame
           borderColor={theme.roles.sheet.border}

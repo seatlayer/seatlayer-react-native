@@ -64,6 +64,8 @@ describe('SeatLayerPickerSeatConfirmation', () => {
     const runtime = setup(); const observed: unknown[] = []; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerSeatConfirmation, { onAction: (event) => { observed.push(event); } })); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'chooseChildTier' }).props.onPress(); });
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$20')).toBe(true);
+    expect(renderer.root.findAllByType('Text' as any).some((node) => node.children.join('') === '$40')).toBe(false);
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'select' }).props.onPress(); await Promise.resolve(); await Promise.resolve(); });
     expect(runtime.calls).toEqual([['tier', 'seat-a', 'child']]);
     expect(runtime.counts()).toBe(1);

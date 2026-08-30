@@ -124,6 +124,10 @@ export interface SeatLayerPickerMapState {
   readonly buyerView: string;
   readonly view3DNavigationMode: string;
   readonly view3DTargetSeatId?: string;
+  readonly view3DTargetSeat?: Readonly<SelectedSeat>;
+  readonly view3DPreviousSeatId?: string | null;
+  readonly view3DNextSeatId?: string | null;
+  readonly view3DFocusedSectionId?: string | null;
   readonly activeFloorId?: string;
   readonly focusedSectionId?: string;
   readonly focusedSection?: SeatLayerPickerSectionSummary;

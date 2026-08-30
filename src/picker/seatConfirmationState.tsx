@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 
 import type { SelectedSeat } from '../types';
 import type { SeatLayerPickerController } from './controller';
@@ -39,6 +39,27 @@ export interface SeatLayerPickerConfirmationModel {
   readonly run: (action: SeatLayerPickerConfirmationAction) => void;
 }
 
+export interface SeatLayerPickerConfirmationPrice {
+  readonly amount: number;
+  readonly currency: string | undefined;
+}
+
+/** The price shown on a confirmation follows the buyer's pending tier choice. */
+export function seatLayerPickerConfirmationPrice(
+  seat: SelectedSeat,
+  tierId: string | null | undefined,
+): SeatLayerPickerConfirmationPrice | undefined {
+  const effectiveTierId = tierId === undefined
+    ? seat.tierId ?? seat.tiers?.[0]?.id
+    : tierId;
+  const tier = effectiveTierId == null
+    ? undefined
+    : seat.tiers?.find((candidate) => candidate.id === effectiveTierId);
+  const amount = tier?.price ?? seat.price;
+  if (typeof amount !== 'number' || !Number.isFinite(amount)) return undefined;
+  return Object.freeze({ amount, currency: tier?.currency ?? seat.currency });
+}
+
 type PendingLease = Readonly<{
   readonly controller: SeatLayerPickerController;
   readonly scopeSessionId: number;
@@ -50,18 +71,27 @@ type Flight = Readonly<{ readonly key: string; readonly token: object }>;
 
 const controllerKeys = new WeakMap<object, number>();
 let controllerKeyCount = 0;
+const noSeatView = () => undefined;
+const noSeatViewSubscription = () => () => undefined;
 
 /** Shares one pending-seat action workflow between compact and wide presentations. */
 export function SeatLayerPickerConfirmationState(props: SeatLayerPickerConfirmationActions & {
   readonly children: (model: SeatLayerPickerConfirmationModel) => React.ReactElement;
 }): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
+  const seatView = useSyncExternalStore(
+    scope.controller.subscribeSeatView ?? noSeatViewSubscription,
+    scope.controller.getSeatView ?? noSeatView,
+    scope.controller.getSeatView ?? noSeatView,
+  );
   const pending = currentPending(scope);
   const lease = useMemo(
     () => pending === undefined ? undefined : pendingLease(scope, pending),
     [scope.controller, scope.sessionId, scope.snapshot?.sessionId, pending],
   );
-  if (!pending || !lease) return null;
+  const immersiveUp = scope.snapshot?.map.buyerView === 'venue3d' ||
+    (seatView?.seatId !== undefined && seatView.seatId === pending?.id);
+  if (!pending || !lease || immersiveUp) return null;
   return <Session key={lease.key} lease={lease} pending={pending} props={props} scope={scope} />;
 }
 
@@ -129,7 +159,6 @@ function Session({ lease, pending, props, scope }: Readonly<{
           return;
         }
         if (!isActiveCurrent(activeRef, scopeRef.current, lease)) return;
-        scopeRef.current.confirmPending();
         if (mayComplete(activeRef, scopeRef.current, lease)) observe(action);
       } catch (error) { reportCurrentError(activeRef, scopeRef.current, lease, error); }
     })().catch((error) => reportCurrentError(activeRef, scopeRef.current, lease, error));

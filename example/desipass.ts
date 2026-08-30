@@ -230,7 +230,11 @@ export async function createSeatLayerAccess(
   let prefetched: BuyerAccess | undefined = await mintBuyerAccess(eventId);
   const apiBase = prefetched.apiBase;
   const provider: BuyerAccessTokenProvider = async () => {
-    const access = prefetched ?? await mintBuyerAccess(eventId);
+    // Event details may remain open longer than the bearer lifetime. Never
+    // hand an already-expiring prefetch to the renderer; refresh it in memory.
+    const access = prefetched && prefetched.expiresAt > Date.now() + 30_000
+      ? prefetched
+      : await mintBuyerAccess(eventId);
     prefetched = undefined;
     return { token: access.token, expiresAt: access.expiresAt };
   };

@@ -672,8 +672,8 @@ describe('scope ownership and renderer bridge', () => {
     };
     const first = coordinator.begin(focused);
     const second = coordinator.begin(seatLayerPickerInitialPresentationState);
-    expect(first).toMatchObject({ action: { type: 'showOverview' }, started: true });
-    expect(second).toMatchObject({ action: { type: 'showOverview' }, started: false });
+    expect(first).toMatchObject({ action: { type: 'stepOut' }, started: true });
+    expect(second).toMatchObject({ action: { type: 'stepOut' }, started: false });
     coordinator.complete(first.action);
     expect(coordinator.begin(seatLayerPickerInitialPresentationState).action.type).toBe('delegateToHost');
     coordinator.reset();

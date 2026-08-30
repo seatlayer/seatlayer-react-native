@@ -7,6 +7,8 @@ vi.mock('react-native', () => ({
   Animated: {
     View: 'AnimatedView',
     Value: class { constructor(readonly value: number) {} interpolate() { return this.value; } setValue() {} stopAnimation() {} },
+    delay: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
+    sequence: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
     timing: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
   },
   I18nManager: { isRTL: false },
@@ -141,5 +143,140 @@ describe('deterministic native picker visual fixtures', () => {
       expect.objectContaining({ width: seatLayerVisualFixtureWideWidth, height: seatLayerVisualFixtureWideHeight }),
     ]));
     expect(wide.root.findByType(SeatLayerPickerAdaptiveLayout).props.options.layout).toBe('wide');
+  });
+
+  it('carries a chosen Child tier from the native confirmation into cart and checkout handoff', async () => {
+    const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'seat-tier' }));
+    const child = tree.root.findByProps({ accessibilityLabel: 'Child · €60 · For children aged 12 and under.' });
+    expect(child.props.accessibilityState).toMatchObject({ checked: false, disabled: false });
+
+    await act(async () => { child.props.onPress(); });
+    expect(tree.root.findByProps({ accessibilityLabel: 'Child · €60 · For children aged 12 and under.' }).props.accessibilityState)
+      .toMatchObject({ checked: true, disabled: false });
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree.root.findAllByType(SeatLayerConfirmCard)).toHaveLength(0);
+    const checkout = tree.root.findByProps({ accessibilityLabel: 'Continue · €60' });
+
+    await act(async () => {
+      checkout.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree.root.findByProps({ testID: 'seatlayer-tier-checkout-handoff' }).props.accessibilityLabel)
+      .toBe('Checkout handoff · Gold · Child · €60');
+  });
+
+  it('wires Gold and event-authored accessibility filters through the simulator fixture', async () => {
+    const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'filters' }));
+    const gold = tree.root.findAll((node) =>
+      typeof node.props.accessibilityLabel === 'string' &&
+      node.props.accessibilityLabel.startsWith('Gold,'),
+    )[0];
+    expect(gold).toBeDefined();
+
+    await act(async () => {
+      gold!.props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree.root.findByProps({ testID: 'seatlayer-filter-evidence' }).props.accessibilityLabel)
+      .toContain('categories gold');
+
+    expect(tree.root.findAllByType(SeatLayerPickerAccessibilityFilters)).toHaveLength(1);
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Accessibility and colour options' }).props.onPress();
+    });
+    expect(tree.root.findByProps({ accessibilityLabel: 'Wheelchair' }).props.accessibilityState)
+      .toMatchObject({ checked: false, disabled: true });
+    expect(tree.root.findAllByProps({ accessibilityLabel: 'Hearing support' })).toHaveLength(0);
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Step-free · 12' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Companion · 4' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Hide limited-view seats' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Colourblind-friendly colours' }).props.onPress();
+    });
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Apply filters' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(tree.root.findByProps({ testID: 'seatlayer-filter-evidence' }).props.accessibilityLabel)
+      .toBe('Filter state · categories gold · needs step-free, companion · limited true · colourblind true');
+  });
+
+  it('retains the RN cart and 3D target across navigation, panorama, and map switches', async () => {
+    const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'dark', scenario: 'venue-3d' }));
+    expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
+      .toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Next seat' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
+      .toContain('venue3d · guest-t22-3');
+    expect(tree.root.findByProps({ accessibilityLabel: 'Next seat' }).props.accessibilityState)
+      .toMatchObject({ disabled: true });
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Drag to rotate venue' }).props.onPress();
+      await Promise.resolve();
+    });
+    expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
+      .toContain('pan');
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'View from here' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree.root.findAllByType(SeatLayerVenue3DChrome)).toHaveLength(0);
+    expect(tree.root.findAllByType(SeatLayerSeatPanoramaChrome)).toHaveLength(1);
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Close panorama' }).props.onPress();
+    });
+    expect(tree.root.findAllByType(SeatLayerVenue3DChrome)).toHaveLength(1);
+    expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
+      .toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
+
+    await act(async () => {
+      tree.root.findByType(SeatLayerVenue3DChrome)
+        .findByProps({ accessibilityLabel: 'Back to venue' }).props.onPress();
+      await Promise.resolve();
+    });
+    expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
+      .toContain('venue3d · overview');
+    const overviewChrome = tree.root.findByType(SeatLayerVenue3DChrome);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'View from here' })).toHaveLength(0);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Back to venue' })).toHaveLength(0);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Seat map' }).props.onPress();
+      await Promise.resolve();
+    });
+    const mapEvidence = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
+    expect(mapEvidence).toContain('map · overview');
+    expect(mapEvidence).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
+
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: '3D' }).props.onPress();
+      await Promise.resolve();
+    });
+    const returned3D = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
+    expect(returned3D).toContain('venue3d · overview');
+    expect(returned3D).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
+    expect(tree.root.findByType(SeatLayerVenue3DChrome)
+      .findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
   });
 });

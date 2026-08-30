@@ -44,15 +44,22 @@ import { SeatLayerPickerActionError } from './actionError';
 import { invokeSeatLayerPickerCallback } from './callback';
 import type { SeatLayerPickerCallbacks } from './callbacks';
 import { SeatLayerPickerPromptTransition } from './SeatLayerPickerPromptTransition';
+import {
+  SeatLayerSelectionFlight,
+  type SeatLayerSelectionFlightMoment,
+} from './SeatLayerSelectionFlight';
+import { planSeatLayerSelectionFlight } from './selectionFlightState';
 import { SeatLayerPickerEmptyView, SeatLayerPickerErrorView, SeatLayerPickerLoadingView, SeatLayerPickerTestModeIndicator } from './status';
 import { seatLayerPickerTestModeIndicatorCompactHeight } from './testModeIndicator';
 import { SeatLayerPickerSystemStatusBar } from './systemStatusBar';
 import { SeatLayerVenue3DChrome } from './SeatLayerVenue3DChrome';
 import { seatLayerPickerColorAlpha } from './mapChromeTheme';
+import { chartSeatLayerPickerColor } from './chartColor';
 import { renderSeatLayerPickerAdaptivePart as part } from './adaptiveParts';
 import { seatLayerPickerAdaptiveStyles as styles } from './adaptiveStyles';
 import { resolveSeatLayerPickerAdaptiveChromeEligibility } from './adaptiveChromeEligibility';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
+import type { SelectedSeat } from '../types';
 import type { SeatLayerPickerOptions } from './options';
 import {
   resolveSeatLayerPickerAdaptiveSafeLayout,
@@ -114,6 +121,10 @@ export function SeatLayerPickerAdaptiveLayout({
   presentationActive = true,
 }: SeatLayerPickerAdaptiveLayoutProps): React.ReactElement {
   const scope = useSeatLayerPickerScope();
+  const rootRef = useRef<View>(null);
+  const confirmOriginRef = useRef<Readonly<{ x: number; y: number }> | undefined>(undefined);
+  const flightSequenceRef = useRef(0);
+  const [selectionFlight, setSelectionFlight] = useState<SeatLayerSelectionFlightMoment | undefined>(undefined);
   const [bounds, setBounds] = useState<SeatLayerPickerAdaptiveMeasuredBounds | undefined>(undefined);
   const safeLayout = useMemo(
     () => resolveSeatLayerPickerAdaptiveSafeLayout(bounds, safeAreaInsets),
@@ -147,8 +158,6 @@ export function SeatLayerPickerAdaptiveLayout({
   const focusedSection = typeof focusedSectionId === 'string'
     ? snapshot?.sections.find((section) => section.id === focusedSectionId)
     : snapshot?.map.focusedSection;
-  const phoneDockVisible = !wide && plan.options.chrome.dock && nativeChrome && snapshot?.map.rung === 'seats' &&
-    focusedSection !== undefined;
   const chromeEligibility = resolveSeatLayerPickerAdaptiveChromeEligibility({
     controller: scope.controller, snapshot, seatView,
     enable3D: plan.options.enable3D, enableSeatView: plan.options.enableSeatView,
@@ -156,10 +165,20 @@ export function SeatLayerPickerAdaptiveLayout({
     map3D: plan.options.chrome.map3D, overview: plan.options.chrome.overview,
   });
   const panoramaVisible = chromeEligibility.panorama;
-  const phoneControls = !wide && plan.options.chrome.mapControls
+  // Full native panorama chrome requires the negotiated contract. A legacy
+  // runtime may still report the exact open seat view; that is sufficient to
+  // stand map chrome down while this pending seat is being inspected.
+  const panoramaUp = panoramaVisible || (
+    scope.pendingSeat?.id !== undefined && seatView?.seatId === scope.pendingSeat.id
+  );
+  const venueMode = snapshot?.map.buyerView === 'venue3d';
+  const immersiveInspectionVisible = panoramaUp || venueMode;
+  const phoneDockVisible = !wide && !venueMode && !panoramaUp && plan.options.chrome.dock && nativeChrome &&
+    snapshot?.map.rung === 'seats' && focusedSection !== undefined;
+  const phoneControls = !wide && !panoramaUp && plan.options.chrome.mapControls
     ? Object.freeze({
-      bottom: !panoramaVisible && chromeEligibility.canFit,
-      left: !panoramaVisible && chromeEligibility.canOverview,
+      bottom: chromeEligibility.canFit,
+      left: chromeEligibility.canOverview,
       right: chromeEligibility.canSwitchView,
     })
     : Object.freeze({ bottom: false, left: false, right: false });
@@ -167,14 +186,13 @@ export function SeatLayerPickerAdaptiveLayout({
   useLayoutEffect(() => { setViewModeWidth(undefined); }, [phoneControls.right, scope.resolvedTheme, scope.sessionId, scope.snapshot?.sessionId, scope.strings]);
   const categoriesVisible = nativeChrome && (snapshot?.categories.some((category) => !category.notForSale) ?? false);
   const floorsVisible = (snapshot?.map.floors.length ?? 0) > 1;
-  const venueMode = snapshot?.map.buyerView === 'venue3d';
-  const venueVisible = venueMode && plan.options.chrome.venue3D && plan.options.enable3D && nativeChrome &&
+  const venueVisible = venueMode && !panoramaUp && plan.options.chrome.venue3D && plan.options.enable3D && nativeChrome &&
     snapshot?.capabilities.includes('venue3d') === true && scope.controller.mapController.supportsPickerCapability('venue-3d-v1') &&
     scope.controller.mapController.supportsPickerCommand('picker.setBuyerView');
-  const floorStripVisible = !venueMode && !panoramaVisible && plan.options.chrome.floorStrip &&
+  const floorStripVisible = !venueMode && !panoramaUp && plan.options.chrome.floorStrip &&
     (wide || !plan.options.chrome.floorSelector) && floorsVisible && nativeChrome &&
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
-  const floorSelectorVisible = !venueMode && !panoramaVisible && plan.options.chrome.floorSelector &&
+  const floorSelectorVisible = !venueMode && !panoramaUp && plan.options.chrome.floorSelector &&
     (!wide || !plan.options.chrome.floorStrip) && floorsVisible &&
     scope.controller.mapController.isReady && nativeChrome &&
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
@@ -184,15 +202,19 @@ export function SeatLayerPickerAdaptiveLayout({
   useLayoutEffect(() => {
     setTestBadgeWidth(undefined);
   }, [scope.sessionId, snapshot?.sessionId, testBadgeCopy, testBadgeVisible]);
-  const accessibilityVisible = !venueMode && !panoramaVisible && nativeChrome && plan.options.chrome.accessibility &&
+  const accessibilityVisible = !venueMode && !panoramaUp && nativeChrome && plan.options.chrome.accessibility &&
     canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
   const priceRailAvailable = plan.options.chrome.priceLegend && categoriesVisible;
-  const legendVisible = priceRailAvailable && (!phoneControls.right || viewModeWidth !== undefined);
+  const legendVisible = !panoramaUp && priceRailAvailable && (!phoneControls.right || viewModeWidth !== undefined);
   const legendHeight = legendVisible
     ? seatLayerPickerPhoneLegendHeight : 0;
   const floorHeight = floorStripVisible
     ? seatLayerPickerTokens.size.minimumHitTarget : 0;
-  const immersiveTopInset = priceRailAvailable ? seatLayerPickerPhoneLegendHeight : seatLayerPickerMapControlsEdgeInset;
+  // The 3D scene owns its own top-left corner. Price categories can still be
+  // available while their rail is absent from that corner, so using the
+  // legend height here pushed “Back to venue” into the middle of the scene.
+  // Keep it on the same top edge as the Map / 3D control instead.
+  const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const topControlsHeight = phoneControls.left || phoneControls.right ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerPhoneChromeTop : 0;
   const legendTop = seatLayerPickerPhoneRailTop;
   const baseLegendLeft = phoneControls.left
@@ -250,10 +272,25 @@ export function SeatLayerPickerAdaptiveLayout({
   const gaActive = scope.isReady && !scope.readOnly && gaClick !== undefined;
   const tableActive = scope.isReady && !scope.readOnly && !gaActive && tableCandidate !== undefined;
   const seatActive = scope.isReady && !scope.readOnly && !gaActive && !tableActive &&
-    scope.pendingSeat !== null && plan.options.confirmSelection && plan.options.chrome.confirmCard;
+    !immersiveInspectionVisible && scope.pendingSeat !== null && plan.options.confirmSelection && plan.options.chrome.confirmCard;
   const confirmationAction = ({ action, seat }: { action: string; seat: unknown }) => {
     if (action === 'confirm') invokeSeatLayerPickerCallback(onSeatSelected, seat as never, scope.reportError);
     if (action === 'seatView' || action === 'venue3d') invokeSeatLayerPickerCallback(onSeatViewOpened, seat as never, scope.reportError);
+    if (action !== 'confirm') return;
+    const origin = confirmOriginRef.current;
+    confirmOriginRef.current = undefined;
+    const root = rootRef.current;
+    if (wide || !ticketPanelVisible || origin === undefined || root === null) return;
+    const selected = seat as SelectedSeat;
+    const category = scope.snapshot?.categories.find((item) => item.key === selected.categoryKey);
+    const color = chartSeatLayerPickerColor(category?.color, scope.resolvedTheme.colors.accent);
+    const sessionId = scope.sessionId;
+    root.measureInWindow((x, y, width, height) => {
+      if (scope.sessionId !== sessionId) return;
+      const path = planSeatLayerSelectionFlight({ x, y, width, height }, origin, safeLayout.insets.bottom);
+      if (!path) return;
+      setSelectionFlight(Object.freeze({ id: ++flightSequenceRef.current, color, ...path }));
+    });
   };
   const promptPart = gaActive
     ? part(builders, scope, 'generalAdmissionPrompt', <SeatLayerPickerGAPrompt safeAreaInsets={safeLayout.insets} />)
@@ -262,14 +299,19 @@ export function SeatLayerPickerAdaptiveLayout({
       : seatActive
         ? part(builders, scope, wide ? 'seatConfirmation' : 'confirmCard', wide
           ? <SeatLayerPickerSeatConfirmation showSeatView={plan.options.enableSeatView} show3D={plan.options.enable3D} onAction={confirmationAction} />
-          : <SeatLayerConfirmCard showSeatView={plan.options.enableSeatView} show3D={plan.options.enable3D} onAction={confirmationAction} />)
+          : <SeatLayerConfirmCard
+            showSeatView={plan.options.enableSeatView}
+            show3D={plan.options.enable3D}
+            onAction={confirmationAction}
+            onConfirmOrigin={(origin) => { confirmOriginRef.current = origin; }}
+          />)
         : null;
   const prompt = promptPart;
   const promptVisible = prompt !== null;
   const promptKey = gaActive ? `ga:${gaClick?.areaId ?? ''}:${gaClick?.clickEpoch ?? ''}`
     : tableActive ? `table:${pendingId ?? ''}:${candidateEpoch ?? ''}`
       : seatActive ? `seat:${pendingId ?? ''}:${candidateEpoch ?? ''}` : null;
-  const shouldRetirePending = scope.pendingSeat !== null && !gaActive && !promptVisible &&
+  const shouldRetirePending = scope.pendingSeat !== null && !gaActive && !immersiveInspectionVisible && !promptVisible &&
     scope.presentation.prompt === null;
   const retiredPendingRef = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
@@ -284,7 +326,7 @@ export function SeatLayerPickerAdaptiveLayout({
   const blocked = seatLayerPickerAdaptiveInteractionBlocked(
     scope.isReady,
     fatal ? scope.error : undefined,
-    promptVisible || scope.presentation.prompt !== null || emptySnapshot,
+    (!immersiveInspectionVisible && (promptVisible || scope.presentation.prompt !== null)) || emptySnapshot,
   );
   useSeatLayerPickerAdaptiveInteraction(scope, blocked);
   const mapInsetLease = useMemo(
@@ -332,7 +374,7 @@ export function SeatLayerPickerAdaptiveLayout({
   const legend = legendVisible
     ? part(builders, scope, 'legend', <SeatLayerPriceLegend
       compact={!wide}
-      edgeFadeColor={panoramaVisible ? seatLayerPickerTokens.color.dark.mapBackground : undefined}
+      edgeFadeColor={panoramaUp ? seatLayerPickerTokens.color.dark.mapBackground : undefined}
       reserveInset={false}
     />)
     : null;
@@ -345,14 +387,19 @@ export function SeatLayerPickerAdaptiveLayout({
   const sections = wide && nativeChrome
     ? part(builders, scope, 'sectionNavigator', <SeatLayerPickerSectionNavigator onSectionFocused={onSectionFocused} />)
     : null;
-  const controls = plan.options.chrome.mapControls && chromeEligibility.mapControls
+  // Panorama owns the complete gesture surface and its web close button. The
+  // Map / 3D switch occupies that same top-right slot, so leaving it mounted
+  // hides the buyer's only exit behind native chrome.
+  const controls = !panoramaUp && plan.options.chrome.mapControls && chromeEligibility.mapControls
     ? part(builders, scope, 'mapControls', <SeatLayerMapControls
       compact={!wide}
       enable3D={plan.options.enable3D && plan.options.chrome.map3D}
       showAccessibilityControl={false}
-      showOverviewControl={!panoramaVisible && plan.options.chrome.overview}
-      showZoomControls={!panoramaVisible && plan.options.chrome.zoom}
-      showZoomToFitControl={!panoramaVisible && plan.options.chrome.fit}
+      showOverviewControl={plan.options.chrome.overview}
+      showZoomControls={plan.options.chrome.zoom}
+      showZoomToFitControl={plan.options.chrome.fit}
+      zoomInLabel="Zoom in"
+      zoomOutLabel="Zoom out"
       includeViewModeControl
       onViewModeLayout={setViewModeWidth}
       bottomInset={phoneDockVisible ? seatLayerPickerTokens.size.dockBarHeight : 0}
@@ -400,7 +447,7 @@ export function SeatLayerPickerAdaptiveLayout({
     : null;
 
   return (
-    <View onLayout={onLayout} style={[styles.root, sanitizeSeatLayerPickerStyle(style)]} testID={`seatlayer-adaptive-${plan.layout}`}>
+    <View ref={rootRef} onLayout={onLayout} style={[styles.root, sanitizeSeatLayerPickerStyle(style)]} testID={`seatlayer-adaptive-${plan.layout}`}>
       {presentationActive && plan.options.chrome.systemBars ? <SeatLayerPickerSystemStatusBar /> : null}
       {presentationActive && plan.options.haptics && hapticAdapter ? <SeatLayerPickerHaptics adapter={hapticAdapter} /> : null}
       {presentationActive ? <SeatLayerPickerScopeBackHandler /> : null}
@@ -442,7 +489,7 @@ export function SeatLayerPickerAdaptiveLayout({
           </View> : null}
           {venueVisible ? part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : immersiveTopInset} />) : null}
           {plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null}
-          {status === null ? <SeatLayerPickerPromptTransition
+          {status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
             prompt={prompt}
             promptKey={promptKey}
             scrimColor={seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
@@ -465,6 +512,11 @@ export function SeatLayerPickerAdaptiveLayout({
         </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<SeatLayerPickerAttribution /></> : null}</View></>}
         </View>
       </View>
+      {selectionFlight === undefined ? null : <SeatLayerSelectionFlight
+        key={selectionFlight.id}
+        moment={selectionFlight}
+        onComplete={(id) => setSelectionFlight((current) => current?.id === id ? undefined : current)}
+      />}
     </View>
   );
 }

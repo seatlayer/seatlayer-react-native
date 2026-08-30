@@ -20,6 +20,7 @@ vi.mock('react-native', () => ({
 import {
   planSeatLayerPickerAccessibilityMutations,
   resolveSeatLayerPickerAccessNeeds,
+  shouldFocusSeatLayerAccessibilityResults,
 } from '../src/picker/accessibility';
 import { parseSeatLayerPickerColor, pickerColor, seatLayerPickerColorAlpha } from '../src/picker/colors';
 import { chartSeatLayerPickerColor } from '../src/picker/chartColor';
@@ -143,11 +144,25 @@ describe('picker chrome pure plans', () => {
     ]);
   });
 
-  it('uses a non-empty runtime access taxonomy and otherwise retains every fallback choice', () => {
+  it('uses only access needs reported by the event inventory', () => {
     expect(resolveSeatLayerPickerAccessNeeds([{ key: 'wheelchair', count: 2 }], true))
       .toEqual([{ key: 'wheelchair', count: 2 }]);
-    expect(resolveSeatLayerPickerAccessNeeds([], true).length).toBeGreaterThan(1);
-    expect(resolveSeatLayerPickerAccessNeeds([], false).length).toBeGreaterThan(1);
+    expect(resolveSeatLayerPickerAccessNeeds([], true)).toEqual([]);
+    expect(resolveSeatLayerPickerAccessNeeds([{ key: 'wheelchair', count: 2 }], false)).toEqual([]);
+  });
+
+  it('focuses matching seats only when an active map filter is being enabled', () => {
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'accessibility', keys: ['wheelchair'] },
+    ])).toBe(true);
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'limited', on: true },
+    ])).toBe(true);
+    expect(shouldFocusSeatLayerAccessibilityResults([
+      { kind: 'accessibility', keys: [] },
+      { kind: 'limited', on: false },
+      { kind: 'colorblind', on: true },
+    ])).toBe(false);
   });
 
   it('keeps floor/all, dock, legend RTL, and phone control plans deterministic', () => {

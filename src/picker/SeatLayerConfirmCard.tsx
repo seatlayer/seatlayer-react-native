@@ -7,6 +7,7 @@ import { blendSeatLayerPickerColor } from './colors';
 import { SeatLayerPickerSeatTierSelector } from './SeatLayerPickerDecisionPrompts';
 import {
   SeatLayerPickerConfirmationState,
+  seatLayerPickerConfirmationPrice,
   type SeatLayerPickerConfirmationActionEvent,
   type SeatLayerPickerConfirmationActions,
   type SeatLayerPickerConfirmationModel,
@@ -25,6 +26,8 @@ export interface SeatLayerConfirmCardProps extends SeatLayerPickerConfirmationAc
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: ConfirmSlots;
   readonly safeAreaInsets?: SeatLayerConfirmCardInsets;
+  /** Internal composition hook: records where a confirmed card should fly from. */
+  readonly onConfirmOrigin?: (origin: Readonly<{ x: number; y: number }>) => void;
 }
 
 /** Compact confirmation presentation over the shared pending-seat action workflow. */
@@ -36,7 +39,10 @@ export function SeatLayerConfirmCard(props: SeatLayerConfirmCardProps): React.Re
 function Card({ model, props, viewportWidth }: Readonly<{ model: SeatLayerPickerConfirmationModel; props: SeatLayerConfirmCardProps; viewportWidth: number }>): React.ReactElement {
   const { scope, seat, candidate, tierId, setTierId, busy, inspection, run } = model;
   const identity = seatLayerPickerConfirmIdentity(seat, sectionId(scope, seat), scope.strings.translate);
-  const price = typeof seat.price === 'number' && Number.isFinite(seat.price) ? scope.formatMoney(seat.price, seat.currency ?? scope.snapshot!.currency) : undefined;
+  const selectedPrice = seatLayerPickerConfirmationPrice(seat, tierId);
+  const price = selectedPrice
+    ? scope.formatMoney(selectedPrice.amount, selectedPrice.currency ?? scope.snapshot?.currency ?? 'USD')
+    : undefined;
   const category = scope.snapshot?.categories.find((item) => item.key === seat.categoryKey);
   const seatColor = chartSeatLayerPickerColor(category?.color, scope.resolvedTheme.colors.accent);
   const stripStart = blendSeatLayerPickerColor(scope.resolvedTheme.colors.accent, scope.resolvedTheme.colors.surface, .22, scope.resolvedTheme.colors.surface);
@@ -45,7 +51,21 @@ function Card({ model, props, viewportWidth }: Readonly<{ model: SeatLayerPicker
   const maxWidth = Math.max(0, Math.min(seatLayerPickerTokens.size.confirmCardMaxWidth, viewportWidth - seatLayerPickerTokens.size.confirmCardGutter * 2 - safe.left - safe.right));
   const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   const rtl = I18nManager.isRTL;
-  return <View style={[nativeStyles.hit, { maxWidth, marginStart: safe.left, marginEnd: safe.right }]}><View style={[nativeStyles.card, {
+  const cardRef = React.useRef<View>(null);
+  const confirm = () => {
+    const card = cardRef.current;
+    if (!card || props.onConfirmOrigin === undefined) {
+      run('confirm');
+      return;
+    }
+    card.measureInWindow((x, y, width, height) => {
+      if ([x, y, width, height].every(Number.isFinite) && width > 0 && height > 0) {
+        props.onConfirmOrigin?.(Object.freeze({ x: x + width / 2, y: y + height / 2 }));
+      }
+      run('confirm');
+    });
+  };
+  return <View ref={cardRef} style={[nativeStyles.hit, { maxWidth, marginStart: safe.left, marginEnd: safe.right }]}><View style={[nativeStyles.card, {
     backgroundColor: scope.resolvedTheme.colors.surface,
     borderColor: scope.resolvedTheme.colors.divider,
     borderRadius: seatLayerPickerTokens.radius.card,
@@ -67,7 +87,7 @@ function Card({ model, props, viewportWidth }: Readonly<{ model: SeatLayerPicker
     </View> : <View style={nativeStyles.noStripSpace} />}
     {inspection.length ? <View style={nativeStyles.stripSpace} /> : null}
     {candidate ? <SeatLayerPickerSeatTierSelector candidate={candidate} value={tierId} onValueChange={setTierId} slots={props.slots} /> : null}
-    <View style={[nativeStyles.actions, { borderTopColor: scope.resolvedTheme.colors.divider, flexDirection: rtl ? 'row-reverse' : 'row' }]}><CardActionButton label={scope.strings.translate('cancel')} busy={busy} onPress={() => run('cancel')} secondary scope={scope} styles={styles} /><CardActionButton label={scope.strings.translate('select')} busy={busy} onPress={() => run('confirm')} scope={scope} styles={styles} /></View>
+    <View style={[nativeStyles.actions, { borderTopColor: scope.resolvedTheme.colors.divider, flexDirection: rtl ? 'row-reverse' : 'row' }]}><CardActionButton label={scope.strings.translate('cancel')} busy={busy} onPress={() => run('cancel')} secondary scope={scope} styles={styles} /><CardActionButton label={scope.strings.translate('select')} busy={busy} onPress={confirm} scope={scope} styles={styles} /></View>
   </View></View>;
 }
 

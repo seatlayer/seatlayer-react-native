@@ -27,6 +27,7 @@ export interface SeatLayerDockBarProps {
   readonly slots?: Pick<SeatLayerPickerStyles, 'dockContainer' | 'dockSectionText' | 'dockCountText'>;
   readonly safeAreaBottomInset?: number;
   readonly reserveBottomInset?: boolean;
+  /** Called after the built-in return to the venue overview completes. */
   readonly onOverview?: () => unknown;
   readonly onSectionChanged?: (sectionId: string) => void;
 }

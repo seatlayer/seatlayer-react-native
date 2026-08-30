@@ -669,9 +669,10 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       if (result.action.type === 'dismissPendingConfirmation') {
         await cancelPending();
       } else {
-        await activeController.overview();
-        setPresentation({ type: 'setFocusedSection', focusedSection: null });
-        setPresentation({ type: 'setOverview', isOverview: true });
+        // Match the web rung ladder: one Back press walks exactly one camera
+        // level (seat -> section -> venue). The next snapshot remains the
+        // authority for whether another local rung is still available.
+        await activeController.zoomOut();
       }
     } catch (nextError) {
       reportError(nextError);

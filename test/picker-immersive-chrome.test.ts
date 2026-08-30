@@ -22,6 +22,8 @@ import {
   dispatchSeatLayerVenue3DNavigationMode,
   dispatchSeatLayerVenue3DAction,
   dispatchSeatLayerVenue3DBackOverride,
+  dispatchSeatLayerVenue3DCameraAction,
+  dispatchSeatLayerVenue3DSeatView,
   planSeatLayerVenue3DAction,
   projectSeatLayerPanoramaWording,
   resolveSeatLayerPickerImmersiveTheme,
@@ -31,6 +33,7 @@ import {
   seatLayerPanoramaHasContent,
   seatLayerPanoramaIsOwned,
   seatLayerVenue3DIsOwned,
+  seatLayerVenue3DHasFocusedView,
   seatLayerVenue3DNavigationIsOwned,
   seatLayerVenue3DCaption,
   seatLayerVenue3DNeighbours,
@@ -55,15 +58,23 @@ const theme = {
 } as any;
 
 function snapshot(targetId = 'seat-2'): any {
+  const selection = [
+    { id: 'seat-1', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '1' },
+    { id: 'seat-2', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '2' },
+    { id: 'seat-3', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '3' },
+  ];
+  const index = selection.findIndex((seat) => seat.id === targetId);
   return {
     sessionId: 'runtime-1',
-    capabilities: ['venue3d'],
-    map: { buyerView: 'venue3d', view3DTargetSeatId: targetId },
-    selection: [
-      { id: 'seat-1', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '1' },
-      { id: 'seat-2', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '2' },
-      { id: 'seat-3', sectionLabel: 'Stalls', rowLabel: 'A', seatNumber: '3' },
-    ],
+    capabilities: ['venue3d', 'seatView'],
+    map: {
+      buyerView: 'venue3d', focusedSectionId: 'stalls', rung: 'seats',
+      view3DTargetSeatId: targetId, view3DTargetSeat: selection[index],
+      view3DPreviousSeatId: index > 0 ? selection[index - 1]!.id : null,
+      view3DNextSeatId: index >= 0 && index + 1 < selection.length ? selection[index + 1]!.id : null,
+      view3DFocusedSectionId: 'stalls',
+    },
+    selection,
   };
 }
 
@@ -87,8 +98,22 @@ describe('immersive venue and panorama chrome', () => {
 
   it('uses exact buyer-view payloads and has no adjacent action beyond the selected boundaries', async () => {
     const state = snapshot();
-    expect(seatLayerVenue3DNeighbours(state)).toMatchObject({ previous: { id: 'seat-1' }, target: { id: 'seat-2' }, next: { id: 'seat-3' } });
-    expect(planSeatLayerVenue3DAction('back', state)).toEqual({ view: 'map' });
+    const venueOverview = snapshot();
+    venueOverview.map.view3DTargetSeatId = undefined;
+    venueOverview.map.view3DTargetSeat = undefined;
+    venueOverview.map.view3DPreviousSeatId = null;
+    venueOverview.map.view3DNextSeatId = null;
+    venueOverview.map.view3DFocusedSectionId = null;
+    venueOverview.map.focusedSectionId = undefined;
+    venueOverview.map.rung = 'overview';
+    const focusedSection = snapshot();
+    focusedSection.map.view3DTargetSeatId = undefined;
+    focusedSection.map.view3DTargetSeat = undefined;
+    expect(seatLayerVenue3DNeighbours(state)).toMatchObject({ previousSeatId: 'seat-1', target: { id: 'seat-2' }, targetSeatId: 'seat-2', nextSeatId: 'seat-3' });
+    expect(planSeatLayerVenue3DAction('back', state)).toEqual({ view: 'venue3d', options: { resetView: true } });
+    expect(seatLayerVenue3DHasFocusedView(focusedSection)).toBe(true);
+    expect(planSeatLayerVenue3DAction('back', focusedSection)).toEqual({ view: 'venue3d', options: { resetView: true } });
+    expect(planSeatLayerVenue3DAction('back', venueOverview)).toEqual({ view: 'map' });
     expect(planSeatLayerVenue3DAction('reset', state)).toEqual({ view: 'venue3d', options: { resetView: true } });
     expect(planSeatLayerVenue3DAction('previous', state)).toEqual({ view: 'venue3d', options: { flyToSeatId: 'seat-1' } });
     expect(planSeatLayerVenue3DAction('next', state)).toEqual({ view: 'venue3d', options: { flyToSeatId: 'seat-3' } });
@@ -99,6 +124,12 @@ describe('immersive venue and panorama chrome', () => {
     const setVenue3DNavigationMode = vi.fn().mockResolvedValue(undefined);
     await dispatchSeatLayerVenue3DNavigationMode({ setVenue3DNavigationMode }, 'pan');
     expect(setVenue3DNavigationMode).toHaveBeenCalledWith('pan');
+    const openSeatView = vi.fn().mockResolvedValue(undefined);
+    await dispatchSeatLayerVenue3DSeatView({ openSeatView }, 'seat-2');
+    expect(openSeatView).toHaveBeenCalledWith('seat-2');
+    const camera = { zoomIn: vi.fn(), zoomOut: vi.fn(), zoomToFit: vi.fn() };
+    await dispatchSeatLayerVenue3DCameraAction(camera, 'fit');
+    expect(camera.zoomToFit).toHaveBeenCalledOnce();
     const override = vi.fn().mockResolvedValue(undefined);
     await dispatchSeatLayerVenue3DBackOverride(override);
     expect(override).toHaveBeenCalledOnce();
@@ -139,12 +170,13 @@ describe('immersive venue and panorama chrome', () => {
     let renderer: TestRenderer.ReactTestRenderer;
     act(() => {
       renderer = TestRenderer.create(React.createElement(SeatLayerVenue3DChromeView, {
-        backLabel: 'Back', bottomInset: 12, caption: 'Stalls · A · 2 · view from your seat',
+        backVisible: true, backLabel: 'Back', bottomInset: 12, caption: 'Stalls · A · 2 · view from your seat',
         disabled: false, navigationEnabled: true, navigationLabel: 'Drag to rotate venue',
         nextEnabled: true, nextLabel: 'Next', onBack: vi.fn(), onNavigation,
-        onNext: vi.fn(), onPrevious: vi.fn(), onRecentre: vi.fn(), onReset: vi.fn(),
+        onNext: vi.fn(), onPrevious: vi.fn(), onPrimary: vi.fn(), onRecentre: vi.fn(),
+        onZoomIn: vi.fn(), onZoomOut: vi.fn(), primaryLabel: 'View from here', primaryVisible: true,
         previousEnabled: true, previousLabel: 'Previous', recentreEnabled: true,
-        recentreLabel: 'Recentre', resetLabel: '360',
+        recentreLabel: 'Recentre', targeted: true, zoomInLabel: 'Zoom in', zoomOutLabel: 'Zoom out',
         style: { height: 1, position: 'relative', backgroundColor: '#123456' } as any,
         theme: immersive, topInset: 12,
       }));
@@ -159,6 +191,31 @@ describe('immersive venue and panorama chrome', () => {
     expect(rootStyle).toContainEqual({ bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 });
     act(() => buttons[1]!.props.onPress());
     expect(onNavigation).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
+
+  it('uses camera controls without a duplicate back control at the 3D overview', () => {
+    const immersive = resolveSeatLayerPickerImmersiveTheme(theme);
+    const onFit = vi.fn();
+    let renderer: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(SeatLayerVenue3DChromeView, {
+        backVisible: false, backLabel: 'Back', bottomInset: 12, disabled: false,
+        navigationEnabled: false, nextEnabled: false, nextLabel: 'Next',
+        onBack: vi.fn(), onNext: vi.fn(), onPrevious: vi.fn(), onPrimary: onFit,
+        onRecentre: vi.fn(), onZoomIn: vi.fn(), onZoomOut: vi.fn(),
+        previousEnabled: false, previousLabel: 'Previous', primaryLabel: 'Fit to screen',
+        primaryVisible: true, recentreEnabled: false, recentreLabel: 'Recentre',
+        targeted: false, theme: immersive, topInset: 12,
+        zoomInLabel: 'Zoom in', zoomOutLabel: 'Zoom out',
+      }));
+    });
+    const labels = renderer!.root.findAllByType('Text' as any).map((node) => node.children.join(''));
+    expect(labels).not.toContain('Back');
+    expect(labels).toContain('Fit to screen');
+    expect(renderer!.root.findAllByType('Pressable' as any)).toHaveLength(3);
+    act(() => renderer!.root.findByProps({ accessibilityLabel: 'Fit to screen' }).props.onPress());
+    expect(onFit).toHaveBeenCalledOnce();
     act(() => renderer!.unmount());
   });
 

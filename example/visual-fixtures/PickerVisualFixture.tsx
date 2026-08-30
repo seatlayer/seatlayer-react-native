@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { SelectedSeat } from '../../src/types';
+import type { CategoryTier, SelectedSeat } from '../../src/types';
 import { SeatLayerPickerAdaptiveLayout } from '../../src/picker/SeatLayerPickerAdaptiveLayout';
 import { SeatLayerPickerHoldCountdown } from '../../src/picker/SeatLayerPickerHoldCountdown';
 import {
@@ -27,6 +27,7 @@ import { resolveSeatLayerPickerTheme, type SeatLayerResolvedThemeMode } from '..
 import {
   seatLayerPickerSnapshotSchema,
   type SeatLayerPickerCartLine,
+  type SeatLayerPickerCheckoutHandoff,
   type SeatLayerPickerSnapshot,
   type SeatLayerSeatView,
 } from '../../src/picker/models';
@@ -72,7 +73,9 @@ export const seatLayerVisualFixtureScenarios = Object.freeze([
   'long-copy',
   'custom-controls',
   'accessibility',
+  'filters',
   'general-admission',
+  'seat-tier',
   'variable-table',
   'wide',
   'rtl',
@@ -127,6 +130,76 @@ const fixtureGACandidate = Object.freeze({
   clickEpoch: 1,
 });
 
+const fixtureSeatTiers: readonly Readonly<CategoryTier>[] = Object.freeze([
+  Object.freeze({ id: 'adult', name: 'Adult', price: 100, currency: 'EUR' }),
+  Object.freeze({
+    id: 'child',
+    name: 'Child',
+    price: 60,
+    currency: 'EUR',
+    restriction: 'child',
+    buyerMessage: 'For children aged 12 and under.',
+  }),
+]);
+
+const fixtureGoldCategory = Object.freeze({
+  key: 'gold',
+  label: 'Gold',
+  color: '#B98600',
+  priceMin: 60,
+  priceMax: 100,
+  available: 40,
+  notForSale: false,
+  tiers: fixtureSeatTiers,
+});
+
+const fixtureSilverCategory = Object.freeze({
+  key: 'silver',
+  label: 'Silver',
+  color: '#7A8799',
+  priceMin: 45,
+  priceMax: 45,
+  available: 64,
+  notForSale: false,
+  tiers: Object.freeze([]),
+});
+
+interface FixtureFilterState {
+  readonly categoryKeys: readonly string[];
+  readonly accessKeys: readonly string[];
+  readonly limited: boolean;
+  readonly colorblind: boolean;
+  readonly trace: string;
+}
+
+interface FixtureFilterValidation {
+  readonly state: FixtureFilterState;
+  readonly setCategoryKeys: (keys: readonly string[]) => void;
+  readonly setAccessKeys: (keys: readonly string[]) => void;
+  readonly setLimited: (on: boolean) => void;
+  readonly setColorblind: (on: boolean) => void;
+}
+
+interface FixtureImmersiveState {
+  readonly buyerView: 'map' | 'venue3d';
+  readonly targetSeatId?: string;
+  readonly navigationMode: 'orbit' | 'pan';
+  readonly seatView?: SeatLayerSeatView;
+  readonly trace: string;
+}
+
+interface FixtureImmersiveValidation {
+  readonly state: FixtureImmersiveState;
+  readonly setBuyerView: (
+    view: 'map' | 'venue3d',
+    options?: Readonly<{ flyToSeatId?: string; resetView?: boolean }>,
+  ) => void;
+  readonly setNavigationMode: (mode: 'orbit' | 'pan') => void;
+  readonly openSeatView: (seatId: string) => void;
+  readonly closeSeatView: () => void;
+  readonly recordCamera: (command: string) => void;
+}
+
 function fixtureSeat(number: number, overrides: Readonly<{
   categoryKey?: string;
   price?: number;
@@ -171,6 +244,20 @@ function fixtureVariableTable(): Readonly<SelectedSeat> {
   });
 }
 
+function fixtureTierSeat(tierId: 'adult' | 'child'): Readonly<SelectedSeat> {
+  const tier = fixtureSeatTiers.find((candidate) => candidate.id === tierId) ?? fixtureSeatTiers[0]!;
+  return Object.freeze({
+    ...fixtureSeat(1, {
+      categoryKey: fixtureGoldCategory.key,
+      price: tier.price,
+      rowLabel: 'G',
+      sectionLabel: 'Main Stalls',
+    }),
+    tierId: tier.id,
+    tiers: fixtureSeatTiers.map((tier) => ({ ...tier })),
+  });
+}
+
 const denseFixtureSeats = Object.freeze([
   fixtureSeat(1),
   fixtureSeat(2),
@@ -193,6 +280,7 @@ function fixtureCartLine(seat: Readonly<SelectedSeat>): Readonly<SeatLayerPicker
     unitPrice: seat.price ?? 95,
     currency: seat.currency ?? 'EUR',
     quantity: seat.quantity ?? 1,
+    ...(seat.tierId === undefined ? {} : { tierId: seat.tierId }),
     seatId: seat.id,
     sectionLabel: seat.sectionLabel,
     rowLabel: seat.rowLabel,
@@ -200,8 +288,12 @@ function fixtureCartLine(seat: Readonly<SelectedSeat>): Readonly<SeatLayerPicker
   });
 }
 
-function scenarioSeats(scenario: SeatLayerVisualFixtureScenario): readonly Readonly<SelectedSeat>[] {
+function scenarioSeats(
+  scenario: SeatLayerVisualFixtureScenario,
+  tierId: 'adult' | 'child' = 'adult',
+): readonly Readonly<SelectedSeat>[] {
   if (scenario === 'cart-dense') return denseFixtureSeats;
+  if (scenario === 'seat-tier') return Object.freeze([fixtureTierSeat(tierId)]);
   if (scenario === 'variable-table') return Object.freeze([fixtureVariableTable()]);
   if (scenario === 'wide') return Object.freeze([
     fixtureSeat(1),
@@ -218,8 +310,13 @@ function scenarioSeats(scenario: SeatLayerVisualFixtureScenario): readonly Reado
   return Object.freeze([]);
 }
 
-function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPickerSnapshot {
-  const selection = scenarioSeats(scenario);
+function fixtureSnapshot(
+  scenario: SeatLayerVisualFixtureScenario,
+  tierId: 'adult' | 'child' = 'adult',
+  filters?: FixtureFilterState,
+  immersive?: FixtureImmersiveState,
+): SeatLayerPickerSnapshot {
+  const selection = scenarioSeats(scenario, tierId);
   const cartLines = Object.freeze(selection.map(fixtureCartLine));
   const overview = scenario === 'overview' || scenario === 'best-seats' || scenario === 'loading' ||
     scenario === 'error' || scenario === 'empty' || scenario === 'general-admission';
@@ -227,6 +324,13 @@ function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPic
     ? fixtureFloors
     : Object.freeze([fixtureFloors[0]!]);
   const venue3D = scenario === 'venue-3d';
+  const buyerView = venue3D ? immersive?.buyerView ?? 'venue3d' : 'map';
+  const targetSeatId = venue3D
+    ? immersive === undefined ? selection[1]?.id : immersive.targetSeatId
+    : undefined;
+  const targetIndex = targetSeatId === undefined
+    ? -1
+    : selection.findIndex((seat) => seat.id === targetSeatId);
   return Object.freeze({
     schema: seatLayerPickerSnapshotSchema,
     sessionId: `fixture-${scenario}`,
@@ -253,7 +357,11 @@ function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPic
       accent: '#EF4056',
       accentInk: '#111827',
     }),
-    categories: scenario === 'empty'
+    categories: scenario === 'filters'
+      ? Object.freeze([fixtureGoldCategory, fixtureSilverCategory])
+      : scenario === 'seat-tier'
+      ? Object.freeze([fixtureGoldCategory])
+      : scenario === 'empty'
       ? Object.freeze(fixtureCategories.map((category) => Object.freeze({ ...category, available: 0 })))
       : fixtureCategories,
     zones: Object.freeze([
@@ -279,10 +387,22 @@ function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPic
     ]),
     map: Object.freeze({
       rung: overview ? 'overview' : 'seats',
-      viewMode: venue3D ? '3d' : 'map',
-      buyerView: venue3D ? 'venue3d' : 'map',
-      view3DNavigationMode: 'orbit',
-      ...(venue3D ? { view3DTargetSeatId: selection[1]?.id } : {}),
+      viewMode: buyerView === 'venue3d' ? '3d' : 'map',
+      buyerView,
+      view3DNavigationMode: immersive?.navigationMode ?? 'orbit',
+      ...(venue3D ? {
+        view3DFocusedSectionId: targetSeatId === undefined ? null : 'guest-tables',
+      } : {}),
+      ...(venue3D && targetSeatId !== undefined ? {
+        view3DTargetSeatId: targetSeatId,
+        view3DTargetSeat: selection[targetIndex],
+        view3DPreviousSeatId: targetIndex > 0
+          ? selection[targetIndex - 1]?.id
+          : null,
+        view3DNextSeatId: targetIndex >= 0 && targetIndex + 1 < selection.length
+          ? selection[targetIndex + 1]?.id
+          : null,
+      } : {}),
       activeFloorId: floors[0]!.id,
       ...(overview ? {} : {
         focusedSectionId: 'guest-tables',
@@ -291,15 +411,23 @@ function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPic
           label: scenario === 'rtl' ? 'طاولات الضيوف' : 'Guest Tables',
         }),
       }),
-      colorblindSafe: false,
-      hideLimitedView: false,
+      colorblindSafe: filters?.colorblind ?? false,
+      hideLimitedView: filters?.limited ?? false,
       canZoomIn: true,
       canZoomOut: true,
-      categoryFilter: Object.freeze([]),
-      accessibilityFilter: scenario === 'accessibility'
+      categoryFilter: Object.freeze(filters?.categoryKeys ?? []),
+      accessibilityFilter: scenario === 'filters'
+        ? Object.freeze(filters?.accessKeys ?? [])
+        : scenario === 'accessibility'
         ? Object.freeze(['wheelchair'])
         : Object.freeze([]),
-      ...(scenario === 'accessibility' ? {
+      ...(scenario === 'filters' ? {
+        accessNeeds: Object.freeze([
+          Object.freeze({ key: 'step-free', count: 12 }),
+          Object.freeze({ key: 'wheelchair', count: 0 }),
+          Object.freeze({ key: 'companion', count: 4 }),
+        ]),
+      } : scenario === 'accessibility' ? {
         accessNeeds: Object.freeze([
           Object.freeze({ key: 'wheelchair', count: 14 }),
           Object.freeze({ key: 'companion', count: 8 }),
@@ -324,8 +452,11 @@ function fixtureSnapshot(scenario: SeatLayerVisualFixtureScenario): SeatLayerPic
     capabilities: Object.freeze([
       'venue3d',
       'seatView',
+      ...(scenario === 'seat-tier' ? ['tiers'] : []),
       ...(scenario === 'general-admission' ? ['ga'] : []),
-      ...(scenario === 'accessibility' ? ['accessibilityFilter', 'limitedViewFilter'] : []),
+      ...(scenario === 'accessibility' || scenario === 'filters'
+        ? ['accessibilityFilter', 'limitedViewFilter']
+        : []),
     ]),
     raw: Object.freeze({}),
   });
@@ -347,9 +478,22 @@ function fixtureSeatView(scenario: SeatLayerVisualFixtureScenario): SeatLayerSea
 function fixtureScope(
   mode: SeatLayerResolvedThemeMode,
   scenario: SeatLayerVisualFixtureScenario,
+  tierValidation?: Readonly<{
+    tierId: 'adult' | 'child';
+    setTierId: (tierId: 'adult' | 'child') => void;
+    confirm: () => void;
+    pending: boolean;
+  }>,
+  filterValidation?: FixtureFilterValidation,
+  immersiveValidation?: FixtureImmersiveValidation,
 ): SeatLayerPickerScopeValue {
-  const snapshot = fixtureSnapshot(scenario);
-  const seatView = fixtureSeatView(scenario);
+  const snapshot = fixtureSnapshot(
+    scenario,
+    tierValidation?.tierId,
+    filterValidation?.state,
+    immersiveValidation?.state,
+  );
+  const seatView = immersiveValidation?.state.seatView ?? fixtureSeatView(scenario);
   const gaCandidate = scenario === 'general-admission' ? fixtureGACandidate : undefined;
   const mapController = {
     isReady: true,
@@ -373,22 +517,47 @@ function fixtureScope(
     supportsSeatView: true,
     supportsNativeSeatViewChrome: true,
     setInteractionEnabled: asyncNoOp,
-    setCategoryFilter: asyncNoOp,
+    setCategoryFilter: async (keys: readonly string[]) => {
+      filterValidation?.setCategoryKeys(keys);
+    },
     setFloor: asyncNoOp,
-    setAccessibilityFilter: asyncNoOp,
-    setLimitedViewFilter: asyncNoOp,
-    setColorblindSafe: asyncNoOp,
-    setBuyerView: asyncNoOp,
-    setViewMode: asyncNoOp,
-    setView3DNavigationMode: asyncNoOp,
-    setVenue3DNavigationMode: asyncNoOp,
-    zoomIn: asyncNoOp,
-    zoomOut: asyncNoOp,
-    zoomToFit: asyncNoOp,
+    setAccessibilityFilter: async (keys: readonly string[]) => {
+      filterValidation?.setAccessKeys(keys);
+    },
+    setLimitedViewFilter: async (on: boolean) => {
+      filterValidation?.setLimited(on);
+    },
+    setColorblindSafe: async (on: boolean) => {
+      filterValidation?.setColorblind(on);
+    },
+    setBuyerView: async (
+      view: 'map' | 'venue3d',
+      options?: Readonly<{ flyToSeatId?: string; resetView?: boolean }>,
+    ) => {
+      immersiveValidation?.setBuyerView(view, options);
+    },
+    setViewMode: async (view: 'map' | '3d') => {
+      immersiveValidation?.setBuyerView(view === '3d' ? 'venue3d' : 'map');
+    },
+    setView3DNavigationMode: async (mode: 'orbit' | 'pan') => {
+      immersiveValidation?.setNavigationMode(mode);
+    },
+    setVenue3DNavigationMode: async (mode: 'orbit' | 'pan') => {
+      immersiveValidation?.setNavigationMode(mode);
+    },
+    openSeatView: async (seatId: string) => {
+      immersiveValidation?.openSeatView(seatId);
+    },
+    zoomIn: async () => immersiveValidation?.recordCamera('picker.zoomIn'),
+    zoomOut: async () => immersiveValidation?.recordCamera('picker.zoomOut'),
+    zoomToFit: async () => immersiveValidation?.recordCamera('picker.zoomToFit'),
     overview: asyncNoOp,
     checkout: async () => ({ holdId: 'fixture-hold', expiresAt: seatLayerVisualFixtureClock, currency: 'EUR', lineItems: snapshot.cartLines, total: snapshot.cartTotal }),
     bestAvailable: asyncNoOp,
     holdGA: asyncNoOp,
+    setSeatTier: async (_seatId: string, tierId: string | null) => {
+      if (scenario === 'seat-tier' && (tierId === 'adult' || tierId === 'child')) tierValidation?.setTierId(tierId);
+    },
     setTableQuantity: asyncNoOp,
     removeCartLine: asyncNoOp,
     undoRemoveCartLine: asyncNoOp,
@@ -402,7 +571,9 @@ function fixtureScope(
     scenario === 'hold-lapse' || scenario === 'action-error';
   const overview = snapshot.map.rung !== 'seats';
   const ready = scenario !== 'loading' && scenario !== 'error';
-  const pendingSeat = scenario === 'confirmation' ? snapshot.selection[0] ?? null : null;
+  const pendingSeat = scenario === 'confirmation' || (scenario === 'seat-tier' && tierValidation?.pending)
+    ? snapshot.selection[0] ?? null
+    : null;
   return Object.freeze({
     controller,
     snapshot,
@@ -455,7 +626,7 @@ function fixtureScope(
     retry: asyncNoOp,
     markReady: noOp,
     subscribeChartLoad: () => noOp,
-    confirmPending: noOp,
+    confirmPending: scenario === 'seat-tier' ? tierValidation?.confirm ?? noOp : noOp,
     cancelPending: async () => false,
     dismissHoldLapse: noOp,
     reselectHoldLapse: async () => false,
@@ -498,7 +669,147 @@ function SeatLayerPickerVisualFixtureSession({
   mode: SeatLayerVisualFixtureMode;
   scenario: SeatLayerVisualFixtureScenario;
 }>): React.ReactElement {
-  const baseScope = useMemo(() => fixtureScope(mode, scenario), [mode, scenario]);
+  const selectedTierRef = useRef<'adult' | 'child'>('adult');
+  const [tierPending, setTierPending] = useState(true);
+  const [checkoutHandoff, setCheckoutHandoff] = useState<Readonly<SeatLayerPickerCheckoutHandoff>>();
+  const [filterState, setFilterState] = useState<FixtureFilterState>(() => Object.freeze({
+    categoryKeys: Object.freeze([]),
+    accessKeys: Object.freeze([]),
+    limited: false,
+    colorblind: false,
+    trace: 'Session filters-1 · no commands sent',
+  }));
+  const [immersiveState, setImmersiveState] = useState<FixtureImmersiveState>(() => Object.freeze({
+    buyerView: 'venue3d',
+    targetSeatId: 'guest-t22-2',
+    navigationMode: 'orbit',
+    trace: 'Session immersive-1 · target guest-t22-2',
+  }));
+  const setSelectedTier = useCallback((tierId: 'adult' | 'child') => {
+    selectedTierRef.current = tierId;
+  }, []);
+  const confirmTier = useCallback(() => setTierPending(false), []);
+  const tierValidation = useMemo(() => scenario === 'seat-tier' ? Object.freeze({
+    tierId: selectedTierRef.current,
+    setTierId: setSelectedTier,
+    confirm: confirmTier,
+    pending: tierPending,
+  }) : undefined, [confirmTier, scenario, setSelectedTier, tierPending]);
+  const setFilterCategoryKeys = useCallback((categoryKeys: readonly string[]) => {
+    setFilterState((current) => Object.freeze({
+      ...current,
+      categoryKeys: Object.freeze([...categoryKeys]),
+      trace: `Sent picker.setCategoryFilter · ${categoryKeys.join(', ') || 'all'}`,
+    }));
+  }, []);
+  const setFilterAccessKeys = useCallback((accessKeys: readonly string[]) => {
+    setFilterState((current) => Object.freeze({
+      ...current,
+      accessKeys: Object.freeze([...accessKeys]),
+      trace: `Sent picker.setAccessibilityFilter · ${accessKeys.join(', ') || 'none'}`,
+    }));
+  }, []);
+  const setFilterLimited = useCallback((limited: boolean) => {
+    setFilterState((current) => Object.freeze({
+      ...current,
+      limited,
+      trace: `Sent picker.setLimitedViewFilter · ${limited}`,
+    }));
+  }, []);
+  const setFilterColorblind = useCallback((colorblind: boolean) => {
+    setFilterState((current) => Object.freeze({
+      ...current,
+      colorblind,
+      trace: `Sent picker.setColorblindSafe · ${colorblind}`,
+    }));
+  }, []);
+  const filterValidation = useMemo<FixtureFilterValidation | undefined>(
+    () => scenario === 'filters' ? Object.freeze({
+      state: filterState,
+      setCategoryKeys: setFilterCategoryKeys,
+      setAccessKeys: setFilterAccessKeys,
+      setLimited: setFilterLimited,
+      setColorblind: setFilterColorblind,
+    }) : undefined,
+    [filterState, scenario, setFilterAccessKeys, setFilterCategoryKeys, setFilterColorblind, setFilterLimited],
+  );
+  const setImmersiveBuyerView = useCallback((
+    buyerView: 'map' | 'venue3d',
+    options?: Readonly<{ flyToSeatId?: string; resetView?: boolean }>,
+  ) => {
+    setImmersiveState((current) => {
+      const targetSeatId = buyerView === 'map'
+        ? undefined
+        : options?.flyToSeatId ?? (options?.resetView ? undefined : current.targetSeatId);
+      return Object.freeze({
+        ...current,
+        buyerView,
+        targetSeatId,
+        seatView: undefined,
+        trace: `Sent picker.setBuyerView · ${buyerView} · ${targetSeatId ?? 'overview'}`,
+      });
+    });
+  }, []);
+  const setImmersiveNavigationMode = useCallback((navigationMode: 'orbit' | 'pan') => {
+    setImmersiveState((current) => Object.freeze({
+      ...current,
+      navigationMode,
+      trace: `Sent picker.setVenue3DNavigationMode · ${navigationMode}`,
+    }));
+  }, []);
+  const openImmersiveSeatView = useCallback((seatId: string) => {
+    const seatParts = seatId.split('-');
+    const seatNumber = seatParts[seatParts.length - 1] ?? seatId;
+    setImmersiveState((current) => Object.freeze({
+      ...current,
+      seatView: Object.freeze({
+        seatId,
+        title: `View from Guest Tables · T22-${seatNumber}`,
+        caption: 'Real authored view · cart and 3D target retained',
+        badge: 'Real 360°',
+        dragHint: 'Drag to look around · pinch to zoom',
+        real: true,
+        generated: false,
+      }),
+      trace: `Opened panorama · ${seatId} · session immersive-1`,
+    }));
+  }, []);
+  const closeImmersiveSeatView = useCallback(() => {
+    setImmersiveState((current) => Object.freeze({
+      ...current,
+      seatView: undefined,
+      trace: `Closed panorama · restored ${current.targetSeatId ?? 'overview'}`,
+    }));
+  }, []);
+  const recordImmersiveCamera = useCallback((command: string) => {
+    setImmersiveState((current) => Object.freeze({
+      ...current,
+      trace: `Sent ${command} · session immersive-1`,
+    }));
+  }, []);
+  const immersiveValidation = useMemo<FixtureImmersiveValidation | undefined>(
+    () => scenario === 'venue-3d' ? Object.freeze({
+      state: immersiveState,
+      setBuyerView: setImmersiveBuyerView,
+      setNavigationMode: setImmersiveNavigationMode,
+      openSeatView: openImmersiveSeatView,
+      closeSeatView: closeImmersiveSeatView,
+      recordCamera: recordImmersiveCamera,
+    }) : undefined,
+    [
+      closeImmersiveSeatView,
+      immersiveState,
+      openImmersiveSeatView,
+      recordImmersiveCamera,
+      scenario,
+      setImmersiveBuyerView,
+      setImmersiveNavigationMode,
+    ],
+  );
+  const baseScope = useMemo(
+    () => fixtureScope(mode, scenario, tierValidation, filterValidation, immersiveValidation),
+    [filterValidation, immersiveValidation, mode, scenario, tierValidation],
+  );
   const [presentation, setPresentationState] = useState<SeatLayerPickerPresentationState>(baseScope.presentation);
   const promptOwnership = useRef(new SeatLayerPickerPromptOwnership());
   useEffect(() => () => promptOwnership.current.reset(), []);
@@ -540,7 +851,13 @@ function SeatLayerPickerVisualFixtureSession({
     back,
   }), [back, baseScope, claimPrompt, presentation, setPresentation]);
   const builders = useMemo(() => Object.freeze({
-    map: () => <NeutralMapSurface immersive={scenario === 'venue-3d' || scenario === 'seat-view'} theme={scope.resolvedTheme} />,
+    map: () => scenario === 'venue-3d' && immersiveValidation
+      ? <FixtureImmersiveMapSurface
+          onClosePanorama={immersiveValidation.closeSeatView}
+          state={immersiveValidation.state}
+          theme={scope.resolvedTheme}
+        />
+      : <NeutralMapSurface immersive={scenario === 'seat-view'} theme={scope.resolvedTheme} />,
     ...(scenario === 'hold-countdown' ? {
       holdCountdown: () => <SeatLayerPickerHoldCountdown clock={() => seatLayerVisualFixtureClock} />,
     } : {}),
@@ -558,7 +875,10 @@ function SeatLayerPickerVisualFixtureSession({
         </View>
       </View>,
     } : {}),
-  }), [scenario, scope.resolvedTheme]);
+  }), [immersiveValidation, scenario, scope.resolvedTheme]);
+  const onCheckout = useCallback((handoff: SeatLayerPickerCheckoutHandoff) => {
+    if (scenario === 'seat-tier') setCheckoutHandoff(handoff);
+  }, [scenario]);
   const wide = scenario === 'wide';
   const panelInitiallyCollapsed = baseScope.presentation.sheet !== 'expanded';
   return (
@@ -569,13 +889,110 @@ function SeatLayerPickerVisualFixtureSession({
       >
         <SeatLayerPickerAdaptiveLayout
           builders={builders}
-          onCheckout={asyncNoOp}
-          options={{ layout: wide ? 'wide' : 'phone', haptics: false, panelInitiallyCollapsed }}
+          onCheckout={onCheckout}
+          options={{
+            layout: wide ? 'wide' : 'phone',
+            haptics: false,
+            panelInitiallyCollapsed,
+            enable3D: scenario !== 'filters',
+          }}
           safeAreaInsets={wide ? seatLayerVisualFixtureWideSafeAreaInsets : seatLayerVisualFixtureSafeAreaInsets}
         />
+        {scenario === 'filters' ? <FilterEvidence state={filterState} scope={scope} /> : null}
+        {checkoutHandoff ? <TierCheckoutEvidence handoff={checkoutHandoff} scope={scope} /> : null}
       </View>
     </FixtureScopeProvider>
   );
+}
+
+function FilterEvidence({ state, scope }: Readonly<{
+  state: FixtureFilterState;
+  scope: SeatLayerPickerScopeValue;
+}>): React.ReactElement {
+  const categories = state.categoryKeys.length ? state.categoryKeys.join(', ') : 'all';
+  const needs = state.accessKeys.length ? state.accessKeys.join(', ') : 'none';
+  const label = `Filter state · categories ${categories} · needs ${needs} · limited ${state.limited} · colourblind ${state.colorblind}`;
+  return <View
+    accessible
+    accessibilityLabel={label}
+    pointerEvents="none"
+    testID="seatlayer-filter-evidence"
+    style={[styles.filterEvidence, {
+      backgroundColor: scope.resolvedTheme.colors.surface,
+      borderColor: scope.resolvedTheme.colors.divider,
+    }]}
+  >
+    <Text style={[styles.filterEvidenceTitle, { color: scope.resolvedTheme.colors.text }]}>FILTER STATE</Text>
+    <Text style={[styles.filterEvidenceText, { color: scope.resolvedTheme.colors.text }]}>{`Categories: ${categories}`}</Text>
+    <Text style={[styles.filterEvidenceText, { color: scope.resolvedTheme.colors.text }]}>{`Needs: ${needs}`}</Text>
+    <Text style={[styles.filterEvidenceText, { color: scope.resolvedTheme.colors.text }]}>{`Limited: ${state.limited} · Colourblind: ${state.colorblind}`}</Text>
+    <Text style={[styles.filterEvidenceTrace, { color: scope.resolvedTheme.colors.mutedText }]}>{state.trace}</Text>
+  </View>;
+}
+
+function FixtureImmersiveMapSurface({
+  state,
+  theme,
+  onClosePanorama,
+}: Readonly<{
+  state: FixtureImmersiveState;
+  theme: SeatLayerPickerScopeValue['resolvedTheme'];
+  onClosePanorama: () => void;
+}>): React.ReactElement {
+  const target = state.targetSeatId ?? 'overview';
+  return <View style={styles.immersiveFixtureRoot}>
+    <NeutralMapSurface
+      immersive={state.buyerView === 'venue3d' || state.seatView !== undefined}
+      theme={theme}
+    />
+    {state.seatView ? <>
+      <View pointerEvents="none" style={styles.panoramaStandIn}>
+        <Text style={styles.panoramaGlyph}>↻</Text>
+      </View>
+      <Pressable
+        accessibilityLabel="Close panorama"
+        accessibilityRole="button"
+        onPress={onClosePanorama}
+        style={styles.panoramaClose}
+      >
+        <Text style={styles.panoramaCloseText}>×  Close panorama</Text>
+      </Pressable>
+    </> : <View
+      accessible
+      accessibilityLabel={`Immersive state · ${state.buyerView} · ${target} · ${state.navigationMode} · cart retained guest-t22-1, guest-t22-2, guest-t22-3`}
+      pointerEvents="none"
+      testID="seatlayer-immersive-evidence"
+      style={[styles.immersiveEvidence, {
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.divider,
+      }]}
+    >
+      <Text style={[styles.immersiveEvidenceTitle, { color: theme.colors.text }]}>{`${state.buyerView === 'venue3d' ? '3D' : 'MAP'} · ${target} · ${state.navigationMode}`}</Text>
+      <Text style={[styles.immersiveEvidenceText, { color: theme.colors.mutedText }]}>Cart retained · 3 seats · €285</Text>
+      <Text style={[styles.immersiveEvidenceTrace, { color: theme.colors.mutedText }]}>{state.trace}</Text>
+    </View>}
+  </View>;
+}
+
+function TierCheckoutEvidence({ handoff, scope }: Readonly<{
+  handoff: Readonly<SeatLayerPickerCheckoutHandoff>;
+  scope: SeatLayerPickerScopeValue;
+}>): React.ReactElement {
+  const line = handoff.lineItems[0];
+  const tier = line?.tierId === 'child' ? 'Child' : line?.tierId === 'adult' ? 'Adult' : 'Unknown tier';
+  const amount = scope.formatMoney(line?.unitPrice ?? handoff.total, line?.currency ?? handoff.currency);
+  const label = `Checkout handoff · Gold · ${tier} · ${amount}`;
+  return <View
+    accessible
+    accessibilityLabel={label}
+    testID="seatlayer-tier-checkout-handoff"
+    style={[styles.tierCheckoutEvidence, { backgroundColor: scope.resolvedTheme.colors.background }]}
+  >
+    <Text style={[styles.tierCheckoutEyebrow, { color: scope.resolvedTheme.colors.accent, fontFamily: scope.resolvedTheme.fontFamily }]}>CHECKOUT HANDOFF</Text>
+    <Text style={[styles.tierCheckoutTitle, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }]}>Gold · {tier}</Text>
+    <Text style={[styles.tierCheckoutAmount, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }]}>{amount}</Text>
+    <Text style={[styles.tierCheckoutMeta, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>Hold {handoff.holdId}</Text>
+  </View>;
 }
 
 export function SeatLayerPickerLightVisualFixture(): React.ReactElement {
@@ -592,4 +1009,22 @@ const styles = StyleSheet.create({
   customControlsOwner: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   customControlsTop: { alignItems: 'flex-end', gap: 6, position: 'absolute', right: 10, top: 10 },
   customControlsBottom: { bottom: 10, gap: 6, position: 'absolute', right: 10 },
+  tierCheckoutEvidence: { alignItems: 'center', bottom: 0, justifyContent: 'center', left: 0, paddingHorizontal: 24, position: 'absolute', right: 0, top: 0 },
+  filterEvidence: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, left: 54, padding: 12, position: 'absolute', right: 54, top: 190 },
+  filterEvidenceTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1.2 },
+  filterEvidenceText: { fontSize: 13, marginTop: 3 },
+  filterEvidenceTrace: { fontSize: 11, marginTop: 7 },
+  immersiveFixtureRoot: { flex: 1 },
+  immersiveEvidence: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, left: 20, padding: 12, position: 'absolute', right: 20, top: 70 },
+  immersiveEvidenceTitle: { fontSize: 14, fontWeight: '900' },
+  immersiveEvidenceText: { fontSize: 12, marginTop: 4 },
+  immersiveEvidenceTrace: { fontSize: 11, marginTop: 6 },
+  panoramaStandIn: { alignItems: 'center', backgroundColor: '#28394CCC', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
+  panoramaGlyph: { color: '#FFFFFF66', fontSize: 88, fontWeight: '200' },
+  panoramaClose: { backgroundColor: '#E7C8FF', borderRadius: 22, left: 12, paddingHorizontal: 16, paddingVertical: 10, position: 'absolute', top: 12 },
+  panoramaCloseText: { color: '#29143D', fontSize: 13, fontWeight: '800' },
+  tierCheckoutEyebrow: { fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+  tierCheckoutTitle: { fontSize: 24, fontWeight: '900', marginTop: 12 },
+  tierCheckoutAmount: { fontSize: 42, fontWeight: '900', marginTop: 8 },
+  tierCheckoutMeta: { fontSize: 14, marginTop: 12 },
 });

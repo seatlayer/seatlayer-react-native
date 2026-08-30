@@ -21,16 +21,17 @@ function setup() {
   const calls: unknown[] = [];
   const snapshot: any = {
     sessionId: 'runtime', capabilities: ['accessibilityFilter'],
-    map: { accessibilityFilter: [], hideLimitedView: false, colorblindSafe: false, accessNeeds: [] },
+    map: { rung: 'overview', accessibilityFilter: [], hideLimitedView: false, colorblindSafe: false, accessNeeds: [{ key: 'wheelchair', count: 2 }] },
   };
   const controller = {
     getSnapshot: () => snapshot,
     setAccessibilityFilter: async (keys: readonly string[]) => { calls.push(keys); },
+    setRung: async (rung: string) => { calls.push({ rung }); snapshot.map.rung = rung; },
     setLimitedViewFilter: async () => {}, setColorblindSafe: async () => {},
     mapController: {
       isReady: true,
-      supportsPickerCapability: (key: string) => key === 'native-chrome-contract-v1',
-      supportsPickerCommand: (key: string) => key === 'picker.setAccessibilityFilter',
+      supportsPickerCapability: (key: string) => key === 'native-chrome-contract-v1' || key === 'access-needs-v1',
+      supportsPickerCommand: (key: string) => key === 'picker.setAccessibilityFilter' || key === 'picker.setRung',
     },
   };
   scope = {
@@ -56,6 +57,25 @@ async function render(props: Record<string, unknown>) {
 }
 
 describe('accessibility prompt safe-area geometry', () => {
+  it('applies an offered seat type and opens the matching seat-detail view', async () => {
+    const runtime = setup();
+    const renderer = await render({});
+    await act(async () => {
+      renderer.root.findByProps({ accessibilityLabel: 'accessibility' }).props.onPress();
+      renderer.update(React.createElement(SeatLayerPickerAccessibilityFilters));
+    });
+    await act(async () => {
+      renderer.root.findByProps({ accessibilityLabel: 'wheelchair' }).props.onPress();
+    });
+    await act(async () => {
+      renderer.root.findByProps({ accessibilityLabel: 'applyFilters' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(runtime.calls).toEqual([['wheelchair'], { rung: 'seats' }]);
+    expect(scope.presentation.prompt).toBeNull();
+  });
+
   it('keeps the scrim edge-to-edge while forwarding asymmetric full insets through the scoped modal', async () => {
     const runtime = setup();
     const props = { safeAreaInsets: { top: 7, right: 19, bottom: 23, left: 3 }, modalHorizontalInset: 99 };

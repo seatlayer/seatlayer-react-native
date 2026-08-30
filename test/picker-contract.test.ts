@@ -146,6 +146,19 @@ describe('protocol-2 picker substrate', () => {
         },
         map: {
           view3dTargetSeatId: 'seat-3d',
+          view3dTargetSeat: {
+            id: 'seat-3d',
+            label: 'E-29',
+            sectionLabel: 'Orchestra',
+            rowLabel: 'E',
+            seatNumber: '29',
+            categoryKey: 'premium',
+            price: 150,
+            currency: 'EUR',
+          },
+          view3dPreviousSeatId: 'seat-28',
+          view3dNextSeatId: null,
+          view3dFocusedSectionId: 'orchestra',
           floorMode: 'all',
           floorLabelStyle: 'number',
           floors: [{ id: 'f1', name: 'Ground', level: 0 }],
@@ -184,6 +197,16 @@ describe('protocol-2 picker substrate', () => {
       });
       expect(decoded.map).toMatchObject({
         view3DTargetSeatId: 'seat-3d',
+        view3DTargetSeat: {
+          id: 'seat-3d',
+          label: 'E-29',
+          sectionLabel: 'Orchestra',
+          rowLabel: 'E',
+          seatNumber: '29',
+        },
+        view3DPreviousSeatId: 'seat-28',
+        view3DNextSeatId: null,
+        view3DFocusedSectionId: 'orchestra',
         floorMode: 'all',
         floorLabelStyle: 'number',
         floors: [{ name: 'Ground', level: 0 }],
@@ -192,6 +215,7 @@ describe('protocol-2 picker substrate', () => {
       expect(Object.isFrozen(decoded)).toBe(true);
       expect(Object.isFrozen(decoded.categories)).toBe(true);
       expect(Object.isFrozen(decoded.categories[0]!)).toBe(true);
+      expect(Object.isFrozen(decoded.map.view3DTargetSeat!)).toBe(true);
       expect(() =>
         (decoded.categories as unknown as { push(value: unknown): void }).push(
           {},
@@ -211,6 +235,21 @@ describe('protocol-2 picker substrate', () => {
         .toBeUndefined();
     },
   );
+
+  it('keeps a step back to sections on legacy deep-map snapshots', () => {
+    expect(decodeSeatLayerPickerSnapshot(snapshot(1, {
+      map: { rung: 'overview', canZoomOut: false },
+    }))?.map.canZoomOut).toBe(false);
+    expect(decodeSeatLayerPickerSnapshot(snapshot(2, {
+      map: { rung: 'seats', canZoomOut: false },
+    }))?.map.canZoomOut).toBe(true);
+    expect(decodeSeatLayerPickerSnapshot(snapshot(3, {
+      map: { rung: 'overview', focusedSectionId: 'orchestra', canZoomOut: false },
+    }))?.map.canZoomOut).toBe(true);
+    expect(decodeSeatLayerPickerSnapshot(snapshot(4, {
+      map: { rung: 'overview', focusedSection: { id: 'terrace', label: 'Terrace' }, canZoomOut: false },
+    }))?.map.canZoomOut).toBe(true);
+  });
 
   it(
     'gates individual commands, serializes mutations, and borrows controllers safely',

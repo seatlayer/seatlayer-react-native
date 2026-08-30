@@ -57,6 +57,21 @@ interface Handshake {
   reject(reason: unknown): void;
   timer: ReturnType<typeof setTimeout>;
   settled: boolean;
+  startedAt: number;
+  helloAt?: number;
+}
+
+function defaultHandshakeClock(): number {
+  try {
+    const value = globalThis.performance?.now?.();
+    return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function elapsedMilliseconds(startedAt: number, endedAt: number): number {
+  return Math.max(0, Math.round(endedAt - startedAt));
 }
 
 export class SeatLayerController {
@@ -67,6 +82,8 @@ export class SeatLayerController {
   private handshake: Handshake | undefined;
   private queuedFrames: Envelope[] = [];
   private disposed = false;
+
+  constructor(private readonly handshakeClock: () => number = defaultHandshakeClock) {}
 
   readyInfo: ReadyInfo | undefined;
   bundleInfo: BundleInfo | undefined;
@@ -153,12 +170,13 @@ export class SeatLayerController {
 
     const promise = new Promise<ReadyInfo>((resolve, reject) => {
       const timeoutMs = configuration.handshakeTimeoutMs ?? 30_000;
+      const startedAt = this.handshakeClock();
       const timer = setTimeout(() => {
         this.finishHandshake(
           SeatLayerError.timeout('handshake', timeoutMs),
         );
       }, timeoutMs);
-      this.handshake = { resolve, reject, timer, settled: false };
+      this.handshake = { resolve, reject, timer, settled: false, startedAt };
     });
 
     const queued = this.queuedFrames;
@@ -411,6 +429,10 @@ export class SeatLayerController {
   }
 
   private handleHello(payload: JsonValue | undefined): void {
+    const handshake = this.handshake;
+    if (handshake && !handshake.settled && handshake.helloAt === undefined) {
+      handshake.helloAt = this.handshakeClock();
+    }
     const info = decodeBundleInfo(payload);
     this.bundleInfo = info;
     this.bundleCommands = Object.freeze([...info.commands]);
@@ -523,11 +545,27 @@ export class SeatLayerController {
     switch (name) {
       case 'sys.ready': {
         const decodedReady = decodeReadyInfo(payload);
+        const handshake = this.handshake;
+        const readyAt = this.handshakeClock();
+        const timings = handshake === undefined
+          ? {}
+          : {
+              ...(handshake.helloAt === undefined
+                ? {}
+                : {
+                    timeToHelloMs: elapsedMilliseconds(
+                      handshake.startedAt,
+                      handshake.helloAt,
+                    ),
+                  }),
+              timeToReadyMs: elapsedMilliseconds(handshake.startedAt, readyAt),
+            };
         const snapshot = this.profile.surface === 'picker'
           ? decodeSeatLayerPickerSnapshot(object?.snapshot)
           : undefined;
         const ready: SeatLayerPickerReadyInfo = {
           ...decodedReady,
+          ...timings,
           ...(snapshot === undefined ? {} : { snapshot }),
         };
         if (this.profile.surface === 'picker' && ready.protocolRevision !== 2) {

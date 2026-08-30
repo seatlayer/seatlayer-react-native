@@ -15,9 +15,14 @@ import {
 } from 'react-native';
 import {
   SeatLayerPicker,
+  seatLayerMobileOrigin,
+  seatLayerMobilePageUrl,
+  type SeatLayerChartLoad,
   type SeatLayerConfiguration,
   type SeatLayerPickerCheckoutHandoff,
+  type ReadyInfo,
 } from '@seatlayer/react-native';
+import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -60,8 +65,59 @@ if (visualFixture && I18nManager.isRTL !== (visualFixture.scenario === 'rtl')) {
 
 type DemoRoute = 'list' | 'details' | 'picker' | 'checkout';
 
+type DesiPassSeatLayerAccessResult =
+  | { readonly access: DesiPassSeatLayerAccess; readonly error?: never }
+  | { readonly access?: never; readonly error: string };
+
+interface DesiPassSeatLayerAccessPrefetch {
+  readonly eventId: string;
+  readonly result: Promise<DesiPassSeatLayerAccessResult>;
+}
+
 const desiPassRed = '#E54558';
 const desiPassInk = '#3B2D4C';
+
+function logPickerChartLoad(load: SeatLayerChartLoad): void {
+  const trace = load.trace;
+  console.info('[SeatLayerPickerPerf]', JSON.stringify({
+    tapToReadyMs: load.tapToReadyMs,
+    hostMs: load.hostMs,
+    bootMs: trace.bootMs,
+    documentMs: trace.documentMs,
+    handshakeMs: trace.handshakeMs,
+    renderMs: trace.ms,
+    paintMs: trace.paint,
+    availabilityMs: trace.availabilityMs,
+    load: trace.load,
+    chartCache: trace.chartCache,
+    host: trace.host,
+    platform: trace.platform,
+    bundle: trace.bundle,
+  }));
+}
+
+function logPickerReady(info: ReadyInfo): void {
+  const helloToReadyMs = info.timeToHelloMs === undefined
+    || info.timeToReadyMs === undefined
+    ? undefined
+    : Math.max(0, info.timeToReadyMs - info.timeToHelloMs);
+  console.info('[SeatLayerPickerReady]', JSON.stringify({
+    timeToHelloMs: info.timeToHelloMs,
+    helloToReadyMs,
+    timeToReadyMs: info.timeToReadyMs,
+    platform: info.platform,
+  }));
+}
+
+function settleSeatLayerAccess(
+  eventId: string,
+): Promise<DesiPassSeatLayerAccessResult> {
+  return createSeatLayerAccess(eventId)
+    .then<DesiPassSeatLayerAccessResult>((access) => ({ access }))
+    .catch((error): DesiPassSeatLayerAccessResult => ({
+      error: messageOf(error),
+    }));
+}
 
 export default function App() {
   if (visualFixture) return <SeatLayerPickerVisualFixture {...visualFixture} />;
@@ -82,6 +138,20 @@ function DesiPassDemo() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string>();
   const [handoff, setHandoff] = useState<SeatLayerPickerCheckoutHandoff>();
+  const [accessPrefetch, setAccessPrefetch] = useState<
+    DesiPassSeatLayerAccessPrefetch
+  >();
+
+  const prefetchAccess = useCallback((eventId: string) => {
+    // The event-detail screen is useful reading time. Mint the short-lived
+    // buyer bearer here so BOOK NOW measures picker work, not host auth. The
+    // settled promise prevents an abandoned detail screen from surfacing an
+    // unhandled rejection, and the bearer never leaves process memory.
+    const result = settleSeatLayerAccess(eventId);
+    const prefetch = { eventId, result };
+    setAccessPrefetch(prefetch);
+    return prefetch;
+  }, []);
 
   const loadEvents = useCallback(async () => {
     setEventsLoading(true);
@@ -107,16 +177,19 @@ function DesiPassDemo() {
     setSelected(event);
     setDetail(undefined);
     setDetailError(undefined);
+    setAccessPrefetch(undefined);
     setDetailLoading(true);
     setRoute('details');
     try {
-      setDetail(await fetchEventDetail(event.id));
+      const nextDetail = await fetchEventDetail(event.id);
+      setDetail(nextDetail);
+      prefetchAccess(nextDetail.id);
     } catch (error) {
       setDetailError(messageOf(error));
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [prefetchAccess]);
 
   if (!hasDesiPassApiKey()) return <SetupScreen />;
 
@@ -126,7 +199,10 @@ function DesiPassDemo() {
         event={detail ?? selected}
         loading={detailLoading}
         error={detailError}
-        onBack={() => setRoute('list')}
+        onBack={() => {
+          setAccessPrefetch(undefined);
+          setRoute('list');
+        }}
         onBookNow={detail ? () => setRoute('picker') : undefined}
         onRetry={() => void openDetails(selected)}
       />
@@ -137,7 +213,15 @@ function DesiPassDemo() {
     return (
       <EventPickerScreen
         event={detail}
-        onBack={() => setRoute('details')}
+        prefetchedAccess={
+          accessPrefetch?.eventId === detail.id
+            ? accessPrefetch.result
+            : undefined
+        }
+        onBack={() => {
+          prefetchAccess(detail.id);
+          setRoute('details');
+        }}
         onCheckout={(nextHandoff) => {
           setHandoff(nextHandoff);
           setRoute('checkout');
@@ -155,6 +239,7 @@ function DesiPassDemo() {
           setHandoff(undefined);
           setSelected(undefined);
           setDetail(undefined);
+          setAccessPrefetch(undefined);
           setRoute('list');
         }}
       />
@@ -259,6 +344,7 @@ function EventDetailScreen({
   return (
     <SafeAreaView style={styles.screen}>
       <StatusBar barStyle="dark-content" />
+      {onBookNow ? <SeatLayerRuntimePrewarm /> : null}
       <BackBar title="Event details" onBack={onBack} />
       <ScrollView contentContainerStyle={styles.detailContent}>
         <EventImage event={event} style={styles.heroImage} />
@@ -300,12 +386,53 @@ function EventDetailScreen({
   );
 }
 
+/**
+ * Warms the shared WebKit process and immutable 2D runtime while Event Details
+ * is visible. No event configuration, API base, or buyer bearer is sent. The
+ * hidden view removes itself at bridge hello, before any chart can initialize;
+ * optional 3D and panorama modules therefore remain behind their user intents.
+ */
+function SeatLayerRuntimePrewarm(): React.ReactElement | null {
+  const [complete, setComplete] = useState(false);
+  if (complete) return null;
+  const finish = (_event: WebViewMessageEvent): void => setComplete(true);
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={styles.runtimePrewarm}
+    >
+      <WebView
+        allowFileAccess={false}
+        allowUniversalAccessFromFileURLs={false}
+        bounces={false}
+        domStorageEnabled
+        javaScriptEnabled
+        mixedContentMode="never"
+        onMessage={finish}
+        onShouldStartLoadWithRequest={(request) =>
+          request.url === seatLayerMobilePageUrl
+        }
+        originWhitelist={[seatLayerMobileOrigin]}
+        overScrollMode="never"
+        scrollEnabled={false}
+        setSupportMultipleWindows={false}
+        source={{ uri: seatLayerMobilePageUrl }}
+        style={styles.runtimePrewarmWebView}
+      />
+    </View>
+  );
+}
+
 function EventPickerScreen({
   event,
+  prefetchedAccess,
   onBack,
   onCheckout,
 }: {
   readonly event: DesiPassEventDetail;
+  readonly prefetchedAccess?: Promise<DesiPassSeatLayerAccessResult>;
   readonly onBack: () => void;
   readonly onCheckout: (handoff: SeatLayerPickerCheckoutHandoff) => void;
 }) {
@@ -318,15 +445,19 @@ function EventPickerScreen({
     let active = true;
     setAccess(undefined);
     setAccessError(undefined);
-    createSeatLayerAccess(event.id)
-      .then((nextAccess) => {
-        if (active) setAccess(nextAccess);
-      })
-      .catch((error) => {
-        if (active) setAccessError(messageOf(error));
-      });
+    const result = attempt === 0 && prefetchedAccess
+      ? prefetchedAccess
+      : settleSeatLayerAccess(event.id);
+    result.then((nextResult) => {
+      if (!active) return;
+      if (nextResult.access) {
+        setAccess(nextResult.access);
+      } else {
+        setAccessError(nextResult.error);
+      }
+    });
     return () => { active = false; };
-  }, [attempt, event.id]);
+  }, [attempt, event.id, prefetchedAccess]);
 
   const configuration = useMemo<SeatLayerConfiguration | undefined>(() => {
     if (!access) return undefined;
@@ -364,6 +495,10 @@ function EventPickerScreen({
   return (
     <View style={styles.pickerScreen}>
       <SeatLayerPicker
+        callbacks={{
+          onReady: logPickerReady,
+          onChartLoad: logPickerChartLoad,
+        }}
         configuration={configuration}
         onCheckout={onCheckout}
         onClose={onBack}
@@ -639,6 +774,15 @@ const styles = StyleSheet.create({
   },
   bookButtonLabel: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.6 },
   buttonDisabled: { backgroundColor: '#D8D3DC' },
+  runtimePrewarm: {
+    height: 1,
+    left: 0,
+    opacity: 0,
+    position: 'absolute',
+    top: 0,
+    width: 1,
+  },
+  runtimePrewarmWebView: { height: 1, width: 1 },
   picker: { flex: 1 },
   state: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
   compactState: { flex: 0, marginTop: 22, paddingVertical: 20 },

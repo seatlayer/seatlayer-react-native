@@ -26,6 +26,7 @@ import {
   SeatLayerPickerSeat3DButton,
   SeatLayerPickerSeatViewButton,
 } from '../src/picker/SeatLayerPickerSeatInspectionButtons';
+import { SeatLayerMapControls } from '../src/picker/SeatLayerMapControls';
 
 function setup() {
   let sessionId = 1;
@@ -78,6 +79,22 @@ function setup() {
 beforeEach(() => { setup(); });
 
 describe('standalone picker controls', () => {
+  it('uses the compact corner escape to return directly to the venue overview', async () => {
+    const runtime = setup(); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerMapControls, {
+      compact: true,
+      enable3D: false,
+      showAccessibilityControl: false,
+      showZoomToFitControl: true,
+      zoomInLabel: 'Zoom in',
+      zoomOutLabel: 'Zoom out',
+    })); });
+    const button = renderer.root.findByProps({ accessibilityLabel: 'backToVenue' });
+    await act(async () => { button.props.onPress(); });
+    expect(runtime.commands.overview).toHaveBeenCalledOnce();
+    expect(runtime.commands.zoomOut).not.toHaveBeenCalled();
+  });
+
   it('keeps a 44-point zoom target, honors an aesthetic radius, and dispatches the exact command', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => {

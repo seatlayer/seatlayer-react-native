@@ -1,9 +1,11 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { I18nManager, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, I18nManager, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { CartRemovalUndoCoordinator } from './cartRemovalUndoState';
 import { chartSeatLayerPickerColor } from './chartColor';
+import { resolveSeatLayerPickerMotion } from './motion';
+import { useSeatLayerPickerReducedMotion } from './reducedMotion';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
@@ -125,12 +127,46 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   const undoActive = coordinator.current.state.active;
   return (
     <View style={[sanitizeSeatLayerPickerStyle(props.style), { direction: I18nManager.isRTL ? 'rtl' : 'ltr' }]}>
-      {visibleRuns.map((run) => { const runKey = JSON.stringify(run.members.map((member) => [member.identity.lineKey, member.identity.removalLabel, member.identity.objectId, member.identity.seatId])); return <Run key={runKey} run={run} open={openRuns.has(runKey)} canRemove={canRemove} theme={theme} styles={styles} onToggle={() => setOpenRuns((value) => { const next = new Set(value); next.has(runKey) ? next.delete(runKey) : next.add(runKey); return next; })} onRemove={remove} />; })}
+      {visibleRuns.map((run, index) => { const runKey = JSON.stringify(run.members.map((member) => [member.identity.lineKey, member.identity.removalLabel, member.identity.objectId, member.identity.seatId])); return <ArrivalPop key={runKey} index={index}><Run run={run} open={openRuns.has(runKey)} canRemove={canRemove} theme={theme} styles={styles} onToggle={() => setOpenRuns((value) => { const next = new Set(value); next.has(runKey) ? next.delete(runKey) : next.add(runKey); return next; })} onRemove={remove} /></ArrivalPop>; })}
       {visible.canToggle ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })} onPress={() => setShowAll((value) => !value)} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '800' }, styles.denseLineText]}>{scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })}</Text></Pressable> : null}
       {undoActive?.phase === 'undo-window' ? <View accessibilityLiveRegion="polite" style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flexDirection: 'row', alignItems: 'center' }}><Text style={[{ flex: 1, color: theme.colors.text, fontFamily: theme.fontFamily }, styles.denseLineText]}>{scope.strings.translate('seatRemoved')}</Text><Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('undo')} onPress={() => { void undo(); }} style={[styles.denseLineRemoveButton, { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignItems: 'center', justifyContent: 'center' }]}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.denseLineRemoveButtonText]}>{scope.strings.translate('undo')}</Text></Pressable></View> : null}
       {props.children}
     </View>
   );
+}
+
+/** One newly mounted cart run settles in; a set arrives in a bounded sequence. */
+function ArrivalPop({ index, children }: Readonly<{ index: number; children: ReactNode }>): React.ReactElement {
+  const reducedMotion = useSeatLayerPickerReducedMotion();
+  const progress = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+  useEffect(() => {
+    const pop = resolveSeatLayerPickerMotion('pop', reducedMotion, 'easeEnter');
+    const stagger = resolveSeatLayerPickerMotion('stagger', reducedMotion, 'easeEnter');
+    progress.stopAnimation();
+    if (pop.durationMs === 0 || stagger.skipped) {
+      progress.setValue(1);
+      return undefined;
+    }
+    progress.setValue(0);
+    const maximumDelay = Math.max(0, resolveSeatLayerPickerMotion('fly', false).durationMs - pop.durationMs);
+    const delay = Math.min(maximumDelay, Math.max(0, index) * stagger.durationMs);
+    const [x1, y1, x2, y2] = pop.curve.cubicBezier;
+    const animation = Animated.sequence([
+      Animated.delay(delay),
+      Animated.timing(progress, {
+        duration: pop.durationMs,
+        easing: Easing.bezier(x1, y1, x2, y2),
+        toValue: 1,
+        useNativeDriver: true,
+      }),
+    ]);
+    animation.start();
+    return () => animation.stop();
+  }, [index, progress, reducedMotion]);
+  return <Animated.View style={{
+    opacity: progress,
+    transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [.94, 1] }) }],
+  }}>{children}</Animated.View>;
 }
 
 function Run({ run, open, canRemove, theme, styles, onToggle, onRemove }: { readonly run: DenseTicketRun<SeatLayerPickerCartLine>; readonly open: boolean; readonly canRemove: boolean; readonly theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>; readonly styles: SeatLayerPickerStyles; readonly onToggle: () => void; readonly onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>) => void }): React.ReactElement {

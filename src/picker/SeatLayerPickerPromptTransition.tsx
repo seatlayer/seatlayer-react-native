@@ -82,12 +82,13 @@ export function SeatLayerPickerPromptTransition({
   }, [enterAnimation, exitAnimation]);
 
   const present = surfaces.current !== null || surfaces.outgoing !== null;
+  const interactive = prompt !== null;
   return (
     <View onLayout={(event) => {
       if (sessionRef.current !== sessionId) return;
       const next = event.nativeEvent.layout.height;
       if (typeof next === 'number' && Number.isFinite(next)) setHeight(Math.max(0, next));
-    }} pointerEvents={present ? 'auto' : 'none'} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
+    }} pointerEvents={interactive ? 'auto' : 'none'} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
       {surfaces.outgoing === null ? null : <Animated.View pointerEvents="none" style={[styles.surface, exitStyle(exit, height * promptProjectionRatio)]}>{surfaces.outgoing}</Animated.View>}
       {surfaces.current === null ? null : <Animated.View pointerEvents="auto" style={[styles.surface, enterStyle(enter, height * promptProjectionRatio)]}>{surfaces.current}</Animated.View>}
     </View>

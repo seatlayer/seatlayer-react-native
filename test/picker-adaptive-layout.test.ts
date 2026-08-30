@@ -268,13 +268,17 @@ describe('adaptive picker composition', () => {
   it('reserves only visible phone rails and cancels an old delayed map unlock after replacement', async () => {
     vi.useFakeTimers();
     state.width = 320;
-    const first = scope({ isReady: false, snapshot: { categories: [{}], capabilities: ['venue3d'], map: { floors: [{}, {}], buyerView: 'venue3d' }, event: { mode: 'test' } } });
+    const first = scope({ isReady: false, snapshot: {
+      categories: [{}], capabilities: ['venue3d'], sections: [{ id: 's1', label: 'One' }],
+      map: { floors: [{}, {}], buyerView: 'venue3d', rung: 'seats', focusedSectionId: 's1' }, event: { mode: 'test' },
+    } });
     state.scope = first;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
-    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 118, bottom: 0 });
-    expect(tree.root.findByType('venue' as any).props).toMatchObject({ topInset: 46, bottomInset: 10, reserveInset: true });
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(98);
+    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 0 });
+    expect(tree.root.findByType('venue' as any).props).toMatchObject({ topInset: 10, bottomInset: 10, reserveInset: true });
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
     expect(first.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
     state.scope = scope({ sessionId: 2 });
     await act(async () => { tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
@@ -539,29 +543,32 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('keeps passive panorama copy clear of irrelevant phone controls without bypassing the map-control builder', async () => {
+  it('leaves the runtime panorama exit unobstructed by native map controls', async () => {
     const controlsBuilder = vi.fn(({ defaultChild }: { defaultChild: React.ReactNode }) => defaultChild);
     const seatView = Object.freeze({
+      seatId: 'guest-t22-1',
       title: 'Guest Tables · T22 · Seat 1',
       caption: 'View towards the stage',
       real: true,
       generated: false,
     });
+    const pendingSeat = { id: 'guest-t22-1', label: 'Guest T22-1', objectType: 'seat' };
     const snapshot = {
       sessionId: 'panorama',
       categories: [{ key: 'guest', label: 'Guest', priceMin: 95 }],
       capabilities: ['seatView', 'venue3d'],
       event: { mode: 'live' },
       sections: [{ id: 'guest', label: 'Guest Tables' }],
+      selection: [pendingSeat],
       map: {
-        buyerView: 'map',
+        buyerView: 'venue3d',
         rung: 'seats',
         focusedSection: { id: 'guest', label: 'Guest Tables' },
         floors: [{ id: 'ground' }, { id: 'balcony' }],
       },
     };
     state.accessibility = true;
-    state.scope = scope({
+    const current = scope({
       controller: {
         mapController: {
           isReady: true,
@@ -576,26 +583,28 @@ describe('adaptive picker composition', () => {
         getSeatView: () => seatView,
         subscribeSeatView: () => () => undefined,
       },
-      snapshot,
+      snapshot, pendingSeat,
+      presentation: { prompt: { kind: 'seat' }, sheet: 'collapsed' },
     });
+    state.scope = current;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       onCheckout: checkout,
       builders: { mapControls: controlsBuilder },
     })); });
-    await act(async () => { tree.root.findByType('controls' as any).props.onViewModeLayout(128); });
     expect(tree.root.findAllByType('panorama' as any)).toHaveLength(1);
-    expect(controlsBuilder).toHaveBeenCalled();
-    expect(tree.root.findByType('legend' as any).props.edgeFadeColor).toBe('#0F1522');
-    expect(tree.root.findByType('controls' as any).props).toMatchObject({
-      includeViewModeControl: true,
-      showOverviewControl: false,
-      showZoomControls: false,
-      showZoomToFitControl: false,
-    });
+    expect(tree.root.findAllByType('venue' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('controls' as any)).toHaveLength(0);
+    expect(controlsBuilder).not.toHaveBeenCalled();
+    expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('prompt-transition' as any)).toHaveLength(0);
+    expect(tree.root.findByProps({ testID: 'seatlayer-chart-owner' }).props.pointerEvents).toBe('auto');
+    expect(current.controller.setInteractionEnabled).not.toHaveBeenCalledWith(false);
+    expect(current.confirmPending).not.toHaveBeenCalled();
     await act(async () => { tree.unmount(); });
     state.accessibility = false;
   });
