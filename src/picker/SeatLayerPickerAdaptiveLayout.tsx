@@ -507,9 +507,9 @@ export function SeatLayerPickerAdaptiveLayout({
           {bestAvailable || accessibility ? <View style={styles.wideAssist}>{bestAvailable}{accessibility}</View> : null}
           {ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null}
           {ticketPanelVisible ? actionError : null}
-          <SeatLayerPickerAttribution compact={false} />
+          <View style={styles.trailingAttribution} testID="seatlayer-wide-attribution"><SeatLayerPickerAttribution compact={false} /></View>
           {ticketPanelVisible ? checkout : null}
-        </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<SeatLayerPickerAttribution /></> : null}</View></>}
+        </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<View style={styles.trailingAttribution} testID="seatlayer-phone-attribution"><SeatLayerPickerAttribution /></View></> : null}</View></>}
         </View>
       </View>
       {selectionFlight === undefined ? null : <SeatLayerSelectionFlight

@@ -198,6 +198,8 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findByType('controls' as any).props.reserveInset).toBe(false);
     expect(tree.root.findAllByType('header' as any)).toHaveLength(1);
     expect(tree.root.findAllByType('attribution' as any)).toHaveLength(1);
+    expect(tree.root.findByProps({ testID: 'seatlayer-wide-attribution' }).props.style)
+      .toMatchObject({ alignItems: 'flex-end', paddingEnd: 8 });
     expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
     const cartList = tree.root.findByType('cart-list' as any);
     cartList.props.onSeatRemoved({ label: 'Seat A' });

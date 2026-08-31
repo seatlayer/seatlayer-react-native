@@ -3,7 +3,7 @@ import React from 'react';
 import type { SeatLayerPickerScopeValue } from '../../src/picker/SeatLayerPickerScope';
 import { SeatLayerPickerScopeContext } from '../../src/picker/pickerScopeContext';
 
-/** Repository-only provider for visual fixtures. It is deliberately not exported by the SDK. */
+/** Test-only provider for deterministic fixtures. It is not exported by the SDK. */
 export function FixtureScopeProvider({
   children,
   value,

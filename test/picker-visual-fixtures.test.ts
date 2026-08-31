@@ -32,7 +32,7 @@ import { SeatLayerVenue3DChrome } from '../src/picker/SeatLayerVenue3DChrome';
 import { SeatLayerPickerAccessibilityFilters } from '../src/picker/accessibility';
 import { SeatLayerPickerGAPrompt, SeatLayerPickerTablePrompt } from '../src/picker/SeatLayerPickerDecisionPrompts';
 import { SeatLayerPickerHeader } from '../src/picker/header';
-import { NeutralMapSurface } from '../example/visual-fixtures/NeutralMapSurface';
+import { NeutralMapSurface } from './fixtures/NeutralMapSurface';
 import {
   SeatLayerPickerDarkVisualFixture,
   SeatLayerPickerLightVisualFixture,
@@ -44,7 +44,7 @@ import {
   seatLayerVisualFixtureWideHeight,
   seatLayerVisualFixtureWideWidth,
   seatLayerVisualFixtureWidth,
-} from '../example/visual-fixtures/PickerVisualFixture';
+} from './fixtures/PickerVisualFixture';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

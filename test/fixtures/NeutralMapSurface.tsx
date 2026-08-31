@@ -5,7 +5,7 @@ import { resolveSeatLayerPickerImmersiveTheme } from '../../src/picker/immersive
 import type { SeatLayerPickerThemeData } from '../../src/picker/theme';
 
 /**
- * Deterministic map replacement for native-chrome screenshots. The hosted map
+ * Deterministic map replacement for native-chrome regression tests. The hosted map
  * is intentionally absent: it would make a local visual fixture network- and
  * renderer-dependent.
  */

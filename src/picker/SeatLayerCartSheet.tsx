@@ -435,10 +435,10 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           <View>{main}</View>
           {actionError}
         </View>}
-        <View testID="seatlayer-cart-safe-footer" style={{ height: Math.max(inset, attributionHeight), justifyContent: 'center' }}>
+        <View testID="seatlayer-cart-safe-footer" style={{ alignItems: 'flex-end', height: Math.max(inset, attributionHeight), justifyContent: 'center', paddingEnd: 8 }}>
           <SeatLayerPickerAttribution compact />
         </View>
-      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ height: inset, justifyContent: 'center' }}>
+      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ alignItems: 'flex-end', height: inset, justifyContent: 'center', paddingEnd: 8 }}>
         <SeatLayerPickerAttribution compact />
       </View> : null}
       {bestShortcutEnabled ? <SeatLayerPickerPromptModal visible={bestPrompt !== undefined}>

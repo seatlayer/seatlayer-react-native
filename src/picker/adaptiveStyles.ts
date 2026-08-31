@@ -30,6 +30,7 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   wideAssist: { gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 },
   wideCart: { flex: 1 },
   wideCartContent: { flexGrow: 1 },
+  trailingAttribution: { alignItems: 'flex-end', paddingEnd: 8 },
   owner: { ...absoluteFillObject, justifyContent: 'center' },
   phoneFooter: { alignSelf: 'stretch', width: '100%' },
 });

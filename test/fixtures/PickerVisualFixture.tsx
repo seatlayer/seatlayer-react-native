@@ -35,6 +35,7 @@ import {
 import { FixtureScopeProvider } from './FixtureScopeProvider';
 import { NeutralMapSurface } from './NeutralMapSurface';
 
+/** Fixed dimensions keep component rendering deterministic in automated tests. */
 export const seatLayerVisualFixtureWidth = 390;
 export const seatLayerVisualFixtureHeight = 844;
 export const seatLayerVisualFixtureWideWidth = 1024;

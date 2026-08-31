@@ -23,7 +23,7 @@ secure booking to your trusted server through a typed TypeScript API.
 
 ![Seat map picker running in a React Native app: accessibility filters, section navigation, seat confirmation, panorama, 3D venue view, cart and checkout handoff](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
 
-> **Production SDK:** Pin the documented `0.2.x` release and validate your
+> **Production SDK:** Pin the documented `0.3.4` release and validate your
 > event, checkout handoff, lifecycle, and supported physical devices before
 > rollout.
 
@@ -290,8 +290,8 @@ pnpm install
 cd example && pnpm install && pnpm start
 ```
 
-`example/App.tsx` is an Expo app with raw map, ready-made picker, modal,
-customised picker, and scoped custom-layout paths. Set
+`example/App.tsx` is a minimal Expo app using the production ready-made picker
+and secure checkout handoff. Set
 `EXPO_PUBLIC_SEATLAYER_EVENT` and, for public startup,
 `EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the event is absent,
 the example shows setup guidance and does not mount a picker. The browser-based

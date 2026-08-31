@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.4
 
 - Adds the protocol-2 native picker with ready-made, customisable and
   custom-layout integrations, generated themes and locale strings, standalone
@@ -13,6 +13,11 @@
   keeping private inventory on the buyer-token provider path.
 - Adds deterministic light/dark fixture coverage, the expanded Expo example,
   and package, generated-file, source-size and public-copy validation gates.
+- Keeps API-required `Powered by SeatLayer` attribution at the bottom-right of
+  compact and wide picker chrome, while server white-label entitlement remains
+  the only switch that hides it.
+- Replaces the customer-specific development example with a generic public-key
+  integration and adds a repository-wide public hygiene gate.
 
 ## 0.2.1
 

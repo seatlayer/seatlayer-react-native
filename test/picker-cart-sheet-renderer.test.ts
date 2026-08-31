@@ -255,13 +255,13 @@ describe('cart checkout renderer', () => {
     const renderer = await render(props());
     expect(renderer.root.findByProps({ accessibilityLabel: 'poweredBy' })).toBeTruthy();
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
-      .toMatchObject({ height: 34, justifyContent: 'center' });
+      .toMatchObject({ alignItems: 'flex-end', height: 34, justifyContent: 'center', paddingEnd: 8 });
 
     runtime.snapshot.branding.attributionRequired = false;
     await act(async () => { renderer.update(props()); });
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
-      .toMatchObject({ height: 34 });
+      .toMatchObject({ alignItems: 'flex-end', height: 34, paddingEnd: 8 });
   });
 
   it('keeps its active inset lease after an expand-collapse-expand cycle and ignores stale layout', async () => {
