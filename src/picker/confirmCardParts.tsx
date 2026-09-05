@@ -267,6 +267,8 @@ export function ConfirmCubeGlyph(props: Readonly<{ color: string; fontFamily?: s
 
 /** Edge length of the drawn cube on the decision row's 3D square. */
 const cubeSize = 15;
+/** The room inside its 1.4 pt outline, where the corner is actually drawn. */
+const cubeInner = cubeSize - 2.8;
 
 /** The dark plate the strip's pills and sight line stand on, in BOTH themes. */
 const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
@@ -313,13 +315,21 @@ const styles = StyleSheet.create({
   // A box with the near corner's three edges inside it: the smallest drawing
   // that still reads as a solid rather than as an empty frame.
   cubeMark: { borderRadius: 3, borderWidth: 1.4, height: cubeSize, marginBottom: 1, width: cubeSize },
-  // The near vertical edge runs DOWN from the middle, and the two top-face
-  // edges run UP and OUT from it. Turn either of those the other way and the
-  // three strokes close into an arrowhead instead of a corner.
-  cubeStem: { bottom: 2.2, height: cubeSize / 2 - 2.2, left: cubeSize / 2 - 0.7, position: 'absolute', width: 1.4 },
-  cubeEdge: { height: 1.4, position: 'absolute', top: cubeSize / 2 - 1.6, width: cubeSize / 2 - 1.4 },
-  cubeEdgeStart: { left: 1.6, transform: [{ rotate: '30deg' }] },
-  cubeEdgeEnd: { right: 1.6, transform: [{ rotate: '-30deg' }] },
+  // The near corner of a solid, drawn inside the box's own content edge (the
+  // 1.4 pt border, twice): all three strokes MEET at the middle — the vertical
+  // edge running down to the floor, and the two top-face edges running up and
+  // out to the side walls. Miss the meeting point and the same three strokes
+  // read as an arrowhead or a bird.
+  cubeStem: {
+    height: cubeInner / 2 - 1.6,
+    left: cubeInner / 2 - 0.7,
+    position: 'absolute',
+    top: cubeInner / 2,
+    width: 1.4,
+  },
+  cubeEdge: { height: 1.4, position: 'absolute', top: cubeInner / 2 - 2, width: cubeInner / 2 + 0.3 },
+  cubeEdgeStart: { left: 0, transform: [{ rotate: '24deg' }] },
+  cubeEdgeEnd: { right: 0, transform: [{ rotate: '-24deg' }] },
 });
 
 export type ConfirmCardStyleProp = StyleProp<ViewStyle>;
