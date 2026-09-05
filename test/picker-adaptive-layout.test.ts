@@ -18,7 +18,7 @@ vi.mock('../src/picker/SeatLayerPriceLegend', () => ({ SeatLayerPriceLegend: 'le
 vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerFloorStrip: 'floors' }));
 vi.mock('../src/picker/SeatLayerPickerFloorSelector', () => ({ SeatLayerPickerFloorSelector: 'floor-selector' }));
 vi.mock('../src/picker/SeatLayerPickerSectionNavigator', () => ({ SeatLayerPickerSectionNavigator: 'section-navigator' }));
-vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10 }));
+vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10, seatLayerPickerMapControlsRailTop: 8 }));
 vi.mock('../src/picker/accessibility', () => ({
   SeatLayerPickerAccessibilityFilters: 'accessibility',
   canRenderSeatLayerPickerAccessibilityFilters: () => state.accessibility,
@@ -473,8 +473,8 @@ describe('adaptive picker composition', () => {
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
     // The dock's 52 px is gone from the phone band: no dock, no lift (§3.6).
     // The price rail is a band above the map (§3.2), so only the TEST chip
-    // stands over the map's top edge.
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 38, bottom: 116 });
+    // stands over the map's top edge — on the band's own line, not the corner's.
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 34, bottom: 116 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -877,11 +877,11 @@ describe('adaptive picker composition', () => {
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
     // The band is out of the map's top-left corner entirely, so the TEST chip
-    // owns it alone, at the map anchor inset.
+    // owns it alone, on the map's own top line.
     expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(12);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
     expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
@@ -907,7 +907,7 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(12);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
     expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });

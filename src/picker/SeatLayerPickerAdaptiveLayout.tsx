@@ -37,7 +37,7 @@ import { SeatLayerDockBar } from './SeatLayerDockBar';
 import { SeatLayerFloorStrip } from './SeatLayerFloorStrip';
 import { SeatLayerPickerFloorSelector } from './SeatLayerPickerFloorSelector';
 import { SeatLayerPickerSectionNavigator } from './SeatLayerPickerSectionNavigator';
-import { SeatLayerMapControls, seatLayerPickerMapControlsEdgeInset } from './SeatLayerMapControls';
+import { SeatLayerMapControls, seatLayerPickerMapControlsEdgeInset, seatLayerPickerMapControlsRailTop } from './SeatLayerMapControls';
 import { SeatLayerPickerChart } from './SeatLayerPickerChart';
 import { SeatLayerPickerGAPrompt, SeatLayerPickerTablePrompt } from './SeatLayerPickerDecisionPrompts';
 import { createSeatLayerPickerTableCandidate } from './decisionPrompts';
@@ -242,11 +242,14 @@ export function SeatLayerPickerAdaptiveLayout({
   const topRailHeight = backPillDrawn
     ? immersiveTopInset + seatLayerPickerTokens.size.minimumHitTarget
     : Math.max(topControlsHeight, floorTop + floorHeight);
-  // The chip rests on the map's own top-left anchor; only the immersive
-  // scene's back pill, which owns that corner, pushes it down.
+  // The chip stands on the map's top band, the line the Map/3D control shares,
+  // and not in the map's corner: `mapAnchorInset` is the corner's inset and put
+  // the chip a rung below the control it is drawn beside. Its LEFT is still the
+  // corner inset. Only the immersive scene's back pill, which owns that corner,
+  // pushes it down.
   const badgeTop = backPillDrawn
     ? seatLayerPickerTokens.size.immersiveBackPillHeight + seatLayerPickerTokens.size.mapAnchorGap
-    : seatLayerPickerTokens.size.mapAnchorInset;
+    : seatLayerPickerMapControlsRailTop;
   const topHeight = Math.max(
     topRailHeight,
     testBadgeVisible ? badgeTop + seatLayerPickerTestModeIndicatorCompactHeight : 0,
