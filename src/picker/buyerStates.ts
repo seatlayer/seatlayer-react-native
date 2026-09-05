@@ -222,9 +222,14 @@ const accessPanels: Readonly<Record<SeatLayerPickerAccessReason, SeatLayerPicker
 export function seatLayerPickerAccessPanel(
   snapshot: SeatLayerPickerSnapshot | undefined,
 ): SeatLayerPickerAccessPanelState | undefined {
-  if (!snapshot || snapshot.accessConfigured !== true) return undefined;
+  if (!snapshot) return undefined;
   const status = snapshot.accessStatus;
-  if (status === 'public' || status === 'granted' || status === 'ok') return undefined;
+  // ONLY these two put a veil over the picker. Treating every status that is
+  // not an explicit grant as unavailable covered a perfectly usable map on an
+  // access-configured event whose buyer session is simply not a named grant —
+  // measured on device 2026-09-05, and the reason the reference reads the two
+  // statuses rather than the absence of the others.
+  if (status !== 'unavailable' && status !== 'expired') return undefined;
   const reason = status === 'paused' || snapshot.accessReason === 'paused'
     ? 'paused'
     : status === 'revoked' || snapshot.accessReason === 'revoked'

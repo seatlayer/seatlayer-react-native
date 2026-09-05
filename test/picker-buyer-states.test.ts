@@ -82,15 +82,17 @@ describe('§3.13.5 sold out', () => {
 
 describe('§3.13.3 access panel', () => {
   it('gives every reason exactly one action, and refresh is its own word', () => {
+    // The two statuses that raise the panel at all, and the reason each of the
+    // four tellings is reached from.
     const cases = [
-      ['paused', 'accessPausedTitle', 'retry', 'retry'],
-      ['revoked', 'accessRevokedTitle', 'accessRefresh', 'refreshAccess'],
-      ['expired', 'accessExpiredTitle', 'accessRefresh', 'refreshAccess'],
-      ['something-new', 'accessUnverifiedTitle', 'accessRefresh', 'refreshAccess'],
+      ['unavailable', 'paused', 'accessPausedTitle', 'retry', 'retry'],
+      ['unavailable', 'revoked', 'accessRevokedTitle', 'accessRefresh', 'refreshAccess'],
+      ['expired', undefined, 'accessExpiredTitle', 'accessRefresh', 'refreshAccess'],
+      ['unavailable', undefined, 'accessUnverifiedTitle', 'accessRefresh', 'refreshAccess'],
     ] as const;
-    for (const [status, titleKey, actionKey, recovery] of cases) {
+    for (const [status, reason, titleKey, actionKey, recovery] of cases) {
       const state = seatLayerPickerAccessPanel(snapshot({
-        accessConfigured: true, accessStatus: status,
+        accessConfigured: true, accessStatus: status, accessReason: reason,
       }));
       expect(state).toMatchObject({ titleKey, actionKey, recovery });
     }
@@ -99,11 +101,13 @@ describe('§3.13.3 access panel', () => {
     expect(strings.accessRefresh).not.toBe(strings.retry);
   });
 
-  it('is absent for a public or granted chart', () => {
+  it('veils the picker only for an unavailable or expired session', () => {
     expect(seatLayerPickerAccessPanel(snapshot())).toBeUndefined();
-    expect(seatLayerPickerAccessPanel(snapshot({
-      accessConfigured: true, accessStatus: 'granted',
-    }))).toBeUndefined();
+    for (const accessStatus of ['granted', 'public', 'ok', 'something-new', 'pending']) {
+      expect(seatLayerPickerAccessPanel(snapshot({
+        accessConfigured: true, accessStatus,
+      }))).toBeUndefined();
+    }
   });
 });
 
