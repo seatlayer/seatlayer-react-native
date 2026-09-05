@@ -21,6 +21,7 @@ import {
   seatLayerPickerClampedFontScale,
   seatLayerPickerReadingOrder,
   seatLayerPickerReadingOrderFor,
+  seatLayerPickerReadingOrderId,
   seatLayerPickerReadingOrderIds,
   seatLayerPickerReadingRungs,
   seatLayerPickerScaledExtent,
@@ -48,24 +49,54 @@ describe('§4.10 reading order', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('declares every mounted surface, never a subset — all ordered or none', () => {
-    const order = seatLayerPickerReadingOrderFor({ header: true, map: true, mapChrome: true, notice: true, sheet: true });
+  it('sorts by rung, not by the order the surfaces are painted', () => {
+    const order = seatLayerPickerReadingOrderFor([
+      { rung: 'map', mounted: true },
+      { rung: 'mapChrome', mounted: true },
+      { rung: 'dock', mounted: true },
+      { rung: 'notice', mounted: true, suffix: 'toast' },
+      { rung: 'prompt', mounted: true },
+      { rung: 'header', mounted: true },
+      { rung: 'sheet', mounted: true },
+    ]);
     expect(order).toEqual([
       seatLayerPickerReadingOrderIds.header,
       seatLayerPickerReadingOrderIds.map,
       seatLayerPickerReadingOrderIds.mapChrome,
-      seatLayerPickerReadingOrderIds.notice,
+      seatLayerPickerReadingOrderIds.dock,
+      seatLayerPickerReadingOrderIds.prompt,
+      `${seatLayerPickerReadingOrderIds.notice}-toast`,
       seatLayerPickerReadingOrderIds.sheet,
     ]);
   });
 
+  it('keeps the declaration order inside one rung, so the sort is stable', () => {
+    expect(seatLayerPickerReadingOrderFor([
+      { rung: 'notice', mounted: true, suffix: 'toast' },
+      { rung: 'notice', mounted: true, suffix: 'overlays' },
+      { rung: 'notice', mounted: true, suffix: 'status' },
+    ])).toEqual([
+      `${seatLayerPickerReadingOrderIds.notice}-toast`,
+      `${seatLayerPickerReadingOrderIds.notice}-overlays`,
+      `${seatLayerPickerReadingOrderIds.notice}-status`,
+    ]);
+  });
+
   it('leaves the dock rung empty on a default phone', () => {
-    expect(seatLayerPickerReadingOrderFor({ header: true, dock: false, sheet: true }))
-      .toEqual([seatLayerPickerReadingOrderIds.header, seatLayerPickerReadingOrderIds.sheet]);
+    expect(seatLayerPickerReadingOrderFor([
+      { rung: 'header', mounted: true },
+      { rung: 'dock', mounted: false },
+      { rung: 'sheet', mounted: true },
+    ])).toEqual([seatLayerPickerReadingOrderIds.header, seatLayerPickerReadingOrderIds.sheet]);
   });
 
   it('orders nothing where nothing is mounted', () => {
-    expect(seatLayerPickerReadingOrderFor({})).toEqual([]);
+    expect(seatLayerPickerReadingOrderFor([])).toEqual([]);
+  });
+
+  it('names one surface per rung without a suffix', () => {
+    expect(seatLayerPickerReadingOrderId('map')).toBe(seatLayerPickerReadingOrderIds.map);
+    expect(seatLayerPickerReadingOrderId('notice', 'toast')).toBe(`${seatLayerPickerReadingOrderIds.notice}-toast`);
   });
 });
 

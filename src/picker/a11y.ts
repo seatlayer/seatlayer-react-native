@@ -73,24 +73,49 @@ const rungs: readonly SeatLayerPickerReadingRung[] = Object.freeze(
     .sort((left, right) => seatLayerPickerReadingOrder[left] - seatLayerPickerReadingOrder[right]),
 );
 
+/** The rungs, ascending — the order a port's own traversal must reproduce. */
+export const seatLayerPickerReadingRungs = rungs;
+
+/**
+ * The id one surface declares. A rung with more than one surface — the
+ * notices, which are a toast over the map, a state overlay above the whole
+ * page and the notices inside the cart — names each with a suffix, and they
+ * stay adjacent because they share a rung.
+ */
+export function seatLayerPickerReadingOrderId(
+  rung: SeatLayerPickerReadingRung,
+  suffix?: string,
+): string {
+  const base = seatLayerPickerReadingOrderIds[rung];
+  return suffix === undefined || suffix.length === 0 ? base : `${base}-${suffix}`;
+}
+
+export interface SeatLayerPickerReadingOrderEntry {
+  readonly rung: SeatLayerPickerReadingRung;
+  /** A surface that is not mounted contributes nothing and is not a hole. */
+  readonly mounted: boolean;
+  readonly suffix?: string;
+}
+
 /**
  * The ids the composition root declares, in buyer order.
  *
  * Sibling surfaces are either ALL ordered or none are: a group with some
  * ordered members falls back to geometry for the rest, which is how the map
  * came to be read before the prices. So this takes the surfaces that are
- * actually mounted and returns every one of them — never a subset.
+ * actually mounted and returns every one of them — never a subset. Within one
+ * rung the declaration order is kept, so the sort is stable.
  */
 export function seatLayerPickerReadingOrderFor(
-  mounted: Partial<Readonly<Record<SeatLayerPickerReadingRung, boolean>>>,
+  entries: readonly SeatLayerPickerReadingOrderEntry[],
 ): readonly string[] {
-  return Object.freeze(rungs
-    .filter((rung) => mounted[rung] === true)
-    .map((rung) => seatLayerPickerReadingOrderIds[rung]));
+  return Object.freeze(entries
+    .map((entry, index) => ({ entry, index }))
+    .filter(({ entry }) => entry.mounted)
+    .sort((left, right) => seatLayerPickerReadingOrder[left.entry.rung] - seatLayerPickerReadingOrder[right.entry.rung] ||
+      left.index - right.index)
+    .map(({ entry }) => seatLayerPickerReadingOrderId(entry.rung, entry.suffix)));
 }
-
-/** The rungs, ascending — the order a port's own traversal must reproduce. */
-export const seatLayerPickerReadingRungs = rungs;
 
 export type SeatLayerPickerTypeScaleSurface = Exclude<keyof typeof seatLayerPickerTokens.type.scaleClamp, 'note'>;
 
