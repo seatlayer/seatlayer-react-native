@@ -13,6 +13,7 @@ import { resolveSeatLayerPickerMapChromeTheme, seatLayerPickerColorAlpha } from 
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerFontWeight } from './fontWeight';
 import {
   captureSeatLayerCartActionLease,
   isSeatLayerCartActionCurrent,
@@ -203,7 +204,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
                 color: theme.colors.accent,
                 fontFamily: theme.fontFamily,
                 fontSize: seatLayerPickerTokens.type.denseMore.size,
-                fontWeight: String(seatLayerPickerTokens.type.denseMore.weight) as 'normal',
+                fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseMore.weight),
               }, styles.denseLineText]}>{moreLabel}</Text>
             </Pressable>
           )
@@ -335,7 +336,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             fontFamily: theme.fontFamily,
             fontSize: seatLayerPickerTokens.type.denseLine.size,
             fontVariant: ['tabular-nums'],
-            fontWeight: String(seatLayerPickerTokens.type.denseLine.weight) as 'normal',
+            fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseLine.weight),
           }, styles.denseLineText]}>
             <Text numberOfLines={1} style={{ fontWeight: '800' }}>{leading}</Text>
             {trailingParts.map((part) => (
@@ -352,7 +353,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
               fontFamily: theme.fontFamily,
               fontSize: seatLayerPickerTokens.type.denseMultiplier.size,
               fontVariant: ['tabular-nums'],
-              fontWeight: String(seatLayerPickerTokens.type.denseMultiplier.weight) as 'normal',
+              fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseMultiplier.weight),
               marginEnd: 6,
             }, styles.denseLineText]}>{quantityAmount}</Text>
           </SeatLayerCartCellCrossFade>

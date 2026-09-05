@@ -7,6 +7,7 @@ import { splitSeatLayerFromPrice, type SeatLayerPeekLine } from './checkoutCta';
 export { splitSeatLayerFromPrice };
 import { seatLayerPickerColorAlpha, type resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerFontWeight } from './fontWeight';
 
 type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 
@@ -45,9 +46,9 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
   const summarySize = expanded
     ? seatLayerPickerTokens.type.peekSummaryOpen.size
     : seatLayerPickerTokens.type.peekSummary.size;
-  const summaryWeight = String(expanded
+  const summaryWeight = seatLayerPickerFontWeight(expanded
     ? seatLayerPickerTokens.type.peekSummaryOpen.weight
-    : seatLayerPickerTokens.type.peekSummary.weight) as 'normal';
+    : seatLayerPickerTokens.type.peekSummary.weight);
   const words = line.sentence ?? line.summary ?? '';
   const price = splitSeatLayerFromPrice(words, line.fromAmount);
   const muted = {
@@ -117,7 +118,7 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
                 fontFamily: theme.fontFamily,
                 fontSize: seatLayerPickerTokens.type.peekFromPrice.size,
                 fontVariant: ['tabular-nums'],
-                fontWeight: String(seatLayerPickerTokens.type.peekFromPrice.weight) as 'normal',
+                fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekFromPrice.weight),
               }}>{price.amount}</Text>
             )}
             {price.after}
@@ -158,7 +159,7 @@ export function SeatLayerFindSeatsPill({ label, theme, onPress }: Readonly<{
           color: theme.colors.onAccent,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.findPill.size,
-          fontWeight: String(seatLayerPickerTokens.type.findPill.weight) as 'normal',
+          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.findPill.weight),
         }}>{label}</Text>
       </View>
     </Pressable>
@@ -202,7 +203,7 @@ export function SeatLayerPeekContinuePill({ label, total, theme, busy, onPress, 
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.peekPill.size,
           fontVariant: ['tabular-nums'],
-          fontWeight: String(seatLayerPickerTokens.type.peekPill.weight) as 'normal',
+          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekPill.weight),
         }, textStyle]}>{words}</Text>
       </View>
     </Pressable>

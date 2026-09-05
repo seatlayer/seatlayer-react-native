@@ -25,6 +25,7 @@ import {
 } from './toastQueue';
 import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerFontWeight } from './fontWeight';
 
 /**
  * The picker's own toast (spec §3.12) — NOT the host's messenger.
@@ -119,7 +120,7 @@ export function SeatLayerPickerToastCard(props: SeatLayerPickerToastCardProps): 
           flexShrink: 1,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.peekSummary.size,
-          fontWeight: String(seatLayerPickerTokens.type.peekSummary.weight) as 'normal',
+          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekSummary.weight),
         }}
       >{toast.message}</Text>
       {toast.actionLabel === null
