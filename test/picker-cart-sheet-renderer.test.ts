@@ -405,7 +405,10 @@ describe('cart checkout renderer', () => {
     scope = { ...scope, readOnly: true, strings: { translate: (key: string) => key === 'findBestSeats' ? 'A deliberately long localized best seats action' : key } };
     const renderer = await render(React.createElement(SeatLayerBestSeatsForm));
     const buttons = renderer.root.findAllByProps({ accessibilityRole: 'button' });
-    expect(buttons[0]!.props.style.minHeight).toBe(44);
+    // The key is painted at the reference's 34 and reaches 44 through slop:
+    // a 44 BOX would walk both keys five points off the stepper's geometry.
+    expect(buttons[0]!.props.style.minHeight).toBe(34);
+    expect(buttons[0]!.props.hitSlop).toBe(5);
     expect(renderer.root.findAll(hasPaint).length).toBeGreaterThan(0);
     expect(renderer.root.findAllByType('Text' as any).some((node) => node.props.numberOfLines === 1)).toBe(true);
   });
