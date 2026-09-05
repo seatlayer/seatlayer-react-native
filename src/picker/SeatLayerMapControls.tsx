@@ -49,6 +49,19 @@ export interface SeatLayerMapControlsProps {
 const segmentPaintHeight = seatLayerPickerTokens.size.viewModeButtonHeight;
 /** Air between the two halves, so the bed reads between them and not only around. */
 const segmentGap = 2;
+/**
+ * The bed the two halves stand ON, all round (`picker_map_controls.dart`:
+ * `padding: EdgeInsets.all(3)`). Without it the lit half is butted against the
+ * track's own hairline, which then prints dark over the accent, and the whole
+ * control comes out six points narrow.
+ */
+const segmentBed = 3;
+/**
+ * The track's own hairline, which the reference counts as part of the track
+ * (`Container`, not `DecoratedBox` — its own comment says so), so the bed the
+ * halves stand on is measured INSIDE it.
+ */
+const trackLine = 1;
 /** §3.5 anchor regions: `size.mapAnchorGap` between members of one region. */
 const controlGap = seatLayerPickerTokens.size.mapAnchorGap;
 /** The zoom column is a column, not an anchor region; it carries its own gap. */
@@ -593,7 +606,8 @@ export function SeatLayerPickerViewModeControlView({
             fontFamily: theme.fontFamily,
             fontSize: theme.layout.viewModeLabelFontSize,
             fontWeight: seatLayerPickerBold(800),
-            letterSpacing: 0.4,
+            // Four hundredths of the label's own size, as the reference sets it.
+            letterSpacing: theme.layout.viewModeLabelFontSize * .04,
           },
           slots?.mapControlLabel,
         ]}
@@ -609,7 +623,11 @@ export function SeatLayerPickerViewModeControlView({
       const width = event.nativeEvent.layout.width;
       if (!Number.isFinite(width) || width < 0) return;
       try { onLayout?.(width); } catch { /* Host observation remains isolated. */ }
-    }} style={[{ height: target, position: 'relative' }, sanitizeSeatLayerPickerStyle(style), { height: target, position: 'relative' }]}>
+    }} style={[
+      { height: target, paddingHorizontal: segmentBed + trackLine, position: 'relative' },
+      sanitizeSeatLayerPickerStyle(style),
+      { height: target, paddingHorizontal: segmentBed + trackLine, position: 'relative' },
+    ]}>
       <View
         pointerEvents="none"
         style={{
@@ -659,17 +677,27 @@ export function SeatLayerPickerViewModeControlView({
   );
 }
 
+/**
+ * The zoom glyphs, measured off the reference frame rather than drawn to a
+ * round number: `Icons.add_rounded` / `Icons.remove_rounded` at twenty points
+ * (`picker_map_controls.dart`) print an arm 11.33 pt long and 1.33 pt thick,
+ * where these were fourteen by two — a fifth too long and half again as heavy.
+ */
+const zoomGlyphArm = 11 + 1 / 3;
+const zoomGlyphStroke = 4 / 3;
+
 export function SeatLayerPickerPlusIcon({ color }: { readonly color: string }): React.ReactElement {
   return (
-    <View style={{ backgroundColor: color, height: 2, width: 14 }}>
+    <View style={{ backgroundColor: color, borderRadius: zoomGlyphStroke / 2, height: zoomGlyphStroke, width: zoomGlyphArm }}>
       <View
         style={{
           backgroundColor: color,
-          height: 14,
-          left: 6,
+          borderRadius: zoomGlyphStroke / 2,
+          height: zoomGlyphArm,
+          left: (zoomGlyphArm - zoomGlyphStroke) / 2,
           position: 'absolute',
-          top: -6,
-          width: 2,
+          top: (zoomGlyphStroke - zoomGlyphArm) / 2,
+          width: zoomGlyphStroke,
         }}
       />
     </View>
@@ -677,7 +705,7 @@ export function SeatLayerPickerPlusIcon({ color }: { readonly color: string }): 
 }
 
 export function SeatLayerPickerMinusIcon({ color }: { readonly color: string }): React.ReactElement {
-  return <View style={{ backgroundColor: color, height: 2, width: 14 }} />;
+  return <View style={{ backgroundColor: color, borderRadius: zoomGlyphStroke / 2, height: zoomGlyphStroke, width: zoomGlyphArm }} />;
 }
 
 export function SeatLayerPickerBackIcon({ color }: { readonly color: string }): React.ReactElement {
