@@ -273,6 +273,7 @@ export function SeatLayerPickerAccessibilityFilters(
 
   const countsReported = scope.snapshot?.capabilities
     .includes(seatLayerSectionAccessCountsCapability) === true;
+  const hasCompanionPlaces = needs.some((need) => need.key === "companion");
   const needRows: readonly SeatLayerPickerAccessSheetRow[] = accessibilityAvailable
     ? needs.map((need) => {
       const on = active.includes(need.key);
@@ -285,7 +286,11 @@ export function SeatLayerPickerAccessibilityFilters(
       return Object.freeze({
         key: need.key,
         label: scope.strings.accessNeed(need.key),
-        note: need.key === "wheelchair"
+        // The companion note is a fact about the CHART, not about the row: it
+        // is only true where the chart authors companion places, so it is
+        // drawn from the same inventory the rows are. Printed unconditionally
+        // it promises seating this venue may not have.
+        note: need.key === "wheelchair" && hasCompanionPlaces
           ? scope.strings.translate("companionSeatsNote")
           : undefined,
         count: need.count,
