@@ -250,8 +250,11 @@ runtime lane; the Flutter head is 58 pt at rest).
 **Name** `SeatLayerPickerHeader` · **slot** `headerStyle` · **file**
 `lib/src/picker/picker_header.dart`
 
-**Anatomy.** A row of `size.headerHeight`, on the picker's own ground
-(`color.*.background`), with a hairline of `color.*.divider` under it. Left: the
+**Anatomy.** A row of `size.headerHeight`, on the picker's own ground — the
+header's own style slot, which defaults to `color.*.surface` with `color.*.text`
+on it; a ground and its ink are always resolved as a pair, never from two
+independent tokens (a host that darkens `background` for the map must not
+lose the event name) — with a hairline of `color.*.divider` under it. Left: the
 brand mark, a square of `size.headerLogoSize` at `radius.headerLogo`, filled
 with the accent and carrying either the organizer's logo image (cover-fitted) or
 the first letter of the brand or event name in `color.*.onAccent`. Centre: the
@@ -648,15 +651,11 @@ A column of round controls of `size.mapControlSize` at `radius.pill`, gap
 hairline the divider at partial opacity — each inside a `size.minimumHitTarget`
 target.
 
-Phone rules:
-
-- **zoom in is never drawn.** Pinch is the gesture.
-- **zoom out** appears only once the buyer is deep — seats revealed, or a
-  section focused.
-- **fit** is always there. Copy `strings.fitVenue`, `strings.zoomIn`,
-  `strings.zoomOut`.
-
-So the ordinary phone column is fit alone, plus zoom-out when deep.
+This column is the **wide** composition's. On a phone there is no column: the
+one bottom-right slot described under "One way out, on the phone" above reads
+`+` at the whole venue and `−` once a section is framed (`map.canZoomOut`), and
+fit-to-screen is not drawn. Copy `strings.fitVenue`, `strings.zoomIn`,
+`strings.zoomOut`.
 
 **Commands.** `picker.zoomToFit`, `picker.zoomIn`, `picker.zoomOut`.
 
@@ -699,8 +698,9 @@ Contents, leading to trailing:
 
 1. A dot of `size.dockDotSize` in the section's colour, inset
    `size.dockLeadingInset`.
-2. The section name at `type.dockSection` / `size.dockNameFontSize`, taking the
-   free space, ellipsizing.
+2. The section name at `size.dockNameFontSize` with the weight of
+   `type.dockSection` (its size field is not read here), taking the free
+   space, ellipsizing.
 3. The seats-left count at `type.dockCount` / `size.dockCountFontSize`, which
    **collapses before the name does** and may never be clipped.
 4. Previous / next section steps, `size.dockNavWidth` × `size.dockNavHeight`,
@@ -770,7 +770,9 @@ blur, hairline `color.*.divider`, padding `size.floorRailPadding`, gap
 `size.floorChipHeight`, padding `size.floorChipPaddingX`, label at
 `size.floorChipFontSize`, `radius.pill`; idle ink `color.*.mutedText`,
 selected the accent ground with `color.*.onAccent`. An info glyph of
-`size.floorInfoSize` closes the track, inside a `size.minimumHitTarget` target.
+`size.floorInfoSize` closes the track, inside a `size.minimumHitTarget` target,
+and is drawn only where the host takes an `onFloorInfo` action for it — a
+control that opens nothing is not drawn.
 
 `strings.allFloors` is the first chip where the runtime offers an all-floors
 view.
@@ -959,7 +961,9 @@ same card over flat glass, which is a correct state, not a degraded one.
    lines: a numbered section such as `209` reads as one line of equals with the
    row and the seat, while a venue phrase such as `Upper Grand Circle` needs
    the room. Where there is no section the grid becomes two equal centred
-   cells. A missing value prints an em dash. Copy: `strings.sectionWord`,
+   cells. The cell set is chosen first — section only where the seat names one,
+   row only where it has one, the place always — and a cell that is present but
+   empty prints an em dash. Copy: `strings.sectionWord`,
    `strings.rowWord`, `strings.seatWord`, `strings.placeWord` — the row eyebrow
    follows the object's own word (Row, Table, Booth). **Print the row with its
    section prefix stripped**, or the card reads `Stalls D · Row Stalls D C`.
@@ -1632,7 +1636,7 @@ reduced motion too. **Native calls nothing after the command.** The interim
 that framed the section of the newly added seats is gone; the web's own pops
 and chip flights stay web-only.
 
-**Seat removed.** No toast. See §3.11's removal rules: the tray is the answer.
+**Seat removed.** No toast. See §3.10.2's removal rules: the tray is the answer.
 
 **Accessibility filter flight.** Since runtime 0.77.1
 `picker.setAccessibilityFilter` takes the web menu's own focus path: turning a
