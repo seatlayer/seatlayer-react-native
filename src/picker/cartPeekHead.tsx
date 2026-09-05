@@ -79,9 +79,10 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
         height: props.height,
         paddingEnd: seatLayerPeekHeadInset,
         paddingStart: seatLayerPeekHeadInset,
-        // The head grows by the clock lift so its row sits below the grabber:
-        // without it a 44 pt button covers the grabber painted in the top 4 pt.
-        paddingTop: seatLayerPickerTokens.size.peekClockLift,
+        // The COLLAPSED head grows by the clock lift so its row sits below the
+        // grabber: without it a 44 pt button covers the grabber painted in the
+        // top 4 pt. Open, the head has no button in it and takes no lift.
+        paddingTop: expanded ? 0 : seatLayerPickerTokens.size.peekClockLift,
       }, props.containerStyle]}
       testID="seatlayer-cart-peek-head"
       {...(props.panHandlers ?? {})}

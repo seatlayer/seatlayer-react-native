@@ -69,6 +69,17 @@ import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
+
+/**
+ * The tray's own inset, filled or empty: `EdgeInsets.fromLTRB(10, 8, 10, 10)`.
+ *
+ * The top eight are what stand the first row off the head's hairline, and
+ * the ten at the foot are the daylight the checkout bar is measured from.
+ */
+const seatLayerCartBodyInset = Object.freeze({
+  paddingBottom: 10, paddingHorizontal: 10, paddingTop: 8,
+} as const);
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type BookSlots = Pick<SeatLayerPickerStyles, 'continueButton' | 'continueButtonText'>;
@@ -235,7 +246,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
       disabled={disabled}
       onPress={flight.press}
       testID="seatlayer-cart-checkout"
-      style={{ justifyContent: 'center', paddingBottom: 6, paddingHorizontal: 12, paddingTop: 6 }}
+      style={{ justifyContent: 'center', paddingBottom: 0, paddingHorizontal: 14, paddingTop: 8 }}
     >
       <View style={[{
         alignItems: 'center',
@@ -243,7 +254,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
         backgroundColor: disabled ? theme.colors.surface : theme.colors.accent,
         borderColor: disabled ? theme.colors.divider : 'transparent',
         borderRadius: seatLayerPickerTokens.radius.button,
-        borderWidth: disabled ? StyleSheet.hairlineWidth : 0,
+        borderWidth: disabled ? seatLayerPickerLineWidth : 0,
         flexDirection: 'row',
         gap: 8,
         height: seatLayerPickerTokens.size.checkoutButtonHeight,
@@ -328,8 +339,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
       seatLayerPickerTypeScaleClamp('peek'),
     ),
   );
-  const openHeadHeight = seatLayerPickerTokens.size.sheetOpenHeadHeight +
-    seatLayerPickerTokens.size.peekClockLift;
+  // The OPEN head is its own token and nothing else. The clock lift belongs to
+  // the collapsed bar, where a 44 pt button would otherwise cover the grabber
+  // painted in the head's top four points; open, the head carries a caption
+  // and a chevron and the reference gives it no lift at all.
+  const openHeadHeight = seatLayerPickerTokens.size.sheetOpenHeadHeight;
   const detents = useMemo(() => seatLayerSheetDetents({
     bottomInset: inset,
     contentHeight: contentHeight + openHeadHeight,
@@ -504,7 +518,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
       borderTopColor: theme.roles.sheet.border,
       borderTopLeftRadius: seatLayerPickerTokens.radius.sheet,
       borderTopRightRadius: seatLayerPickerTokens.radius.sheet,
-      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopWidth: seatLayerPickerLineWidth,
       elevation: seatLayerPickerTokens.elevation.sheet,
       maxHeight: detents.full,
     }]}>
@@ -513,7 +527,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
         action={action}
         containerStyle={styles.peekContainer}
         expanded={props.expanded}
-        height={(props.expanded ? openHeadHeight : headHeight) + seatLayerPickerTokens.size.peekClockLift}
+        height={props.expanded ? openHeadHeight : headHeight + seatLayerPickerTokens.size.peekClockLift}
         line={peek}
         onToggle={() => changeExpanded()}
         panHandlers={pan.panHandlers}
@@ -530,7 +544,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               ? (
                 <>
                   <ScrollView
-                    contentContainerStyle={{ paddingBottom: 6, paddingHorizontal: 12 }}
+                    contentContainerStyle={seatLayerCartBodyInset}
                     onContentSizeChange={(_width, height) => setContentHeight(height)}
                     style={{ flexShrink: 1 }}
                   >{main}</ScrollView>
@@ -540,7 +554,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
                 </>
               )
               : (
-                <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
+                <View style={seatLayerCartBodyInset}>
                   <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
                   <View>{main}</View>
                   {salesClosed}
