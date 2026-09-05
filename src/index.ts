@@ -353,6 +353,11 @@ export {
 } from './picker/buyerStates';
 export { isSeatLayerPickerSoldOut } from './picker/emptyState';
 export {
+  seatLayerDockAccessGlyph,
+  seatLayerDockCountCopy,
+  type SeatLayerDockCountCopy,
+} from './picker/dockCount';
+export {
   SeatLayerHoldOwnershipNotice,
   type SeatLayerHoldOwnershipNoticeProps,
 } from './picker/SeatLayerHoldOwnershipNotice';
