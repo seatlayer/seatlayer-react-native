@@ -251,12 +251,10 @@ runtime lane; the Flutter head is 58 pt at rest).
 `lib/src/picker/picker_header.dart`
 
 **Anatomy.** A row of `size.headerHeight`, on the picker's own ground — the
-header's own style slot, which defaults to `color.*.background` with
-`color.*.text` on it; a ground and its ink are always resolved as a pair, never
-from two independent tokens (a host that darkens `background` for the map must
-not lose the event name). It draws **no hairline of its own**: the price rail
-beneath it is the first `color.*.surface`, and the two grounds meeting is the
-boundary — a rule as well read as a line drawn through one plate. Left: the
+header's own style slot, which defaults to `color.*.surface` with `color.*.text`
+on it; a ground and its ink are always resolved as a pair, never from two
+independent tokens (a host that darkens `background` for the map must not
+lose the event name) — with a hairline of `color.*.divider` under it. Left: the
 brand mark, a square of `size.headerLogoSize` at `radius.headerLogo`, filled
 with the accent and carrying either the organizer's logo image (cover-fitted) or
 the first letter of the brand or event name in `color.*.onAccent`. Centre: the
@@ -270,8 +268,9 @@ is the identity.
 `color.*.divider`, glyph in `color.*.mutedText`; the press target is expanded to
 `size.minimumHitTarget` centred on it. Copy `strings.close`.
 
-**Hold pill.** Drawn only while the picker owns a live hold — a hold handed to
-the host is the host's to display (`hold.owner`). A true pill (`radius.pill`), a
+**Hold pill.** Drawn for as long as a live hold exists, whoever owns it
+(owner call 2026-09-05: the clock is always in the header; a host that draws
+its own clock turns it off with the `showHoldPill` option). A true pill (`radius.pill`), a
 dot and `m:ss` in `type.pill`, tabular figures, with a `size.minimumHitTarget`
 reach. Resting look is the accent mixed lightly into the surface with accent-
 toned ink; while expiring it inverts to the full accent with `color.*.onAccent`
@@ -310,9 +309,7 @@ reader every second; announce it on the minute and on the expiring transition.
 
 **Anatomy.** A band of its own between the header and the map, height
 `size.topRailHeight`, on `color.*.surface` with a `color.*.divider` hairline
-beneath and `10` of its own margin on each side — the band's chips sit inside
-the surface they are drawn on, so the pinned chip's rounded end is never cut off
-by the screen edge. It is not floated over the map: on a busy chart the seat numbers read
+beneath. It is not floated over the map: on a busy chart the seat numbers read
 through the gaps, and the last chip clipped under the Map/3D control. Inside it,
 one horizontally scrolling row of chips.
 
@@ -402,16 +399,9 @@ segments of `size.viewModeButtonMinWidth` × `size.viewModeButtonHeight` at
 `size.viewModeLabelFontSize`, letter-spaced, in `color.*.mutedText`. The active
 segment takes the accent ground and `color.*.onAccent`.
 
-The two segments are held **inside** the track with `3` of its ground around
-them and `2` between them, each a stadium at `radius.pill`; the lit one is
-filled with the accent, the quiet one paints nothing and lets the track through.
-Painted edge to edge instead, the pair reads as a block butted against a button
-rather than as one control.
-
 On a phone it lives in the map's **top-right** corner, on the line below the
-price rail — the rail owns the band, the control owns the corner. Its trailing
-inset is `size.mapAnchorInset`; its top is the map's top band, 8, which the test
-chip shares. On wide it joins the corner-control stack.
+price rail — the rail owns the band, the control owns the corner. On wide it
+joins the corner-control stack.
 
 **Copy.** Left `strings.mapView` (accessible name `strings.flat2dMap`); right
 `strings.venue3D` (accessible name `strings.interactive3dVenueView`). The group
@@ -461,10 +451,8 @@ amber as the floor allows rather than driving to maximum contrast.
 **Copy.** Sentence case `strings.testMode`; the accessible name keeps
 `strings.testModeLong`; the description is `strings.testModeExplained`.
 
-**Placement.** The map's top-left corner in both 2D and 3D. Its **leading**
-inset is `size.mapAnchorInset`; its **top** is the map's own top band — 8, the
-line the Map/3D control shares — and not the corner inset, which drops it a rung
-below the control beside it. It steps down by the back pill's height plus
+**Placement.** The map's top-left corner in both 2D and 3D, at
+`size.mapAnchorInset`. It steps down by the back pill's height plus
 `size.mapAnchorGap` **only while the immersive scene's back pill is actually
 drawn** — not merely whenever the scene is up.
 
@@ -2098,8 +2086,9 @@ swap its title a second after opening.
 - **picker-owned** — the native chrome shows the countdown pill, may extend it,
   and releases seats when a line is removed.
 - **host-owned** — a hold handed in by the host is verified with the server and
-  always treated as host-owned. Native controls never release or mutate it, and
-  the countdown pill is not drawn: it is the host's to display.
+  always treated as host-owned. Native controls never release or mutate it —
+  no extend, no release from a cart row — but the header's countdown pill is
+  still drawn (§3.1), because the buyer's time is running whoever holds it.
 
 The hold id itself is delivered **only** at the checkout handoff
 (`checkout-handoff-v1`); ordinary snapshots never expose that booking
@@ -2191,10 +2180,13 @@ mountable on its own, where there is no order to join. Dart file:
   (`strings.venueMapHint`) that says the seats are picked with the controls
   around it. See the runtime gap in §4.9: naming a region that cannot be
   explored is the honest form of a canvas, not the intended design.
-- *Live regions*, and only these three (the dock's is there only where a host
-  opted into a dock; the default phone has two): the peek summary, the section dock's
-  name and seats-left, and the hold countdown. Each changes without the buyer
-  touching it, and none says so any other way.
+- *Live regions*, and only these three among the surfaces that are always up
+  (the dock's is there only where a host opted into a dock; the default phone
+  has two): the peek summary, the section dock's name and seats-left, and the
+  hold countdown. Each changes without the buyer touching it, and none says so
+  any other way. A surface that ARRIVES unasked — a buyer-facing state, a hold
+  notice, a toast, the best-seats count — is live as well; a notice that is part
+  of a surface's own statement (the card's limited-view line) is not.
 - *The hold countdown is throttled.* `m:ss` read aloud is a time of day. The
   pill announces `strings.holdMinutesLeft` at each minute mark, and
   `strings.holdSecondsLeft` for every second of the last minute, where the
