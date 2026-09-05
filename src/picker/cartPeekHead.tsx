@@ -10,6 +10,7 @@ import { seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import { seatLayerPickerBold } from './boldText';
+import { SeatLayerPickerSparkIcon } from './sparkIcon';
 
 type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 
@@ -26,6 +27,8 @@ type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 /** The head's own inset: the summary starts at it, the buttons sit against it. */
 export const seatLayerPeekHeadInset = 12;
 const findPillPadding = 20;
+/** The reference draws its finder mark at sixteen (`picker_cart_sheet.dart`). */
+const findPillIconSize = 16;
 const continuePillPadding = 18;
 
 export interface SeatLayerCartPeekHeadProps {
@@ -87,19 +90,27 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
         accessible={false}
         pointerEvents="none"
         testID="seatlayer-cart-grabber"
+        // `left`/`right` and NOT `width: '100%'`: an absolutely-positioned
+        // child's inset is measured from the head's border box while a
+        // percentage width resolves against its CONTENT box, so a head with
+        // twelve points of padding centred the grabber twelve points left of
+        // the phone's middle. Two insets are measured from the same edge.
         style={{
           alignItems: 'center',
           left: 0,
           position: 'absolute',
+          right: 0,
           top: seatLayerPickerTokens.size.sheetGrabberInset,
-          width: '100%',
         }}
       >
         <View style={{
           backgroundColor: theme.colors.mutedText,
           borderRadius: seatLayerPickerTokens.radius.pill,
           height: seatLayerPickerTokens.size.sheetGrabberHeight,
-          opacity: .4,
+          // Half, not .4: the reference wraps the grabber in `Opacity(.5)`,
+          // and #667085 at .4 over #F6F7FB samples #BCC1CC where the frame
+          // samples #AEB3C0.
+          opacity: .5,
           width: seatLayerPickerTokens.size.sheetGrabberWidth,
         }} />
       </View>
@@ -168,7 +179,7 @@ export function SeatLayerFindSeatsPill({ label, theme, onPress }: Readonly<{
         justifyContent: 'center',
         paddingHorizontal: findPillPadding,
       }}>
-        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} accessible={false} style={{ color: theme.colors.onAccent, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
+        <SeatLayerPickerSparkIcon color={theme.colors.onAccent} ground={theme.colors.accent} size={findPillIconSize} />
         <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} numberOfLines={1} style={{
           color: theme.colors.onAccent,
           fontFamily: theme.fontFamily,

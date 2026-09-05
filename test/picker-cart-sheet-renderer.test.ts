@@ -178,9 +178,13 @@ describe('cart checkout renderer', () => {
       node.props.style.some((style: unknown) => Boolean(style) && typeof style === 'object' &&
         (style as { height?: unknown }).height === 48 &&
         (style as { borderRadius?: unknown }).borderRadius === 12))).toHaveLength(1);
-    // The grabber sits at its own inset, painted into the head's top edge.
+    // The grabber sits at its own inset, painted into the head's top edge, and
+    // spans the head by two insets — a percentage width would resolve against
+    // the padded content box and carry the grabber off the phone's centre.
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-grabber' }).props.style)
-      .toMatchObject({ left: 0, top: 4, width: '100%' });
+      .toMatchObject({ left: 0, right: 0, top: 4 });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-grabber' }).props.style)
+      .not.toHaveProperty('width');
     await act(async () => { head.props.onPress(); });
     await act(async () => { renderer.update(props(true)); });
     const disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
