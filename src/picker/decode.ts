@@ -19,7 +19,13 @@ import {
   type SeatLayerPickerCategory,
   type SeatLayerPickerCheckoutHandoff,
   type SeatLayerPickerFloorInfo,
+  type SeatLayerPickerAccessibleSectionStep,
+  type SeatLayerPickerFrameSeatResult,
+  type SeatLayerPickerSeatConfidence,
+  type SeatLayerPickerSeatScreenPoint,
+  type SeatLayerPickerSeatViewThumb,
   type SeatLayerPickerSectionSummary,
+  type SeatLayerPickerSelectedSeat,
   type SeatLayerPickerSnapshot,
   seatLayerPickerSnapshotSchema,
   type SeatLayerPickerViewportInsets,
@@ -105,6 +111,102 @@ function decodeZone(value: unknown): SeatLayerPickerZone | undefined {
   });
 }
 
+/**
+ * `section-access-counts-v1`. Present-only at every level, so an absent field
+ * and an empty answer both decode to `undefined` — a host must read that as
+ * NOT COUNTED, never as zero. Non-positive and non-integer counts are dropped
+ * rather than rounded: a fraction of a wheelchair space is not a number a
+ * shell may print.
+ */
+function decodeAccessibleFree(
+  value: unknown,
+): Record<string, number> | undefined {
+  const item = asObject(value);
+  if (!item) return undefined;
+  const counts: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(item)) {
+    const trimmed = key.trim();
+    const count = asInteger(raw);
+    if (trimmed && count !== undefined && count > 0) counts[trimmed] = count;
+  }
+  return Object.keys(counts).length > 0 ? freeze(counts) : undefined;
+}
+
+/** `seat-screen-point-v1`. Both coordinates must be finite, or there is no point. */
+function decodeScreenPoint(
+  value: unknown,
+): SeatLayerPickerSeatScreenPoint | undefined {
+  const item = asObject(value);
+  const x = asFiniteNumber(item?.x);
+  const y = asFiniteNumber(item?.y);
+  return x === undefined || y === undefined ? undefined : freeze({ x, y });
+}
+
+/**
+ * `seat-view-thumbnail-v1`. The only `kind` the contract defines is `'real'`;
+ * anything else is a newer runtime saying something this host cannot honestly
+ * render, so it decodes to nothing rather than to a frame it would leave empty.
+ */
+function decodeSeatViewThumb(
+  value: unknown,
+): SeatLayerPickerSeatViewThumb | undefined {
+  const item = asObject(value);
+  const reference = asString(item?.reference)?.trim();
+  if (!reference || asString(item?.kind) !== 'real') return undefined;
+  return freeze({ reference, kind: 'real' as const });
+}
+
+/** `seat-view-thumbnail-v1`. Every prose field is required; limits may be empty. */
+function decodeSeatConfidence(
+  value: unknown,
+): SeatLayerPickerSeatConfidence | undefined {
+  const item = asObject(value);
+  if (!item) return undefined;
+  const prose = optionalStrings(item, [
+    'headline',
+    'model',
+    'reality',
+    'coverage',
+    'provenance',
+    'freshness',
+  ]);
+  if (Object.keys(prose).length < 6) return undefined;
+  return freeze({
+    ...(prose as unknown as Omit<
+      SeatLayerPickerSeatConfidence,
+      'limitations' | 'modeledTarget'
+    >),
+    limitations: freeze(strings(item.limitations)),
+    ...optionalStrings(item, ['modeledTarget']),
+  });
+}
+
+/**
+ * A selected seat plus the 0.80.3 present-only additions. The base decode is
+ * unchanged, so a runtime that advertises none of the new capabilities decodes
+ * exactly as before.
+ */
+function decodePickerSelectedSeat(
+  value: unknown,
+): SeatLayerPickerSelectedSeat | undefined {
+  const seat = decodeSelectedSeat(value);
+  if (seat === undefined) return undefined;
+  const item = asObject(value);
+  const screenPoint = decodeScreenPoint(item?.screenPoint);
+  const seatViewThumb = decodeSeatViewThumb(item?.seatViewThumb);
+  const sightlineMetres = asFiniteNumber(item?.sightlineMetres);
+  const seatViewConfidence = decodeSeatConfidence(item?.seatViewConfidence);
+  return freeze({
+    ...seat,
+    ...(screenPoint === undefined ? {} : { screenPoint }),
+    ...(seatViewThumb === undefined ? {} : { seatViewThumb }),
+    ...(sightlineMetres === undefined || sightlineMetres < 0
+      ? {}
+      : { sightlineMetres }),
+    ...(seatViewConfidence === undefined ? {} : { seatViewConfidence }),
+  });
+}
+
 function decodeSection(
   value: unknown,
 ): SeatLayerPickerSectionSummary | undefined {
@@ -116,6 +218,7 @@ function decodeSection(
     const number = asFiniteNumber(item?.[key]);
     if (number !== undefined) numbers[key] = number;
   }
+  const accessibleFree = decodeAccessibleFree(item?.accessibleFree);
   return freeze({
     id,
     label: asString(item?.label) ?? id,
@@ -128,6 +231,7 @@ function decodeSection(
       'dominantCategoryKey',
     ]),
     ...numbers,
+    ...(accessibleFree === undefined ? {} : { accessibleFree }),
   });
 }
 
@@ -201,6 +305,8 @@ function decodeCategory(value: unknown): SeatLayerPickerCategory | undefined {
     .filter((entry): entry is CategoryTier => entry !== undefined);
   const prices = tiers.map((entry) => entry.price);
   const base = numberOr(item?.price, prices[0] ?? 0);
+  const freeCount = asInteger(item?.free);
+  const free = freeCount !== undefined && freeCount >= 0 ? freeCount : undefined;
   return freeze({
     key,
     label: asString(item?.label) ?? key,
@@ -214,6 +320,9 @@ function decodeCategory(value: unknown): SeatLayerPickerCategory | undefined {
       prices.length ? Math.max(...prices) : base,
     ),
     available: asInteger(item?.available) ?? 0,
+    // Present-only: an absent `free` means the count has not landed, which a
+    // host must not paint as sold out. Only `free: 0` says gone.
+    ...(free === undefined ? {} : { free }),
     notForSale: asBoolean(item?.notForSale) ?? false,
     tiers: freeze(tiers),
   });
@@ -274,8 +383,10 @@ export function decodeSeatLayerPickerSnapshot(
     .map(decodeCartLine)
     .filter((entry): entry is SeatLayerPickerCartLine => entry !== undefined);
   const seats = asArray(selection?.seats)
-    .map(decodeSelectedSeat)
-    .filter((entry): entry is SelectedSeat => entry !== undefined)
+    .map(decodePickerSelectedSeat)
+    .filter((entry): entry is SeatLayerPickerSelectedSeat =>
+      entry !== undefined
+    )
     .map(freeze);
   const selectionValidity = decodeSelectionValidity(selection?.validity);
   const activeFloorId = asString(map?.activeFloorId) ?? asString(map?.floorId);
@@ -453,4 +564,54 @@ export function decodeSeatLayerSeatView(
     real: asBoolean(item.real) ?? false,
     generated: asBoolean(item.generated) ?? false,
   });
+}
+
+/**
+ * `picker.frameSeat`'s reply. A runtime that answered without a usable `dy`
+ * or gesture count is read as "it did not pan", which is the same outcome the
+ * command already reports for a seat that needed no lift.
+ */
+export function decodeSeatLayerPickerFrameSeatResult(
+  value: unknown,
+): SeatLayerPickerFrameSeatResult {
+  const item = asObject(value);
+  const dy = asFiniteNumber(item?.dy);
+  const gestures = asInteger(item?.gestures);
+  return freeze({
+    dy: dy ?? 0,
+    gestures: gestures !== undefined && gestures >= 0 ? gestures : 0,
+  });
+}
+
+/**
+ * One stop on the accessible-section tour. `null` — nothing matched — is the
+ * honest answer rather than an error, because a provision can sell out while
+ * the shell's own chip is still on screen.
+ */
+export function decodeSeatLayerPickerAccessibleSectionStep(
+  value: unknown,
+): SeatLayerPickerAccessibleSectionStep | undefined {
+  const item = asObject(value);
+  const id = asString(item?.id);
+  const free = asInteger(item?.free);
+  const index = asInteger(item?.index);
+  const total = asInteger(item?.total);
+  if (
+    !id || free === undefined || index === undefined || total === undefined ||
+    free < 0 || index < 0 || total <= 0 || index >= total
+  ) {
+    return undefined;
+  }
+  return freeze({ id, label: asString(item?.label) ?? id, free, index, total });
+}
+
+/**
+ * `evt seat.retap` — a seat already in the selection tapped again, which the
+ * card answers with its Remove ask rather than a second selection.
+ */
+export function decodeSeatLayerPickerSeatRetap(
+  value: unknown,
+): SeatLayerPickerSelectedSeat | undefined {
+  const item = asObject(value);
+  return decodePickerSelectedSeat(item?.seat ?? value);
 }

@@ -10,7 +10,7 @@ import {
 
 describe('runtime metadata', () => {
   it('keeps the hosted version and immutable page in lockstep', () => {
-    expect(seatLayerHostedWebVersion).toBe('0.71.5');
+    expect(seatLayerHostedWebVersion).toBe('0.80.3');
     expect(seatLayerMobilePageUrl).toBe(
       `https://cdn.seatlayer.io/seatlayer-js@${seatLayerHostedWebVersion}/mobile.html`,
     );

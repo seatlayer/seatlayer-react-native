@@ -1,7 +1,15 @@
 import type { JsonObject } from '../json';
 import { SeatLayerError } from '../errors';
 import type { ProtocolRange } from '../types';
-import { chartProtocolRange, pickerProtocolRange } from './protocol';
+import {
+  chartProtocolRange,
+  pickerProtocolRange,
+  seatLayerAccessibilityFocusCapability,
+  seatLayerCategoryAvailabilityCapability,
+  seatLayerSeatScreenPointCapability,
+  seatLayerSeatViewThumbnailCapability,
+  seatLayerSectionAccessCountsCapability,
+} from './protocol';
 
 export type BridgeSurface = 'chart' | 'picker';
 
@@ -212,6 +220,15 @@ export function pickerBridgeProfile(
       'availability-refresh-v1',
       'access-needs-v1',
       'hold-selection-v1',
+      // Additive, present-only snapshot fields from the 0.80.3 native-chrome
+      // contract. Each stays optional: a runtime that does not advertise one
+      // simply never reports its field, and the chrome offers less rather
+      // than treating the absence as a fault.
+      seatLayerSeatScreenPointCapability,
+      seatLayerCategoryAvailabilityCapability,
+      seatLayerSeatViewThumbnailCapability,
+      seatLayerAccessibilityFocusCapability,
+      seatLayerSectionAccessCountsCapability,
     ],
     ...(options && typeof options === 'object' && 'config' in options
       ? { config }
