@@ -164,6 +164,14 @@ export interface SeatLayerPickerToastLayerProps {
   readonly lift?: number;
   readonly style?: StyleProp<ViewStyle>;
   readonly children?: ReactNode;
+  /**
+   * §4.10 — a toast's action returns focus to whatever had it before the press.
+   *
+   * React Native cannot read which node holds assistive focus, so the surface
+   * that owns the screen says where focus belongs; the composition root points
+   * this at the map region. Unset where a toast is mounted on its own.
+   */
+  readonly onFocusReturn?: () => void;
 }
 
 /** The bottom-centre region the card lives in; it never takes the touch. */
@@ -201,7 +209,7 @@ export function SeatLayerPickerToastLayer(props: SeatLayerPickerToastLayerProps)
       }, props.style]}
     >
       <SeatLayerPickerToastCard
-        onAction={() => queue.press(toast.id)}
+        onAction={() => { queue.press(toast.id); props.onFocusReturn?.(); }}
         theme={theme}
         toast={toast}
       />

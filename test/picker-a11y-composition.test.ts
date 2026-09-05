@@ -202,3 +202,15 @@ describe('§4.10 focus returns to the map', () => {
     await act(async () => { tree.unmount(); });
   });
 });
+
+describe("§4.10 a toast's action gives focus back", () => {
+  it('returns focus to the map region rather than the top of the tree', async () => {
+    state.focused.length = 0;
+    const tree = await render();
+    const layer = tree.root.findByType('toast-layer' as any);
+    expect(typeof layer.props.onFocusReturn).toBe('function');
+    await act(async () => { layer.props.onFocusReturn(); });
+    expect(state.focused).toEqual([41]);
+    await act(async () => { tree.unmount(); });
+  });
+});

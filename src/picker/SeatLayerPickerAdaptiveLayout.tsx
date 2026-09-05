@@ -560,6 +560,7 @@ export function SeatLayerPickerAdaptiveLayout({
   }, [scope.holdLapse, scope.holdLapsed, scope.strings, toasts]);
   const toastLayer = <SeatLayerPickerToastLayer
     lift={wide ? undefined : bottomInset + seatLayerPickerTokens.size.toastCardLift}
+    onFocusReturn={() => seatLayerPickerFocusOn(mapRegionRef.current)}
     queue={toasts.queue}
   />;
   const status = fatal
