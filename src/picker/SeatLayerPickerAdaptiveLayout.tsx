@@ -698,7 +698,13 @@ export function SeatLayerPickerAdaptiveLayout({
           {ordered('mapChrome', plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null, { overlay: true, suffix: 'seat-view' })}
           {ordered('prompt', status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
             anchor={!wide && cardActive ? 'foot' : 'centre'}
-            bottomInset={phoneBands.bottom}
+            // The card rests over the DOCK's band, not over the whole bottom
+            // band the runtime is told about. The floating discs and the
+            // accessibility key are drawn ON the map and the card is allowed
+            // to pass in front of them; measuring the card's home against them
+            // instead pushed it 56 points up the map, half a card away from
+            // where the reference puts it.
+            bottomInset={bottomInset}
             prompt={prompt}
             promptKey={promptKey}
             scrimColor={!wide && cardActive
