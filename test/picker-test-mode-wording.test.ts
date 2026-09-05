@@ -9,5 +9,14 @@ describe('§3.4 test-mode wording', () => {
       .toBe(seatLayerPickerTokens.strings.testMode);
     expect(createSeatLayerPickerStringResolver({ locale: 'fr' }).translate('testMode'))
       .not.toBe(seatLayerPickerTokens.strings.testMode);
+    // English is the design data's own wording, whichever English is asked for:
+    // the translation table's `en` row is the runtime's web copy and says
+    // "TEST MODE", which is not the sentence case the spec quotes.
+    for (const locale of ['en', 'en-GB', 'en-US', 'EN']) {
+      expect(createSeatLayerPickerStringResolver({ locale }).translate('testMode'))
+        .toBe(seatLayerPickerTokens.strings.testMode);
+      expect(createSeatLayerPickerStringResolver({ locale }).translate('accessibilityTitle'))
+        .toBe(seatLayerPickerTokens.strings.accessibilityTitle);
+    }
   });
 });

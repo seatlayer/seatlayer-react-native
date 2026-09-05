@@ -180,8 +180,20 @@ function normalizedLocaleCandidates(locale: SeatLayerPickerLocale | null | undef
   return [...new Set(candidates)];
 }
 
+/**
+ * English is the wording the picker's own design data carries, not a row in the
+ * translation table. The two disagree on seven entries — the table is the
+ * runtime's web copy, and the tokens are the ones the spec quotes ("Test mode",
+ * "Accessibility and view") — so an English buyer must read the tokens, the way
+ * the reference implementation's default strings do.
+ */
+function isEnglish(candidate: string): boolean {
+  return candidate === 'en' || candidate.toLowerCase().startsWith('en-');
+}
+
 function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Readonly<Record<string, string>> | undefined {
   for (const candidate of normalizedLocaleCandidates(locale)) {
+    if (isEnglish(candidate)) return undefined;
     const exact = seatLayerPickerLocaleStrings[candidate as SeatLayerPickerGeneratedLocale];
     if (exact) return exact;
     const matchingLocale = Object.keys(seatLayerPickerLocaleStrings).find((known) => known.toLowerCase() === candidate.toLowerCase());
