@@ -445,7 +445,26 @@ function LineMark({ group, held, open, color, theme }: Readonly<{
         justifyContent: 'center',
         width: 14,
       }}>
-        <Text style={{ color: theme.colors.accent, fontSize: 9 }}>{'\u{1F512}'}</Text>
+        {/* DRAWN, never an emoji: the platform paints U+1F512 in its own
+            colours, so the one state with consequences arrived as a green and
+            yellow picture that neither the accent nor greyscale could reach. */}
+        <View style={{
+          borderColor: theme.colors.accent,
+          borderTopStartRadius: 2.6,
+          borderTopEndRadius: 2.6,
+          borderTopWidth: 1.3,
+          borderLeftWidth: 1.3,
+          borderRightWidth: 1.3,
+          height: 3.6,
+          marginBottom: -0.4,
+          width: 5.2,
+        }} />
+        <View style={{
+          backgroundColor: theme.colors.accent,
+          borderRadius: 1.4,
+          height: 5,
+          width: 7.6,
+        }} />
       </View>
     );
   }

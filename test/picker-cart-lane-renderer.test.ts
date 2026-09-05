@@ -221,7 +221,13 @@ describe('§3.10.2 cart rows', () => {
     runtime.snapshot.hold = { active: true, owner: 'host' };
     runtime.snapshot.cartLines = [line()];
     const renderer = await render(React.createElement(SeatLayerCartList));
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-held-lock' })).toHaveLength(1);
+    const lock = renderer.root.findByProps({ testID: 'seatlayer-cart-held-lock' });
+    // Drawn, never an emoji: the platform paints U+1F512 in its own colours,
+    // and the one state with consequences has to survive both the accent and
+    // greyscale.
+    expect(JSON.stringify(renderer.toJSON())).not.toContain('\u{1F512}');
+    expect(lock.findAllByType('Text' as never)).toHaveLength(0);
+    expect(lock.findAllByType('View' as never).length).toBeGreaterThanOrEqual(2);
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-remove' })).toHaveLength(0);
   });
 
