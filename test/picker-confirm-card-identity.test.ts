@@ -4,7 +4,7 @@ import {
   seatLayerPickerConfirmBandDarkInk,
   seatLayerPickerConfirmBandInk,
   seatLayerPickerConfirmCancelShare,
-  seatLayerPickerConfirmIdentity,
+  seatLayerPickerConfirmCardSentence,
   seatLayerPickerConfirmIdentityCells,
   seatLayerPickerConfirmMissingValue,
   seatLayerPickerContrastRatio,
@@ -72,12 +72,12 @@ describe('§3.8.3 identity grid', () => {
 
 describe('§3.8.6 the identity reads as one sentence', () => {
   it('carries section, row, seat, category and price in that order', () => {
-    expect(seatLayerPickerConfirmIdentity(seat(), undefined, translate, ['Gold', '$42']))
+    expect(seatLayerPickerConfirmCardSentence(seat(), undefined, translate, ['Gold', '$42']))
       .toBe('209 · Row C · Seat 12 · Gold · $42');
   });
 
   it('drops an absent extra rather than printing an empty separator', () => {
-    expect(seatLayerPickerConfirmIdentity(seat(), undefined, translate, [undefined, '  ']))
+    expect(seatLayerPickerConfirmCardSentence(seat(), undefined, translate, [undefined, '  ']))
       .toBe('209 · Row C · Seat 12');
   });
 });

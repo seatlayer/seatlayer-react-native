@@ -54,13 +54,34 @@ export function seatLayerPickerConfirmIdentity(
   seat: SelectedSeat,
   sectionId: string | undefined,
   translate: Translator,
+): string {
+  const section = clean(seat.sectionLabel);
+  const row = normalizeSeatLayerPickerRowLabel(clean(seat.rowLabel), section, sectionId);
+  const place = clean(seat.seatNumber) || clean(seat.displayLabel) || clean(seat.label);
+  const parts = [
+    section,
+    row ? translate("rowIdentity", { values: { row } }) : "",
+    place ? translate("seatNumberIdentity", { values: { seat: place } }) : "",
+  ].filter(Boolean).join(" \u00b7 ");
+  return translate("seatIdentity", { values: { parts } });
+}
+
+/**
+ * The card's identity as ONE sentence, which is also the dialog's own name
+ * (§3.8.6) — never six unlabelled cells read out in turn. The section reads
+ * as itself; the row and the place are named by the chart's own words, and
+ * the category and the price close the sentence.
+ */
+export function seatLayerPickerConfirmCardSentence(
+  seat: SelectedSeat,
+  sectionId: string | undefined,
+  translate: Translator,
   extras: readonly (string | undefined)[] = [],
 ): string {
   const section = clean(seat.sectionLabel);
   const cells = seatLayerPickerConfirmIdentityCells(seat, sectionId, translate);
   const parts = [
-    // The section reads as itself; a row and a place are named by their word.
-    ...cells.map((entry) => entry.value === section && section ? entry.value : `${entry.key} ${entry.value}`),
+    ...cells.map((entry) => section && entry.value === section ? entry.value : `${entry.key} ${entry.value}`),
     ...extras.map((value) => clean(value)).filter(Boolean),
   ];
   return translate("seatIdentity", { values: { parts: parts.join(" \u00b7 ") } });

@@ -91,6 +91,9 @@ export class SeatLayerPickerSeatRemovalStore {
   }
 
   private start(): void {
+    // A controller that predates `seat.retap` simply never raises the
+    // question; there is nothing here for the card to fall over on.
+    if (typeof this.source?.subscribeSeatRetap !== 'function') return;
     this.stopSource = this.source.subscribeSeatRetap((seat) => {
       if (!seatLayerPickerAcceptsSeatRetap(seat, this.policy())) return;
       this.publish(seat);

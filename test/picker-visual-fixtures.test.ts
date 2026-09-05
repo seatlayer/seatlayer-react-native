@@ -155,7 +155,9 @@ describe('deterministic native picker visual fixtures', () => {
       .toMatchObject({ checked: true, disabled: false });
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
+      // §3.8.3: a seat's primary answer reads `Add seat`; `Select` is for a
+      // booth, a table or a general-admission unit.
+      tree.root.findByProps({ testID: 'seatLayerConfirmPrimary' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
