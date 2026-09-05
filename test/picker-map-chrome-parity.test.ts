@@ -19,6 +19,7 @@ vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: 
 import {
   SeatLayerMapControls,
   seatLayerPickerMapControlsEdgeInset,
+  seatLayerPickerMapControlsDiscBed,
   seatLayerPickerMapControlsRailTop,
   seatLayerPickerViewModeTrackInset,
 } from '../src/picker/SeatLayerMapControls';
@@ -144,7 +145,12 @@ describe('3.5 map corner controls', () => {
       .map((node) => node.props.style)
       .filter((style: unknown) => typeof style === 'object' && style !== null &&
         (style as Record<string, unknown>).position === 'absolute');
-    expect(anchors).toContainEqual(expect.objectContaining({ bottom: 12, end: 12 }));
+    // The region's inset is measured to the DISC, so the anchor takes back the
+    // reach the disc carries around itself.
+    expect(anchors).toContainEqual(expect.objectContaining({
+      bottom: 12 - seatLayerPickerMapControlsDiscBed,
+      end: 12 - seatLayerPickerMapControlsDiscBed,
+    }));
     // The track shares the price rail's line rather than the map's corner, so
     // its top is the rail band's own, not the corner inset.
     expect(anchors).toContainEqual(expect.objectContaining({

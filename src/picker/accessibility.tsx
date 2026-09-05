@@ -20,6 +20,7 @@ import {
 } from "./styles";
 import { supportsSeatLayerPickerSurface } from "./surfaces";
 import type { SeatLayerPickerSnapshot } from "./models";
+import { seatLayerPickerMapChromeGround } from "./mapChromeTheme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsetInput } from "./safeAreaInsets";
 
@@ -368,8 +369,13 @@ export function SeatLayerPickerAccessibilityFilters(
         style={({ pressed }) => [
           props.compact ? styles.control : styles.wideControl,
           {
-            borderColor: theme.colors.divider,
-            backgroundColor: pressed ? theme.colors.background : theme.colors.surface,
+            // §3.5 "a disc's own ground, never the panel's": every floating
+            // control takes the map chrome's ground and hairline, so it stays a
+            // disc on the venue rather than a patch of the plate beside it.
+            borderColor: seatLayerPickerMapChromeGround(theme).line,
+            backgroundColor: pressed
+              ? theme.colors.background
+              : seatLayerPickerMapChromeGround(theme).ground,
             borderRadius: seatLayerPickerTokens.radius.pill,
           },
           slots.accessibilityControlButton,

@@ -66,6 +66,14 @@ export const seatLayerPickerMapControlsRailTop = 8;
  * target clears the touch floor. The anchor takes it back, or the track lands
  * a bed's depth below the line the test chip opposite it stands on.
  */
+/**
+ * The air a corner disc carries around itself so its press target clears the
+ * touch floor. The anchor takes it back: the region's inset is measured to the
+ * DISC, and counting the reach as well set the disc a bed in from its corner.
+ */
+export const seatLayerPickerMapControlsDiscBed =
+  (seatLayerPickerTokens.size.minimumHitTarget -
+    seatLayerPickerTokens.size.mapControlSize) / 2;
 export const seatLayerPickerViewModeTrackInset =
   (seatLayerPickerTokens.size.minimumHitTarget -
     seatLayerPickerTokens.size.viewModeControlHeight) / 2;
@@ -322,6 +330,7 @@ function SeatLayerMapControlsView({
   readonly accessibilityControl: ReactNode;
 }): React.ReactElement {
   const bottom = edgeInset + bottomInset;
+  const discBed = seatLayerPickerMapControlsDiscBed;
   const onMap = buyerView === 'map';
   const usableZoomInLabel = typeof zoomInLabel === 'string' ? zoomInLabel.trim() : '';
   const usableZoomOutLabel = typeof zoomOutLabel === 'string' ? zoomOutLabel.trim() : '';
@@ -422,12 +431,12 @@ function SeatLayerMapControlsView({
         </SeatLayerPickerBlockedRegion>
       ) : null}
       {onMap && stepOutAvailable ? (
-        <SeatLayerPickerBlockedRegion style={{ bottom, end: edgeInset, position: 'absolute' }}>
+        <SeatLayerPickerBlockedRegion style={{ bottom: bottom - discBed, end: edgeInset - discBed, position: 'absolute' }}>
           {stepDisc}
         </SeatLayerPickerBlockedRegion>
       ) : null}
       {onMap && canOverview ? (
-        <SeatLayerPickerBlockedRegion style={{ position: 'absolute', start: edgeInset, top: edgeInset }}>
+        <SeatLayerPickerBlockedRegion style={{ position: 'absolute', start: edgeInset - discBed, top: edgeInset - discBed }}>
           {overview}
         </SeatLayerPickerBlockedRegion>
       ) : null}
@@ -487,7 +496,10 @@ export function SeatLayerMapControlButtonView({
               ? blendSeatLayerPickerColor(theme.colors.accent, chrome.ground, .13, chrome.ground)
               : chrome.ground,
             borderColor: chrome.line,
-            borderRadius: theme.radii.button,
+            // A DISC. The corner controls are round: at the button radius the
+            // back-out control read as a tile dropped on the venue beside the
+            // round accessibility control opposite it.
+            borderRadius: seatLayerPickerTokens.radius.pill,
             borderWidth: 1,
             elevation: 3,
             height: size,
