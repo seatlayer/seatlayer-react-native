@@ -55,6 +55,12 @@ export interface SeatLayerPickerBehaviorOptions {
   readonly refreshOnResume?: boolean;
   readonly announceHoldLapse?: boolean;
   readonly haptics?: boolean;
+  /**
+   * 4.7: a host may name the event before the runtime does, so the header does
+   * not swap its title a second after opening. It is a placeholder only — the
+   * runtime's own `event.name` wins the moment it lands.
+   */
+  readonly eventName?: string;
 }
 
 /** Typed options for the ready-made layout; themes, styles, wording and configuration stay top-level. */
@@ -106,6 +112,8 @@ export interface SeatLayerPickerResolvedOptions {
   readonly refreshOnResume: boolean;
   readonly announceHoldLapse: boolean;
   readonly haptics: boolean;
+  /** Host-supplied placeholder title; the runtime's own name always wins. */
+  readonly eventName?: string;
   readonly languages: readonly string[];
   readonly pricing?: SeatLayerPickerPricing;
 }
@@ -157,6 +165,11 @@ function validSeatLimit(value: unknown): number | undefined {
 
 function validInitialHold(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+/** A host-supplied placeholder title, trimmed; blank is the same as absent. */
+function validEventName(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
 }
 
 function safeOwnStrings(value: unknown, maximum = 64): readonly string[] {
@@ -263,6 +276,7 @@ export function resolveSeatLayerPickerOptions(
     refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
     announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
     haptics: booleanOr(ownData(input, 'haptics'), true),
+    eventName: validEventName(ownData(input, 'eventName')),
     languages: safeOwnStrings(ownData(input, 'languages')),
     pricing: resolveSeatLayerPickerPricing(ownData(input, 'pricing')),
   } satisfies SeatLayerPickerResolvedOptions;

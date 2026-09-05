@@ -230,6 +230,28 @@ export {
   seatLayerPickerTestChipInk,
   seatLayerPickerTestChipWash,
 } from './picker/testChipInk';
+export {
+  observeSeatLayerPickerMemoryPressure,
+  SeatLayerRuntimePrewarm,
+  seatLayerPickerPrewarmDefaultTtlMs,
+  seatLayerPickerPrewarmFreshnessMs,
+  type SeatLayerPickerPrewarmOptions,
+  type SeatLayerPickerWarmPage,
+} from './picker/prewarm';
+export {
+  reduceSeatLayerPickerReveal,
+  seatLayerPickerAwaitingFraming,
+  seatLayerPickerCanAdoptRuntime,
+  seatLayerPickerInitialRevealState,
+  seatLayerPickerRevealGraceMs,
+  seatLayerPickerRevealed,
+  type SeatLayerPickerRevealEvent,
+  type SeatLayerPickerRevealState,
+} from './picker/chartBoot';
+export {
+  SeatLayerPickerLoadingSurface,
+  type SeatLayerPickerLoadingSurfaceProps,
+} from './picker/loadingSurface';
 export type { SeatLayerPickerHoldLapse } from './picker/holdLapse';
 export {
   decodeSeatLayerPickerAvailabilityOutcome,
