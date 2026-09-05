@@ -4,6 +4,7 @@ import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyl
 import { canRenderSeatLayerPickerAccessibilityFilters, SeatLayerPickerAccessibilityFilters } from './accessibility';
 import {
   seatLayerPickerAccessibilityOrder,
+  seatLayerPickerFocusOn,
   seatLayerPickerReadingOrderId,
   type SeatLayerPickerReadingRung,
 } from './a11y';
@@ -132,13 +133,28 @@ function withSafeArea(
 function ordered(
   rung: SeatLayerPickerReadingRung,
   child: React.ReactNode,
-  options?: Readonly<{ suffix?: string; overlay?: boolean }>,
+  options?: Readonly<{ suffix?: string; overlay?: boolean; hidden?: boolean }>,
 ): React.ReactElement | null {
   if (child === null || child === undefined || child === false) return null;
   const nativeID = seatLayerPickerReadingOrderId(rung, options?.suffix);
   return options?.overlay === true
-    ? <View collapsable={false} nativeID={nativeID} pointerEvents="box-none" style={styles.phoneOverlays}>{child}</View>
-    : <View collapsable={false} nativeID={nativeID}>{child}</View>;
+    ? <View collapsable={false} nativeID={nativeID} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(options.hidden)}>{child}</View>
+    : <View collapsable={false} nativeID={nativeID} {...underDialog(options?.hidden)}>{child}</View>;
+}
+
+/**
+ * §4.10 — what a modal route does to the page under it.
+ *
+ * While a decision surface is up, everything painted before it — the header,
+ * the prices, the map, its chrome, the dock — is hidden from assistive
+ * technology. The toasts and the cart are painted after and stay audible on
+ * purpose: a toast is the answer to the press, and the cart is what the seat
+ * is being added to.
+ */
+function underDialog(hidden: boolean | undefined): Readonly<Record<string, unknown>> {
+  return hidden === true
+    ? { accessibilityElementsHidden: true, importantForAccessibility: 'no-hide-descendants' }
+    : {};
 }
 
 /** Inner adaptive composition. The outer route, provider, and page lifecycle remain host-owned. */
@@ -161,6 +177,8 @@ export function SeatLayerPickerAdaptiveLayout({
 }: SeatLayerPickerAdaptiveLayoutProps): React.ReactElement {
   const scope = useSeatLayerPickerScope();
   const rootRef = useRef<View>(null);
+  /** §4.10 — where focus returns when a decision surface hands the screen back. */
+  const mapRegionRef = useRef<View>(null);
   const confirmOriginRef = useRef<Readonly<{ x: number; y: number }> | undefined>(undefined);
   const flightSequenceRef = useRef(0);
   const [selectionFlight, setSelectionFlight] = useState<SeatLayerSelectionFlightMoment | undefined>(undefined);
@@ -354,6 +372,9 @@ export function SeatLayerPickerAdaptiveLayout({
         : null;
   const prompt = promptPart;
   const promptVisible = prompt !== null;
+  // A card, a general-admission prompt or a table prompt: any of them owns the
+  // screen while it is up.
+  const decisionUp = promptVisible || scope.presentation.prompt !== null;
   const promptKey = gaActive ? `ga:${gaClick?.areaId ?? ''}:${gaClick?.clickEpoch ?? ''}`
     : tableActive ? `table:${pendingId ?? ''}:${candidateEpoch ?? ''}`
       : seatActive ? `seat:${pendingId ?? ''}:${candidateEpoch ?? ''}`
@@ -371,6 +392,14 @@ export function SeatLayerPickerAdaptiveLayout({
     if (!shouldRetirePending) retiredPendingRef.current = undefined;
   }, [shouldRetirePending]);
   useLayoutEffect(() => { if (!cardActive) setCardBand(0); }, [cardActive]);
+  // §4.10 — a decision surface that hands the screen back, accepted or
+  // cancelled, returns focus to the map region. Falling to the top of the tree
+  // would put a buyer back at the header after every seat.
+  const decisionWasUp = useRef(false);
+  useEffect(() => {
+    if (decisionWasUp.current && !decisionUp) seatLayerPickerFocusOn(mapRegionRef.current);
+    decisionWasUp.current = decisionUp;
+  }, [decisionUp]);
   // §3.8.2 — one lift per session: the runtime pans the map out from under the
   // card where it can, and is given the card's band as a viewport inset where
   // it cannot. Never both.
@@ -427,7 +456,33 @@ export function SeatLayerPickerAdaptiveLayout({
     if (!Number.isFinite(width) || width < 0 || !Number.isFinite(height) || height < 0) return;
     setBounds((previous) => previous?.width === width && previous.height === height ? previous : Object.freeze({ width, height }));
   };
-  const chart = <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('map')} pointerEvents={blocked ? 'none' : 'auto'} style={styles.chartOwner} testID="seatlayer-chart-owner">{part(builders, scope, 'map', <SeatLayerPickerChart onReady={onReady} />)}</View>;
+  // §4.10 — ONE node, and it says so. The seats are drawn on a canvas inside a
+  // web view, which exposes nothing to assistive technology, so a buyer
+  // listening to this screen cannot explore the venue. The honest thing is to
+  // name the region and say where the controls that DO pick a seat are, rather
+  // than leave a silent rectangle filling most of the screen. Per-seat nodes
+  // are a runtime gap — see the spec's §4.9.
+  const venueName = snapshot?.event?.venue ?? snapshot?.event?.name ?? plan.options.eventName ??
+    scope.strings.translate('venueView');
+  const chart = <View
+    accessible
+    accessibilityHint={scope.strings.translate('venueMapHint')}
+    accessibilityLabel={scope.strings.translate('venueMap', { values: { venue: venueName } })}
+    accessibilityRole="image"
+    collapsable={false}
+    nativeID={seatLayerPickerReadingOrderId('map')}
+    pointerEvents={blocked ? 'none' : 'auto'}
+    ref={mapRegionRef}
+    style={styles.chartOwner}
+    {...underDialog(decisionUp)}
+    testID="seatlayer-chart-owner"
+  >
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.chartOwner}
+    >{part(builders, scope, 'map', <SeatLayerPickerChart onReady={onReady} />)}</View>
+  </View>;
   const holdCountdown = plan.options.chrome.header && plan.options.chrome.holdPill
     ? part(builders, scope, 'holdCountdown', <SeatLayerPickerHoldCountdown />)
     : null;
@@ -583,11 +638,11 @@ export function SeatLayerPickerAdaptiveLayout({
         paddingStart: safeLayout.insets.left,
         paddingTop: safeLayout.insets.top,
       }]} testID="seatlayer-adaptive-safe-content">
-        {ordered('header', header)}
+        {ordered('header', header, { hidden: decisionUp })}
         {wide || legend === null ? null : <View style={[styles.legendBand, {
           backgroundColor: scope.resolvedTheme.colors.surface,
           borderBottomColor: scope.resolvedTheme.colors.divider,
-        }]} nativeID={seatLayerPickerReadingOrderId('rail')} testID="seatlayer-price-band">{legend}</View>}
+        }]} nativeID={seatLayerPickerReadingOrderId('rail')} testID="seatlayer-price-band" {...underDialog(decisionUp)}>{legend}</View>}
         <View style={wide ? styles.wide : styles.phone}>
         <View onLayout={(event) => {
           const next = event.nativeEvent.layout.height;
@@ -596,7 +651,7 @@ export function SeatLayerPickerAdaptiveLayout({
         }} style={styles.map}>
           {chart}
           {wide ? null : <SpotlightGlass screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
-          {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays}>
+          {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(decisionUp)}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
             {testBadgeVisible ? <View
@@ -620,8 +675,8 @@ export function SeatLayerPickerAdaptiveLayout({
           {/* §4.10 — the dock is its own rung, so it is never read between two
               halves of the map's chrome. It is absolutely positioned either
               way, so lifting it out of the overlay stack paints identically. */}
-          {wide || dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail}>{dock}</View>}
-          {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays}>
+          {wide || dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail} {...underDialog(decisionUp)}>{dock}</View>}
+          {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays} {...underDialog(decisionUp)}>
             {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: venueMode && venueVisible ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
             <View pointerEvents="box-none" style={styles.wideFloorSelectorRail}>{floorSelector}</View>

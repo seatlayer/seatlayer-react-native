@@ -12,7 +12,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
-import { AccessibilityInfo, PixelRatio } from 'react-native';
+import { AccessibilityInfo, findNodeHandle, PixelRatio } from 'react-native';
 
 import { seatLayerPickerTokens } from './tokens.g';
 
@@ -269,6 +269,22 @@ export function useSeatLayerPickerBoldText(
   store: SeatLayerPickerBoldTextStore = boldTextStore,
 ): boolean {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
+}
+
+/**
+ * Put assistive focus on `node`.
+ *
+ * §4.10 — when a decision surface hands the screen back, accepted or
+ * cancelled, focus returns to the map region rather than falling to the top of
+ * the tree; and a toast's action returns focus to whatever had it before the
+ * press. Best-effort: a platform that cannot move focus is not a failure.
+ */
+export function seatLayerPickerFocusOn(node: unknown): void {
+  try {
+    if (node === null || node === undefined || typeof findNodeHandle !== 'function') return;
+    const handle = findNodeHandle(node as never);
+    if (typeof handle === 'number') AccessibilityInfo.setAccessibilityFocus?.(handle);
+  } catch { /* Optional platform surface. */ }
 }
 
 /**
