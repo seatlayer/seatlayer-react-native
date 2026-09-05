@@ -75,7 +75,7 @@ describe('deterministic native picker visual fixtures', () => {
     expect(mapSegment.props.style({ pressed: false })).toMatchObject({
       height: 44,
       minWidth: 38,
-      paddingHorizontal: 10,
+      paddingHorizontal: 8,
     });
     expect(mapSegment.props.style({ pressed: false })).not.toHaveProperty('width');
     expect(mapSegment.props.style({ pressed: false })).not.toHaveProperty('maxWidth');
@@ -194,7 +194,7 @@ describe('deterministic native picker visual fixtures', () => {
 
     expect(tree.root.findAllByType(SeatLayerPickerAccessibilityFilters)).toHaveLength(1);
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Accessibility and colour options' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Accessibility and view filters' }).props.onPress();
     });
     expect(tree.root.findByProps({ accessibilityLabel: 'Wheelchair' }).props.accessibilityState)
       .toMatchObject({ checked: false, disabled: true });
@@ -272,7 +272,7 @@ describe('deterministic native picker visual fixtures', () => {
     const overviewChrome = tree.root.findByType(SeatLayerVenue3DChrome);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'View from here' })).toHaveLength(0);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Back to venue' })).toHaveLength(0);
-    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
 
     await act(async () => {
       tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' }).props.onPress();
@@ -290,6 +290,6 @@ describe('deterministic native picker visual fixtures', () => {
     expect(returned3D).toContain('venue3d · overview');
     expect(returned3D).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
     expect(tree.root.findByType(SeatLayerVenue3DChrome)
-      .findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
+      .findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
   });
 });
