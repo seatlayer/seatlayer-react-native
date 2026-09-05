@@ -108,6 +108,10 @@ export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children }: Read
   onRemove: () => void;
   children: ReactNode;
 }>): React.ReactElement {
+  const reducedMotion = useSeatLayerPickerReducedMotion();
+  // The pan responder is built once; the live preference is read through a ref.
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
   const offset = useRef(new Animated.Value(0)).current;
   const travel = useRef(0);
   const width = useRef(0);
@@ -130,12 +134,14 @@ export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children }: Read
         velocity: gesture.vx * direction * 1_000,
       });
       travel.current = 0;
-      Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start();
+      // §4.4 — the settle spring has no reduced form; under reduced motion the
+      // row is simply back where it started.
+      settle(offset, reducedMotionRef.current);
       if (committed) onRemove();
     },
     onPanResponderTerminate: () => {
       travel.current = 0;
-      Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start();
+      settle(offset, reducedMotionRef.current);
     },
   })).current;
   return (
@@ -147,4 +153,13 @@ export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children }: Read
       <Animated.View style={{ transform: [{ translateX: offset }] }}>{children}</Animated.View>
     </View>
   );
+}
+
+/** The row's return to rest: a spring, or no motion at all. */
+function settle(offset: Animated.Value, reducedMotion: boolean): void {
+  if (reducedMotion) {
+    offset.setValue(0);
+    return;
+  }
+  Animated.spring(offset, { toValue: 0, useNativeDriver: true }).start();
 }

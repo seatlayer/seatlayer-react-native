@@ -404,6 +404,9 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   // drag down past it collapses. Springs, not tweens.
   const dragHeight = useRef(new Animated.Value(detents.peek)).current;
   const dragging = useRef(false);
+  // The pan responder is built once; the live preference is read through a ref.
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
   const expandedRef = useRef(props.expanded);
   expandedRef.current = props.expanded;
   const detentsRef = useRef(detents);
@@ -426,13 +429,19 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
       const stops = detentsRef.current;
       const from = expandedRef.current ? stops.content : stops.peek;
       const settled = seatLayerSheetSettle(from - gesture.dy, -gesture.vy * 1_000, stops);
-      Animated.spring(dragHeight, {
-        damping: seatLayerSheetSpring.damping,
-        mass: seatLayerSheetSpring.mass,
-        stiffness: seatLayerSheetSpring.stiffness,
-        toValue: settled,
-        useNativeDriver: false,
-      }).start();
+      // §4.4 — a spring has no reduced form, so under reduced motion the sheet
+      // is simply at its detent. Everything sequenced behind it runs at once.
+      if (reducedMotionRef.current) {
+        dragHeight.setValue(settled);
+      } else {
+        Animated.spring(dragHeight, {
+          damping: seatLayerSheetSpring.damping,
+          mass: seatLayerSheetSpring.mass,
+          stiffness: seatLayerSheetSpring.stiffness,
+          toValue: settled,
+          useNativeDriver: false,
+        }).start();
+      }
       changeExpanded(seatLayerSheetDetentAt(settled, stops) !== 'peek');
     },
   })).current;
