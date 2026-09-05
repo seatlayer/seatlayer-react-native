@@ -535,7 +535,17 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
             <View testID="seatlayer-cart-safe-footer" style={{ paddingBottom: inset }}>{attribution}</View>
           </View>
         )
-        : <View testID="seatlayer-cart-safe-footer" style={{ paddingBottom: inset }}>{attribution}</View>}
+        : (
+          // THE BAR IS EXACTLY ITS HEAD. Collapsed, the credit lives INSIDE the
+          // safe strip below the head rather than in a row of its own: given a
+          // row, the bar grows past the head it is meant to be and the head's
+          // own buttons lose the bottom of their band. Nothing is drawn where
+          // there is no strip to draw it in.
+          <View
+            testID="seatlayer-cart-safe-footer"
+            style={{ alignItems: 'center', height: inset, justifyContent: 'center', overflow: 'hidden' }}
+          >{inset > 0 ? attribution : null}</View>
+        )}
     </View>
   );
 }

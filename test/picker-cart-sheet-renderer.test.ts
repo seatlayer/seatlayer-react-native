@@ -251,7 +251,7 @@ describe('cart checkout renderer', () => {
     const renderer = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ paddingBottom: 12 });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
     expect(runtime.insets).toContainEqual({ bottom: 78 });
   });
 
@@ -267,8 +267,19 @@ describe('cart checkout renderer', () => {
     // phone's rounded corner cannot clip it.
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-attribution-foot' }).props.style)
       .toMatchObject({ alignItems: 'center', justifyContent: 'center', minHeight: 18 });
+    // THE BAR IS EXACTLY ITS HEAD: collapsed, the credit is drawn INSIDE the
+    // safe strip, so the strip is a fixed band and never a row that would grow
+    // the bar past the head it is meant to be.
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
-      .toMatchObject({ paddingBottom: 34 });
+      .toMatchObject({ alignItems: 'center', height: 34, justifyContent: 'center', overflow: 'hidden' });
+
+    // With no safe strip there is nowhere to draw it, and nothing is drawn.
+    const bare = await render(React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 0,
+    }));
+    expect(bare.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
+      .toMatchObject({ height: 0 });
+    expect(bare.root.findAllByProps({ testID: 'seatlayer-cart-attribution-foot' })).toHaveLength(0);
 
     // Server branding is authoritative: a white-label entitlement hides it.
     runtime.snapshot.branding.attributionRequired = false;
