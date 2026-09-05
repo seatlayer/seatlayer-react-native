@@ -16,6 +16,7 @@ import {
   type SeatLayerPickerStyles,
   type SeatLayerPickerThemeStyles,
 } from "./styles";
+import { seatLayerPickerFontWeight } from "./fontWeight";
 import { seatLayerPickerTokens } from "./tokens.g";
 
 type AttributionSlots = Pick<
@@ -32,7 +33,6 @@ interface AttributionViewProps extends SeatLayerPickerAttributionProps {
   readonly required: boolean;
   readonly label: string;
   readonly textColor: string;
-  readonly markInk: string;
   readonly fontFamily?: string;
   readonly themeStyles?: SeatLayerPickerThemeStyles;
 }
@@ -45,7 +45,6 @@ export function SeatLayerPickerAttributionView({
   style,
   visible,
   textColor,
-  markInk,
   fontFamily,
   themeStyles,
 }: AttributionViewProps): React.ReactElement | null {
@@ -53,7 +52,6 @@ export function SeatLayerPickerAttributionView({
   const slots: Partial<SeatLayerPickerStyles> = required
     ? {}
     : resolveSeatLayerPickerStyles(themeStyles, componentSlots);
-  const size = compact ? 12 : 16;
   const root = compact ? styles.compactRoot : styles.regularRoot;
   const rootStyle = required ? root : [root, slots.attributionContainer, sanitizeSeatLayerPickerStyle(style)];
   const markStyle = required
@@ -66,23 +64,10 @@ export function SeatLayerPickerAttributionView({
       accessibilityLabel={label}
       style={rootStyle}
     >
-      <View
-        accessible={false}
-        style={[
-          markStyle,
-          {
-            width: size,
-            height: size,
-            borderRadius: compact ? 3 : 4,
-            paddingHorizontal: compact ? 2 : 3,
-            paddingVertical: compact ? 2.5 : 3.5,
-          },
-          { backgroundColor: textColor },
-        ]}
-      >
-        <View style={[styles.bar, { backgroundColor: markInk, width: compact ? 8 : 10 }]} />
-        <View style={[styles.bar, { backgroundColor: markInk, width: compact ? 5.5 : 7 }]} />
-        <View style={[styles.bar, { backgroundColor: markInk, width: compact ? 3 : 4 }]} />
+      <View accessible={false} style={markStyle}>
+        <View style={[styles.bar, { width: 10 }]} />
+        <View style={[styles.bar, { width: 7 }]} />
+        <View style={[styles.bar, { width: 4 }]} />
       </View>
       <Text
         style={[textStyle, required ? undefined : slots.attributionText, {
@@ -112,47 +97,61 @@ export function SeatLayerPickerAttribution(
       required={required}
       textColor={theme.colors.text}
       fontFamily={theme.fontFamily}
-      markInk={theme.colors.surface}
       themeStyles={scope.styles}
     />
   );
 }
+
+/**
+ * Sixteen points square on every surface: the credit reads as one thing
+ * wherever it is drawn, and a mark that shrank with its line read as a smudge.
+ */
+const markSize = 16;
+const markGap = 5;
+const creditOpacity = 0.72;
+const markPlate = "#0C1220";
+const markBar = "#FCF7EE";
 
 const styles = StyleSheet.create({
   compactRoot: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    opacity: 0.64,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    gap: markGap,
+    opacity: creditOpacity,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   regularRoot: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    opacity: 0.72,
+    gap: markGap,
+    opacity: creditOpacity,
     paddingHorizontal: 12,
     paddingVertical: 4,
   },
+  // The mark is the SeatLayer plate, not a tinted copy of the surface it lands
+  // on: it is one logo in one pair of colours wherever the credit is drawn, so
+  // it survives the immersive scene's dark sheet unchanged.
   mark: {
-    paddingHorizontal: 2,
-    paddingVertical: 2,
+    backgroundColor: markPlate,
+    borderRadius: 4,
+    height: markSize,
     justifyContent: "space-between",
+    paddingHorizontal: 3,
+    paddingVertical: 3.5,
+    width: markSize,
   },
-  bar: { height: 2, borderRadius: 1 },
+  bar: { backgroundColor: markBar, borderRadius: 1, height: 2 },
   compactText: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: "600",
-    letterSpacing: 0.1,
+    fontSize: seatLayerPickerTokens.type.attribution.size,
+    fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.attribution.weight),
+    letterSpacing: 0.22,
   },
   regularText: {
-    fontSize: 12,
-    lineHeight: 14,
-    fontWeight: "600",
-    letterSpacing: 0.2,
+    fontSize: seatLayerPickerTokens.type.attribution.size + 1,
+    fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.attribution.weight),
+    letterSpacing: 0.24,
   },
 });

@@ -355,7 +355,7 @@ describe('picker chrome pure plans', () => {
     let attribution!: TestRenderer.ReactTestRenderer;
     act(() => {
       attribution = TestRenderer.create(React.createElement(SeatLayerPickerAttributionView, {
-        required: true, label: 'poweredBy', textColor: '#111111', markInk: '#ffffff',
+        required: true, label: 'poweredBy', textColor: '#111111',
         style: { opacity: 0, position: 'absolute' }, visible: false,
       }));
     });
