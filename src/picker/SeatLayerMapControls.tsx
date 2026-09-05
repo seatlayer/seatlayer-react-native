@@ -46,12 +46,21 @@ export interface SeatLayerMapControlsProps {
 }
 
 const segmentPaintHeight = seatLayerPickerTokens.size.viewModeButtonHeight;
+/** Air between the two halves, so the bed reads between them and not only around. */
+const segmentGap = 2;
 /** §3.5 anchor regions: `size.mapAnchorGap` between members of one region. */
 const controlGap = seatLayerPickerTokens.size.mapAnchorGap;
 /** The zoom column is a column, not an anchor region; it carries its own gap. */
 const zoomColumnGap = seatLayerPickerTokens.size.zoomColumnGap;
 /** §3.5: every floating control is inset `size.mapAnchorInset` from the map's edges. */
 export const seatLayerPickerMapControlsEdgeInset = seatLayerPickerTokens.size.mapAnchorInset;
+/**
+ * The top-corner band. The map's own corners are inset by `mapAnchorInset`, but
+ * the band along its top edge — the Map/3D control and the test chip — sits
+ * higher: they share a line with the price rail above them rather than floating
+ * in the map's corner, and the corner inset put them a rung too low.
+ */
+export const seatLayerPickerMapControlsRailTop = 8;
 
 type BottomControlPlan = Readonly<{ height: number; zoomOffset: number }>;
 
@@ -395,7 +404,7 @@ function SeatLayerMapControlsView({
       ]}
     >
       {view ? (
-        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: edgeInset }}>
+        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: seatLayerPickerMapControlsRailTop }}>
           {view}
         </SeatLayerPickerBlockedRegion>
       ) : null}
@@ -513,6 +522,10 @@ export function SeatLayerPickerViewModeControlView({
   readonly onPress: (view: 'map' | 'venue3d') => void;
   readonly onLayout?: (width: number) => void;
 }): React.ReactElement {
+  // A track with the two halves INSIDE it. The bed is what tells a buyer the
+  // pair is one control: painted edge to edge, the lit half reads as a block
+  // butted against a button rather than as the thumb of a switch.
+  const trackInset = (target - seatLayerPickerTokens.size.viewModeControlHeight) / 2;
   const paintInset = (target - segmentPaintHeight) / 2;
   const chrome = seatLayerPickerMapChromeGround(theme);
   const segment = (
@@ -534,22 +547,20 @@ export function SeatLayerPickerViewModeControlView({
         justifyContent: 'center',
         minWidth: theme.layout.viewModeButtonMinWidth,
         opacity: disabled ? 0.45 : pressed && !selected ? 0.72 : 1,
-        paddingHorizontal: 10,
+        paddingHorizontal: 8,
       })}
     >
       <View
         pointerEvents="none"
         style={[
           {
-            backgroundColor: selected ? theme.colors.accent : chrome.ground,
+            backgroundColor: selected ? theme.colors.accent : 'transparent',
+            borderRadius: seatLayerPickerTokens.radius.pill,
             bottom: paintInset,
             left: 0,
             position: 'absolute',
             right: 0,
             top: paintInset,
-            ...(view === 'map'
-              ? { borderBottomStartRadius: segmentPaintHeight / 2, borderTopStartRadius: segmentPaintHeight / 2 }
-              : { borderBottomEndRadius: segmentPaintHeight / 2, borderTopEndRadius: segmentPaintHeight / 2 }),
           },
           slots?.mapControlButton,
         ]}
@@ -582,8 +593,8 @@ export function SeatLayerPickerViewModeControlView({
         pointerEvents="none"
         style={{
           backgroundColor: chrome.ground,
-          borderRadius: segmentPaintHeight / 2,
-          bottom: paintInset,
+          borderRadius: seatLayerPickerTokens.radius.pill,
+          bottom: trackInset,
           elevation: 3,
           left: 0,
           position: 'absolute',
@@ -592,13 +603,13 @@ export function SeatLayerPickerViewModeControlView({
           shadowOffset: { height: 3, width: 0 },
           shadowOpacity: 0.15,
           shadowRadius: 4,
-          top: paintInset,
+          top: trackInset,
         }}
       />
       <View
         accessibilityRole="tablist"
         accessibilityLabel={strings.translate('venueView')}
-        style={{ flexDirection: 'row', height: target }}
+        style={{ columnGap: segmentGap, flexDirection: 'row', height: target }}
       >
         {segment(
           strings.translate('mapView'), strings.translate('flat2dMap'), mapSelected, 'map',
@@ -614,13 +625,13 @@ export function SeatLayerPickerViewModeControlView({
         pointerEvents="none"
         style={{
           borderColor: chrome.line,
-          borderRadius: segmentPaintHeight / 2,
+          borderRadius: seatLayerPickerTokens.radius.pill,
           borderWidth: 1,
-          bottom: paintInset,
+          bottom: trackInset,
           left: 0,
           position: 'absolute',
           right: 0,
-          top: paintInset,
+          top: trackInset,
         }}
       />
     </View>

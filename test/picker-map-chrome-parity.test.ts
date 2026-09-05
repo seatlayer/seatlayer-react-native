@@ -19,6 +19,7 @@ vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: 
 import {
   SeatLayerMapControls,
   seatLayerPickerMapControlsEdgeInset,
+  seatLayerPickerMapControlsRailTop,
 } from '../src/picker/SeatLayerMapControls';
 import {
   SeatLayerPickerBlockedRegion,
@@ -103,6 +104,38 @@ describe('3.5 map corner controls', () => {
     });
   });
 
+  it('holds the two halves inside the track, each a stadium of its own', async () => {
+    setup();
+    const renderer = await render({ edgeInset: seatLayerPickerMapControlsEdgeInset });
+    const target = seatLayerPickerTokens.size.minimumHitTarget;
+    const trackInset = (target - seatLayerPickerTokens.size.viewModeControlHeight) / 2;
+    const paintInset = (target - seatLayerPickerTokens.size.viewModeButtonHeight) / 2;
+    const styles = renderer.root.findAllByType('View' as never)
+      .flatMap((node) => Array.isArray(node.props.style) ? node.props.style : [node.props.style])
+      .filter((style: unknown): style is Record<string, unknown> =>
+        typeof style === 'object' && style !== null);
+
+    // The bed is the whole control's height, so it shows around both halves.
+    expect(styles).toContainEqual(expect.objectContaining({
+      borderRadius: seatLayerPickerTokens.radius.pill,
+      top: trackInset,
+      bottom: trackInset,
+    }));
+    // The lit half is a stadium, not a half of a block butted against another.
+    expect(styles).toContainEqual(expect.objectContaining({
+      backgroundColor: '#06f',
+      borderRadius: seatLayerPickerTokens.radius.pill,
+      top: paintInset,
+      bottom: paintInset,
+    }));
+    // The quiet half paints nothing of its own: the bed under it is the ground.
+    expect(styles).toContainEqual(expect.objectContaining({
+      backgroundColor: 'transparent',
+      borderRadius: seatLayerPickerTokens.radius.pill,
+    }));
+    expect(styles.some((style) => style.columnGap === 2)).toBe(true);
+  });
+
   it('anchors the narrow disc in the bottom-right and the Map|3D track top-right', async () => {
     setup();
     const renderer = await render({ edgeInset: seatLayerPickerMapControlsEdgeInset });
@@ -111,7 +144,11 @@ describe('3.5 map corner controls', () => {
       .filter((style: unknown) => typeof style === 'object' && style !== null &&
         (style as Record<string, unknown>).position === 'absolute');
     expect(anchors).toContainEqual(expect.objectContaining({ bottom: 12, end: 12 }));
-    expect(anchors).toContainEqual(expect.objectContaining({ end: 12, top: 12 }));
+    // The track shares the price rail's line rather than the map's corner, so
+    // its top is the rail band's own, not the corner inset.
+    expect(anchors).toContainEqual(expect.objectContaining({
+      end: 12, top: seatLayerPickerMapControlsRailTop,
+    }));
   });
 
   it('never draws fit-to-screen on the phone', async () => {
