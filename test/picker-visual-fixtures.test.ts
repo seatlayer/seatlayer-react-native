@@ -202,7 +202,7 @@ describe('deterministic native picker visual fixtures', () => {
       tree.root.findByProps({ accessibilityLabel: 'Colourblind-friendly colours' }).props.onPress();
     });
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Apply filters' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();

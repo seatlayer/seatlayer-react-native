@@ -68,7 +68,7 @@ describe('accessibility prompt safe-area geometry', () => {
       renderer.root.findByProps({ accessibilityLabel: 'wheelchair' }).props.onPress();
     });
     await act(async () => {
-      renderer.root.findByProps({ accessibilityLabel: 'applyFilters' }).props.onPress();
+      renderer.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
