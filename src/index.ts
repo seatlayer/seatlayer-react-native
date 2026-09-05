@@ -204,6 +204,26 @@ export type {
   SeatLayerPickerViewportInsetBand,
   SeatLayerPickerViewportInsetInput,
 } from './picker/viewportInsets';
+export {
+  SeatLayerPickerBlockedRegionRegistry,
+  seatLayerPickerBlockedRegionCover,
+  seatLayerPickerBlockedRegionFromRect,
+  seatLayerPickerBlockedRegionLingerMs,
+  type SeatLayerPickerBlockedRegionLease,
+  type SeatLayerPickerBlockedRegionSink,
+  type SeatLayerPickerMeasuredRect,
+} from './picker/blockedRegions';
+export {
+  SeatLayerPickerBlockedRegion as SeatLayerPickerBlockedRegionView,
+  SeatLayerPickerBlockedRegionProvider,
+  SeatLayerPickerBlockedRegionSurface,
+  useSeatLayerPickerBlockedRegion,
+  useSeatLayerPickerBlockedRegionCover,
+  useSeatLayerPickerBlockedRegionRegistry,
+  type SeatLayerPickerBlockedRegionBinding,
+  type SeatLayerPickerBlockedRegionProps,
+  type SeatLayerPickerBlockedRegionProviderProps,
+} from './picker/blockedRegionsContext';
 export type { SeatLayerPickerHoldLapse } from './picker/holdLapse';
 export {
   decodeSeatLayerPickerAvailabilityOutcome,
