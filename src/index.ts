@@ -224,6 +224,12 @@ export {
   type SeatLayerPickerBlockedRegionProps,
   type SeatLayerPickerBlockedRegionProviderProps,
 } from './picker/blockedRegionsContext';
+export {
+  seatLayerPickerContrastRatio,
+  seatLayerPickerTestChipContrastFloor,
+  seatLayerPickerTestChipInk,
+  seatLayerPickerTestChipWash,
+} from './picker/testChipInk';
 export type { SeatLayerPickerHoldLapse } from './picker/holdLapse';
 export {
   decodeSeatLayerPickerAvailabilityOutcome,

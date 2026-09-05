@@ -51,7 +51,7 @@ function setup(): { readonly errors: unknown[]; readonly clear: () => number } {
     },
     strings: {
       translate: (key: string) => ({
-        loading: "Loading", errorMessage: "Buyer-safe error", retry: "Retry", testMode: "TEST MODE",
+        loading: "Loading", errorMessage: "Buyer-safe error", retry: "Retry", testMode: "Test mode", testModeLong: "Test mode · books nothing",
         poweredBy: "Powered by SeatLayer", close: "Close",
       } as Record<string, string>)[key] ?? key,
     },
@@ -200,9 +200,14 @@ describe("picker status chrome", () => {
     expect(renderer.toJSON()).toBeNull();
     scope = { ...scope, snapshot: snapshot("test", true) };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerTestModeIndicator)); });
-    expect(renderer.root.findByProps({ accessibilityLabel: "TEST MODE" }).props.style[2]).toEqual(
-      expect.objectContaining({ backgroundColor: "#ffaa00" }),
-    );
+    // 3.4: the chip is painted on the warning WASH over the surface, not on the
+    // raw warning colour, and the accessible name is the long form.
+    const chip = renderer.root.findByProps({ accessibilityLabel: "Test mode · books nothing" });
+    expect(chip.props.accessibilityHint).toBe("testModeExplained");
+    expect(chip.props.style[2]).toEqual(expect.objectContaining({
+      backgroundColor: expect.stringMatching(/^rgb\(/),
+      borderColor: expect.stringMatching(/^rgba\(255, 170, 0, 0\.5\)$/),
+    }));
     scope = { ...scope, resolvedTheme: { ...scope.resolvedTheme, themeMode: "dark" } };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerTestModeIndicator, { spokenLabel: "A very long localised test-mode label", compact: false })); });
     expect(renderer.root.findByProps({ accessibilityLabel: "A very long localised test-mode label" }).props.style[2]).toEqual(
