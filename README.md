@@ -21,6 +21,8 @@ secure booking to your trusted server through a typed TypeScript API.
 [SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
 [SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
+![Seat map picker running in a React Native app: venue overview, section navigation, seat confirmation card, cart and checkout handoff](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
+
 [Walk through the picker screen by screen](docs/picker-walkthrough.md) —
 what the buyer sees from the venue overview to the checkout handoff, and which
 parts a host can turn off, restyle, or replace.
