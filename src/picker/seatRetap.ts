@@ -120,6 +120,42 @@ export interface SeatLayerPickerSeatRemoval {
   readonly dismissSeatRemoval: () => void;
 }
 
+type SharedRemovalStore = Readonly<{
+  key: string;
+  store: SeatLayerPickerSeatRemovalStore;
+  policy: { current: SeatLayerPickerSeatRetapPolicy };
+}>;
+
+const sharedRemovalStores = new WeakMap<SeatLayerPickerSeatRetapSource, SharedRemovalStore>();
+
+/**
+ * One remove question per controller session, however many readers there are.
+ *
+ * The card draws the question and the layout has to know it is up — the
+ * spotlight glass and the map's own gestures both turn on it — so a second
+ * store would mean two subscriptions to `seat.retap`, and a dismiss on one
+ * that the other never hears.
+ */
+export function seatLayerPickerSeatRemovalStoreFor(
+  source: SeatLayerPickerSeatRetapSource,
+  sessionKey: string,
+  policy: SeatLayerPickerSeatRetapPolicy,
+): SharedRemovalStore {
+  const held = sharedRemovalStores.get(source);
+  if (held !== undefined && held.key === sessionKey) {
+    held.policy.current = policy;
+    return held;
+  }
+  const holder = { current: policy };
+  const created: SharedRemovalStore = Object.freeze({
+    key: sessionKey,
+    policy: holder,
+    store: new SeatLayerPickerSeatRemovalStore(source, () => holder.current),
+  });
+  sharedRemovalStores.set(source, created);
+  return created;
+}
+
 /** Subscribes one card to the retap question for one controller session. */
 export function useSeatLayerPickerSeatRemoval(
   source: SeatLayerPickerSeatRetapSource,
@@ -127,16 +163,13 @@ export function useSeatLayerPickerSeatRemoval(
   selection: readonly SelectedSeat[],
   sessionKey: string,
 ): SeatLayerPickerSeatRemoval {
-  const policyRef = useRef(policy);
-  policyRef.current = policy;
-  const [store, setStore] = useState(
-    () => new SeatLayerPickerSeatRemovalStore(source, () => policyRef.current),
-  );
+  const shared = seatLayerPickerSeatRemovalStoreFor(source, sessionKey, policy);
+  const [store, setStore] = useState(shared.store);
   const [seat, setSeat] = useState<SelectedSeat | null>(null);
   const keyRef = useRef(sessionKey);
+  if (store !== shared.store) setStore(shared.store);
   if (keyRef.current !== sessionKey) {
     keyRef.current = sessionKey;
-    setStore(new SeatLayerPickerSeatRemovalStore(source, () => policyRef.current));
     setSeat(null);
   }
   useEffect(() => {

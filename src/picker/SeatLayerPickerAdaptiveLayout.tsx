@@ -136,6 +136,9 @@ export function SeatLayerPickerAdaptiveLayout({
   const flightSequenceRef = useRef(0);
   const [selectionFlight, setSelectionFlight] = useState<SeatLayerSelectionFlightMoment | undefined>(undefined);
   const [bounds, setBounds] = useState<SeatLayerPickerAdaptiveMeasuredBounds | undefined>(undefined);
+  const [mapHeight, setMapHeight] = useState(0);
+  // The band the seat card covers, measured from the map's foot (§3.8.2).
+  const [cardBand, setCardBand] = useState(0);
   const safeLayout = useMemo(
     () => resolveSeatLayerPickerAdaptiveSafeLayout(bounds, safeAreaInsets),
     [bounds, safeAreaInsets],
@@ -275,8 +278,17 @@ export function SeatLayerPickerAdaptiveLayout({
     : undefined;
   const gaActive = scope.isReady && !scope.readOnly && gaClick !== undefined;
   const tableActive = scope.isReady && !scope.readOnly && !gaActive && tableCandidate !== undefined;
-  const seatActive = scope.isReady && !scope.readOnly && !gaActive && !tableActive &&
-    !immersiveInspectionVisible && scope.pendingSeat !== null && plan.options.confirmSelection && plan.options.chrome.confirmCard;
+  // §3.8/§3.8.4a — the card asks one of two questions about one seat. The add
+  // is a pending confirmation; the remove is a retap of a carted seat, which
+  // has no pending confirmation at all, so gating the card on one hid it.
+  const removalSeat = useSeatLayerPickerSeatRemovalSeat();
+  const cardEligible = scope.isReady && !scope.readOnly && !gaActive && !tableActive &&
+    !immersiveInspectionVisible && plan.options.chrome.confirmCard;
+  const removeActive = cardEligible && removalSeat !== null;
+  const seatActive = cardEligible && scope.pendingSeat !== null && plan.options.confirmSelection;
+  const cardActive = seatActive || removeActive;
+  const cardSeat = (scope.pendingSeat ?? removalSeat) as SeatLayerPickerSelectedSeat | null;
+  const cardSeatId = typeof cardSeat?.id === 'string' && cardActive ? cardSeat.id : null;
   const confirmationAction = ({ action, seat }: { action: string; seat: unknown }) => {
     if (action === 'confirm') invokeSeatLayerPickerCallback(onSeatSelected, seat as never, scope.reportError);
     if (action === 'seatView' || action === 'venue3d') invokeSeatLayerPickerCallback(onSeatViewOpened, seat as never, scope.reportError);
@@ -300,7 +312,7 @@ export function SeatLayerPickerAdaptiveLayout({
     ? part(builders, scope, 'generalAdmissionPrompt', <SeatLayerPickerGAPrompt safeAreaInsets={safeLayout.insets} />)
     : tableActive
       ? part(builders, scope, 'tablePrompt', <SeatLayerPickerTablePrompt candidate={tableCandidate} safeAreaInsets={safeLayout.insets} />)
-      : seatActive
+      : (wide ? seatActive : cardActive)
         ? part(builders, scope, wide ? 'seatConfirmation' : 'confirmCard', wide
           ? <SeatLayerPickerSeatConfirmation showSeatView={plan.options.enableSeatView} show3D={plan.options.enable3D} onAction={confirmationAction} />
           : <SeatLayerConfirmCard
@@ -308,13 +320,15 @@ export function SeatLayerPickerAdaptiveLayout({
             show3D={plan.options.enable3D}
             onAction={confirmationAction}
             onConfirmOrigin={(origin) => { confirmOriginRef.current = origin; }}
+            onBandChange={setCardBand}
           />)
         : null;
   const prompt = promptPart;
   const promptVisible = prompt !== null;
   const promptKey = gaActive ? `ga:${gaClick?.areaId ?? ''}:${gaClick?.clickEpoch ?? ''}`
     : tableActive ? `table:${pendingId ?? ''}:${candidateEpoch ?? ''}`
-      : seatActive ? `seat:${pendingId ?? ''}:${candidateEpoch ?? ''}` : null;
+      : seatActive ? `seat:${pendingId ?? ''}:${candidateEpoch ?? ''}`
+        : removeActive ? `remove:${removalSeat?.label ?? ''}` : null;
   const shouldRetirePending = scope.pendingSeat !== null && !gaActive && !immersiveInspectionVisible && !promptVisible &&
     scope.presentation.prompt === null;
   const retiredPendingRef = useRef<string | undefined>(undefined);
@@ -327,6 +341,23 @@ export function SeatLayerPickerAdaptiveLayout({
   useLayoutEffect(() => {
     if (!shouldRetirePending) retiredPendingRef.current = undefined;
   }, [shouldRetirePending]);
+  useLayoutEffect(() => { if (!cardActive) setCardBand(0); }, [cardActive]);
+  // §3.8.2 — one lift per session: the runtime pans the map out from under the
+  // card where it can, and is given the card's band as a viewport inset where
+  // it cannot. Never both.
+  const liftInset = useSeatLayerPickerSeatLiftBinding({
+    bottom: phoneBands.bottom,
+    controller: scope.controller,
+    mapHeight,
+    revision: snapshot?.revision ?? 0,
+    seatId: wide ? null : cardSeatId,
+    sessionId: scope.sessionId,
+    sheet: wide ? 0 : cardBand,
+    top: phoneBands.top,
+  });
+  const leaseBands = liftInset > phoneBands.bottom
+    ? Object.freeze({ top: phoneBands.top, bottom: liftInset })
+    : phoneBands;
   const blocked = seatLayerPickerAdaptiveInteractionBlocked(
     scope.isReady,
     fatal ? scope.error : undefined,
@@ -337,7 +368,14 @@ export function SeatLayerPickerAdaptiveLayout({
     () => phoneInsetsVisible ? scope.claimViewportInsetBand('adaptive-phone') : undefined,
     [phoneInsetsVisible, scope.claimViewportInsetBand, scope.controller, scope.sessionId],
   );
-  useSeatLayerPickerInsetLease(mapInsetLease, phoneInsetsVisible ? phoneBands : undefined);
+  useSeatLayerPickerInsetLease(mapInsetLease, phoneInsetsVisible ? leaseBands : undefined);
+  // §4.7 reveal-after-framing. A wide layout, or a phone with no chrome over
+  // the map, has nothing to report and so is framed as soon as it is ready.
+  const [framed, setFramed] = useState(false);
+  useLayoutEffect(() => { setFramed(false); }, [scope.controller, scope.sessionId]);
+  useLayoutEffect(() => {
+    if (scope.isReady && !framed) setFramed(true);
+  }, [framed, leaseBands, scope.isReady]);
   const rungRef = useRef<Readonly<{ controller: typeof scope.controller; sessionId: number; rung: string | undefined }>>({
     controller: scope.controller,
     sessionId: scope.sessionId,
@@ -369,7 +407,11 @@ export function SeatLayerPickerAdaptiveLayout({
       compact={!wide}
       holdCountdown={holdCountdown}
       onClose={onClose}
-      options={{ hideEventDetails: plan.options.hideEventDetails, showHoldPill: plan.options.chrome.holdPill }}
+      options={{
+        eventName: plan.options.eventName,
+        hideEventDetails: plan.options.hideEventDetails,
+        showHoldPill: plan.options.chrome.holdPill,
+      }}
       reserveInset={false}
       showEventDetails={!plan.options.hideEventDetails}
       showHoldPill={plan.options.chrome.holdPill}
@@ -415,7 +457,8 @@ export function SeatLayerPickerAdaptiveLayout({
     : null;
   const status = fatal
     ? part(builders, scope, 'error', <SeatLayerPickerErrorView />)
-    : !scope.isReady ? part(builders, scope, 'loading', <SeatLayerPickerLoadingView />)
+    : !scope.isReady || !framed
+      ? part(builders, scope, 'loading', <SeatLayerPickerLoadingView framed={framed} />)
       : emptySnapshot
         ? part(builders, scope, 'empty', <SeatLayerPickerEmptyView />)
         : null;
@@ -467,8 +510,13 @@ export function SeatLayerPickerAdaptiveLayout({
           borderBottomColor: scope.resolvedTheme.colors.divider,
         }]} testID="seatlayer-price-band">{legend}</View>}
         <View style={wide ? styles.wide : styles.phone}>
-        <View style={styles.map}>
+        <View onLayout={(event) => {
+          const next = event.nativeEvent.layout.height;
+          if (!Number.isFinite(next) || next < 0) return;
+          setMapHeight((current) => Math.abs(current - next) < .5 ? current : next);
+        }} style={styles.map}>
           {chart}
+          {wide ? null : <SpotlightGlass screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
           {wide ? null : <View pointerEvents="box-none" style={styles.phoneOverlays}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
@@ -496,9 +544,13 @@ export function SeatLayerPickerAdaptiveLayout({
           {venueVisible ? part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : immersiveTopInset} />) : null}
           {plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null}
           {status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
+            anchor={!wide && cardActive ? 'foot' : 'centre'}
+            bottomInset={phoneBands.bottom}
             prompt={prompt}
             promptKey={promptKey}
-            scrimColor={seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
+            scrimColor={!wide && cardActive
+              ? 'transparent'
+              : seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
             sessionId={`${scope.sessionId}:${snapshot?.sessionId ?? ''}`}
           /> : null}
           {status === null ? null : <View style={[styles.owner, {

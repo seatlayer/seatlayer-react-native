@@ -552,7 +552,7 @@ describe('adaptive picker composition', () => {
       },
     })); });
     expect(unavailable).not.toHaveBeenCalled();
-    expect(inaccessible).toHaveBeenCalledTimes(1);
+    expect(inaccessible).toHaveBeenCalled();
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });

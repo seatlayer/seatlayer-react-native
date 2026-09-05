@@ -103,9 +103,15 @@ describe("picker status chrome", () => {
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerLoadingView)); });
     scope = { ...scope, snapshot: snapshot() };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
-    expect(renderer.root.findByType("ActivityIndicator" as any).props.size).toBe("large");
+    // §4.7: the wait is the venue taking shape, not a spinner.
+    expect(renderer.root.findByProps({ accessibilityRole: "progressbar" })).toBeTruthy();
     scope = { ...scope, isReady: true };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
+    // Ready is not enough: the map is revealed once the runtime has framed it.
+    expect(renderer.toJSON()).not.toBeNull();
+    await act(async () => {
+      renderer.update(React.createElement(SeatLayerPickerLoadingView, { framed: true }));
+    });
     expect(renderer.toJSON()).toBeNull();
   });
 

@@ -57,7 +57,16 @@ export interface SeatLayerPickerHeaderProps {
   readonly showEventDetails?: boolean;
   readonly showHoldPill?: boolean;
   readonly options?: Readonly<
-    { hideEventDetails?: boolean; showHoldPill?: boolean }
+    {
+      hideEventDetails?: boolean;
+      showHoldPill?: boolean;
+      /**
+       * §4.7: a host may name the event before the runtime does, so the header
+       * does not swap its title a second after opening. It is a placeholder
+       * only — the runtime's own `event.name` wins the moment it lands.
+       */
+      eventName?: string;
+    }
   >;
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: HeaderSlots;
@@ -593,7 +602,7 @@ export function SeatLayerPickerHeader(
       sessionId={scope.sessionId}
       theme={mapTheme}
       themeStyles={scope.styles}
-      title={scope.snapshot?.event.name ??
+      title={scope.snapshot?.event.name ?? props.options?.eventName?.trim() ??
         scope.strings.translate("chooseSeats")}
       venue={scope.snapshot?.event.venue}
     />

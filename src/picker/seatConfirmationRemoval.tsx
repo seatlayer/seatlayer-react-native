@@ -5,7 +5,10 @@ import type { SelectedSeat } from '../types';
 import { SeatLayerPickerBuyerAssetLoader } from './buyerAssetLoader';
 import type { SeatLayerPickerSelectedSeat } from './models';
 import { seatLayerPickerSeatIdentity } from './pendingConfirmationState';
-import { useSeatLayerPickerSeatRemoval, type SeatLayerPickerConfirmCardMode } from './seatRetap';
+import {
+  useSeatLayerPickerSeatRemoval,
+  type SeatLayerPickerConfirmCardMode, type SeatLayerPickerSeatRetapPolicy,
+} from './seatRetap';
 import type {
   SeatLayerPickerConfirmationAction, SeatLayerPickerConfirmationActions,
   SeatLayerPickerConfirmationModel,
@@ -95,6 +98,37 @@ export function useSeatLayerPickerSeatEvidence(
  * where it is; only the primary takes it back out, down the same path the
  * cart's ✕ uses (`picker.removeCartLine`).
  */
+export function seatLayerPickerRemovalPolicy(
+  scope: SeatLayerPickerScopeValue,
+): SeatLayerPickerSeatRetapPolicy {
+  const pending = scope.pendingSeat;
+  return Object.freeze({
+    hasPendingAdd: pending !== null,
+    pendingSeatIdentity: pending === null ? null : seatLayerPickerSeatIdentity(pending),
+    readOnly: scope.readOnly,
+  });
+}
+
+/** The session key the remove question is held under. */
+export function seatLayerPickerRemovalSessionKey(scope: SeatLayerPickerScopeValue): string {
+  return `${scope.sessionId}:${scope.snapshot?.sessionId ?? ''}`;
+}
+
+/**
+ * Whether a remove card is up, for a reader that draws nothing itself — the
+ * layout's spotlight glass and its map-gesture gate both turn on it.
+ */
+export function useSeatLayerPickerSeatRemovalSeat(): SelectedSeat | null {
+  const scope = useSeatLayerPickerScope();
+  const removal = useSeatLayerPickerSeatRemoval(
+    scope.controller,
+    seatLayerPickerRemovalPolicy(scope),
+    scope.snapshot?.selection ?? emptySelection,
+    seatLayerPickerRemovalSessionKey(scope),
+  );
+  return scope.pendingSeat === null ? removal.seatAwaitingRemoval : null;
+}
+
 export function useSeatLayerPickerConfirmCardRemoval(
   props: SeatLayerPickerConfirmationActions,
 ): SeatLayerPickerConfirmCardModel | undefined {
@@ -103,13 +137,9 @@ export function useSeatLayerPickerConfirmCardRemoval(
   const pending = scope.pendingSeat;
   const removal = useSeatLayerPickerSeatRemoval(
     scope.controller,
-    {
-      hasPendingAdd: pending !== null,
-      pendingSeatIdentity: pending === null ? null : seatLayerPickerSeatIdentity(pending),
-      readOnly: scope.readOnly,
-    },
+    seatLayerPickerRemovalPolicy(scope),
     selection,
-    `${scope.sessionId}:${scope.snapshot?.sessionId ?? ''}`,
+    seatLayerPickerRemovalSessionKey(scope),
   );
   const [busy, setBusy] = React.useState(false);
   const seat = removal.seatAwaitingRemoval;
