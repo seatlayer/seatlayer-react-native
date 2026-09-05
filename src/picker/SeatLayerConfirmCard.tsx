@@ -6,7 +6,7 @@ import {
 
 import type { SelectedSeat } from '../types';
 import { chartSeatLayerPickerColor } from './chartColor';
-import { blendSeatLayerPickerColor } from './colors';
+import { blendSeatLayerPickerColor, parseSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
 import {
   ConfirmAnswerMark, ConfirmCategoryBand, ConfirmCubeGlyph, ConfirmIdentityGrid, ConfirmNotices,
   ConfirmPhotoStrip, useSeatLayerPickerSeatPhoto, type ConfirmCardTheme,
@@ -214,6 +214,13 @@ function Card({ model, props, viewportWidth }: Readonly<{
       : scope.strings.translate(seat.objectType === 'seat' || seat.objectType === undefined ? 'addSeat' : 'select');
   const cancelLabel = scope.strings.translate('cancel');
   const squareOnRow = !hasPhoto && venue3D !== undefined;
+  const limited = limitedNotice(seat, scope);
+  const premiumNote = seat.commercial?.premium === true ? scope.strings.translate('premiumSeat') : undefined;
+  // Whether anything stands between the band and the two answers. The
+  // reference gives the action row 8 points of headroom over a bare card
+  // and 10 over a body, so the gap under a notice is not tighter than the
+  // gap between the notices themselves.
+  const bodyContent = candidate !== undefined || limited !== undefined || premiumNote !== undefined;
 
   return <Animated.View
     accessibilityViewIsModal
@@ -264,12 +271,8 @@ function Card({ model, props, viewportWidth }: Readonly<{
         theme={theme}
       /> : null}
       {candidate ? <SeatLayerPickerSeatTierSelector candidate={candidate} value={tierId} onValueChange={setTierId} slots={props.slots} /> : null}
-      <ConfirmNotices
-        limited={limitedNotice(seat, scope)}
-        premium={seat.commercial?.premium === true ? scope.strings.translate('premiumSeat') : undefined}
-        theme={theme}
-      />
-      <View style={[nativeStyles.actions, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+      <ConfirmNotices limited={limited} premium={premiumNote} theme={theme} />
+      <View style={[nativeStyles.actions, { flexDirection: rtl ? 'row-reverse' : 'row' }, bodyContent ? nativeStyles.actionsUnderBody : null]}>
         {squareOnRow ? <Pressable
           accessibilityRole="button"
           accessibilityLabel={scope.strings.translate('seeItIn3D')}
@@ -290,9 +293,16 @@ function Card({ model, props, viewportWidth }: Readonly<{
           style={[nativeStyles.action, { flexBasis: `${seatLayerPickerConfirmCancelShare * 100}%`, flexGrow: 0, flexShrink: 0 }]}
           testID="seatLayerConfirmCancel"
         ><View style={[nativeStyles.actionPaint, { height: actionHeight }, {
-          backgroundColor: theme.surface,
+          // The divider's own colour at less than half strength — enough of a
+          // ground to read as a button, never enough to compete for the press.
+          // The card's surface is not a ground at all: on a white card the
+          // quiet answer then disappears into it.
+          backgroundColor: seatLayerPickerColorAlpha(
+            theme.divider,
+            (parseSeatLayerPickerColor(theme.divider)?.alpha ?? 1) * seatLayerPickerConfirmCancelGroundInk,
+          ),
           borderColor: theme.divider,
-          borderWidth: StyleSheet.hairlineWidth,
+          borderWidth: 1,
         }, styles.confirmCardSecondaryButton]}>
           <Text
             maxFontSizeMultiplier={seatLayerPickerTokens.type.scaleClamp.card}
@@ -310,7 +320,15 @@ function Card({ model, props, viewportWidth }: Readonly<{
           ref={primaryRef as never}
           style={nativeStyles.primary}
           testID="seatLayerConfirmPrimary"
-        ><View style={[nativeStyles.actionPaint, { backgroundColor: primaryColor, height: actionHeight, overflow: 'hidden' }, styles.confirmCardPrimaryButton]}>
+        >
+          {/* OUTSIDE the paint, which clips: the halo is the button swelling
+              past its own edge, and a ring drawn inside a box that hides its
+              overflow is a ring nobody ever sees. */}
+          <Animated.View pointerEvents="none" style={[nativeStyles.halo, {
+            borderColor: primaryColor,
+            opacity: breathe.interpolate({ inputRange: [0, 1], outputRange: [0, seatLayerPickerConfirmInviteHaloInk] }),
+          }]} />
+          <View style={[nativeStyles.actionPaint, { backgroundColor: primaryColor, height: actionHeight, overflow: 'hidden' }, styles.confirmCardPrimaryButton]}>
           <Animated.View
             pointerEvents="none"
             style={[nativeStyles.fill, {
@@ -318,11 +336,6 @@ function Card({ model, props, viewportWidth }: Readonly<{
               width: sweep.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
             }]}
           />
-          <Animated.View pointerEvents="none" style={[nativeStyles.halo, {
-            borderColor: primaryColor,
-            opacity: breathe.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }),
-            transform: [{ scale: breathe.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }],
-          }]} />
           <Animated.View pointerEvents="none" style={[nativeStyles.inviteBand, {
             backgroundColor: blendSeatLayerPickerColor(theme.onAccent, primaryColor, 0.22, primaryColor),
             transform: [{ translateX: invite.interpolate({ inputRange: [0, 1], outputRange: [-120, 320] }) }],
@@ -394,7 +407,15 @@ function insets(value: unknown): Required<SeatLayerConfirmCardInsets> {
   return { left: read('left'), right: read('right') };
 }
 
-const gutter = seatLayerPickerTokens.size.confirmCardGutter;
+/** How much of the divider's own strength the quiet answer's ground keeps. */
+const seatLayerPickerConfirmCancelGroundInk = 0.44;
+
+/** How far the invite's halo reaches past the button, at full breath. */
+const seatLayerPickerConfirmInviteHalo = 6;
+
+/** How deep its colour goes. */
+const seatLayerPickerConfirmInviteHaloInk = 0.35;
+
 const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   hit: { alignSelf: 'center', width: '100%' },
   card: {
@@ -405,7 +426,10 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 18,
   },
-  actions: { gap: 8, padding: gutter },
+  // `EdgeInsets.fromLTRB(10, bodyContent ? 10 : 8, 10, 10)` — the card's
+  // OWN inset, not the gutter it keeps from the screen's edges.
+  actions: { gap: 8, paddingBottom: 10, paddingHorizontal: 10, paddingTop: 8 },
+  actionsUnderBody: { paddingTop: 10 },
   action: { justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
   primary: { flexGrow: 1, flexShrink: 1, justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
   actionPaint: {
@@ -428,7 +452,19 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
     width: seatLayerPickerTokens.size.minimumHitTarget,
   },
   fill: { bottom: 0, left: 0, position: 'absolute', top: 0 },
-  halo: { borderRadius: seatLayerPickerTokens.radius.button, borderWidth: 2, bottom: -2, left: -2, position: 'absolute', right: -2, top: -2 },
+  // The breath is the button SWELLING, not a ripple leaving it: the
+  // reference strokes a ring `inviteHaloSpread` wide over a box inflated by
+  // half of it, so the halo reaches a full six points past the button's own
+  // edge and stops there. A two-point ring reads as a focus outline.
+  halo: {
+    borderRadius: seatLayerPickerTokens.radius.button + seatLayerPickerConfirmInviteHalo,
+    borderWidth: seatLayerPickerConfirmInviteHalo,
+    bottom: -seatLayerPickerConfirmInviteHalo,
+    left: -seatLayerPickerConfirmInviteHalo,
+    position: 'absolute',
+    right: -seatLayerPickerConfirmInviteHalo,
+    top: -seatLayerPickerConfirmInviteHalo,
+  },
   inviteBand: { bottom: 0, position: 'absolute', top: 0, width: 60 },
   actionText: { fontSize: seatLayerPickerTokens.type.confirmAction.size, fontWeight: '800' },
 }));
