@@ -6,6 +6,7 @@
  * them, and its outputs are plain data a React Native surface can render.
  */
 
+import { normalizeSeatLayerPickerRowLabel } from './format';
 import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerCartLineLike {
@@ -148,9 +149,13 @@ export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
     ?? nonBlank(item.displayLabel)
     ?? identity.removalLabel
     ?? '';
-  const rowLabel = firstKnown(display?.rowLabel, item.rowLabel)
+  // Print the row with its section prefix stripped, the way the seat card
+  // does: a chart that authors `206-I` makes the line read `206 · 206-I · 4`,
+  // which says the section twice and the row not at all.
+  const authoredRow = firstKnown(display?.rowLabel, item.rowLabel)
     ?? nonBlank(selected?.rowLabel)
     ?? '';
+  const rowLabel = normalizeSeatLayerPickerRowLabel(authoredRow, section);
   const seatLabel = firstKnown(display?.seatLabel, item.seatNumber)
     ?? nonBlank(selected?.seatNumber)
     ?? nonBlank(item.displayLabel)

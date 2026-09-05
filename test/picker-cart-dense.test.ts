@@ -43,6 +43,23 @@ describe('dense cart grouping', () => {
     expect(runMembersInSeatOrder(run!).map((member) => member.seatLabel)).toEqual(['1', '2', '3']);
   });
 
+  it('prints the row with its section prefix stripped', () => {
+    // A chart that authors `206-I` inside section `206` made the line read
+    // `206 · 206-I · 4`: the section twice and the row not at all.
+    const [line] = resolveDenseTicketLines([
+      seat({ lineKey: 'one', label: '206-I-4', sectionLabel: '206', rowLabel: '206-I', seatNumber: '4' }),
+    ]);
+    expect(line?.section).toBe('206');
+    expect(line?.rowLabel).toBe('I');
+
+    // A row that does not repeat its section is printed exactly as authored,
+    // through the same normalizer the seat card's identity grid uses.
+    const [bare] = resolveDenseTicketLines([
+      seat({ lineKey: 'two', label: 'R-6', sectionLabel: '205', rowLabel: 'R', seatNumber: '6' }),
+    ]);
+    expect(bare?.rowLabel).toBe('R');
+  });
+
   it('uses the buyer-facing category and formatted amount as the dense run key', () => {
     const items = [
       seat({ lineKey: 'first', label: 'A-1', seatNumber: '1', categoryKey: 'standard' }),
