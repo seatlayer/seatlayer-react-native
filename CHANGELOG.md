@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 The hosted runtime moves to `seatlayer-js@0.80.3`, and the phone picker is
 rebuilt against the shared picker specification widget by widget. The

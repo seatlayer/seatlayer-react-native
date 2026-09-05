@@ -51,7 +51,7 @@ describe('SeatLayerController', () => {
     expect(transport.frames[0]).toMatchObject({
       kind: 'init',
       payload: {
-        host: { platform: 'react-native', sdk: '0.3.4' },
+        host: { platform: 'react-native', sdk: '0.4.0' },
         config: { event: 'fixture-event-controller', currency: 'USD' },
       },
     });
