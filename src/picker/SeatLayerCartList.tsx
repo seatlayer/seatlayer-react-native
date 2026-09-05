@@ -28,6 +28,7 @@ import {
 } from './holdOwnership';
 import type { SeatLayerPickerCartLine } from './models';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerCartListProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -153,7 +154,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.divider,
     borderRadius: seatLayerPickerTokens.radius.base * seatLayerPickerTokens.radius.smallRatio,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     overflow: 'hidden' as const,
   };
   const moreLabel = scope.strings.translate(showAll ? 'showLess' : 'moreCount', {
@@ -196,7 +197,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
               testID="seatlayer-cart-more-row"
               style={{
                 borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
-                borderTopWidth: StyleSheet.hairlineWidth,
+                borderTopWidth: seatLayerPickerLineWidth,
                 height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseMoreRowHeight, seatLayerPickerTypeScaleClamp('sheet')),
                 justifyContent: 'center',
                 paddingHorizontal: 9,
@@ -310,7 +311,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             ? seatLayerPickerColorAlpha(theme.colors.divider, .16)
             : 'transparent',
         borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
-        borderTopWidth: first ? 0 : StyleSheet.hairlineWidth,
+        borderTopWidth: first ? 0 : seatLayerPickerLineWidth,
         flexDirection: 'row',
         // §4.10 — a cart row is `base x the sheet's clamped scale`.
         height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseLineHeight, seatLayerPickerTypeScaleClamp('sheet')),

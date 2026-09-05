@@ -10,6 +10,7 @@ import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -223,7 +224,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 6, justifyContent: "center" },
   pill: {
     borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },

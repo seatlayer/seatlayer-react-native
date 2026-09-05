@@ -12,6 +12,7 @@ import type { SeatLayerPickerStyles } from "./styles";
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -307,7 +308,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
 
   sheet: {
     maxHeight: "78%",
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     paddingHorizontal: 20,
@@ -365,7 +366,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     height: size.accessStepHeight,
     paddingHorizontal: size.accessStepPaddingX,
     borderRadius: radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -8,6 +8,7 @@ import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLa
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type InspectionSlots = Pick<SeatLayerPickerStyles,
   'confirmCardSecondaryButton' | 'confirmCardSecondaryButtonText'>;
@@ -157,7 +158,7 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   hit: { justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, width: '100%' },
   paint: {
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     flexDirection: 'row',
     gap: 7,
     justifyContent: 'center',

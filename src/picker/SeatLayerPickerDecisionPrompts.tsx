@@ -42,6 +42,7 @@ import {
 } from './decisionPrompts';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type PromptKind = Extract<SeatLayerPickerDecisionKind, 'ga' | 'table'>;
 type PromptSlots = Pick<SeatLayerPickerStyles,
@@ -446,7 +447,7 @@ export function SeatLayerPickerSeatTierSelector(props: SeatLayerPickerSeatTierSe
 const stylesNative = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill },
   modalLayer: { flex: 1, justifyContent: 'flex-end' },
-  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: StyleSheet.hairlineWidth },
+  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: seatLayerPickerLineWidth },
   title: { fontSize: 17, fontWeight: '900' }, subtitle: { marginTop: 3, fontSize: 14 },
   quantity: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, marginTop: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   quantityValue: { minWidth: 70, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }, quantityText: { fontSize: 24, fontWeight: '700' },

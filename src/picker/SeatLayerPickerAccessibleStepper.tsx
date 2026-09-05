@@ -14,6 +14,7 @@ import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const size = seatLayerPickerTokens.size;
 
@@ -135,7 +136,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     height: size.accessStepHeight,
     paddingHorizontal: size.accessStepPaddingX,
     borderRadius: seatLayerPickerTokens.radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,

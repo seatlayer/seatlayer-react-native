@@ -37,6 +37,7 @@ import {
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBold, seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type HeaderSlots = Pick<
   SeatLayerPickerStyles,
@@ -663,7 +664,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   closePressed: { opacity: .72 },
   closePaint: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },

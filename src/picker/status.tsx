@@ -36,6 +36,7 @@ export {
   type SeatLayerPickerTestModeIndicatorViewProps,
 } from "./testModeIndicator";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type StatusSlots = Pick<
   SeatLayerPickerStyles,
@@ -413,7 +414,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   retry: {
     minWidth: 128,
     minHeight: 44,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },

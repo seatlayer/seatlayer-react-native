@@ -34,6 +34,7 @@ import {
   type SeatLayerPickerWideNavigationLease,
 } from './wideNavigation';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerPickerFloorSelectorProps {
   readonly safeAreaInsets?: SeatLayerPickerSafeAreaInsetInput;
@@ -219,7 +220,7 @@ function Choice({ label, selected, busy, styles, scope, onPress }: Readonly<{
 
 const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   target: { justifyContent: 'center' },
-  trigger: { alignItems: 'center', flexDirection: 'row', height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  trigger: { alignItems: 'center', flexDirection: 'row', height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   triggerText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '800' },
   chevron: { borderBottomWidth: 1.5, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 },
   sheet: { padding: 8 },
@@ -228,6 +229,6 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   closeText: { fontSize: 13, fontWeight: '800' },
   choices: { gap: 6, flexWrap: 'wrap' },
   choiceTarget: { justifyContent: 'center' },
-  choicePaint: { height: 40, maxWidth: 220, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  choicePaint: { height: 40, maxWidth: 220, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   choiceText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
 }));

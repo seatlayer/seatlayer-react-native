@@ -6,6 +6,7 @@ import { blendSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
 import { seatLayerPickerConfirmBandInk, type SeatLayerPickerConfirmIdentityCell } from './confirmCardIdentity';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 /** §3.8.3 — the parts the seat card is assembled from. */
 
@@ -58,7 +59,7 @@ export function ConfirmIdentityGrid(props: Readonly<{
       key={`${cell.key}:${index}`}
       style={[styles.cell, {
         borderStartColor: theme.divider,
-        borderStartWidth: index === 0 ? 0 : StyleSheet.hairlineWidth,
+        borderStartWidth: index === 0 ? 0 : seatLayerPickerLineWidth,
         ...(pad === undefined ? {} : { paddingTop: pad.top, paddingBottom: pad.bottom, paddingHorizontal: pad.side }),
       }]}
     >
@@ -290,7 +291,7 @@ const cubeInner = cubeSize - 2.8;
 const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
 
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
-  grid: { borderBottomWidth: StyleSheet.hairlineWidth },
+  grid: { borderBottomWidth: seatLayerPickerLineWidth },
   // The reference's own cell box: `EdgeInsets.fromLTRB(6, 8, 6, 7)`, not a
   // symmetric pad. The eyebrow and the value carry explicit line boxes for
   // the same reason the Dart does — a null height leaves the cell at the

@@ -20,6 +20,7 @@ import {
 } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerFloorStripProps {
   readonly compact?: boolean;
@@ -255,7 +256,7 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   info: {
     width: seatLayerPickerTokens.size.floorInfoSize,
     height: seatLayerPickerTokens.size.floorInfoSize,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: 'center',
     justifyContent: 'center',
   },

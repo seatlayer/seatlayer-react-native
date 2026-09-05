@@ -1,6 +1,7 @@
 import { StyleSheet, type ViewStyle } from 'react-native';
 
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const absoluteFillObject = (StyleSheet as typeof StyleSheet & Readonly<{
   absoluteFillObject?: ViewStyle;
@@ -13,10 +14,10 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   wide: { flex: 1, flexDirection: 'row' },
   map: { flex: 1, overflow: 'hidden', position: 'relative' },
   chartOwner: { flex: 1 },
-  rail: { borderStartWidth: StyleSheet.hairlineWidth },
+  rail: { borderStartWidth: seatLayerPickerLineWidth },
   phoneOverlays: absoluteFillObject,
   legendBand: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: seatLayerPickerLineWidth,
     height: seatLayerPickerTokens.size.topRailHeight,
     justifyContent: 'center',
   },

@@ -10,6 +10,7 @@ import { seatLayerPickerStateScaleClamp } from "./SeatLayerPickerStateOverlays";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -222,7 +223,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     paddingHorizontal: 24,
   },
   card: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     padding: 20,
     gap: 10,
     alignItems: "center",

@@ -6,6 +6,7 @@ import { seatLayerPickerReadableAccent } from './confirmCardIdentity';
 import type { SeatLayerPickerSeatConfidence } from './models';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 /**
  * §3.8.7 — the confidence teaser, on the 3D card only.
@@ -89,7 +90,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   row: {
     alignItems: 'center',
     borderRadius: seatLayerPickerTokens.size.confidenceTeaserRadius,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     gap: 8,
     marginTop: seatLayerPickerTokens.size.confidenceTeaserTop,
     minHeight: seatLayerPickerTokens.size.confidenceTeaserMinHeight,

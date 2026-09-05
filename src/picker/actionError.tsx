@@ -16,6 +16,7 @@ import {
 } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerPickerActionErrorProps {
   /** An exact command error may override the current scoped command error. */
@@ -106,7 +107,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     paddingHorizontal: 10,
   },
   text: { flex: 1, fontSize: 13, lineHeight: 18 },

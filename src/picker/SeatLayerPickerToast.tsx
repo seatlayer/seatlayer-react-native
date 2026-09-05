@@ -27,6 +27,7 @@ import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 /**
  * The picker's own toast (spec §3.12) — NOT the host's messenger.
@@ -101,7 +102,7 @@ export function SeatLayerPickerToastCard(props: SeatLayerPickerToastCardProps): 
         backgroundColor: theme.colors.surface,
         borderColor: toneBorder(toast.tone, theme),
         borderRadius: toastCornerRadius,
-        borderWidth: StyleSheet.hairlineWidth,
+        borderWidth: seatLayerPickerLineWidth,
         flexDirection: 'row',
         gap: 10,
         maxWidth: 420,
