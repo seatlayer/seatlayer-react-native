@@ -11,6 +11,13 @@ import { seatLayerPickerBoldStyles } from './boldText';
 
 const clamp = seatLayerPickerTokens.type.scaleClamp.card;
 
+/** The identity eyebrow's line box, as a multiple of its own size. */
+const seatLayerPickerConfirmKeyLineHeight = 1.2;
+
+/** The identity value's, for the one-line and the wrapping case. */
+const seatLayerPickerConfirmValueLineHeight = 1.1;
+const seatLayerPickerConfirmLongValueLineHeight = 1.2;
+
 export interface ConfirmCardTheme {
   readonly surface: string;
   readonly text: string;
@@ -64,7 +71,13 @@ export function ConfirmIdentityGrid(props: Readonly<{
         maxFontSizeMultiplier={clamp}
         numberOfLines={cell.long ? 2 : 1}
         ellipsizeMode="tail"
-        style={[styles.cellValue, { color: theme.text, fontFamily: theme.fontFamily, fontSize: cell.long ? long : value }]}
+        style={[styles.cellValue, {
+          color: theme.text,
+          fontFamily: theme.fontFamily,
+          fontSize: cell.long ? long : value,
+          lineHeight: (cell.long ? long : value)
+            * (cell.long ? seatLayerPickerConfirmLongValueLineHeight : seatLayerPickerConfirmValueLineHeight),
+        }]}
       >{cell.value}</Text>
     </View>)}
   </View>;
@@ -278,11 +291,17 @@ const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
 
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   grid: { borderBottomWidth: StyleSheet.hairlineWidth },
-  cell: { alignItems: 'center', flex: 1, gap: 2, justifyContent: 'center', paddingHorizontal: 6, paddingVertical: 6 },
+  // The reference's own cell box: `EdgeInsets.fromLTRB(6, 8, 6, 7)`, not a
+  // symmetric pad. The eyebrow and the value carry explicit line boxes for
+  // the same reason the Dart does — a null height leaves the cell at the
+  // mercy of the host font's ascent, and the grid then grows by whatever
+  // that font asks for.
+  cell: { alignItems: 'center', flex: 1, gap: 2, justifyContent: 'center', paddingBottom: 7, paddingHorizontal: 6, paddingTop: 8 },
   cellKey: {
     fontSize: seatLayerPickerTokens.size.confirmIdentityKeyFontSize,
     fontWeight: '800',
     letterSpacing: seatLayerPickerTokens.size.confirmIdentityKeyFontSize * 0.1,
+    lineHeight: seatLayerPickerTokens.size.confirmIdentityKeyFontSize * seatLayerPickerConfirmKeyLineHeight,
     textAlign: 'center',
   },
   cellValue: { fontWeight: '800', textAlign: 'center' },
