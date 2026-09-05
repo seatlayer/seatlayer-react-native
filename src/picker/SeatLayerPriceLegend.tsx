@@ -60,6 +60,12 @@ type LegendMetrics = Readonly<{
 
 const edgeWidth = seatLayerPickerTokens.size.legendRailEdgeFade;
 const chipGap = 6;
+/**
+ * The band's own margin. The rail is a band, not a bleed: the pinned chip's
+ * rounded end has to sit inside the surface it is drawn on, the way the header
+ * mark beneath it does, or the first price reads as clipped by the screen.
+ */
+const railInset = 10;
 
 /**
  * §3.2 amount rule. A single price prints as itself; equal minimum and maximum
@@ -373,7 +379,7 @@ function SeatLayerPriceLegendView({
         { height: bandHeight, minHeight: bandHeight, overflow: 'hidden' },
       ]}
     >
-      <View pointerEvents="box-none" style={{ flex: 1 }}>
+      <View pointerEvents="box-none" style={{ flex: 1, paddingHorizontal: railInset }}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -426,7 +432,7 @@ function SeatLayerPriceLegendView({
             bottom: 0,
             justifyContent: 'center',
             position: 'absolute',
-            start: 0,
+            start: 1,
             top: 0,
             // While the scroller has scrolled the pinned chip carries a halo of
             // the band ground, so chips slide UNDER it rather than through it;

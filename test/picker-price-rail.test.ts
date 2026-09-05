@@ -173,6 +173,10 @@ describe('3.2 the band and its chips', () => {
       borderBottomWidth: 1,
       height: seatLayerPickerTokens.size.topRailHeight,
     });
+    // The rail is a band, not a bleed: its chips sit inside its own margin, so
+    // the pinned chip's rounded end is never cut off by the screen edge.
+    const inner = renderer.root.findAllByType('View' as never)[1]!;
+    expect(inner.props.style).toMatchObject({ paddingHorizontal: 10 });
   });
 
   it('rings the dot on light and keeps it flat on dark', async () => {
