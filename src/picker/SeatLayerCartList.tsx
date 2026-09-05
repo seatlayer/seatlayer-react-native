@@ -12,6 +12,7 @@ import { chartSeatLayerPickerColor } from './chartColor';
 import { resolveSeatLayerPickerMapChromeTheme, seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import {
@@ -195,12 +196,12 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
               style={{
                 borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
                 borderTopWidth: StyleSheet.hairlineWidth,
-                height: seatLayerPickerTokens.size.denseMoreRowHeight,
+                height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseMoreRowHeight, seatLayerPickerTypeScaleClamp('sheet')),
                 justifyContent: 'center',
                 paddingHorizontal: 9,
               }}
             >
-              <Text style={[{
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={[{
                 color: theme.colors.accent,
                 fontFamily: theme.fontFamily,
                 fontSize: seatLayerPickerTokens.type.denseMore.size,
@@ -310,7 +311,8 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
         borderTopWidth: first ? 0 : StyleSheet.hairlineWidth,
         flexDirection: 'row',
-        height: seatLayerPickerTokens.size.denseLineHeight,
+        // §4.10 — a cart row is `base x the sheet's clamped scale`.
+        height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseLineHeight, seatLayerPickerTypeScaleClamp('sheet')),
         opacity: removing ? seatLayerPickerTokens.opacity.removing : 1,
         paddingEnd: 4,
         paddingStart: member ? 26 : 9,
@@ -331,16 +333,16 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         <LineMark group={group !== undefined} held={held} open={expanded === true} color={categoryColor} theme={theme} />
         <View style={{ width: 7 }} />
         <SeatLayerCartCellCrossFade token={identity} style={{ flex: 1 }}>
-          <Text numberOfLines={1} ellipsizeMode="tail" style={[{
+          <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{
             color: theme.colors.text,
             fontFamily: theme.fontFamily,
             fontSize: seatLayerPickerTokens.type.denseLine.size,
             fontVariant: ['tabular-nums'],
             fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseLine.weight),
           }, styles.denseLineText]}>
-            <Text numberOfLines={1} style={{ fontWeight: '800' }}>{leading}</Text>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: '800' }}>{leading}</Text>
             {trailingParts.map((part) => (
-              <Text key={part} style={{ color: theme.colors.mutedText }}>{` · ${part}`}</Text>
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} key={part} style={{ color: theme.colors.mutedText }}>{` · ${part}`}</Text>
             ))}
           </Text>
         </SeatLayerCartCellCrossFade>
@@ -348,7 +350,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
       {quantityAmount
         ? (
           <SeatLayerCartCellCrossFade token={quantityAmount}>
-            <Text numberOfLines={1} style={[{
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={[{
               color: theme.colors.mutedText,
               fontFamily: theme.fontFamily,
               fontSize: seatLayerPickerTokens.type.denseMultiplier.size,
@@ -360,7 +362,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         )
         : null}
       <SeatLayerCartCellCrossFade token={amount}>
-        <Text numberOfLines={1} style={[{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={[{
           color: theme.colors.text,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.denseLine.size,
@@ -391,7 +393,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
               justifyContent: 'center',
               width: seatLayerPickerTokens.size.denseRemoveSize,
             }, styles.denseLineRemoveButton]}>
-              <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 18 }, styles.denseLineRemoveButtonText]}>×</Text>
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 18 }, styles.denseLineRemoveButtonText]}>×</Text>
             </View>
           </Pressable>
         )
@@ -425,7 +427,7 @@ function LineMark({ group, held, open, color, theme }: Readonly<{
   if (group) {
     return (
       <View accessible={false} style={{ width: seatLayerPickerTokens.size.denseRunToggleWidth }}>
-        <Text style={{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{
           color: theme.colors.mutedText,
           fontFamily: theme.fontFamily,
           fontSize: 13,

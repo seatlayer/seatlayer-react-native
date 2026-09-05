@@ -26,6 +26,7 @@ import {
   type SeatLayerPickerStyles,
 } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerPriceLegendProps {
@@ -358,7 +359,12 @@ function SeatLayerPriceLegendView({
   // 3.2: a band of its own, height `size.topRailHeight`, on the surface with a
   // divider hairline beneath. Not floated over the map: on a busy chart the seat
   // numbers read through the gaps, and the last chip clipped under Map/3D.
-  const bandHeight = Math.max(theme.layout.topRailHeight, target);
+  // §4.10 — the band is `base × the surface's clamped scale`, so it grows
+  // with what is in it and is unchanged at the platform default of 1.0.
+  const bandHeight = Math.max(
+    seatLayerPickerScaledExtent(theme.layout.topRailHeight, seatLayerPickerTypeScaleClamp('rail')),
+    target,
+  );
   const paintHeight = theme.layout.legendChipHeight;
   const fadeColor = edgeFadeColor ?? theme.colors.surface;
   const allSelected = selectedKeys.length === 0;
@@ -591,6 +597,7 @@ function LegendChip({
           />
         )}
         <Text
+          maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('rail')}
           numberOfLines={1}
           style={[
             textStyle,

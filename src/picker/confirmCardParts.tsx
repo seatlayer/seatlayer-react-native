@@ -226,8 +226,10 @@ export function ConfirmNotices(props: Readonly<{
       numberOfLines={1}
       style={[styles.notice, { color: props.theme.accent, fontFamily: props.theme.fontFamily }]}
     >{props.premium}</Text>}
+    {/* Not a live region: the notice is part of the card's own statement and
+        never changes while the card is up. A live region here re-announces the
+        sightline on every repaint. */}
     {props.limited === undefined ? null : <Text
-      accessibilityLiveRegion="polite"
       maxFontSizeMultiplier={clamp}
       numberOfLines={2}
       style={[styles.notice, { color: props.theme.warning, fontFamily: props.theme.fontFamily }]}

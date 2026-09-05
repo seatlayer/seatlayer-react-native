@@ -68,11 +68,13 @@ function Action({ label, busy, onPress, secondary, scope, styles }: Readonly<{ l
   const text = secondary ? styles.confirmCardSecondaryButtonText : styles.confirmCardPrimaryButtonText;
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={onPress} style={nativeStyles.actionHit}><View style={[nativeStyles.actionPaint, { backgroundColor: secondary ? scope.resolvedTheme.colors.surface : scope.resolvedTheme.colors.accent, borderColor: secondary ? scope.resolvedTheme.colors.divider : scope.resolvedTheme.colors.accent, borderRadius: seatLayerPickerTokens.radius.button, opacity: busy ? .5 : 1 }, button]}><Text numberOfLines={1} style={[nativeStyles.actionText, { color: secondary ? scope.resolvedTheme.colors.text : scope.resolvedTheme.colors.onAccent, fontFamily: scope.resolvedTheme.fontFamily }, text]}>{label}</Text></View></Pressable>;
 }
+// Not live regions: a notice is part of the card's own statement and does
+// not change while the card is up.
 function Notice({ title, message, color, mutedColor }: Readonly<{ title: string; message: string; color: string; mutedColor: string }>): React.ReactElement {
-  return <View accessibilityLiveRegion="polite" style={[nativeStyles.notice, { borderColor: color }]}><Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.noticeTitle, { color }]}>{title}</Text><Text style={[nativeStyles.noticeText, { color: mutedColor }]}>{message}</Text></View>;
+  return <View style={[nativeStyles.notice, { borderColor: color }]}><Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.noticeTitle, { color }]}>{title}</Text><Text style={[nativeStyles.noticeText, { color: mutedColor }]}>{message}</Text></View>;
 }
 function LimitedNotice({ message, color, mutedColor }: Readonly<{ message: string | undefined; color: string; mutedColor: string }>): React.ReactElement | null {
-  if (message) return <View accessibilityLiveRegion="polite" style={[nativeStyles.notice, { borderColor: color }]}><Text style={[nativeStyles.noticeText, { color: mutedColor }]}>{message}</Text></View>;
+  if (message) return <View style={[nativeStyles.notice, { borderColor: color }]}><Text style={[nativeStyles.noticeText, { color: mutedColor }]}>{message}</Text></View>;
   // The generated catalog has no non-imperative restricted-view notice yet.
   return null;
 }

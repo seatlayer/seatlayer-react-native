@@ -64,6 +64,7 @@ import {
   sanitizeSeatLayerPickerStyle,
   type SeatLayerPickerStyles,
 } from './styles';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
@@ -249,7 +250,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
         paddingHorizontal: 12,
       }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style)]}>
         {cta.busy ? <Spinner color={disabled ? theme.colors.mutedText : theme.colors.onAccent} /> : null}
-        <Text numberOfLines={1} ellipsizeMode="tail" style={[{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{
           color: disabled ? theme.colors.mutedText : theme.colors.onAccent,
           flexShrink: 1,
           fontFamily: theme.fontFamily,
@@ -320,7 +321,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   // the sheet holds — never a second number.
   const headHeight = Math.max(
     seatLayerPickerTokens.size.minimumHitTarget,
-    theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
+    // §4.10 — the collapsed bar grows with what is in it; unchanged at 1.0.
+    seatLayerPickerScaledExtent(
+      theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
+      seatLayerPickerTypeScaleClamp('peek'),
+    ),
   );
   const openHeadHeight = seatLayerPickerTokens.size.sheetOpenHeadHeight +
     seatLayerPickerTokens.size.peekClockLift;
@@ -400,6 +405,9 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   // drag down past it collapses. Springs, not tweens.
   const dragHeight = useRef(new Animated.Value(detents.peek)).current;
   const dragging = useRef(false);
+  // The pan responder is built once; the live preference is read through a ref.
+  const reducedMotionRef = useRef(reducedMotion);
+  reducedMotionRef.current = reducedMotion;
   const expandedRef = useRef(props.expanded);
   expandedRef.current = props.expanded;
   const detentsRef = useRef(detents);
@@ -422,13 +430,19 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
       const stops = detentsRef.current;
       const from = expandedRef.current ? stops.content : stops.peek;
       const settled = seatLayerSheetSettle(from - gesture.dy, -gesture.vy * 1_000, stops);
-      Animated.spring(dragHeight, {
-        damping: seatLayerSheetSpring.damping,
-        mass: seatLayerSheetSpring.mass,
-        stiffness: seatLayerSheetSpring.stiffness,
-        toValue: settled,
-        useNativeDriver: false,
-      }).start();
+      // §4.4 — a spring has no reduced form, so under reduced motion the sheet
+      // is simply at its detent. Everything sequenced behind it runs at once.
+      if (reducedMotionRef.current) {
+        dragHeight.setValue(settled);
+      } else {
+        Animated.spring(dragHeight, {
+          damping: seatLayerSheetSpring.damping,
+          mass: seatLayerSheetSpring.mass,
+          stiffness: seatLayerSheetSpring.stiffness,
+          toValue: settled,
+          useNativeDriver: false,
+        }).start();
+      }
       changeExpanded(seatLayerSheetDetentAt(settled, stops) !== 'peek');
     },
   })).current;
@@ -526,7 +540,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               )
               : (
                 <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
-                  <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
+                  <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
                   <View>{main}</View>
                   {salesClosed}
                   {actionError}

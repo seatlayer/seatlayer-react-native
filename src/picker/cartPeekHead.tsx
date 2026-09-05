@@ -6,6 +6,7 @@ import { splitSeatLayerFromPrice, type SeatLayerPeekLine } from './checkoutCta';
 
 export { splitSeatLayerFromPrice };
 import { seatLayerPickerColorAlpha, type resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
+import { seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 
@@ -118,13 +119,13 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
               bar, where the money is what the buyer reads the bar for. Open,
               the line is one weight throughout — every other reading of it, a
               ticket count or a whole sentence, already is. */}
-          <Text numberOfLines={1} ellipsizeMode="tail" style={[muted, props.summaryStyle]}>
-            {!lifts
+          <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} numberOfLines={1} ellipsizeMode="tail" style={[muted, props.summaryStyle]}>
+            {!lifts || price.amount === null
               ? words
               : (
                 <>
                   {price.before}
-                  <Text style={{
+                  <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} style={{
                     color: theme.colors.text,
                     fontFamily: theme.fontFamily,
                     fontSize: seatLayerPickerTokens.type.peekFromPrice.size,
@@ -166,8 +167,8 @@ export function SeatLayerFindSeatsPill({ label, theme, onPress }: Readonly<{
         justifyContent: 'center',
         paddingHorizontal: findPillPadding,
       }}>
-        <Text accessible={false} style={{ color: theme.colors.onAccent, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
-        <Text numberOfLines={1} style={{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} accessible={false} style={{ color: theme.colors.onAccent, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} numberOfLines={1} style={{
           color: theme.colors.onAccent,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.findPill.size,
@@ -210,7 +211,7 @@ export function SeatLayerPeekContinuePill({ label, total, theme, busy, onPress, 
         justifyContent: 'center',
         paddingHorizontal: continuePillPadding,
       }, style]}>
-        <Text numberOfLines={1} style={[{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('peek')} numberOfLines={1} style={[{
           color: theme.colors.onAccent,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.peekPill.size,
