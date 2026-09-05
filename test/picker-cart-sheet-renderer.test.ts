@@ -9,9 +9,12 @@ vi.mock('react-native', () => ({
     View: 'Animated.View',
     Value: class { interpolate() { return 'rotation'; } setValue() {} stopAnimation() {} },
     delay: () => ({ start: () => {}, stop: () => {} }),
+    loop: () => ({ start: () => {}, stop: () => {} }),
     sequence: () => ({ start: () => {}, stop: () => {} }),
+    spring: () => ({ start: () => {}, stop: () => {} }),
     timing: () => ({ start: () => {}, stop: () => {} }),
   },
+  PanResponder: { create: (config: Record<string, unknown>) => ({ panHandlers: {}, config }) },
   Easing: { bezier: () => 'easing' },
   LayoutAnimation: { configureNext: () => {} },
   Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
@@ -53,16 +56,32 @@ function setup(hostHold = false) {
 
 describe('cart checkout renderer', () => {
   it('allows a host-owned hold to continue and compensates the exact origin after host rejection', async () => {
-    const runtime = setup(true); const renderer = await render(React.createElement(SeatLayerBookButton, { compact: true, onCheckout: () => Promise.reject(new Error('host')) }));
+    const runtime = setup(true); const renderer = await render(React.createElement(SeatLayerBookButton, { onCheckout: () => Promise.reject(new Error('host')) }));
     const button = renderer.root.findByProps({ accessibilityRole: 'button' });
-    expect(button.props.accessibilityLabel).toBe('Continue · $20');
+    // Spec §3.10.3 rung 7: a hold exists with nothing pending.
+    expect(button.props.accessibilityLabel).toBe('continueToCheckout');
     await act(async () => { button.props.onPress(); await Promise.resolve(); await Promise.resolve(); });
     expect(runtime.calls).toEqual([['origin']]);
   });
 
-  it('uses the expanded hold-and-checkout label without repeating a total', async () => {
-    setup(); const renderer = await render(React.createElement(SeatLayerBookButton, { onCheckout: () => undefined }));
-    expect(renderer.root.findByProps({ accessibilityRole: 'button' }).props.accessibilityLabel).toBe('holdAndCheckout');
+  it('walks the checkout label ladder and never repeats the total in the footer', async () => {
+    const runtime = setup();
+    // Rung 8: tickets, no hold, so the caller's own wording stands.
+    runtime.snapshot.hold = { active: false, owner: 'picker' };
+    let renderer = await render(React.createElement(SeatLayerBookButton, { onCheckout: () => undefined }));
+    let button = renderer.root.findByProps({ accessibilityRole: 'button' });
+    expect(button.props.accessibilityLabel).toBe('holdAndCheckout');
+    expect(JSON.stringify(renderer.toJSON())).not.toContain('$20');
+    // Rung 9: nothing picked.
+    runtime.snapshot.cartLines = [];
+    renderer = await render(React.createElement(SeatLayerBookButton, { onCheckout: () => undefined }));
+    button = renderer.root.findByProps({ accessibilityRole: 'button' });
+    expect(button.props.accessibilityLabel).toBe('selectSeats');
+    expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+    // Rung 1 outranks everything else.
+    runtime.snapshot.event.salesClosed = true;
+    renderer = await render(React.createElement(SeatLayerBookButton, { onCheckout: () => undefined }));
+    expect(renderer.root.findByProps({ accessibilityRole: 'button' }).props.accessibilityLabel).toBe('salesClosedCta');
   });
 
   it('serializes a rapid double press and drops a stale checkout completion after scope replacement', async () => {
@@ -137,26 +156,38 @@ describe('cart checkout renderer', () => {
     expect(form.root.findAllByProps({ accessibilityRole: 'button' }).length).toBeGreaterThan(0);
   });
 
-  it('makes the disclosure arrow a full hit target for both opening and closing', async () => {
+  it('gives the sheet exactly one named toggle: the head collapsed, the chevron open', async () => {
     setup();
     const changes: boolean[] = [];
     const props = (expanded: boolean) => React.createElement(SeatLayerCartSheet, {
       expanded, onExpandedChanged: (value: boolean) => { changes.push(value); }, onCheckout: () => {},
     });
     const renderer = await render(props(false));
-    const compactButton = renderer.root.findByProps({ accessibilityLabel: 'Continue · $20' });
-    expect(compactButton.findAll((node) => Array.isArray(node.props.style) &&
+    // The chevron LEAVES the collapsed bar; the head carries the toggle itself.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-disclosure' })).toHaveLength(0);
+    const head = renderer.root.findByProps({ testID: 'seatlayer-cart-head-toggle' });
+    expect(head.props.accessibilityRole).toBe('button');
+    expect(head.props.accessibilityLabel).toBe('expandCart');
+    expect(head.props.accessibilityState).toMatchObject({ expanded: false });
+    expect(head.props.accessibilityLiveRegion).toBe('polite');
+    // The Continue pill is 48 pt at the peek-button radius, with a 16 pt label
+    // and NO clock.
+    const pill = renderer.root.findByProps({ testID: 'seatlayer-cart-continue-pill' });
+    expect(pill.props.accessibilityLabel).toBe('continueWord · $20');
+    expect(pill.findAll((node) => Array.isArray(node.props.style) &&
       node.props.style.some((style: unknown) => Boolean(style) && typeof style === 'object' &&
-        (style as { height?: unknown }).height === 34))).toHaveLength(1);
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-handle-rail' }).props.style)
-      .toMatchObject({ left: 0, top: 5, width: '100%' });
-    let disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
-    expect(disclosure.props.accessibilityLabel).toBe('expandCart');
-    expect(disclosure.props.style({ pressed: false })).toMatchObject({ width: 44, minHeight: 44, zIndex: 1 });
-    await act(async () => { disclosure.props.onPress(); });
+        (style as { height?: unknown }).height === 48 &&
+        (style as { borderRadius?: unknown }).borderRadius === 12))).toHaveLength(1);
+    // The grabber sits at its own inset, painted into the head's top edge.
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-grabber' }).props.style)
+      .toMatchObject({ left: 0, top: 4, width: '100%' });
+    await act(async () => { head.props.onPress(); });
     await act(async () => { renderer.update(props(true)); });
-    disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
+    const disclosure = renderer.root.findByProps({ testID: 'seatlayer-cart-disclosure' });
     expect(disclosure.props.accessibilityLabel).toBe('collapseCart');
+    expect(disclosure.props.style({ pressed: false })).toMatchObject({ width: 44, height: 44 });
+    // The open sheet hides the peek pill; its footer says the same thing.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-continue-pill' })).toHaveLength(0);
     await act(async () => { disclosure.props.onPress(); });
     expect(changes).toEqual([true, false]);
   });
@@ -169,8 +200,9 @@ describe('cart checkout renderer', () => {
     expect(sheet.root.findAllByType(SeatLayerPickerActionError)).toHaveLength(1);
     expect(sheet.root.findAllByType(SeatLayerBookButton)).toHaveLength(1);
     runtime.snapshot.cartLines = [];
+    // §3.11: one form, in the sheet's own body. A filled cart stays a cart.
     const empty = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
-    expect(empty.root.findAllByType(SeatLayerBestSeatsForm)).toHaveLength(2);
+    expect(empty.root.findAllByType(SeatLayerBestSeatsForm)).toHaveLength(1);
   });
 
   it('honors explicit null composition values without resurrecting built-ins', async () => {
@@ -185,8 +217,6 @@ describe('cart checkout renderer', () => {
     expect(sheet.root.findAllByType(SeatLayerCartList)).toHaveLength(0);
     expect(sheet.root.findAllByType(SeatLayerPickerActionError)).toHaveLength(0);
     expect(sheet.root.findAllByType(SeatLayerBookButton)).toHaveLength(0);
-    expect(sheet.root.findAllByProps({ accessibilityLabel: 'bestSeats' })).toHaveLength(0);
-    expect(sheet.root.findAllByType(SeatLayerPickerPromptModal)).toHaveLength(0);
     runtime.snapshot.cartLines = [];
     const empty = await render(React.createElement(SeatLayerCartSheet, {
       expanded: true, onExpandedChanged: () => {}, onCheckout: () => {}, ...absent,
@@ -194,38 +224,16 @@ describe('cart checkout renderer', () => {
     expect(empty.root.findAllByType(SeatLayerBestSeatsForm)).toHaveLength(0);
   });
 
-  it('does not restore the default filled-cart shortcut when its best-seats value is null', async () => {
-    setup();
-    let dismisses = 0;
-    scope = {
-      ...scope,
-      claimPrompt: (_id: string, _kind: string, context: unknown) => ({
-        lease: { context },
-        open: () => { scope = { ...scope, presentation: { prompt: { context } } }; return true; },
-        dismiss: () => { dismisses += 1; scope = { ...scope, presentation: { prompt: null } }; },
-      }),
-    };
-    const omitted = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
-    await act(async () => { omitted.root.findByProps({ accessibilityLabel: 'bestSeats' }).props.onPress(); });
-    expect(omitted.root.findAllByType(SeatLayerBestSeatsForm)).toHaveLength(1);
-    await act(async () => { omitted.update(React.createElement(SeatLayerCartSheet, { expanded: true, bestSeats: null, onExpandedChanged: () => {}, onCheckout: () => {} })); });
-    const suppressed = omitted;
-    expect(suppressed.root.findAllByType(SeatLayerBestSeatsForm)).toHaveLength(0);
-    expect(suppressed.root.findAllByProps({ accessibilityLabel: 'bestSeats' })).toHaveLength(0);
-    expect(suppressed.root.findAllByType(SeatLayerPickerPromptModal)).toHaveLength(0);
-    expect(dismisses).toBe(1);
-  });
-
   it('suppresses the collapsed built-in checkout CTA when checkoutBar is explicitly null', async () => {
     setup();
     const suppressed = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, checkoutBar: null, onExpandedChanged: () => {}, onCheckout: () => {},
     }));
-    expect(suppressed.root.findAllByType(SeatLayerBookButton)).toHaveLength(0);
+    expect(suppressed.root.findAllByProps({ testID: 'seatlayer-cart-continue-pill' })).toHaveLength(0);
     const defaulted = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
     }));
-    expect(defaulted.root.findAllByType(SeatLayerBookButton)).toHaveLength(1);
+    expect(defaulted.root.findAllByProps({ testID: 'seatlayer-cart-continue-pill' })).toHaveLength(1);
   });
 
   it('falls back to the collapsed peek inset without waiting for a stale layout', async () => {
@@ -234,7 +242,8 @@ describe('cart checkout renderer', () => {
     const layout = renderer.root.findAll((node) => typeof node.props.onLayout === 'function')[0]!;
     await act(async () => { layout.props.onLayout({ nativeEvent: { layout: { height: 350 } } }); });
     await act(async () => { renderer.update(React.createElement(SeatLayerCartSheet, { expanded: false, onExpandedChanged: () => {}, onCheckout: () => {} })); });
-    expect(runtime.insets).toContainEqual({ bottom: 58 });
+    // THE BAR IS EXACTLY ITS HEAD: peekHeight + peekClockLift + the safe inset.
+    expect(runtime.insets).toContainEqual({ bottom: 66 });
   });
 
   it('keeps the legacy bottom-only inset when no full safe-area input is supplied', async () => {
@@ -242,8 +251,8 @@ describe('cart checkout renderer', () => {
     const renderer = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
-    expect(runtime.insets).toContainEqual({ bottom: 70 });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ paddingBottom: 12 });
+    expect(runtime.insets).toContainEqual({ bottom: 78 });
   });
 
   it('uses the collapsed safe-area band for required attribution and hides it from backend branding', async () => {
@@ -254,14 +263,18 @@ describe('cart checkout renderer', () => {
     });
     const renderer = await render(props());
     expect(renderer.root.findByProps({ accessibilityLabel: 'poweredBy' })).toBeTruthy();
+    // `Powered by SeatLayer` is CENTRED at the foot of the sheet, where a
+    // phone's rounded corner cannot clip it.
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-attribution-foot' }).props.style)
+      .toMatchObject({ alignItems: 'center', justifyContent: 'center', minHeight: 18 });
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
-      .toMatchObject({ alignItems: 'flex-end', height: 34, justifyContent: 'center', paddingEnd: 8 });
+      .toMatchObject({ paddingBottom: 34 });
 
+    // Server branding is authoritative: a white-label entitlement hides it.
     runtime.snapshot.branding.attributionRequired = false;
     await act(async () => { renderer.update(props()); });
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style)
-      .toMatchObject({ alignItems: 'flex-end', height: 34, paddingEnd: 8 });
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-attribution-foot' })).toHaveLength(0);
   });
 
   it('keeps its active inset lease after an expand-collapse-expand cycle and ignores stale layout', async () => {
@@ -306,7 +319,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByProps({ accessibilityRole: 'button' }).every((button) => button.props.accessibilityState?.disabled !== false)).toBe(true);
   });
 
-  it('forwards safe insets to standalone and cart best-seat prompt frames without making the scrim safe-area sized', async () => {
+  it('forwards safe insets to the standalone best-seats prompt frame without making the scrim safe-area sized', async () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [];
     runtime.snapshot.categories = [{ key: 'adult', label: 'Adult' }];
@@ -332,16 +345,6 @@ describe('cart checkout renderer', () => {
     await act(async () => { form.root.findByProps({ testID: 'seatlayer-picker-bottom-sheet-backdrop' }).props.onPress(); });
     expect(runtime.bestCalls).toEqual([]);
 
-    runtime.snapshot.cartLines = [{ lineKey: 'one', label: 'A-1', objectId: 'one', quantity: 1, unitPrice: 20, currency: 'USD' }];
-    const cart = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaInsets }));
-    await act(async () => { cart.root.findByProps({ accessibilityLabel: 'bestSeats' }).props.onPress(); });
-    await act(async () => { cart.update(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaInsets })); });
-    expect(claims).toBeGreaterThan(1);
-    expect(cart.root.findByType(SeatLayerPickerPromptModal)).toBeTruthy();
-    expect(cart.root.findByType('ScopeReprovider' as any)).toBeTruthy();
-    expect(cart.root.findByProps({ testID: 'seatlayer-picker-bottom-sheet-content' }).props.style.at(-1)).toMatchObject({ borderRadius: 14 });
-    await act(async () => { cart.root.findByProps({ testID: 'seatlayer-picker-bottom-sheet-backdrop' }).props.onPress(); });
-    expect(runtime.bestCalls).toEqual([]);
   });
 
   it('renders a dense quantity with a truthful unit and total amount', async () => {
