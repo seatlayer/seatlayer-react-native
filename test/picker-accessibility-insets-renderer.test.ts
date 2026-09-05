@@ -57,7 +57,7 @@ async function render(props: Record<string, unknown>) {
 }
 
 describe('accessibility prompt safe-area geometry', () => {
-  it('applies an offered seat type and opens the matching seat-detail view', async () => {
+  it('applies an offered seat type live and leaves the sheet open', async () => {
     const runtime = setup();
     const renderer = await render({});
     await act(async () => {
@@ -66,14 +66,13 @@ describe('accessibility prompt safe-area geometry', () => {
     });
     await act(async () => {
       renderer.root.findByProps({ accessibilityLabel: 'wheelchair' }).props.onPress();
-    });
-    await act(async () => {
-      renderer.root.findByProps({ accessibilityLabel: 'continueWord' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(runtime.calls).toEqual([['wheelchair'], { rung: 'seats' }]);
-    expect(scope.presentation.prompt).toBeNull();
+    // The switch IS the action: one command out of the row's own handler, no
+    // apply step, and the sheet stays open for a buyer with more than one need.
+    expect(runtime.calls).toEqual([['wheelchair']]);
+    expect(scope.presentation.prompt).toMatchObject({ kind: 'accessibility' });
   });
 
   it('keeps the scrim edge-to-edge while forwarding asymmetric full insets through the scoped modal', async () => {
