@@ -431,13 +431,19 @@ export function SeatLayerPickerAccessibilityFilters(
   );
 }
 
+/** The line every floating map disc is drawn with. */
+const discLine = 1;
+
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { width: size.accessibilityControlSize, height: size.accessibilityControlSize },
   wideRoot: { alignSelf: "flex-start" },
   control: {
     width: size.accessibilityControlSize,
     height: size.accessibilityControlSize,
-    borderWidth: StyleSheet.hairlineWidth,
+    // A whole point, as every other floating disc wears (`Border.all` in
+    // `picker_map_controls.dart`): a hairline is a third of a point at 3x and
+    // the disc read as the only unlined control on the map.
+    borderWidth: discLine,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -445,7 +451,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     minHeight: size.minimumHitTarget,
     flexDirection: "row",
     gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: discLine,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
