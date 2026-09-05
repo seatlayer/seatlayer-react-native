@@ -353,6 +353,12 @@ export {
 } from './picker/buyerStates';
 export { isSeatLayerPickerSoldOut } from './picker/emptyState';
 export {
+  seatLayerPickerImmersiveBlurAvailable,
+  seatLayerPickerImmersiveCaptionGlass,
+  seatLayerPickerImmersiveGlass,
+  type SeatLayerPickerImmersiveGlass,
+} from './picker/immersiveGlass';
+export {
   seatLayerDockAccessGlyph,
   seatLayerDockCountCopy,
   type SeatLayerDockCountCopy,

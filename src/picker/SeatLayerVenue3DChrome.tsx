@@ -28,7 +28,10 @@ import {
   seatLayerVenue3DNeighbours,
   type SeatLayerVenue3DAction,
 } from './immersiveChrome';
-import { seatLayerPickerColorAlpha } from './colors';
+import {
+  seatLayerPickerImmersiveCaptionGlass,
+  seatLayerPickerImmersiveGlass,
+} from './immersiveGlass';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
 import { usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
@@ -86,8 +89,11 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly onNavigation?: () => void;
 }
 
-const target = seatLayerPickerTokens.size.minimumHitTarget;
-const paint = seatLayerPickerTokens.size.mapControlSize;
+const size = seatLayerPickerTokens.size;
+const target = size.minimumHitTarget;
+const paint = size.immersiveNavChipHeight;
+const glass = seatLayerPickerImmersiveGlass;
+const captionGlass = seatLayerPickerImmersiveCaptionGlass;
 
 function inset(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 10;
@@ -190,12 +196,16 @@ function VenueButton({
     <View style={[
       styles.button,
       labelled ? styles.labelButton : undefined,
-      { backgroundColor: seatLayerPickerColorAlpha(theme.colors.surface, 0.92), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button },
+      // One dark glass, drawn once by the shared recipe (§3.14).
+      { backgroundColor: glass.ground, borderColor: glass.border, borderRadius: seatLayerPickerTokens.radius.pill },
       slots?.immersiveChromeButton,
-      { height: paint, minWidth: labelled ? target : paint },
+      {
+        height: kind === 'back' ? size.immersiveBackPillHeight : paint,
+        minWidth: labelled ? target : Math.max(paint, size.immersiveNavCloseSize),
+      },
     ]}>
-      <Icon color={theme.colors.text} kind={kind} rtl={rtl} />
-      {labelled ? <Text numberOfLines={1} style={[styles.buttonText, { color: theme.colors.text, fontFamily: theme.fontFamily }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
+      <Icon color={glass.ink} kind={kind} rtl={rtl} />
+      {labelled ? <Text numberOfLines={1} style={[styles.buttonText, { color: glass.ink, fontFamily: theme.fontFamily, fontSize: kind === 'back' ? size.immersiveBackFontSize : size.immersiveNavChipFontSize }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
     </View>
   </Pressable>;
 }
@@ -210,8 +220,8 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
       {props.navigationLabel && props.onNavigation ? <VenueButton enabled={!props.disabled && props.navigationEnabled === true} kind="navigation" label={props.navigationLabel} onPress={props.onNavigation} rtl={rtl} slots={slots} theme={props.theme} /> : null}
     </View>
     <View pointerEvents="box-none" style={[styles.deck, { bottom: props.bottomInset }]}>
-      {props.caption ? <View pointerEvents="none" style={[styles.caption, { backgroundColor: seatLayerPickerColorAlpha(props.theme.colors.surface, 0.88), borderColor: props.theme.colors.divider }]}>
-        <Text numberOfLines={1} style={[styles.captionText, { color: props.theme.colors.text, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
+      {props.caption ? <View pointerEvents="none" style={[styles.caption, { backgroundColor: captionGlass.ground, borderColor: captionGlass.border }]}>
+        <Text numberOfLines={1} style={[styles.captionText, { color: captionGlass.ink, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
       </View> : null}
       <View pointerEvents="box-none" style={[styles.controls, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
         {props.targeted ? <>
@@ -379,16 +389,16 @@ export const SeatLayerVenue3D = SeatLayerVenue3DChrome;
 const styles = {
   animatedRoot: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   backRail: { gap: 8, position: 'absolute', start: 10 } as ViewStyle,
-  button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: 8 } as ViewStyle,
-  buttonText: { fontSize: 13, fontWeight: '800' } as TextStyle,
+  button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
+  buttonText: { fontSize: size.immersiveNavChipFontSize, fontWeight: '800' } as TextStyle,
   caption: { borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, marginBottom: 8, maxWidth: '90%', paddingHorizontal: 12, paddingVertical: 7 } as ViewStyle,
-  captionText: { fontSize: 12, fontWeight: '700' } as TextStyle,
-  chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: 9, width: 9 } as ViewStyle,
+  captionText: { fontSize: size.immersiveCaptionFontSize, fontWeight: '700' } as TextStyle,
+  chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: size.immersiveBackIconSize / 2, width: size.immersiveBackIconSize / 2 } as ViewStyle,
   controls: { alignItems: 'center', gap: 8, justifyContent: 'center' } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,
   focusCorner: { borderLeftWidth: 2, borderTopWidth: 2, height: 6, position: 'absolute', width: 6 } as ViewStyle,
   focusIcon: { height: 16, width: 16 } as ViewStyle,
-  labelButton: { paddingHorizontal: 12 } as ViewStyle,
+  labelButton: { paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
   orbitArrowLeft: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderRightWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, bottom: 0, height: 0, left: 0, position: 'absolute', width: 0 } as ViewStyle,
   orbitArrowRight: { borderBottomColor: 'transparent', borderBottomWidth: 3, borderLeftWidth: 4, borderTopColor: 'transparent', borderTopWidth: 3, height: 0, position: 'absolute', right: 0, top: 0, width: 0 } as ViewStyle,
   orbitBottomArc: { borderBottomWidth: 2, borderRadius: 9, bottom: 1, height: 10, left: 1, position: 'absolute', width: 16 } as ViewStyle,
