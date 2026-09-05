@@ -241,12 +241,12 @@ export function SeatLayerSheetChevron({ label, theme, progress, onPress }: Reado
       }}>
         <Animated.View style={{
           borderBottomColor: theme.colors.text,
-          borderBottomWidth: 2,
+          borderBottomWidth: 1.9,
           borderRightColor: theme.colors.text,
-          borderRightWidth: 2,
-          height: 9,
+          borderRightWidth: 1.9,
+          height: chevronArm,
           transform: [{ rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ['225deg', '45deg'] }) }],
-          width: 9,
+          width: chevronArm,
         }} />
       </View>
     </Pressable>
@@ -268,6 +268,13 @@ export function SeatLayerSheetFoot({ children }: Readonly<{ children: React.Reac
     </View>
   );
 }
+
+/**
+ * Arm of the sheet's chevron, measured corner to corner: two edges of a square
+ * turned 45 degrees span the square's own side times root two, so the arm is
+ * the reference's ten-point chevron divided back down rather than the ten.
+ */
+const chevronArm = 6.9;
 
 export const seatLayerPeekHeadStyles = StyleSheet.create({
   hidden: { display: 'none' },
