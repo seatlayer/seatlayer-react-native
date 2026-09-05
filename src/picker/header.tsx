@@ -372,6 +372,14 @@ export function SeatLayerPickerHeaderView(
       />
     );
   const headerHeight = seatLayerPickerTokens.size.headerHeight + boundedInset(topInset);
+  // The picker's own ground, through the header's own style slot: a ground and
+  // the ink on it must be resolved as a PAIR, or a host that darkened
+  // `color.*.background` for the map leaves the event name unreadable.
+  const ground = {
+    background: theme.roles?.header?.background ?? theme.colors.surface,
+    foreground: theme.roles?.header?.foreground ?? theme.colors.text,
+    border: theme.roles?.header?.border ?? theme.colors.divider,
+  };
   return (
     <View
       accessibilityRole="header"
@@ -386,9 +394,9 @@ export function SeatLayerPickerHeaderView(
       style={[
         styles.root,
         {
-          // The picker's own ground, with a hairline of the divider under it.
-          backgroundColor: theme.colors.background,
-          borderBottomColor: theme.colors.divider,
+          backgroundColor: ground.background,
+          // A hairline of the divider under it.
+          borderBottomColor: ground.border,
           borderBottomWidth: StyleSheet.hairlineWidth,
           paddingTop: boundedInset(topInset),
         },
@@ -407,7 +415,7 @@ export function SeatLayerPickerHeaderView(
                 numberOfLines={1}
                 ellipsizeMode="tail"
                 style={[styles.title, {
-                  color: theme.colors.text,
+                  color: ground.foreground,
                   fontFamily: theme.fontFamily,
                 }, slots.headerTitle]}
               >
@@ -451,7 +459,7 @@ export function SeatLayerPickerHeaderView(
               accessible
               testID="seatlayer-header-sales-closed-pill"
               style={[styles.pill, {
-                backgroundColor: seatLayerPickerColorAlpha(theme.colors.text, .08),
+                backgroundColor: seatLayerPickerColorAlpha(ground.foreground, .08),
               }]}
               accessibilityLabel={props.salesClosedLabel}
             >
@@ -459,7 +467,7 @@ export function SeatLayerPickerHeaderView(
                 accessible={false}
                 allowFontScaling={false}
                 style={[styles.pillText, {
-                  color: theme.colors.text,
+                  color: ground.foreground,
                   fontFamily: theme.fontFamily,
                   marginEnd: 4,
                 }]}
@@ -471,7 +479,7 @@ export function SeatLayerPickerHeaderView(
                 allowFontScaling={false}
                 numberOfLines={1}
                 style={[styles.pillText, {
-                  color: theme.colors.text,
+                  color: ground.foreground,
                   fontFamily: theme.fontFamily,
                 }]}
               >
@@ -500,7 +508,7 @@ export function SeatLayerPickerHeaderView(
                 style={[
                   styles.closePaint,
                   {
-                    borderColor: theme.colors.divider,
+                    borderColor: ground.border,
                     backgroundColor: "transparent",
                   },
                   slots.headerAction,

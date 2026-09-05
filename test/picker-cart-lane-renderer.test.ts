@@ -52,7 +52,11 @@ function theme() {
       accent: '#0066ff', background: '#f7f7f8', divider: '#d9d9de', error: '#b00020',
       mutedText: '#5a5a63', onAccent: '#ffffff', surface: '#ffffff', text: '#111114',
     },
-    roles: { sheet: { background: '#fff', border: '#ccc' }, notice: { background: '#fff', border: '#ccc' } },
+    roles: {
+      header: { background: '#ffffff', foreground: '#111114', border: '#d9d9de' },
+      sheet: { background: '#fff', border: '#ccc' },
+      notice: { background: '#fff', border: '#ccc' },
+    },
     radii: { sheet: 14 },
     fontFamily: undefined,
   } as any;
@@ -106,7 +110,8 @@ describe('§3.1 header renderer', () => {
     }));
     const root = renderer.root.findByProps({ accessibilityRole: 'header' });
     const flattened = (root.props.style as unknown[]).filter(Boolean) as Record<string, unknown>[];
-    expect(flattened.some((style) => style.backgroundColor === '#f7f7f8')).toBe(true);
+    // The ground and its ink are resolved as a PAIR through the header's slot.
+    expect(flattened.some((style) => style.backgroundColor === '#ffffff')).toBe(true);
     expect(flattened.some((style) => style.height === seatLayerPickerTokens.size.headerHeight)).toBe(true);
     // The venue-and-date meta line is NOT drawn on a phone.
     const output = JSON.stringify(renderer.toJSON());
