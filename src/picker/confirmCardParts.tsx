@@ -313,10 +313,13 @@ const styles = StyleSheet.create({
   // A box with the near corner's three edges inside it: the smallest drawing
   // that still reads as a solid rather than as an empty frame.
   cubeMark: { borderRadius: 3, borderWidth: 1.4, height: cubeSize, marginBottom: 1, width: cubeSize },
-  cubeStem: { bottom: 1.6, height: cubeSize / 2 - 1.6, left: cubeSize / 2 - 0.7, position: 'absolute', width: 1.4 },
-  cubeEdge: { height: 1.4, position: 'absolute', top: cubeSize / 2 - 2.4, width: cubeSize / 2 - 1 },
-  cubeEdgeStart: { left: 0.8, transform: [{ rotate: '-32deg' }] },
-  cubeEdgeEnd: { right: 0.8, transform: [{ rotate: '32deg' }] },
+  // The near vertical edge runs DOWN from the middle, and the two top-face
+  // edges run UP and OUT from it. Turn either of those the other way and the
+  // three strokes close into an arrowhead instead of a corner.
+  cubeStem: { bottom: 2.2, height: cubeSize / 2 - 2.2, left: cubeSize / 2 - 0.7, position: 'absolute', width: 1.4 },
+  cubeEdge: { height: 1.4, position: 'absolute', top: cubeSize / 2 - 1.6, width: cubeSize / 2 - 1.4 },
+  cubeEdgeStart: { left: 1.6, transform: [{ rotate: '30deg' }] },
+  cubeEdgeEnd: { right: 1.6, transform: [{ rotate: '-30deg' }] },
 });
 
 export type ConfirmCardStyleProp = StyleProp<ViewStyle>;
