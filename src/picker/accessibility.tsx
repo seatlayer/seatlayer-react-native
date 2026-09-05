@@ -306,6 +306,7 @@ export function SeatLayerPickerAccessibilityFilters(
       on: scope.snapshot?.map.hideLimitedView ?? false,
       disabled,
       jumpable: false,
+      glyph: "contrast" as const,
     }));
   }
   if (colorblindAvailable) {
@@ -315,6 +316,7 @@ export function SeatLayerPickerAccessibilityFilters(
       on: scope.snapshot?.map.colorblindSafe ?? false,
       disabled,
       jumpable: false,
+      glyph: "contrast" as const,
     }));
   }
 
@@ -381,8 +383,13 @@ export function SeatLayerPickerAccessibilityFilters(
           slots.accessibilityControlButton,
         ]}
       >
+        {/* The disc is the ONE place the reference draws the leaning figure
+            (`accessible_forward_rounded`); the sheet's rows and the section
+            stepper carry the upright one. */}
         <SeatLayerPickerAccessIcon
           color={activeCount ? theme.colors.accent : theme.colors.text}
+          size={21}
+          variant="forward"
         />
         {!props.compact
           ? (

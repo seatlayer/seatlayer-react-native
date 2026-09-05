@@ -97,7 +97,7 @@ export function SeatLayerPickerAccessibleStepper(
           borderColor: theme.colors.divider,
         }]}
       >
-        <SeatLayerPickerAccessIcon color={theme.colors.accent} />
+        <SeatLayerPickerAccessIcon color={theme.colors.accent} size={14} variant="iso" />
         {figure
           ? (
             <Text

@@ -4,7 +4,7 @@ import {
   StyleSheet, Text, View,
 } from "react-native";
 
-import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
+import { SeatLayerPickerAccessIcon, SeatLayerPickerContrastIcon } from "./accessibilityIcon";
 import { seatLayerPickerColorAlpha } from "./colors";
 import { SeatLayerPickerPromptModal } from "./promptModal";
 import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsets } from "./safeAreaInsets";
@@ -33,10 +33,12 @@ export interface SeatLayerPickerAccessSheetRow {
   readonly jumpLabel?: string;
   /**
    * A row for an access need the chart authors carries the drawn wheelchair
-   * mark. The display rows — hide limited view, colourblind-safe — carry none:
-   * a wheelchair beside "Colourblind-friendly colours" says the wrong thing.
+   * mark, in its UPRIGHT form — the leaning figure belongs to the map's disc
+   * alone. The two view rows carry the colour mark instead: a wheelchair
+   * beside "Colourblind-friendly colours" says the wrong thing, and no glyph
+   * at all leaves the rows starting on a different line from the ones above.
    */
-  readonly glyph?: 'access';
+  readonly glyph?: 'access' | 'contrast';
 }
 
 export interface SeatLayerPickerAccessSheetProps {
@@ -153,6 +155,14 @@ export function SeatLayerPickerAccessibilitySheet(
   );
 }
 
+/**
+ * The row glyph's drawn extent. The reference hardcodes 16 here rather than
+ * tokenising it (`picker_accessibility.dart`, the shared row cell), so this
+ * mirrors that literal rather than inventing a token the design data does not
+ * carry; the CELL it sits in is the token, `accessRowIconCell`.
+ */
+const accessRowGlyphSize = 16;
+
 function AccessRow(props: Readonly<{
   row: SeatLayerPickerAccessSheetRow;
   theme: SeatLayerPickerThemeData;
@@ -176,12 +186,23 @@ function AccessRow(props: Readonly<{
           row.disabled ? styles.rowDim : null,
         ]}
       >
-        {row.glyph === 'access'
+        {row.glyph
           ? (
             <View accessible={false} style={styles.iconCell}>
-              <SeatLayerPickerAccessIcon
-                color={row.on ? theme.colors.accent : theme.colors.mutedText}
-              />
+              {row.glyph === 'access'
+                ? (
+                  <SeatLayerPickerAccessIcon
+                    color={row.on ? theme.colors.accent : theme.colors.mutedText}
+                    size={accessRowGlyphSize}
+                    variant="iso"
+                  />
+                )
+                : (
+                  <SeatLayerPickerContrastIcon
+                    color={row.on ? theme.colors.accent : theme.colors.mutedText}
+                    size={accessRowGlyphSize}
+                  />
+                )}
             </View>
           )
           : null}
@@ -219,6 +240,36 @@ function AccessRow(props: Readonly<{
             </Text>
           )
           : null}
+        {/* The count reads BEFORE the switch, as the reference draws it: the
+            row states what there is and only then offers the switch that acts
+            on it, and the switch stays the row's last and rightmost word. */}
+        {row.jumpable && row.countLabel
+          ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${row.label}, ${row.countLabel}, ${row.jumpLabel ?? ""}`}
+              onPress={() => props.onJump(row)}
+              style={styles.jumpTarget}
+            >
+              <View
+                accessible={false}
+                style={[styles.jumpChip, {
+                  backgroundColor: seatLayerPickerColorAlpha(theme.colors.accent, .12),
+                  borderColor: theme.colors.divider,
+                }]}
+              >
+                <Text
+                  style={[styles.jumpText, {
+                    color: theme.colors.text,
+                    fontFamily: theme.fontFamily,
+                  }]}
+                >
+                  {row.countLabel}
+                </Text>
+              </View>
+            </Pressable>
+          )
+          : null}
         <View
           accessible={false}
           style={[styles.track, {
@@ -242,33 +293,6 @@ function AccessRow(props: Readonly<{
           />
         </View>
       </Pressable>
-      {row.jumpable && row.countLabel
-        ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`${row.label}, ${row.countLabel}, ${row.jumpLabel ?? ""}`}
-            onPress={() => props.onJump(row)}
-            style={styles.jumpTarget}
-          >
-            <View
-              accessible={false}
-              style={[styles.jumpChip, {
-                backgroundColor: seatLayerPickerColorAlpha(theme.colors.accent, .12),
-                borderColor: theme.colors.divider,
-              }]}
-            >
-              <Text
-                style={[styles.jumpText, {
-                  color: theme.colors.text,
-                  fontFamily: theme.fontFamily,
-                }]}
-              >
-                {row.countLabel}
-              </Text>
-            </View>
-          </Pressable>
-        )
-        : null}
     </View>
   );
 }
@@ -332,7 +356,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   jumpTarget: {
-    minWidth: size.minimumHitTarget,
     minHeight: size.minimumHitTarget,
     alignItems: "center",
     justifyContent: "center",

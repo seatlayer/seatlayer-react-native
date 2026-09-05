@@ -34,6 +34,8 @@ function setup(options: {
   tour?: boolean;
   counts?: boolean;
   sections?: readonly any[];
+  commands?: readonly string[];
+  caps?: readonly string[];
 } = {}) {
   const calls: unknown[] = [];
   const steps: unknown[] = [];
@@ -63,8 +65,10 @@ function setup(options: {
     mapController: {
       isReady: true,
       supportsPickerCapability: (key: string) =>
-        key === 'native-chrome-contract-v1' || key === 'access-needs-v1',
-      supportsPickerCommand: (key: string) => key === 'picker.setAccessibilityFilter',
+        key === 'native-chrome-contract-v1' || key === 'access-needs-v1' ||
+        (options.caps ?? []).includes(key),
+      supportsPickerCommand: (key: string) =>
+        key === 'picker.setAccessibilityFilter' || (options.commands ?? []).includes(key),
     },
   };
   const cancelled: number[] = [];
@@ -196,6 +200,41 @@ describe('accessibility sheet applies live (§3.5, Flutter 0.7.3)', () => {
       accessibilityLabel: `wheelchair, 12 free, ${english.accessJumpFirstSection}`,
     })).toHaveLength(0);
   });
+
+  it('reads the count BEFORE the switch, and gives every row its own mark', async () => {
+    setup();
+    const renderer = await openSheet();
+    const row = renderer.root.findByProps({ accessibilityRole: 'switch', accessibilityLabel: 'wheelchair' });
+    // The row's own children, in the order the reference draws them: the mark,
+    // the label block, the "N free" chip, and the switch LAST.
+    const kinds = row.children
+      .filter((child: any) => typeof child !== 'string')
+      .map((child: any) => {
+        if (child.findAllByProps({ accessibilityRole: 'button' }).length > 0) return 'count';
+        if (child.props?.style?.some?.((s: any) => s && s.width === seatLayerPickerTokens.size.accessSwitchWidth)) return 'switch';
+        return child.props?.style === undefined ? 'other' : 'block';
+      });
+    expect(kinds.indexOf('count')).toBeGreaterThan(-1);
+    expect(kinds.indexOf('switch')).toBe(kinds.length - 1);
+    expect(kinds.indexOf('count')).toBeLessThan(kinds.indexOf('switch'));
+    // Neither mark is a typed character: the platform paints U+267F in its own
+    // colours, so both are drawn and both take the ink they are handed.
+    const glyphs = renderer.root.findAllByType('Text' as any)
+      .map((node: any) => String(node.children?.[0] ?? ''));
+    expect(glyphs.some((text) => text.includes('\u267F'))).toBe(false);
+  });
+
+  it('gives the colour rows the split-circle mark, never the wheelchair', async () => {
+    setup({ commands: ['picker.setColorblindSafe'], caps: ['colorblind-safe'] });
+    const renderer = await openSheet();
+    const colorblind = renderer.root.findByProps({
+      accessibilityRole: 'switch', accessibilityLabel: english.colorblindSafe,
+    });
+    const split = colorblind.findAll((node: any) =>
+      Array.isArray(node.props?.style) && node.props.style.some((s: any) => s && s.overflow === 'hidden'));
+    expect(split.length).toBeGreaterThan(0);
+  });
+
 });
 
 describe('accessible-section stepper (§3.4.1)', () => {
