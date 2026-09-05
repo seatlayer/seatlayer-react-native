@@ -11,7 +11,7 @@ The official SeatLayer React Native and Expo SDK adds an interactive seating
 chart and seat picker to iOS and Android ticketing apps. It combines live
 availability, best-available selection, temporary holds, and typed TypeScript
 APIs with composable React Native buyer controls around SeatLayer's
-version-pinned WebView venue renderer; your trusted server completes booking.
+version-pinned shared venue renderer; your trusted server completes booking.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
