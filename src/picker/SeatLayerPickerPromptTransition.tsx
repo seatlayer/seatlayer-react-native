@@ -1,8 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 
+import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { resolveSeatLayerPickerMotion } from './motion';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
+import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerPickerPromptTransitionProps {
   readonly prompt: ReactNode | null;
@@ -11,6 +13,13 @@ export interface SeatLayerPickerPromptTransitionProps {
   readonly scrimColor: string;
   /** A controller/runtime replacement must never retain an old prompt surface. */
   readonly sessionId: string | number;
+  /**
+   * The seat card is a fixed sheet at the foot of the map, one home for the
+   * whole session (§3.8.2); every other prompt is centred over the scrim.
+   */
+  readonly anchor?: 'centre' | 'foot';
+  /** The chrome band the foot-anchored card rests above. */
+  readonly bottomInset?: number;
 }
 
 type TransitionState = Readonly<{ current: ReactNode | null; currentKey: string | number | null; outgoing: ReactNode | null }>;
@@ -20,11 +29,16 @@ const promptScale = 0.965;
 
 /** Scoped adaptive prompt transition; it owns no prompt/back/presentation state. */
 export function SeatLayerPickerPromptTransition({
+  anchor = 'centre',
+  bottomInset = 0,
   prompt,
   promptKey,
   scrimColor,
   sessionId,
 }: SeatLayerPickerPromptTransitionProps): React.ReactElement {
+  // The raised prompt layer is native chrome over the map: it reports its own
+  // rectangle so the runtime stops routing touches under it (§2.4).
+  const blocked = useSeatLayerPickerBlockedRegion(prompt !== null);
   const reducedMotion = useSeatLayerPickerReducedMotion();
   const [surfaces, setSurfaces] = useState<TransitionState>(() => (
     prompt === null ? empty : { current: prompt, currentKey: promptKey, outgoing: null }
@@ -83,14 +97,20 @@ export function SeatLayerPickerPromptTransition({
 
   const present = surfaces.current !== null || surfaces.outgoing !== null;
   const interactive = prompt !== null;
+  const surfaceStyle = anchor === 'foot'
+    ? [styles.surface, styles.footSurface, {
+      paddingBottom: seatLayerPickerTokens.size.confirmCardRestInset + Math.max(0, bottomInset),
+    }]
+    : styles.surface;
   return (
-    <View onLayout={(event) => {
+    <View collapsable={false} onLayout={(event) => {
+      blocked.onLayout(event);
       if (sessionRef.current !== sessionId) return;
       const next = event.nativeEvent.layout.height;
       if (typeof next === 'number' && Number.isFinite(next)) setHeight(Math.max(0, next));
-    }} pointerEvents={interactive ? 'auto' : 'none'} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
-      {surfaces.outgoing === null ? null : <Animated.View pointerEvents="none" style={[styles.surface, exitStyle(exit, height * promptProjectionRatio)]}>{surfaces.outgoing}</Animated.View>}
-      {surfaces.current === null ? null : <Animated.View pointerEvents="auto" style={[styles.surface, enterStyle(enter, height * promptProjectionRatio)]}>{surfaces.current}</Animated.View>}
+    }} pointerEvents={interactive ? 'auto' : 'none'} ref={blocked.ref as never} style={[styles.root, { backgroundColor: present ? scrimColor : 'transparent' }]}>
+      {surfaces.outgoing === null ? null : <Animated.View pointerEvents="none" style={[surfaceStyle, exitStyle(exit, height * promptProjectionRatio)]}>{surfaces.outgoing}</Animated.View>}
+      {surfaces.current === null ? null : <Animated.View pointerEvents="auto" style={[surfaceStyle, enterStyle(enter, height * promptProjectionRatio)]}>{surfaces.current}</Animated.View>}
     </View>
   );
 }
@@ -144,4 +164,5 @@ const fill = { position: 'absolute' as const, top: 0, right: 0, bottom: 0, left:
 const styles = StyleSheet.create({
   root: fill,
   surface: { ...fill, alignItems: 'center', justifyContent: 'center' },
+  footSurface: { justifyContent: 'flex-end' },
 });

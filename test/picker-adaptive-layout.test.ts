@@ -284,10 +284,12 @@ describe('adaptive picker composition', () => {
     state.scope = first;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
-    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 88, bottom: 0 });
+    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 0 });
     expect(tree.root.findByType('venue' as any).props).toMatchObject({ topInset: 10, bottomInset: 10, reserveInset: true });
     expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
+    // §3.4/§3.5: the chip sits under the scene's back pill, by the pill's own
+    // height and the map anchor gap — not under a rail that is no longer there.
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(56);
     expect(first.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
     state.scope = scope({ sessionId: 2 });
     await act(async () => { tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
@@ -458,7 +460,9 @@ describe('adaptive picker composition', () => {
     const accessStyle = access.parent?.props.style[1] as { bottom: number };
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
     // The dock's 52 px is gone from the phone band: no dock, no lift (§3.6).
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
+    // The price rail is a band above the map (§3.2), so only the TEST chip
+    // stands over the map's top edge.
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 38, bottom: 116 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -829,17 +833,18 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('withholds a localized price rail until its same-row view control is measured', async () => {
+  it('draws the price rail as a band that never waits on the map controls', async () => {
     state.scope = scope({
       snapshot: { categories: [{ notForSale: false }], capabilities: ['venue3d'], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' } },
     });
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
     const controls = tree.root.findByType('controls' as any);
-    expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
-    await act(async () => { controls.props.onViewModeLayout(280); });
+    // §3.2: a band between the header and the map cannot collide with the
+    // Map / 3D control, so it is drawn on the first frame.
     const legend = tree.root.findByType('legend' as any);
-    expect(legend.parent?.props.style[1]).toMatchObject({ right: 298, top: 8 });
+    expect(legend.parent?.props.testID).toBe('seatlayer-price-band');
+    expect(legend.parent?.props.style[0].height).toBe(44);
     expect(controls).toBeTruthy();
     await act(async () => { tree.unmount(); });
   });
@@ -859,10 +864,12 @@ describe('adaptive picker composition', () => {
     })); });
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 44, top: 8 });
+    // The band is out of the map's top-left corner entirely, so the TEST chip
+    // owns it alone, at the map anchor inset.
+    expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(12);
     expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });
@@ -881,14 +888,14 @@ describe('adaptive picker composition', () => {
       onCheckout: checkout, options: { chrome: { overview: true } },
     })); });
     const controls = tree.root.findByType('controls' as any);
-    expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('legend' as any)).toHaveLength(1);
     await act(async () => { controls.props.onViewModeLayout(280); });
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 298, top: 8 });
+    expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(12);
     expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     await act(async () => { tree.unmount(); });
   });

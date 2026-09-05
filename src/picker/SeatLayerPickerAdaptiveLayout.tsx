@@ -9,15 +9,27 @@ import {
   seatLayerPickerAdaptiveInteractionBlocked,
   seatLayerPickerPendingCandidateEpochFor,
   seatLayerPickerPhoneChromeTop,
-  seatLayerPickerPhoneLegendHeight,
   seatLayerPickerPhoneRailGap,
-  seatLayerPickerPhoneRailTop,
 } from './adaptiveLayoutState';
 import { useSeatLayerPickerAdaptiveSheetOpening } from './adaptiveSheetOpening';
 import { SeatLayerPickerAttribution } from './attribution';
 import type { SeatLayerPickerBuilders } from './builders';
 import { SeatLayerConfirmCard } from './SeatLayerConfirmCard';
 import { SeatLayerPickerSeatConfirmation } from './SeatLayerPickerSeatConfirmation';
+import { SpotlightGlass } from './SpotlightGlass';
+import { useSeatLayerPickerSeatRemovalSeat } from './seatConfirmationRemoval';
+import { useSeatLayerPickerSeatLiftBinding } from './seatLiftBinding';
+import { SeatLayerPickerToastLayer, useSeatLayerPickerToastQueue } from './SeatLayerPickerToast';
+import { seatLayerPickerHoldLapseNews, seatLayerPickerToastRequest } from './toastBridge';
+import { SeatLayerPickerAccessibleStepper } from './SeatLayerPickerAccessibleStepper';
+import { SeatLayerHoldOwnershipNotice } from './SeatLayerHoldOwnershipNotice';
+import {
+  SeatLayerPickerAccessPanel, SeatLayerPickerSalesClosedStatement,
+} from './SeatLayerPickerAccessPanel';
+import {
+  SeatLayerPickerBookedOverlay, SeatLayerPickerSoldOutOverlay,
+} from './SeatLayerPickerStateOverlays';
+import type { SeatLayerPickerSelectedSeat } from './models';
 import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
 import { SeatLayerBookButton, SeatLayerCartSheet } from './SeatLayerCartSheet';
 import { SeatLayerCartList } from './SeatLayerCartList';
@@ -85,7 +97,6 @@ export interface SeatLayerPickerAdaptiveLayoutProps {
   readonly onSeatViewOpened?: SeatLayerPickerCallbacks['onSeatViewOpened'];
   readonly onSectionFocused?: SeatLayerPickerCallbacks['onSectionFocused'];
   readonly onSeatRemoved?: SeatLayerPickerCallbacks['onSeatRemoved'];
-  readonly onCartUndo?: (labels: readonly string[]) => unknown;
   readonly hapticAdapter?: SeatLayerPickerHapticAdapter;
   /** Host safe geometry for the measured ready-made surface. */
   readonly safeAreaInsets?: SeatLayerPickerSafeAreaInsetInput;
@@ -107,7 +118,6 @@ export function SeatLayerPickerAdaptiveLayout({
   builders,
   onClose,
   onCheckout,
-  onCartUndo,
   onSeatRemoved,
   onSectionFocused,
   onSeatSelected,
@@ -205,9 +215,11 @@ export function SeatLayerPickerAdaptiveLayout({
   const accessibilityVisible = !venueMode && !panoramaUp && nativeChrome && plan.options.chrome.accessibility &&
     canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
   const priceRailAvailable = plan.options.chrome.priceLegend && categoriesVisible;
-  const legendVisible = !panoramaUp && priceRailAvailable && (!phoneControls.right || viewModeWidth !== undefined);
-  const legendHeight = legendVisible
-    ? seatLayerPickerPhoneLegendHeight : 0;
+  // A band between the header and the map cannot collide with the Map / 3D
+  // control, so it no longer waits for that control to be measured: the wait
+  // was what kept the rail off the phone entirely when the measurement never
+  // arrived. It is simply not drawn while an immersive scene is up (§3.2).
+  const legendVisible = !panoramaUp && !venueMode && priceRailAvailable;
   const floorHeight = floorStripVisible
     ? seatLayerPickerTokens.size.minimumHitTarget : 0;
   // The 3D scene owns its own top-left corner. Price categories can still be
@@ -216,27 +228,19 @@ export function SeatLayerPickerAdaptiveLayout({
   // Keep it on the same top edge as the Map / 3D control instead.
   const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const topControlsHeight = phoneControls.left || phoneControls.right ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerPhoneChromeTop : 0;
-  const legendTop = seatLayerPickerPhoneRailTop;
-  const baseLegendLeft = phoneControls.left
-    ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerTokens.size.minimumHitTarget + seatLayerPickerPhoneRailGap
-    : 0;
-  // TEST MODE is the first item in the top-left anchor region, beside the
-  // price rail—not a second row floating over the venue. Reserve a stable
-  // first-frame estimate until native text measurement supplies the exact width.
-  const badgeSharesTopRail = !(venueMode && venueVisible);
-  const legendLeft = testBadgeVisible && badgeSharesTopRail
-    ? Math.max(baseLegendLeft, 10 + (testBadgeWidth ?? 76) + seatLayerPickerPhoneRailGap)
-    : baseLegendLeft;
-  const legendRight = phoneControls.right && viewModeWidth !== undefined
-    ? seatLayerPickerMapControlsEdgeInset + viewModeWidth + seatLayerPickerPhoneRailGap
-    : seatLayerPickerTokens.size.minimumHitTarget;
-  const floorTop = floorStripVisible ? Math.max(seatLayerPickerPhoneChromeTop, legendHeight > 0 ? legendTop + legendHeight : 0, topControlsHeight) : 0;
-  const topRailHeight = venueMode && venueVisible
+  // §3.2: the price rail is a band of its own between the header and the map,
+  // never floated over it — on a busy chart the seat numbers read through the
+  // chip gaps and the last chip clips under the Map / 3D control.
+  const backPillDrawn = venueMode && venueVisible;
+  const floorTop = floorStripVisible ? Math.max(seatLayerPickerPhoneChromeTop, topControlsHeight) : 0;
+  const topRailHeight = backPillDrawn
     ? immersiveTopInset + seatLayerPickerTokens.size.minimumHitTarget
-    : Math.max(legendHeight > 0 ? legendTop + legendHeight : 0, topControlsHeight, floorTop + floorHeight);
-  const badgeTop = badgeSharesTopRail
-    ? seatLayerPickerPhoneRailTop
-    : topRailHeight + seatLayerPickerPhoneRailGap;
+    : Math.max(topControlsHeight, floorTop + floorHeight);
+  // The chip rests on the map's own top-left anchor; only the immersive
+  // scene's back pill, which owns that corner, pushes it down.
+  const badgeTop = backPillDrawn
+    ? seatLayerPickerTokens.size.immersiveBackPillHeight + seatLayerPickerTokens.size.mapAnchorGap
+    : seatLayerPickerTokens.size.mapAnchorInset;
   const topHeight = Math.max(
     topRailHeight,
     testBadgeVisible ? badgeTop + seatLayerPickerTestModeIndicatorCompactHeight : 0,
@@ -428,7 +432,6 @@ export function SeatLayerPickerAdaptiveLayout({
     ? part(builders, scope, 'cartList', <SeatLayerCartList
       onSeatRemoved={onSeatRemoved === undefined ? undefined : (line) =>
         invokeSeatLayerPickerCallback(onSeatRemoved, line.label, scope.reportError)}
-      onUndo={onCartUndo}
     />)
     : null;
   const bestAvailable = plan.options.enableBestAvailable
@@ -459,11 +462,14 @@ export function SeatLayerPickerAdaptiveLayout({
         paddingTop: safeLayout.insets.top,
       }]} testID="seatlayer-adaptive-safe-content">
         {header}
+        {wide || legend === null ? null : <View style={[styles.legendBand, {
+          backgroundColor: scope.resolvedTheme.colors.surface,
+          borderBottomColor: scope.resolvedTheme.colors.divider,
+        }]} testID="seatlayer-price-band">{legend}</View>}
         <View style={wide ? styles.wide : styles.phone}>
         <View style={styles.map}>
           {chart}
           {wide ? null : <View pointerEvents="box-none" style={styles.phoneOverlays}>
-            <View pointerEvents="box-none" style={[styles.legendRail, { left: legendLeft, right: legendRight, top: legendTop }]}>{legend}</View>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
             {testBadgeVisible ? <View

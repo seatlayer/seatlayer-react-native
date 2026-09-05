@@ -78,6 +78,7 @@ import type {
   SeatLayerPickerScopeProps,
   SeatLayerPickerScopeValue,
 } from './pickerScopeTypes';
+import { SeatLayerPickerScopeProviders } from './scopeProviders';
 export type {
   SeatLayerPickerAvailability,
   SeatLayerPickerScopeProps,
@@ -767,9 +768,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     ],
   );
   return (
-    <SeatLayerPickerScopeContext.Provider value={value}>
-      {children}
-    </SeatLayerPickerScopeContext.Provider>
+    <SeatLayerPickerScopeProviders scheduler={scopeFrameScheduler()} value={value}>{children}</SeatLayerPickerScopeProviders>
   );
 }
 
