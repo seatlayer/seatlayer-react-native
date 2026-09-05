@@ -635,7 +635,10 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   titleWrap: { flex: 1, minWidth: 0 },
   title: {
     fontSize: seatLayerPickerTokens.size.headerNameFontSize,
-    fontWeight: "800",
+    // Seven hundred, as the reference's compact header sets it
+    // (`picker_header.dart` › `_EventTitle`); eight hundred printed the name
+    // two points wide of the reference frame.
+    fontWeight: "700",
   },
   pill: {
     height: seatLayerPickerTokens.size.headerCloseSize,
