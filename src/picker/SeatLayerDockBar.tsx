@@ -579,7 +579,16 @@ function SeatLayerDockBarView({
             }}
           />
           <View style={{ width: 8 }} />
+          {/* §4.10 — where the buyer is, said once, whenever it changes.
+              Stepping to the next section changes nothing else on screen that
+              a screen reader would notice, so the bar says where they have
+              arrived and how much room is left there. The COUNT is spoken even
+              at the widths that cannot draw it: what fits on a 320-point row
+              is not a fact about what the buyer needs to know. */}
           <View
+            accessible
+            accessibilityLabel={countCopy.accessibleName}
+            accessibilityLiveRegion="polite"
             style={{
               alignItems: 'center',
               flex: 1,
