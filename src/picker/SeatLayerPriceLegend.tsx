@@ -9,6 +9,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -25,8 +26,14 @@ import {
   type SeatLayerPickerStyles,
 } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
+import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerPriceLegendProps {
+  /**
+   * Retained for host compositions. 3.2 gives the rail ONE recipe — a band of
+   * its own between the header and the map — so this no longer changes the
+   * paint; it only stays part of the measurement signature.
+   */
   readonly compact?: boolean;
   /** Backdrop sampled by the overflow fade when the rail sits over custom media. */
   readonly edgeFadeColor?: string;
@@ -51,7 +58,38 @@ type LegendMetrics = Readonly<{
   logicalOffsetX?: number;
 }>;
 
-const edgeWidth = 22;
+const edgeWidth = seatLayerPickerTokens.size.legendRailEdgeFade;
+const chipGap = 6;
+
+/**
+ * §3.2 amount rule. A single price prints as itself; equal minimum and maximum
+ * print once; otherwise `{min}+`. A category with no configured price shows its
+ * NAME instead of an amount — a chip with no answer is worse than a chip that
+ * names its band.
+ */
+export function seatLayerPickerLegendChipText(
+  category: Readonly<{ label: string; priceMin: number; priceMax?: number }>,
+  format: (amount: number) => string,
+): string {
+  const min = category.priceMin;
+  if (typeof min !== 'number' || !Number.isFinite(min) || min <= 0) return category.label;
+  const max = typeof category.priceMax === 'number' && Number.isFinite(category.priceMax)
+    ? category.priceMax
+    : min;
+  return max <= min ? format(min) : `${format(min)}+`;
+}
+
+/**
+ * §3.2 / §4.9. Only `category-availability-v1`'s `free` is trustworthy: an
+ * ABSENT figure means unknown, never zero, and is never struck. `available`
+ * reports 0 for a count that has not landed yet, so it can never say sold out.
+ */
+export function seatLayerPickerLegendSoldOut(
+  category: Readonly<{ free?: number }>,
+): boolean {
+  return typeof category.free === 'number' && Number.isFinite(category.free) &&
+    category.free <= 0;
+}
 function clamp(value: number, maximum: number): number {
   return Math.max(0, Math.min(maximum, value));
 }
@@ -154,8 +192,12 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
         !supportsSeatLayerPickerSurface(
           controller, ['native-chrome-contract-v1'], ['picker.setCategoryFilter'],
         )) return undefined;
-      const selected = latest.map.categoryFilter.includes(key);
-      await controller.setCategoryFilter(selected ? [] : [key], !selected);
+      // Both exits carry the framing. Turning a band ON frames that band's
+      // seats; turning it OFF — by `All prices` or by re-pressing the lit chip —
+      // frames the WHOLE venue. The unframed path strands the buyer inside
+      // their drill-in while the block melt runs underneath.
+      const selected = key !== '' && latest.map.categoryFilter.includes(key);
+      await controller.setCategoryFilter(selected || key === '' ? [] : [key], true);
       if (controller !== scope.controller || sessionId !== scope.sessionId) return undefined;
       return undefined;
     },
@@ -223,6 +265,7 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
           ? current
           : height);
       }}
+      strings={scope.strings}
       onToggle={(key) => {
         if (!canFilter) return;
         selectedKeyRef.current = Object.freeze({ key, sessionId: scope.sessionId });
@@ -233,7 +276,6 @@ export function SeatLayerPriceLegend(props: SeatLayerPriceLegendProps): React.Re
 }
 
 function SeatLayerPriceLegendView({
-  compact = false,
   edgeFadeColor,
   style,
   slots,
@@ -245,6 +287,7 @@ function SeatLayerPriceLegendView({
   selectedKeys,
   disabled,
   theme,
+  strings,
   onToggle,
   onHeight,
   measurementToken,
@@ -255,17 +298,21 @@ function SeatLayerPriceLegendView({
     readonly label: string;
     readonly color: string;
     readonly priceMin: number;
+    readonly priceMax?: number;
+    readonly free?: number;
   }>;
   readonly currency: string;
   readonly selectedKeys: readonly string[];
   readonly disabled: boolean;
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly onToggle: (key: string) => void;
+  readonly strings: ReturnType<typeof useSeatLayerPickerScope>['strings'];
   readonly measurementToken: object;
   readonly onFormatterError: (error: unknown) => void;
   readonly onHeight: (event: LayoutChangeEvent, token: object) => void;
 }): React.ReactElement {
   const [edges, setEdges] = useState<LegendEdges>({ leading: false, trailing: false });
+  const [pinnedWidth, setPinnedWidth] = useState(0);
   const metricsRef = useRef<LegendMetrics>({ contentWidth: 0, layoutWidth: 0, offsetX: 0 });
   const activeMeasurementRef = useRef(measurementToken);
   useLayoutEffect(() => {
@@ -302,18 +349,28 @@ function SeatLayerPriceLegendView({
     updateEdges();
   };
   const target = theme.layout.minimumHitTarget;
-  const paintHeight = compact ? 30 : 40;
-  // Compact legends sit over the renderer. Fade into that canvas rather than
-  // painting an opaque sheet-coloured block across the final price chip.
-  const fadeColor = edgeFadeColor ?? (compact ? theme.colors.mapBackground : theme.colors.surface);
+  // 3.2: a band of its own, height `size.topRailHeight`, on the surface with a
+  // divider hairline beneath. Not floated over the map: on a busy chart the seat
+  // numbers read through the gaps, and the last chip clipped under Map/3D.
+  const bandHeight = Math.max(theme.layout.topRailHeight, target);
+  const paintHeight = theme.layout.legendChipHeight;
+  const fadeColor = edgeFadeColor ?? theme.colors.surface;
+  const allSelected = selectedKeys.length === 0;
   return (
     <View
       onLayout={onLayout}
       style={[
-        { height: target, justifyContent: 'center', overflow: 'hidden' },
+        {
+          backgroundColor: theme.colors.surface,
+          borderBottomColor: theme.colors.divider,
+          borderBottomWidth: 1,
+          height: bandHeight,
+          justifyContent: 'center',
+          overflow: 'hidden',
+        },
         slots?.legendContainer,
         sanitizeSeatLayerPickerStyle(style),
-        { height: target, minHeight: target, overflow: 'hidden' },
+        { height: bandHeight, minHeight: bandHeight, overflow: 'hidden' },
       ]}
     >
       <View pointerEvents="box-none" style={{ flex: 1 }}>
@@ -323,9 +380,9 @@ function SeatLayerPriceLegendView({
           contentContainerStyle={{
             alignItems: 'center',
             flexDirection: rtl ? 'row-reverse' : 'row',
-            gap: compact ? 5 : 6,
+            gap: chipGap,
             paddingEnd: edgeWidth,
-            paddingStart: compact ? 8 : 12,
+            paddingStart: pinnedWidth + chipGap,
           }}
           onContentSizeChange={onContentSizeChange}
           onScroll={onScroll}
@@ -333,23 +390,23 @@ function SeatLayerPriceLegendView({
         >
           {categories.map((category) => {
             const selected = selectedKeys.includes(category.key);
-            const fullMoney = formatSeatLayerPickerMoney(
-              category.priceMin,
-              currency,
-              moneyFormatter,
-              onFormatterError,
+            const money = seatLayerPickerLegendChipText(
+              category,
+              (amount) => formatSeatLayerPickerMoney(
+                amount, currency, moneyFormatter, onFormatterError,
+              ),
             );
+            const soldOut = seatLayerPickerLegendSoldOut(category);
             return (
               <LegendChip
                 key={category.key}
                 color={chartSeatLayerPickerColor(category.color, theme.colors.accent)}
-                compact={compact}
-                disabled={disabled}
+                disabled={disabled || soldOut}
                 label={category.label}
-                money={fullMoney}
+                money={money}
                 paintHeight={paintHeight}
                 selected={selected}
-                semanticMoney={fullMoney}
+                soldOut={soldOut}
                 slots={slots}
                 target={target}
                 theme={theme}
@@ -358,6 +415,40 @@ function SeatLayerPriceLegendView({
             );
           })}
         </ScrollView>
+        <View
+          onLayout={(event: LayoutChangeEvent) => {
+            const width = event.nativeEvent.layout.width;
+            if (!Number.isFinite(width) || width <= 0) return;
+            setPinnedWidth((current) => Math.abs(current - width) < 0.5 ? current : width);
+          }}
+          pointerEvents="box-none"
+          style={{
+            bottom: 0,
+            justifyContent: 'center',
+            position: 'absolute',
+            start: 0,
+            top: 0,
+            // While the scroller has scrolled the pinned chip carries a halo of
+            // the band ground, so chips slide UNDER it rather than through it;
+            // at rest the halo is off so the first price keeps its rounded end.
+            ...(edges.leading ? { backgroundColor: theme.colors.surface } : {}),
+          }}
+        >
+          <LegendChip
+            allPrices
+            color={theme.colors.accent}
+            disabled={disabled}
+            label={strings.translate('allPrices')}
+            money={strings.translate('allPrices')}
+            paintHeight={paintHeight}
+            selected={allSelected}
+            soldOut={false}
+            slots={slots}
+            target={target}
+            theme={theme}
+            onPress={() => onToggle('')}
+          />
+        </View>
         {(edges.leading || edges.trailing) ? (
           <View
             pointerEvents="none"
@@ -400,41 +491,57 @@ function LegendEdgeFade({ color, leading, rtl }: {
 
 
 function LegendChip({
-  compact,
   paintHeight,
   target,
   selected,
   disabled,
+  soldOut,
+  allPrices = false,
   label,
   money,
-  semanticMoney,
   color,
   theme,
   slots,
   onPress,
 }: {
-  readonly compact: boolean;
   readonly paintHeight: number;
   readonly target: number;
   readonly selected: boolean;
   readonly disabled: boolean;
+  readonly soldOut: boolean;
+  /** The pinned first chip: the band's own ground, no colour key, never struck. */
+  readonly allPrices?: boolean;
   readonly label: string;
   readonly money: string;
-  readonly semanticMoney: string;
   readonly color: string;
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly slots: SeatLayerPriceLegendProps['slots'];
   readonly onPress: () => void;
 }): React.ReactElement {
-  const textStyle = {
-    color: selected ? theme.colors.onAccent : theme.colors.text,
+  const dark = theme.themeMode === 'dark';
+  const dotSize = theme.layout.legendChipDotSize;
+  const ink = selected ? theme.colors.onAccent : theme.colors.text;
+  const textStyle: TextStyle = {
+    color: ink,
     fontFamily: theme.fontFamily,
-    fontSize: compact ? theme.layout.legendChipFontSize : 12,
-    fontWeight: '800' as const,
+    fontSize: theme.layout.legendChipFontSize,
+    fontVariant: ['tabular-nums'],
+    fontWeight: '800',
   };
+  // 3.2: on LIGHT the dot is the category colour mixed into the surface with a
+  // full-strength ring of the category colour — matching how the map tints
+  // sections on light. Dark keeps the flat dot. A fixed recipe, not a token.
+  // A selected chip inverts, so the dot gains a ring in the ink colour and the
+  // colour key survives the inversion.
+  const ringColor = selected ? ink : color;
+  const dotFill = selected
+    ? color
+    : dark
+      ? color
+      : blendSeatLayerPickerColor(color, theme.colors.surface, 0.45, color);
   return (
     <Pressable
-      accessibilityLabel={`${label}, ${semanticMoney}`}
+      accessibilityLabel={allPrices ? label : `${label}, ${money}`}
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
@@ -451,50 +558,39 @@ function LegendChip({
             alignItems: 'center',
             backgroundColor: selected
               ? theme.colors.accent
-              : blendSeatLayerPickerColor(
-                theme.colors.text,
-                theme.colors.surface,
-                0.04,
-                theme.colors.surface,
-              ),
+              : theme.colors.background,
             borderColor: selected ? theme.colors.accent : theme.colors.divider,
             borderRadius: theme.radii.chip,
             borderWidth: 1,
             flexDirection: 'row',
             height: paintHeight,
-            paddingHorizontal: compact ? 6 : 10,
+            opacity: soldOut ? 0.55 : 1,
+            paddingHorizontal: 9,
           },
           slots?.legendChipContainer,
           { height: paintHeight },
         ]}
       >
-        <View
-          style={{
-            backgroundColor: color,
-            borderRadius: 10,
-            height: compact ? 8 : 10,
-            width: compact ? 8 : 10,
-          }}
-        />
-        {compact ? null : (
-          <Text numberOfLines={1} style={[{ ...textStyle, marginStart: 7 }, slots?.legendChipText]}>
-            {label}
-          </Text>
-        )}
-        {compact ? null : (
+        {allPrices ? null : (
           <View
             style={{
-              backgroundColor: theme.colors.mutedText,
-              borderRadius: 2,
-              height: 3,
-              marginHorizontal: 6,
-              width: 3,
+              backgroundColor: dotFill,
+              borderColor: ringColor,
+              borderRadius: dotSize,
+              borderWidth: selected || !dark ? 1.5 : 0,
+              height: dotSize,
+              marginEnd: 6,
+              width: dotSize,
             }}
           />
         )}
         <Text
           numberOfLines={1}
-          style={[{ ...textStyle, marginStart: compact ? 5 : 0 }, slots?.legendChipText]}
+          style={[
+            textStyle,
+            soldOut ? { textDecorationLine: 'line-through' } : undefined,
+            slots?.legendChipText,
+          ]}
         >
           {money}
         </Text>

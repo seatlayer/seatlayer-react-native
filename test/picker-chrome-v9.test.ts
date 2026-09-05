@@ -34,6 +34,11 @@ import {
 import { canOfferSeatLayerAllFloors, isSeatLayerPickerFloorSelectionEnabled } from '../src/picker/SeatLayerFloorStrip';
 import { planSeatLayerMapBottomControls } from '../src/picker/SeatLayerMapControls';
 import {
+  seatLayerPickerContrastRatio,
+  seatLayerPickerTestChipContrastFloor,
+  seatLayerPickerTestChipWash,
+} from '../src/picker/testChipInk';
+import {
   priceLegendEdges,
   priceLegendFadeSteps,
   priceLegendVisualContentWidth,
@@ -176,7 +181,8 @@ describe('picker chrome pure plans', () => {
     expect(priceLegendFadeSteps(false, false)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(true, true)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(false, true)).toEqual([1, 0.5, 0.12]);
-    expect(priceLegendVisualContentWidth(122)).toBe(100);
+    // 3.2: the trailing breathing room is `size.legendRailEdgeFade`.
+    expect(priceLegendVisualContentWidth(122)).toBe(104);
     expect(priceLegendVisualContentWidth(18)).toBe(0);
     expect(priceLegendMeasurementSignature(
       [{ key: 'a|b', label: 'Front', priceMin: 20 }], 'USD', false, false, 'auto', 44, 11,
@@ -335,8 +341,15 @@ describe('picker chrome pure plans', () => {
         testMode: true, theme, strings,
       }));
     });
+    // 3.4: the ink is resolved against the chip's own wash, not the surface,
+    // and must clear the small-text floor whatever the host theme.
     const warningText = indicator.root.findByType('Text' as any);
-    expect(warningText.props.style).toContainEqual(expect.objectContaining({ color: '#000000' }));
+    const ink = (warningText.props.style as ReadonlyArray<Record<string, string>>)
+      .find((entry) => typeof entry?.color === 'string')?.color;
+    const wash = seatLayerPickerTestChipWash('#f4b740', '#ffffff', 0.18);
+    expect(ink).toBeTypeOf('string');
+    expect(seatLayerPickerContrastRatio(ink!, wash))
+      .toBeGreaterThanOrEqual(seatLayerPickerTestChipContrastFloor);
     let attribution!: TestRenderer.ReactTestRenderer;
     act(() => {
       attribution = TestRenderer.create(React.createElement(SeatLayerPickerAttributionView, {

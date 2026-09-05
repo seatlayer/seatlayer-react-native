@@ -265,6 +265,8 @@ export {
 export {
   SeatLayerPriceLegend,
   SeatLayerPriceLegend as SeatLayerPickerPriceRail,
+  seatLayerPickerLegendChipText,
+  seatLayerPickerLegendSoldOut,
   type SeatLayerPriceLegendProps,
 } from './picker/SeatLayerPriceLegend';
 export { SeatLayerDockBar, type SeatLayerDockBarProps } from './picker/SeatLayerDockBar';
