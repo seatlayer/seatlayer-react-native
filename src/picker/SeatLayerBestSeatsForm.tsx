@@ -17,7 +17,6 @@ import {
 
 import { SeatLayerPickerBottomSheetFrame } from './SeatLayerPickerBottomSheetFrame';
 import { SeatLayerPickerPromptModal } from './promptModal';
-import { blendSeatLayerPickerColor } from './colors';
 import type { SeatLayerPickerSafeAreaInsetInput } from './safeAreaInsets';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import {
@@ -211,7 +210,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
       accessibilityState={{ disabled: !allowed }} onPress={() => openChoice(kind)}
       testID={`seatlayer-best-seats-${kind}`}
       style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignSelf: 'stretch', justifyContent: 'center' }}>
-      <View style={[{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.bestSeatsSelectHeight, paddingHorizontal: 10 }, styles.bestSeatsSelector]}>
+      <View style={[{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.bestSeatsSelectHeight, paddingHorizontal: 10 }, styles.bestSeatsSelector]}>
         <Text numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
         <View accessible={false} style={{ borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 }} />
       </View>
@@ -284,7 +283,7 @@ function BestSeatsStepper({ allowed, count, maximum, onDecrease, onIncrease, sco
 }>): React.ReactElement {
   const decreaseDisabled = !allowed || count <= 1;
   const increaseDisabled = !allowed || count >= maximum;
-  return <View testID="seatlayer-best-seats-stepper" style={{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'space-between', width: seatLayerPickerTokens.size.bestSeatsStepperWidth }}>
+  return <View testID="seatlayer-best-seats-stepper" style={{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'space-between', width: seatLayerPickerTokens.size.bestSeatsStepperWidth }}>
     <StepperButton label={scope.strings.translate('fewerTickets')} disabled={decreaseDisabled} onPress={onDecrease} theme={theme}>−</StepperButton>
     <Text accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontVariant: ['tabular-nums'], fontWeight: '800', textAlign: 'center' }}>{count}</Text>
     <StepperButton label={scope.strings.translate('moreTickets')} disabled={increaseDisabled} onPress={onIncrease} theme={theme}>+</StepperButton>
