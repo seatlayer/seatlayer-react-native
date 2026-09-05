@@ -1,3 +1,4 @@
+import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -182,7 +183,12 @@ describe('cart projections and identity safety', () => {
       seat({ lineKey: '4', label: 'D-1', objectId: 'row-4', rowLabel: '4' }),
       seat({ lineKey: '5', label: 'E-1', objectId: 'row-5', rowLabel: '5' }),
     ]));
-    expect(projectVisibleRuns(runs, 3, false)).toMatchObject({ hiddenCount: 2, canToggle: true });
-    expect(projectVisibleRuns(runs, 3, true)).toMatchObject({ hiddenCount: 0, canToggle: true });
+    // Spec §3.10.2: nothing folds until there are `denseCollapseFrom` runs.
+    // Five runs under a three-run window still print in full.
+    expect(projectVisibleRuns(runs, 3, false, 6)).toMatchObject({ hiddenCount: 0, canToggle: false });
+    expect(projectVisibleRuns(runs, 3, false, 5)).toMatchObject({ hiddenCount: 2, canToggle: true });
+    expect(projectVisibleRuns(runs, 3, true, 5)).toMatchObject({ hiddenCount: 0, canToggle: true });
+    expect(seatLayerPickerTokens.size.denseCollapseFrom).toBe(6);
+    expect(seatLayerPickerTokens.size.denseVisibleLines).toBe(4);
   });
 });

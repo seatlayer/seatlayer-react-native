@@ -6,6 +6,8 @@
  * them, and its outputs are plain data a React Native surface can render.
  */
 
+import { seatLayerPickerTokens } from './tokens.g';
+
 export interface SeatLayerCartLineLike {
   readonly lineKey?: string | null;
   /** Runtime inventory identity; this is the value used for remove/undo. */
@@ -298,17 +300,25 @@ export function projectConfirmedCart<T extends SeatLayerCartLineLike>(
   }));
 }
 
+/**
+ * Overflow (spec §3.10.2): the list does not start folding until there are
+ * `collapseFrom` runs; only then does everything past `visibleLimit` go behind
+ * the `+N more` row. Five runs under a four-run window still print in full.
+ */
 export function projectVisibleRuns<T extends SeatLayerCartLineLike>(
   runs: readonly DenseTicketRun<T>[],
   visibleLimit: number,
   expanded: boolean,
+  collapseFrom: number = seatLayerPickerTokens.size.denseCollapseFrom,
 ): VisibleRunProjection<T> {
   const limit = Number.isFinite(visibleLimit) ? Math.max(0, Math.floor(visibleLimit)) : 0;
-  const hiddenCount = expanded ? 0 : Math.max(0, runs.length - limit);
+  const threshold = Number.isFinite(collapseFrom) ? Math.max(0, Math.floor(collapseFrom)) : 0;
+  const collapsible = runs.length >= threshold && runs.length > limit;
+  const hiddenCount = expanded || !collapsible ? 0 : Math.max(0, runs.length - limit);
   return {
     visible: hiddenCount === 0 ? runs : runs.slice(0, limit),
     hiddenCount,
-    canToggle: runs.length > limit,
+    canToggle: collapsible,
   };
 }
 

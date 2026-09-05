@@ -9,9 +9,10 @@ import React, {
 import {
   Animated,
   Easing,
-  LayoutAnimation,
+  PanResponder,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   useWindowDimensions,
   View,
@@ -23,10 +24,16 @@ import {
 import { SeatLayerPickerAttribution } from './attribution';
 import { SeatLayerPickerActionError } from './actionError';
 import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
-import { SeatLayerPickerBottomSheetFrame } from './SeatLayerPickerBottomSheetFrame';
 import { SeatLayerCartList } from './SeatLayerCartList';
 import { SeatLayerHoldLapseNotice } from './SeatLayerHoldLapseNotice';
-import { SeatLayerPickerPromptModal } from './promptModal';
+import {
+  SeatLayerCartPeekHead,
+  SeatLayerFindSeatsPill,
+  SeatLayerPeekContinuePill,
+  SeatLayerSheetChevron,
+  SeatLayerSheetFoot,
+} from './cartPeekHead';
+import { seatLayerCheckoutCtaState, type SeatLayerCheckoutCtaState } from './checkoutCta';
 import {
   normalizeSeatLayerPickerSafeAreaInsets,
   type SeatLayerPickerSafeAreaInsetInput,
@@ -38,7 +45,15 @@ import {
   cartSheetMaximumBodyHeight,
   isSeatLayerCartActionCurrent,
   projectSeatLayerCartSheet,
+  seatLayerCartCheapestPrice,
 } from './cartSheetUi';
+import {
+  seatLayerSheetDetentAt,
+  seatLayerSheetDetents,
+  seatLayerSheetRubberBanded,
+  seatLayerSheetSettle,
+  seatLayerSheetSpring,
+} from './sheetDrag';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerMotion } from './motion';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
@@ -52,9 +67,7 @@ import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
-type PromptHandle = Exclude<ReturnType<Scope['claimPrompt']>, undefined>;
 type BookSlots = Pick<SeatLayerPickerStyles, 'continueButton' | 'continueButtonText'>;
-const peekContinuePaintHeight = 34;
 
 export interface SeatLayerCartSheetProps {
   readonly expanded: boolean;
@@ -81,6 +94,19 @@ export interface SeatLayerBookButtonProps {
   readonly slots?: BookSlots;
 }
 
+function canRejectHandoff(controller: Scope['controller']): boolean {
+  return supportsSeatLayerPickerSurface(
+    controller,
+    ['checkout-handoff-reject-v1'],
+    ['picker.rejectHandoff'],
+  );
+}
+
+/**
+ * The controller's composite permission. `removingCartLine` is deliberately
+ * absent from it: a removal never blocks checkout, because inventory mutations
+ * are serialised and a Continue pressed during one is sent after it.
+ */
 function checkoutAllowed(scope: Scope): boolean {
   const snapshot = scope.controller.getSnapshot();
   return snapshot !== undefined && scope.isReady && !scope.readOnly && !scope.isBusy &&
@@ -90,28 +116,18 @@ function checkoutAllowed(scope: Scope): boolean {
     supportsSeatLayerPickerSurface(scope.controller, ['checkout-handoff-v1'], ['picker.continue']);
 }
 
-function canRejectHandoff(controller: Scope['controller']): boolean {
-  return supportsSeatLayerPickerSurface(
-    controller,
-    ['checkout-handoff-reject-v1'],
-    ['picker.rejectHandoff'],
-  );
-}
-
-/** A public-ready scoped CTA with one commit-safe checkout flight. */
-export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.ReactElement {
+/** One checkout flight, shared by the peek pill and the sheet's own footer. */
+function useSeatLayerCheckoutFlight(
+  onCheckout: SeatLayerBookButtonProps['onCheckout'],
+): Readonly<{ busy: boolean; press: () => void }> {
   const scope = useSeatLayerPickerScope();
   const scopeRef = useRef(scope);
-  const callbackRef = useRef(props.onCheckout);
+  const callbackRef = useRef(onCheckout);
   const mountedRef = useRef(true);
   const flightRef = useRef(0);
   const nextFlightRef = useRef(0);
   const [busy, setBusy] = useState(false);
-
-  useLayoutEffect(() => {
-    scopeRef.current = scope;
-    callbackRef.current = props.onCheckout;
-  }, [props.onCheckout, scope]);
+  useLayoutEffect(() => { scopeRef.current = scope; callbackRef.current = onCheckout; }, [onCheckout, scope]);
   useEffect(() => {
     mountedRef.current = true;
     return () => { mountedRef.current = false; flightRef.current = 0; nextFlightRef.current += 1; };
@@ -121,18 +137,6 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
     nextFlightRef.current += 1;
     setBusy(false);
   }, [scope.controller, scope.sessionId, scope.snapshot?.sessionId]);
-
-  const projection = projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat);
-  const total = projection.totals.currency === null
-    ? undefined
-    : scope.formatMoney(projection.totals.total, projection.totals.currency);
-  const label = props.compact
-    ? total
-      ? scope.strings.translate('continueWithTotal', { values: { money: total } })
-      : scope.strings.translate('continueWord')
-    : scope.strings.translate('holdAndCheckout');
-  const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
-  const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   const checkout = async () => {
     const before = scopeRef.current;
     const lease = captureSeatLayerCartActionLease(before.controller, before.sessionId);
@@ -140,9 +144,8 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
     const flight = ++nextFlightRef.current;
     flightRef.current = flight;
     setBusy(true);
-    let handoff: SeatLayerPickerCheckoutHandoff | undefined;
     try {
-      handoff = await before.controller.checkout();
+      const handoff = await before.controller.checkout();
       if (!before.isSessionActive() || !isSeatLayerCartActionCurrent(lease, scopeRef.current)) {
         if (canRejectHandoff(before.controller)) {
           try { await before.controller.rejectHandoff(handoff.holdId); } catch { /* best effort */ }
@@ -173,45 +176,121 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
       }
     }
   };
-  const disabled = busy || flightRef.current !== 0 || !checkoutAllowed(scope);
+  return { busy, press: () => { void checkout(); } };
+}
+
+/** The one resolved reading of the call to action, for whichever surface draws it. */
+export function useSeatLayerCheckoutCta(
+  handoffInFlight: boolean,
+  canOfferFind = false,
+): SeatLayerCheckoutCtaState {
+  const scope = useSeatLayerPickerScope();
+  const projection = projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat);
+  const totalText = projection.totals.currency === null
+    ? undefined
+    : scope.formatMoney(projection.totals.total, projection.totals.currency);
+  const cheapest = seatLayerCartCheapestPrice(scope.snapshot);
+  // No runtime field distinguishes a held line from a freshly picked one, so
+  // `Secure more` stays unreachable until one does — exactly as in Flutter.
+  const pendingCount = 0;
+  return seatLayerCheckoutCtaState({
+    canCheckout: checkoutAllowed(scope),
+    canOfferFind,
+    handoffInFlight,
+    label: scope.strings.translate('holdAndCheckout'),
+    pendingCount,
+    seatCardOpen: scope.pendingSeat !== null,
+    snapshot: scope.snapshot,
+    strings: scope.strings,
+    ticketCount: projection.totals.quantity,
+    ...(totalText === undefined ? {} : { totalText }),
+    ...(cheapest === undefined
+      ? {}
+      : { fromPriceText: scope.formatMoney(cheapest, scope.snapshot?.currency ?? '') }),
+  });
+}
+
+/**
+ * The sheet's footer button (spec §3.10.3). It carries ITS OWN LABEL ONLY — the
+ * total is already on the peek bar — and its disabled state is designed rather
+ * than a Material grey, which vanishes on the dark scene sheet.
+ */
+export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.ReactElement {
+  const scope = useSeatLayerPickerScope();
+  const flight = useSeatLayerCheckoutFlight(props.onCheckout);
+  const cta = useSeatLayerCheckoutCta(flight.busy);
+  const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
+  const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
+  const disabled = !cta.enabled;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled}
-      accessibilityState={{ disabled, busy }} onPress={() => { void checkout(); }}
-      style={props.compact ? {
-        justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget,
-      } : {
-        justifyContent: 'center', minHeight: 56, paddingBottom: 6, paddingHorizontal: 12, paddingTop: 4,
-      }}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={cta.label}
+      accessibilityState={{ busy: cta.busy, disabled }}
+      disabled={disabled}
+      onPress={flight.press}
+      testID="seatlayer-cart-checkout"
+      style={{ justifyContent: 'center', paddingBottom: 6, paddingHorizontal: 12, paddingTop: 6 }}
+    >
       <View style={[{
-        height: props.compact ? peekContinuePaintHeight : 46,
-        minWidth: props.compact ? 100 : undefined,
+        alignItems: 'center',
+        alignSelf: 'stretch',
+        backgroundColor: disabled ? theme.colors.surface : theme.colors.accent,
+        borderColor: disabled ? theme.colors.divider : 'transparent',
         borderRadius: seatLayerPickerTokens.radius.button,
-        backgroundColor: disabled ? theme.colors.divider : theme.colors.accent,
-        justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12,
-      }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style), {
-        height: props.compact ? peekContinuePaintHeight : 46,
-        minWidth: props.compact ? 100 : undefined,
-      }]}>
-        <Text numberOfLines={1} ellipsizeMode="tail"
-          style={[{ color: disabled ? theme.colors.mutedText : theme.colors.onAccent, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: props.compact ? 13 : 15, fontWeight: '800' }, styles.continueButtonText]}>
-          {label}
-        </Text>
+        borderWidth: disabled ? StyleSheet.hairlineWidth : 0,
+        flexDirection: 'row',
+        gap: 8,
+        height: seatLayerPickerTokens.size.checkoutButtonHeight,
+        justifyContent: 'center',
+        paddingHorizontal: 12,
+      }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style)]}>
+        {cta.busy ? <Spinner color={disabled ? theme.colors.mutedText : theme.colors.onAccent} /> : null}
+        <Text numberOfLines={1} ellipsizeMode="tail" style={[{
+          color: disabled ? theme.colors.mutedText : theme.colors.onAccent,
+          flexShrink: 1,
+          fontFamily: theme.fontFamily,
+          fontSize: seatLayerPickerTokens.type.bookButton.size,
+          fontWeight: String(seatLayerPickerTokens.type.bookButton.weight) as 'normal',
+        }, styles.continueButtonText]}>{cta.label}</Text>
       </View>
     </Pressable>
   );
 }
 
-/** Controlled sheet: fixed chrome stays reachable while the ticket list scrolls. */
+function Spinner({ color }: Readonly<{ color: string }>): React.ReactElement {
+  const spin = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useSeatLayerPickerReducedMotion();
+  useEffect(() => {
+    if (reducedMotion) return undefined;
+    const loop = Animated.loop(Animated.timing(spin, {
+      duration: 900, easing: Easing.linear, toValue: 1, useNativeDriver: true,
+    }));
+    loop.start();
+    return () => loop.stop();
+  }, [reducedMotion, spin]);
+  return <Animated.View accessible={false} testID="seatlayer-cart-checkout-spinner" style={{
+    borderColor: color,
+    borderRadius: 8,
+    borderTopColor: 'transparent',
+    borderWidth: 2,
+    height: 16,
+    transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
+    width: 16,
+  }} />;
+}
+
+/** A real bottom sheet: peek, content and full detents, tracking the finger. */
 export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactElement {
   const scope = useSeatLayerPickerScope();
   const window = useWindowDimensions();
   const reducedMotion = useSeatLayerPickerReducedMotion();
   const measurement = useRef(new CartSheetMeasurementCoordinator());
   const disclosureProgress = useRef(new Animated.Value(props.expanded ? 1 : 0)).current;
-  const summaryArrival = useRef(new Animated.Value(0)).current;
+  const summarySwell = useRef(new Animated.Value(0)).current;
   const previousConfirmedQuantity = useRef<number | undefined>(undefined);
   const [sheetHeight, setSheetHeight] = useState(0);
-  const [bestPrompt, setBestPrompt] = useState<PromptHandle | undefined>();
+  const [contentHeight, setContentHeight] = useState(0);
   const runtimeSession = scope.snapshot?.sessionId;
   const theme = useMemo(
     () => resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot),
@@ -234,18 +313,22 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const hasTickets = projection.confirmed.items.length > 0;
   const confirmedQuantity = projection.totals.quantity;
   const attributionRequired = scope.snapshot?.branding.attributionRequired === true;
-  const attributionHeight = attributionRequired
-    ? theme.layout?.attributionHeight ?? seatLayerPickerTokens.size.attributionHeight
-    : 0;
-  const peekHeight = Math.max(
+  // THE BAR IS EXACTLY ITS HEAD. The collapsed clip is derived from the head
+  // the sheet holds — never a second number.
+  const headHeight = Math.max(
     seatLayerPickerTokens.size.minimumHitTarget,
     theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
   );
-  const maxSheet = Math.max(0, window.height * seatLayerPickerTokens.size.sheetMaxHeightFraction);
-  const bodyCap = hasTickets
-    ? cartSheetMaximumBodyHeight(window.height, 0, peekHeight)
-    : Math.min(cartSheetMaximumBodyHeight(window.height, 0, peekHeight), seatLayerPickerTokens.size.emptyTrayMaxHeight);
-  const promptBodyCap = cartSheetMaximumBodyHeight(window.height, inset, peekHeight);
+  const openHeadHeight = seatLayerPickerTokens.size.sheetOpenHeadHeight +
+    seatLayerPickerTokens.size.peekClockLift;
+  const detents = useMemo(() => seatLayerSheetDetents({
+    bottomInset: inset,
+    contentHeight: contentHeight + openHeadHeight,
+    hasTickets,
+    peekHeight: headHeight,
+    viewportHeight: window.height,
+  }), [contentHeight, hasTickets, headHeight, inset, openHeadHeight, window.height]);
+  const bodyCap = cartSheetMaximumBodyHeight(window.height, inset, headHeight);
   const key = measurement.current.begin({
     controller: scope.controller, sessionId: scope.sessionId, runtimeSessionId: runtimeSession, expanded: props.expanded, ownsChrome: true,
   }, 0);
@@ -256,24 +339,22 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   useLayoutEffect(() => {
     setSheetHeight(0);
     previousConfirmedQuantity.current = undefined;
-    summaryArrival.stopAnimation();
-    summaryArrival.setValue(0);
-    bestPrompt?.dismiss();
-    setBestPrompt(undefined);
-    if (!props.expanded && insetLease) {
-      insetLease.set({ bottom: peekHeight + inset });
-    }
-  }, [inset, insetLease, peekHeight, props.expanded, runtimeSession, scope.controller, scope.sessionId]);
+    summarySwell.stopAnimation();
+    summarySwell.setValue(0);
+    if (!props.expanded && insetLease) insetLease.set({ bottom: detents.peek });
+  }, [detents.peek, insetLease, props.expanded, runtimeSession, scope.controller, scope.sessionId]);
   useEffect(() => {
     const previous = previousConfirmedQuantity.current;
     previousConfirmedQuantity.current = confirmedQuantity;
     if (previous === undefined || confirmedQuantity <= previous) return undefined;
-    const motion = resolveSeatLayerPickerMotion('pop', reducedMotion, 'spring');
-    summaryArrival.stopAnimation();
-    summaryArrival.setValue(0);
+    // The count swells once when it changes while collapsed — the only feedback
+    // a buyer gets that a tap on the map reached the cart with the sheet shut.
+    const motion = resolveSeatLayerPickerMotion('bump', reducedMotion, 'spring');
+    summarySwell.stopAnimation();
+    summarySwell.setValue(0);
     if (motion.durationMs === 0) return undefined;
     const [x1, y1, x2, y2] = motion.curve.cubicBezier;
-    const animation = Animated.timing(summaryArrival, {
+    const animation = Animated.timing(summarySwell, {
       duration: motion.durationMs,
       easing: Easing.bezier(x1, y1, x2, y2),
       toValue: 1,
@@ -281,35 +362,19 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     });
     animation.start();
     return () => animation.stop();
-  }, [confirmedQuantity, reducedMotion, summaryArrival]);
-  useLayoutEffect(() => {
-    if (bestPrompt && scope.presentation.prompt?.context !== bestPrompt.lease.context) {
-      setBestPrompt(undefined);
-    }
-  }, [bestPrompt, scope.presentation.prompt]);
-  useLayoutEffect(() => {
-    if (props.bestSeats === null && bestPrompt) {
-      bestPrompt.dismiss();
-      setBestPrompt(undefined);
-    }
-  }, [bestPrompt, props.bestSeats]);
+  }, [confirmedQuantity, reducedMotion, summarySwell]);
   useEffect(() => {
     if (!insetLease) return;
-    const fallback = peekHeight + inset;
-    insetLease.set({ bottom: props.expanded
-      ? Math.min(maxSheet, sheetHeight || fallback)
-      : fallback });
-  }, [inset, insetLease, maxSheet, peekHeight, props.expanded, runtimeSession, scope.controller, scope.sessionId, sheetHeight]);
+    insetLease.set({
+      bottom: props.expanded ? Math.min(detents.full, sheetHeight || detents.peek) : detents.peek,
+    });
+  }, [detents.full, detents.peek, insetLease, props.expanded, runtimeSession, scope.controller, scope.sessionId, sheetHeight]);
   useEffect(() => {
     if (!insetLease) return undefined;
     return () => insetLease.remove();
   }, [insetLease]);
   useEffect(() => {
-    const motion = resolveSeatLayerPickerMotion(
-      'sheet',
-      reducedMotion,
-      props.expanded ? 'easeEnter' : 'easeExit',
-    );
+    const motion = resolveSeatLayerPickerMotion('sheet', reducedMotion, props.expanded ? 'easeEnter' : 'easeExit');
     disclosureProgress.stopAnimation();
     if (motion.durationMs === 0) {
       disclosureProgress.setValue(props.expanded ? 1 : 0);
@@ -317,142 +382,153 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     }
     const [x1, y1, x2, y2] = motion.curve.cubicBezier;
     const animation = Animated.timing(disclosureProgress, {
-      duration: motion.durationMs,
-      easing: Easing.bezier(x1, y1, x2, y2),
-      toValue: props.expanded ? 1 : 0,
-      useNativeDriver: true,
+      duration: motion.durationMs, easing: Easing.bezier(x1, y1, x2, y2),
+      toValue: props.expanded ? 1 : 0, useNativeDriver: true,
     });
     animation.start();
     return () => animation.stop();
   }, [disclosureProgress, props.expanded, reducedMotion]);
 
+  const changeExpanded = (next = !props.expanded) => {
+    if (next === props.expanded) return;
+    try { void Promise.resolve(props.onExpandedChanged(next)).catch(() => {}); } catch { /* controlled callback */ }
+  };
+  // The whole head is the toggle: a drag up past a small threshold opens, a
+  // drag down past it collapses. Springs, not tweens.
+  const dragHeight = useRef(new Animated.Value(detents.peek)).current;
+  const dragging = useRef(false);
+  const expandedRef = useRef(props.expanded);
+  expandedRef.current = props.expanded;
+  const detentsRef = useRef(detents);
+  detentsRef.current = detents;
+  const pan = useRef(PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      Math.abs(gesture.dy) > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
+    onPanResponderGrant: () => {
+      dragging.current = true;
+      const stops = detentsRef.current;
+      dragHeight.setValue(expandedRef.current ? stops.content : stops.peek);
+    },
+    onPanResponderMove: (_event, gesture) => {
+      const stops = detentsRef.current;
+      const from = expandedRef.current ? stops.content : stops.peek;
+      dragHeight.setValue(seatLayerSheetRubberBanded(from - gesture.dy, stops));
+    },
+    onPanResponderRelease: (_event, gesture) => {
+      dragging.current = false;
+      const stops = detentsRef.current;
+      const from = expandedRef.current ? stops.content : stops.peek;
+      const settled = seatLayerSheetSettle(from - gesture.dy, -gesture.vy * 1_000, stops);
+      Animated.spring(dragHeight, {
+        damping: seatLayerSheetSpring.damping,
+        mass: seatLayerSheetSpring.mass,
+        stiffness: seatLayerSheetSpring.stiffness,
+        toValue: settled,
+        useNativeDriver: false,
+      }).start();
+      changeExpanded(seatLayerSheetDetentAt(settled, stops) !== 'peek');
+    },
+  })).current;
+
   const onSheetLayout = (event: LayoutChangeEvent) => {
     const next = measurement.current.measure(key.revision, event.nativeEvent.layout.height);
     if (next !== undefined) setSheetHeight(next);
   };
-  const total = projection.totals.currency === null
-    ? undefined
-    : scope.formatMoney(projection.totals.total, projection.totals.currency);
-  const cheapest = scope.snapshot?.categories.reduce<number | undefined>(
-    (lowest, category) => !category.notForSale && Number.isFinite(category.priceMin)
-      ? Math.min(lowest ?? category.priceMin, category.priceMin) : lowest,
-    undefined,
-  );
-  const summary = hasTickets
-    ? props.expanded
-      ? scope.strings.translate('ticketCount', { count: projection.totals.quantity, values: { count: projection.totals.quantity } })
-      : total
-        ? `${scope.strings.translate('ticketCount', { count: projection.totals.quantity, values: { count: projection.totals.quantity } })} · ${total}`
-        : scope.strings.translate('ticketCount', { count: projection.totals.quantity, values: { count: projection.totals.quantity } })
-    : cheapest === undefined
-      ? scope.strings.translate('chooseTickets')
-      : scope.strings.translate('fromPrice', { values: { price: scope.formatMoney(cheapest, scope.snapshot?.currency ?? '') } });
   const bestShortcutEnabled = props.bestSeats !== null;
-  const bestAllowed = bestShortcutEnabled && hasTickets && !scope.pendingSeat && !scope.readOnly && !scope.isBusy &&
+  // `Find seats` is withheld where the form would be refused: a performance
+  // group, closed sales, or an existing hold.
+  const bestAllowed = bestShortcutEnabled && !scope.pendingSeat && !scope.readOnly && !scope.isBusy &&
     scope.isReady && !scope.snapshot?.event.salesClosed && scope.snapshot?.hold.owner !== 'host' &&
+    scope.snapshot?.hold.active !== true &&
     scope.snapshot?.selectionValidity?.isValid !== false &&
     supportsSeatLayerPickerSurface(scope.controller, ['picker-actions-v1'], ['picker.bestAvailable']);
-  const openBest = () => {
-    if (!bestAllowed || bestPrompt) return;
-    const context = Object.freeze({ sessionId: scope.sessionId, runtimeSession });
-    const handle = scope.claimPrompt('seatlayer-picker-cart-best-seats', 'bestSeats', context);
-    if (handle?.open()) setBestPrompt(handle);
-  };
-  const changeExpanded = () => {
-    const motion = resolveSeatLayerPickerMotion(
-      'sheet',
-      reducedMotion,
-      props.expanded ? 'easeExit' : 'easeEnter',
-    );
-    if (motion.durationMs > 0) {
-      try {
-        LayoutAnimation.configureNext({
-          duration: motion.durationMs,
-          create: { type: 'easeInEaseOut', property: 'opacity' },
-          update: { type: 'easeInEaseOut' },
-          delete: { type: 'easeInEaseOut', property: 'opacity' },
-        });
-      } catch { /* Layout motion is optional on unsupported native hosts. */ }
-    }
-    try { void Promise.resolve(props.onExpandedChanged(!props.expanded)).catch(() => {}); } catch { /* controlled callback */ }
-  };
+  const flight = useSeatLayerCheckoutFlight(props.onCheckout);
+  const cta = useSeatLayerCheckoutCta(flight.busy, bestAllowed && !hasTickets);
+  const peek = cta.peekLine;
   const main = hasTickets
     ? props.cartList === undefined ? <SeatLayerCartList /> : props.cartList
     : props.bestSeats === undefined ? <SeatLayerBestSeatsForm safeAreaInsets={safeInsets} /> : props.bestSeats;
-  const shortcut = props.bestSeats === undefined
-    ? <SeatLayerBestSeatsForm allowFilled safeAreaInsets={safeInsets} onFound={() => { bestPrompt?.dismiss(); setBestPrompt(undefined); }} />
-    : props.bestSeats;
   const holdLapse = props.holdLapse === undefined ? <SeatLayerHoldLapseNotice /> : props.holdLapse;
   const actionError = props.actionError === undefined ? <SeatLayerPickerActionError /> : props.actionError;
   const checkoutBar = props.checkoutBar === undefined ? <SeatLayerBookButton onCheckout={props.onCheckout} /> : props.checkoutBar;
+  // Exactly ONE named toggle in either state: the head while collapsed, the
+  // chevron while open. Never both.
   const toggleLabel = scope.strings.translate(props.expanded ? 'collapseCart' : 'expandCart');
+  const attribution = attributionRequired
+    ? <SeatLayerSheetFoot><SeatLayerPickerAttribution compact /></SeatLayerSheetFoot>
+    : null;
+  const action = props.expanded
+    ? <SeatLayerSheetChevron label={toggleLabel} theme={theme} progress={disclosureProgress} onPress={() => changeExpanded()} />
+    : peek.offerFind
+      // Pressing it opens the sheet on the best-seats form, whose body IS the
+      // form: there is no second surface to claim.
+      ? <SeatLayerFindSeatsPill label={scope.strings.translate('findSeats')} theme={theme} onPress={() => changeExpanded(true)} />
+      // The peek pill is NEVER rendered disabled: the states that would
+      // disable it render a different line instead.
+      : peek.pillLabel !== null && props.checkoutBar !== null && !cta.peekStatesReason
+        ? (
+          <SeatLayerPeekContinuePill
+            busy={cta.busy}
+            label={peek.pillLabel}
+            onPress={flight.press}
+            style={styles.continueButton}
+            textStyle={styles.continueButtonText}
+            theme={theme}
+            total={peek.total}
+          />
+        )
+        : null;
   return (
     <View onLayout={onSheetLayout} style={[sanitizeSeatLayerPickerStyle(props.style), styles.sheetContainer, {
-      maxHeight: maxSheet, backgroundColor: theme.roles.sheet.background,
-      borderTopColor: theme.roles.sheet.border, borderTopWidth: 1,
+      backgroundColor: theme.roles.sheet.background,
+      borderTopColor: theme.roles.sheet.border,
+      borderTopLeftRadius: seatLayerPickerTokens.radius.sheet,
+      borderTopRightRadius: seatLayerPickerTokens.radius.sheet,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      elevation: seatLayerPickerTokens.elevation.sheet,
+      maxHeight: detents.full,
     }]}>
       {holdLapse}
-      <View style={[styles.peekContainer, { height: peekHeight, flexDirection: 'row', alignItems: 'center', paddingStart: 14 }]}>
-        <View
-          pointerEvents="none"
-          testID="seatlayer-cart-handle-rail"
-          style={{ position: 'absolute', top: 5, left: 0, width: '100%', alignItems: 'center' }}
-        >
-          <View style={{ width: 32, height: 3, borderRadius: 2, backgroundColor: theme.colors.mutedText, opacity: .5 }} />
-        </View>
-        <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}
-          accessibilityState={{ expanded: props.expanded }} hitSlop={6} onPress={changeExpanded}
-          style={{ flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingTop: 6 }}>
-          <Animated.View style={{ alignSelf: 'flex-start', transform: [{ scale: summaryArrival.interpolate({ inputRange: [0, .55, 1], outputRange: [1, 1.08, 1] }) }] }}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.peekSummaryText]}>{summary}</Text>
-          </Animated.View>
-        </Pressable>
-        {props.expanded && bestAllowed ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('bestSeats')} onPress={openBest} style={{ minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: theme.colors.accent }}>✦</Text></Pressable> : null}
-        {!props.expanded && hasTickets && props.checkoutBar !== null ? <SeatLayerBookButton compact onCheckout={props.onCheckout} /> : null}
-        <Pressable accessibilityRole="button" accessibilityLabel={toggleLabel}
-          accessibilityState={{ expanded: props.expanded }} onPress={changeExpanded}
-          style={({ pressed }) => ({
-            width: seatLayerPickerTokens.size.minimumHitTarget,
-            minHeight: seatLayerPickerTokens.size.minimumHitTarget,
-            justifyContent: 'center', alignItems: 'center', marginStart: 4,
-            opacity: pressed ? .62 : 1, zIndex: 1,
-          })}
-          testID="seatlayer-cart-disclosure">
-          <Animated.View style={{
-            width: 10, height: 10, borderBottomColor: theme.colors.text,
-            borderBottomWidth: 2, borderRightColor: theme.colors.text, borderRightWidth: 2,
-            transform: [{ rotate: disclosureProgress.interpolate({ inputRange: [0, 1], outputRange: ['225deg', '45deg'] }) }],
-          }} />
-        </Pressable>
-      </View>
-      {props.expanded ? <View style={{ maxHeight: bodyCap, flexShrink: 1 }}>
-        {hasTickets ? <>
-          <ScrollView contentContainerStyle={{ paddingBottom: 6, paddingHorizontal: 12 }} style={{ flexShrink: 1 }}>{main}</ScrollView>
-          {actionError}
-          {checkoutBar}
-        </> : <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
-          <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
-          <View>{main}</View>
-          {actionError}
-        </View>}
-        <View testID="seatlayer-cart-safe-footer" style={{ alignItems: 'flex-end', height: Math.max(inset, attributionHeight), justifyContent: 'center', paddingEnd: 8 }}>
-          <SeatLayerPickerAttribution compact />
-        </View>
-      </View> : inset > 0 ? <View testID="seatlayer-cart-safe-footer" style={{ alignItems: 'flex-end', height: inset, justifyContent: 'center', paddingEnd: 8 }}>
-        <SeatLayerPickerAttribution compact />
-      </View> : null}
-      {bestShortcutEnabled ? <SeatLayerPickerPromptModal visible={bestPrompt !== undefined}>
-        <SeatLayerPickerBottomSheetFrame
-          borderColor={theme.roles.sheet.border}
-          maxHeight={promptBodyCap}
-          radius={theme.radii.sheet}
-          safeAreaInsets={safeInsets}
-          scrimColor="rgba(0, 0, 0, 0.45)"
-          surfaceColor={theme.roles.sheet.background}
-        >
-          {shortcut}
-        </SeatLayerPickerBottomSheetFrame>
-      </SeatLayerPickerPromptModal> : null}
+      <SeatLayerCartPeekHead
+        action={action}
+        containerStyle={styles.peekContainer}
+        expanded={props.expanded}
+        height={(props.expanded ? openHeadHeight : headHeight) + seatLayerPickerTokens.size.peekClockLift}
+        line={peek}
+        onToggle={() => changeExpanded()}
+        panHandlers={pan.panHandlers}
+        summaryStyle={styles.peekSummaryText}
+        summarySwell={summarySwell}
+        theme={theme}
+        toggleLabel={toggleLabel}
+      />
+      {/* At peek, every child except the head is not drawn. */}
+      {props.expanded
+        ? (
+          <View style={{ flexShrink: 1, maxHeight: bodyCap }}>
+            {hasTickets
+              ? (
+                <>
+                  <ScrollView
+                    contentContainerStyle={{ paddingBottom: 6, paddingHorizontal: 12 }}
+                    onContentSizeChange={(_width, height) => setContentHeight(height)}
+                    style={{ flexShrink: 1 }}
+                  >{main}</ScrollView>
+                  {actionError}
+                  {checkoutBar}
+                </>
+              )
+              : (
+                <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
+                  <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
+                  <View>{main}</View>
+                  {actionError}
+                </View>
+              )}
+            <View testID="seatlayer-cart-safe-footer" style={{ paddingBottom: inset }}>{attribution}</View>
+          </View>
+        )
+        : <View testID="seatlayer-cart-safe-footer" style={{ paddingBottom: inset }}>{attribution}</View>}
     </View>
   );
 }

@@ -57,6 +57,18 @@ export function visibleSeatLayerCartRuns(
   );
 }
 
+/** The cheapest ticket the chart still sells, for the empty bar's `From` line. */
+export function seatLayerCartCheapestPrice(
+  snapshot: SeatLayerPickerSnapshot | undefined,
+): number | undefined {
+  return snapshot?.categories.reduce<number | undefined>(
+    (lowest, category) => !category.notForSale && Number.isFinite(category.priceMin)
+      ? Math.min(lowest ?? category.priceMin, category.priceMin)
+      : lowest,
+    undefined,
+  );
+}
+
 export function cartSheetMaximumBodyHeight(
   viewportHeight: unknown,
   bottomInset: unknown,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CartRemovalUndoCoordinator } from '../src/picker/cartRemovalUndoState';
+import { CartRemovalMarkCoordinator } from '../src/picker/cartRemovalUndoState';
 import { cartSheetMaximumBodyHeight, projectSeatLayerCartSheet, visibleSeatLayerCartRuns } from '../src/picker/cartSheetUi';
 import type { SeatLayerPickerSnapshot } from '../src/picker/models';
 import { CartSheetMeasurementCoordinator } from '../src/picker/cartSheetState';
@@ -37,16 +37,25 @@ describe('cart sheet projections', () => {
   });
 });
 
-describe('native cart undo', () => {
-  it('hides immediately, opens undo only after success, and restores exact labels', () => {
-    const callbacks: (() => void)[] = [];
-    const undo = new CartRemovalUndoCoordinator({ setTimeout: (callback) => { callbacks.push(callback); return callback; }, clearTimeout: () => {} });
-    const begin = undo.begin({ lineKey: 'one', label: 'A-1' }, 3);
+describe('native cart removal marks', () => {
+  it('marks the pressed row, keeps it in the list, and drops the mark on the snapshot that lost it', () => {
+    const marks = new CartRemovalMarkCoordinator<{ lineKey: string; label: string }>();
+    const begin = marks.begin({ lineKey: 'one', label: 'A-1' }, 3);
     expect(begin.intent).toMatchObject({ labels: ['A-1'] });
-    expect(undo.projectVisibleLines([{ lineKey: 'one', label: 'A-1' }])).toEqual([]);
-    undo.acknowledgeSuccess(begin.state.active!.token);
-    expect(undo.undo(begin.state.active!.token, 3).intent).toMatchObject({ objects: ['A-1'] });
-    expect(callbacks).toHaveLength(1);
+    // The row stays in the tray: it is faded and inert, not hidden.
+    expect(marks.isRemoving({ lineKey: 'one', label: 'A-1' })).toBe(true);
+    marks.reconcile([{ lineKey: 'one', label: 'A-1' }]);
+    expect(marks.isRemoving({ lineKey: 'one', label: 'A-1' })).toBe(true);
+    marks.reconcile([]);
+    expect(marks.isRemoving({ lineKey: 'one', label: 'A-1' })).toBe(false);
+  });
+
+  it('restores the row when the mutation fails, and refuses a second press on a marked row', () => {
+    const marks = new CartRemovalMarkCoordinator<{ lineKey: string; label: string }>();
+    const begin = marks.begin({ lineKey: 'one', label: 'A-1' });
+    expect(marks.begin({ lineKey: 'one', label: 'A-1' }).intent).toBeNull();
+    expect(marks.release(begin.mark!.token)).toBe(true);
+    expect(marks.isRemoving({ lineKey: 'one', label: 'A-1' })).toBe(false);
   });
 });
 

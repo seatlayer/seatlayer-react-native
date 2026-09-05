@@ -1,10 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  CartRemovalUndoCoordinator,
-  nativeUndoWindowMs,
-  type NativeUndoTimer,
-} from '../src/picker/cartRemovalUndoState';
+import { CartRemovalMarkCoordinator } from '../src/picker/cartRemovalUndoState';
 import {
   applyPendingConfirmationSnapshot,
   cancelPending,
@@ -37,31 +33,6 @@ const line = (seatId: string, label: string, price = 25): SeatLayerCartLineLike 
 });
 
 const snapshot = (sessionId: string, revision: number, selection: readonly SeatLayerSelectedSeatLike[]) => ({ sessionId, revision, selection });
-
-class FakeTimer implements NativeUndoTimer {
-  private now = 0;
-  private nextId = 1;
-  private readonly tasks = new Map<number, { at: number; callback: () => void }>();
-
-  setTimeout(callback: () => void, delayMs: number): unknown {
-    const id = this.nextId++;
-    this.tasks.set(id, { at: this.now + delayMs, callback });
-    return id;
-  }
-
-  clearTimeout(handle: unknown): void {
-    this.tasks.delete(handle as number);
-  }
-
-  advance(milliseconds: number): void {
-    this.now += milliseconds;
-    for (const [id, task] of [...this.tasks]) {
-      if (task.at > this.now) continue;
-      this.tasks.delete(id);
-      task.callback();
-    }
-  }
-}
 
 describe('pending confirmation state', () => {
   it('contains a pending-cancel error observer failure without rejecting the cancellation', async () => {
@@ -324,107 +295,48 @@ describe('cart visual coordinators', () => {
   });
 });
 
-describe('native cart removal undo state', () => {
-  it('does not expose mutable undo envelopes that could corrupt later behavior', () => {
-    const coordinator = new CartRemovalUndoCoordinator(new FakeTimer());
+describe('native cart removal marks', () => {
+  it('does not expose mutable mark envelopes that could corrupt later behaviour', () => {
+    const coordinator = new CartRemovalMarkCoordinator();
     const begun = coordinator.begin(line('seat-1', 'A-1'));
-    const active = begun.state.active! as unknown as { identity: { removalLabel: string }; restoreObjects: string[] };
-    expect(() => { active.identity.removalLabel = 'wrong'; }).toThrow();
-    expect(() => { active.restoreObjects.push('wrong'); }).toThrow();
-    const reconciled = coordinator.reconcile([]) as unknown as { active: { identity: { removalLabel: string } } };
-    expect(() => { reconciled.active.identity.removalLabel = 'wrong'; }).toThrow();
-    expect(coordinator.acknowledgeSuccess(begun.state.active!.token).accepted).toBe(true);
-    expect(coordinator.undo(begun.state.active!.token).intent).toEqual({ kind: 'restore', objects: ['A-1'] });
+    const mark = begun.mark! as unknown as { identity: { removalLabel: string }; labels: string[] };
+    expect(() => { mark.identity.removalLabel = 'wrong'; }).toThrow();
+    expect(() => { mark.labels.push('wrong'); }).toThrow();
+    expect(begun.intent).toEqual({ kind: 'remove', lines: [line('seat-1', 'A-1')], labels: ['A-1'] });
   });
 
-  it('does not spend undo time on command latency, then restores by exact label', () => {
-    const timer = new FakeTimer();
-    const expiries: string[] = [];
-    const coordinator = new CartRemovalUndoCoordinator(timer, (result) => {
-      if (result.committed?.identity.removalLabel) expiries.push(result.committed.identity.removalLabel);
-    });
-    expect(nativeUndoWindowMs).toBe(seatLayerPickerTokens.motion.durationOutsideBudget.undoWindow);
-    const started = coordinator.begin(line('seat-1', 'A-1'));
-    const token = started.state.active!.token;
-    expect(started.intent).toEqual(expect.objectContaining({ kind: 'remove', labels: ['A-1'] }));
-    expect(coordinator.projectVisibleLines([line('seat-1', 'A-1')])).toEqual([]);
-    timer.advance(nativeUndoWindowMs * 2);
-    expect(expiries).toEqual([]);
-    expect(coordinator.state.active?.phase).toBe('awaiting-remove');
-
-    expect(coordinator.acknowledgeSuccess(token).accepted).toBe(true);
-    timer.advance(nativeUndoWindowMs - 1);
-    expect(expiries).toEqual([]);
-    expect(coordinator.undo(token).intent).toEqual({ kind: 'restore', objects: ['A-1'] });
-    timer.advance(1);
-    expect(expiries).toEqual(['A-1']);
-
-    const resettable = coordinator.begin(line('seat-reset', 'A-9'));
-    coordinator.acknowledgeSuccess(resettable.state.active!.token);
-    coordinator.reset();
-    timer.advance(nativeUndoWindowMs);
-    expect(expiries).toEqual(['A-1']);
-  });
-
-  it('clears a failed optimistic removal and ignores late completion for a replaced token', () => {
-    const timer = new FakeTimer();
-    const coordinator = new CartRemovalUndoCoordinator(timer);
-    const first = coordinator.begin(line('seat-1', 'A-1'));
-    const firstToken = first.state.active!.token;
-    const second = coordinator.begin(line('seat-2', 'A-2'));
-    const secondToken = second.state.active!.token;
-    expect(second.settled?.identity.removalLabel).toBe('A-1');
-    expect(coordinator.acknowledgeSuccess(firstToken).accepted).toBe(false);
-    expect(coordinator.failRemoval(firstToken).restored).toEqual([]);
-    expect(coordinator.failRemoval(secondToken).restored[0]?.label).toBe('A-2');
-    expect(coordinator.projectVisibleLines([line('seat-2', 'A-2')])).toHaveLength(1);
-
-    const awaiting = coordinator.begin(line('seat-3', 'A-3'));
-    coordinator.reconcile([line('seat-3', 'A-3')]);
-    expect(coordinator.state.active?.token).toBe(awaiting.state.active!.token);
-    coordinator.dispose();
-    expect(coordinator.state.active).toBeNull();
-  });
-
-  it('locks a restore flight, permits retry only before its original deadline, and retires it', () => {
-    const timer = new FakeTimer();
-    const coordinator = new CartRemovalUndoCoordinator(timer);
-    const begun = coordinator.begin(line('seat-1', 'A-1'));
-    const token = begun.state.active!.token;
-    coordinator.acknowledgeSuccess(token);
-    expect(coordinator.undo(token).intent).toEqual({ kind: 'restore', objects: ['A-1'] });
-    expect(coordinator.undo(token).intent).toBeNull();
-    expect(coordinator.failUndo(token)).toBe(true);
-    expect(coordinator.undo(token).intent).toEqual({ kind: 'restore', objects: ['A-1'] });
-    timer.advance(nativeUndoWindowMs);
-    expect(coordinator.completeUndo(token)).toBe(false);
-    expect(coordinator.undo(token).intent).toBeNull();
-  });
-
-  it('keeps undo available for the expected absent snapshot, settles a reappearance, and expires once', () => {
-    const timer = new FakeTimer();
-    const expiries: string[] = [];
-    const coordinator = new CartRemovalUndoCoordinator(timer, (result) => {
-      if (result.committed?.identity.removalLabel) expiries.push(result.committed.identity.removalLabel);
-    });
-    const removed = coordinator.begin(line('seat-1', 'A-1'));
-    const token = removed.state.active!.token;
-    coordinator.acknowledgeSuccess(token);
+  it('answers the press with the row: the line stays, marked, until the snapshot loses it', () => {
+    const changes: number[] = [];
+    const coordinator = new CartRemovalMarkCoordinator(() => changes.push(1));
+    coordinator.begin(line('seat-1', 'A-1'));
+    expect(coordinator.isRemoving(line('seat-1', 'A-1'))).toBe(true);
+    expect(coordinator.hasMarks).toBe(true);
+    // A snapshot that still carries the line keeps the mark: the server has
+    // not answered yet.
+    coordinator.reconcile([line('seat-1', 'A-1')]);
+    expect(coordinator.isRemoving(line('seat-1', 'A-1'))).toBe(true);
     coordinator.reconcile([]);
-    expect(coordinator.undo(token).intent).toEqual({ kind: 'restore', objects: ['A-1'] });
+    expect(coordinator.isRemoving(line('seat-1', 'A-1'))).toBe(false);
+    expect(changes.length).toBeGreaterThanOrEqual(2);
+  });
 
-    const reappearing = coordinator.begin(line('seat-2', 'A-2'));
-    const reappearingToken = reappearing.state.active!.token;
-    coordinator.acknowledgeSuccess(reappearingToken);
-    coordinator.reconcile([line('seat-2', 'A-2')]);
-    expect(coordinator.state.active).toBeNull();
-    expect(coordinator.undo(reappearingToken).intent).toBeNull();
+  it('marks a whole run once, refuses a second press, and restores every row on failure', () => {
+    const coordinator = new CartRemovalMarkCoordinator();
+    const run = [line('seat-1', 'A-1'), line('seat-2', 'A-2')];
+    const begun = coordinator.beginMany(run);
+    expect(begun.intent?.labels).toEqual(['A-1', 'A-2']);
+    expect(coordinator.isRemoving(line('seat-2', 'A-2'))).toBe(true);
+    expect(coordinator.begin(line('seat-2', 'A-2')).intent).toBeNull();
+    expect(coordinator.release(begun.mark!.token)).toBe(true);
+    expect(coordinator.release(begun.mark!.token)).toBe(false);
+    expect(coordinator.isRemoving(line('seat-1', 'A-1'))).toBe(false);
+  });
 
-    const expiring = coordinator.begin(line('seat-3', 'A-3'));
-    const expiringToken = expiring.state.active!.token;
-    coordinator.acknowledgeSuccess(expiringToken);
-    timer.advance(nativeUndoWindowMs);
-    expect(expiries).toEqual(['A-3']);
-    expect(coordinator.state.active).toBeNull();
+  it('refuses a line the runtime cannot name, and clears every mark on reset', () => {
+    const coordinator = new CartRemovalMarkCoordinator<SeatLayerCartLineLike>();
+    expect(coordinator.begin({ lineKey: 'nameless' }).intent).toBeNull();
+    coordinator.begin(line('seat-1', 'A-1'));
+    coordinator.reset();
+    expect(coordinator.hasMarks).toBe(false);
   });
 });
