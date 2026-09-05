@@ -549,9 +549,14 @@ export function resolveSeatLayerPickerTheme(
     : authoredAccent === undefined
       ? base.onAccent
       : deriveSeatLayerPickerOnAccent(accent, base.onAccent);
+  // A mode owns the ground and never the brand. The ground roles resolve host,
+  // then the selected brand, then the resolved mode's preset, and only then the
+  // organizer — so a chart saved against a dark canvas cannot paint the picker's
+  // own chips and plates with its map colours. The brand roles (accent, its ink,
+  // radius, typeface) skip the preset entirely and are resolved above.
   const colors = Object.freeze({
-    ...base,
     ...organizerColorsLayer,
+    ...base,
     ...selectedColors,
     ...hostColors,
     accent,
