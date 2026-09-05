@@ -31,7 +31,18 @@ export interface SeatLayerPickerChromeOptions {
   readonly map3D?: boolean;
   readonly accessibility?: boolean;
   readonly cartSheet?: boolean;
-  readonly dock?: boolean;
+  /**
+   * Auto: wide only. There is no phone form of the section dock (§3.6, owner
+   * call 2026-09-04) — the pinch and the single `−` control walk a buyer back
+   * to the venue — but a host that asks for it explicitly gets it.
+   */
+  readonly dock?: boolean | null;
+  /**
+   * Auto: off on the phone, on in the wide layout (§3.13.8). The phone gives
+   * the buyer ONE timer, the header's countdown; a card arriving over the map
+   * inside the last minute is a second decision at the worst moment.
+   */
+  readonly showExtendHoldPrompt?: boolean | null;
   readonly confirmCard?: boolean;
   readonly venue3D?: boolean;
   readonly seatViewChrome?: boolean;
@@ -54,6 +65,18 @@ export interface SeatLayerPickerBehaviorOptions {
   readonly persistColorblindPreference?: boolean;
   readonly refreshOnResume?: boolean;
   readonly announceHoldLapse?: boolean;
+  /**
+   * "You're all set" is the SDK's to tell by default (= web). A host with its
+   * own confirmation screen sets it false; the sale is still known through
+   * `onBooked`, only the telling is the host's (§3.13).
+   */
+  readonly showBookedOverlay?: boolean;
+  /**
+   * The event's name before the runtime reports one, so the header does not
+   * swap its title a second after opening (§4.7). It is never sent to the
+   * runtime: the runtime's own name wins the moment it arrives.
+   */
+  readonly eventName?: string;
   readonly haptics?: boolean;
 }
 
@@ -81,6 +104,7 @@ export interface SeatLayerPickerResolvedChromeOptions {
   readonly accessibility: boolean;
   readonly cartSheet: boolean;
   readonly dock: boolean;
+  readonly showExtendHoldPrompt: boolean;
   readonly confirmCard: boolean;
   readonly venue3D: boolean;
   readonly seatViewChrome: boolean;
@@ -105,6 +129,8 @@ export interface SeatLayerPickerResolvedOptions {
   readonly persistColorblindPreference: boolean;
   readonly refreshOnResume: boolean;
   readonly announceHoldLapse: boolean;
+  readonly showBookedOverlay: boolean;
+  readonly eventName?: string;
   readonly haptics: boolean;
   readonly languages: readonly string[];
   readonly pricing?: SeatLayerPickerPricing;
@@ -153,6 +179,12 @@ function validSeatLimit(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
     ? value
     : undefined;
+}
+
+function validEventName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim();
+  return name && name.length <= 200 ? name : undefined;
 }
 
 function validInitialHold(value: unknown): string | undefined {
@@ -228,7 +260,8 @@ export function resolveSeatLayerPickerChromeOptions(
     map3D: booleanOr(ownData(input, 'map3D'), true),
     accessibility: booleanOr(ownData(input, 'accessibility'), true),
     cartSheet: booleanOr(ownData(input, 'cartSheet'), true),
-    dock: booleanOr(ownData(input, 'dock'), true),
+    dock: autoBoolean(ownData(input, 'dock'), phone),
+    showExtendHoldPrompt: autoBoolean(ownData(input, 'showExtendHoldPrompt'), phone),
     confirmCard: booleanOr(ownData(input, 'confirmCard'), true),
     venue3D: booleanOr(ownData(input, 'venue3D'), true),
     seatViewChrome: booleanOr(ownData(input, 'seatViewChrome'), true),
@@ -262,6 +295,8 @@ export function resolveSeatLayerPickerOptions(
     persistColorblindPreference: booleanOr(ownData(input, 'persistColorblindPreference'), true),
     refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
     announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
+    showBookedOverlay: booleanOr(ownData(input, 'showBookedOverlay'), true),
+    eventName: validEventName(ownData(input, 'eventName')),
     haptics: booleanOr(ownData(input, 'haptics'), true),
     languages: safeOwnStrings(ownData(input, 'languages')),
     pricing: resolveSeatLayerPickerPricing(ownData(input, 'pricing')),

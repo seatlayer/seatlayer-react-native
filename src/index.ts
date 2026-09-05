@@ -316,6 +316,26 @@ export {
   type SeatLayerPickerAccessibilityMutation,
 } from './picker/accessibility';
 export {
+  SeatLayerPickerAccessibleStepper,
+  type SeatLayerPickerAccessibleStepperProps,
+} from './picker/SeatLayerPickerAccessibleStepper';
+export {
+  seatLayerPickerAccessibleSectionCount,
+  seatLayerPickerSectionAccessibleFree,
+  type SeatLayerPickerAccessibleTour,
+} from './picker/accessibilityFocus';
+export {
+  SeatLayerHoldOwnershipNotice,
+  type SeatLayerHoldOwnershipNoticeProps,
+} from './picker/SeatLayerHoldOwnershipNotice';
+export {
+  seatLayerPickerHoldOwnershipCode,
+  seatLayerPickerHoldOwnershipNotice,
+  seatLayerPickerHoldOwnershipStore,
+  type SeatLayerPickerHoldOwnershipCode,
+  type SeatLayerPickerHoldOwnershipNotice as SeatLayerPickerHoldOwnershipNoticeModel,
+} from './picker/holdOwnership';
+export {
   SeatLayerPickerGAPrompt,
   SeatLayerPickerGAPrompt as SeatLayerPickerGeneralAdmissionPrompt,
   SeatLayerPickerSeatTierSelector,

@@ -9,6 +9,7 @@ import {
 } from './availability';
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
+import { SeatLayerPickerBookedDetector } from './holdOwnership';
 import {
   decodeSeatLayerPickerAccessibleSectionStep,
   decodeSeatLayerPickerFrameSeatResult,
@@ -18,6 +19,7 @@ import {
 import type {
   SeatLayerPickerAccessibleSectionStep,
   SeatLayerPickerBlockedRegion,
+  SeatLayerPickerCheckoutHandoff,
   SeatLayerPickerFrameSeatOptions,
   SeatLayerPickerFrameSeatResult,
   SeatLayerPickerSelectedSeat,
@@ -36,6 +38,10 @@ import { validateNonEmpty, validateOptions, validatePositiveInteger, validateStr
 
 export type SeatLayerPickerSeatRetapListener = (
   seat: SeatLayerPickerSelectedSeat,
+) => void;
+
+export type SeatLayerPickerBookedListener = (
+  handoff: SeatLayerPickerCheckoutHandoff,
 ) => void;
 
 function badPayload(message: string): SeatLayerError {
@@ -95,6 +101,23 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
       this.mapController.supportsPickerEvent('telemetry.chartLoad'),
   );
   private readonly seatRetapListeners = new Set<SeatLayerPickerSeatRetapListener>();
+  private readonly booked = new SeatLayerPickerBookedDetector();
+  private readonly bookedListeners = new Set<SeatLayerPickerBookedListener>();
+  private readonly unsubscribeHoldExpiry = this.mapController.on(
+    'holdExpired',
+    () => this.booked.expired(),
+  );
+  private readonly unsubscribeBookedWatch = this.subscribe(() => {
+    const handoff = this.booked.observe(this.getSnapshot());
+    if (handoff === undefined) return;
+    for (const listener of [...this.bookedListeners]) {
+      try {
+        listener(handoff);
+      } catch {
+        // A host listener cannot break the snapshot pump.
+      }
+    }
+  });
   private readonly unsubscribeChartLoad = this.mapController.on('unknownEvent', ({ name, payload }) => {
     if (name === 'telemetry.chartLoad') this.chartLoads.accept(payload);
     if (
@@ -165,11 +188,61 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   }
 
   override dispose(): void {
+    this.unsubscribeHoldExpiry();
+    this.unsubscribeBookedWatch();
+    this.bookedListeners.clear();
     this.unsubscribeChartLoad();
     this.chartLoads.dispose();
     this.reloadListeners.clear();
     this.seatRetapListeners.clear();
     super.dispose();
+  }
+
+  /* --- Hold ownership (§4.8, §3.13.13) ---------------------------------- */
+
+  protected override onCheckoutHandoff(handoff: SeatLayerPickerCheckoutHandoff): void {
+    this.booked.handedOff(handoff);
+  }
+
+  /**
+   * The handoff this picker made, retained only so a refusal can be answered
+   * with "Release and change seats". It is never put on a snapshot and never
+   * handed anywhere the host did not already receive it.
+   */
+  getCheckoutHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
+    this.booked.pendingHandoff;
+
+  /** The handoff whose hold settled to booked, once the sale has landed. */
+  getBookedHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
+    this.booked.bookedHandoff;
+
+  /** Fires once per sale, with the handoff that became it. */
+  subscribeBooked = (listener: SeatLayerPickerBookedListener): (() => void) => {
+    this.bookedListeners.add(listener);
+    return () => {
+      this.bookedListeners.delete(listener);
+    };
+  };
+
+  get supportsHandoffReject(): boolean {
+    return this.available('checkout-handoff-reject-v1', 'picker.rejectHandoff');
+  }
+
+  /**
+   * Gives the hold back so the seats go on sale again and the buyer picks
+   * afresh. Answers false where there is no handoff to give back or the
+   * runtime does not offer the reject — a feature not offered, not a failure.
+   */
+  releaseHandoffAndChangeSeats(): Promise<boolean> {
+    if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
+    const handoff = this.booked.pendingHandoff;
+    if (handoff === undefined || !this.supportsHandoffReject) {
+      return Promise.resolve(false);
+    }
+    return this.rejectHandoff(handoff.holdId).then(() => {
+      this.booked.released();
+      return true;
+    });
   }
 
   get supportsAvailabilityRefresh(): boolean {

@@ -32,11 +32,18 @@ describe('ready-made picker options and part builders', () => {
     expect(phone.chrome).toEqual({
       header: true, priceLegend: true, floorSelector: true, floorStrip: true, mapControls: true,
       overview: false, zoom: false, colorblind: false, fit: true, map3D: true,
-      accessibility: true, cartSheet: true, dock: true, confirmCard: true,
+      accessibility: true, cartSheet: true, dock: false, confirmCard: true,
+      showExtendHoldPrompt: false,
       venue3D: true, seatViewChrome: true, holdPill: true, systemBars: true,
     });
     expect(wide.resolvedLayout).toBe('wide');
-    expect(wide.chrome).toMatchObject({ header: true, overview: true, zoom: true, colorblind: true });
+    // §3.6/§3.13.8: no dock and no extend prompt on a phone; both auto-on wide.
+    expect(wide.chrome).toMatchObject({
+      header: true, overview: true, zoom: true, colorblind: true,
+      dock: true, showExtendHoldPrompt: true,
+    });
+    expect(resolveSeatLayerPickerChromeOptions({ dock: true }, 'phone'))
+      .toMatchObject({ dock: true });
     expect(resolveSeatLayerPickerChromeOptions({ overview: null, zoom: true }, 'phone'))
       .toMatchObject({ overview: false, zoom: true });
   });

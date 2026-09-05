@@ -613,6 +613,7 @@ export class SeatLayerPickerControllerCore {
           'picker.continue returned no checkout handoff.',
         );
       }
+      this.onCheckoutHandoff(handoff);
       return handoff;
     });
     this.checkoutInFlight = flight;
@@ -723,6 +724,11 @@ export class SeatLayerPickerControllerCore {
       this.notifySeatViewListeners();
     }
   }
+  /**
+   * The one moment the hold id crosses to this side (§4.8). Subclasses retain
+   * it so a later release can name the hold; ordinary snapshots never do.
+   */
+  protected onCheckoutHandoff(_handoff: SeatLayerPickerCheckoutHandoff): void {}
   protected available(capability: string, command: string): boolean {
     return this.mapController.isReady &&
       this.mapController.supportsPickerCapability(capability) &&
