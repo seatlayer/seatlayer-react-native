@@ -4,6 +4,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import type { SeatLayerConfiguration } from '../types';
 import { SeatLayerPickerScopedContent } from './SeatLayerPickerScopedContent';
 import { SeatLayerPickerCallbackObserver } from './SeatLayerPickerCallbackObserver';
+import { SeatLayerPickerHoldOwnershipObserver } from './holdOwnershipObserver';
 import type { SeatLayerPickerBuilders } from './builders';
 import type { SeatLayerPickerCallbacks } from './callbacks';
 import { SeatLayerPickerCloseLifecycle } from './closeLifecycle';
@@ -73,6 +74,7 @@ export function SeatLayerPicker(props: SeatLayerPickerProps): React.ReactElement
       strings={props.strings}
     >
       <SeatLayerPickerCallbackObserver callbacks={props.callbacks} />
+      <SeatLayerPickerHoldOwnershipObserver />
       <SeatLayerPickerEmbeddedLayout
         builders={props.builders}
         callbacks={props.callbacks}

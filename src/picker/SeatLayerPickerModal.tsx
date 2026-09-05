@@ -20,6 +20,7 @@ import type { SeatLayerConfiguration } from '../types';
 import type { SeatLayerPickerBuilders } from './builders';
 import type { SeatLayerPickerCallbacks, SeatLayerPickerCloseReason } from './callbacks';
 import { SeatLayerPickerCallbackObserver } from './SeatLayerPickerCallbackObserver';
+import { SeatLayerPickerHoldOwnershipObserver } from './holdOwnershipObserver';
 import { SeatLayerPickerCloseLifecycle } from './closeLifecycle';
 import type { SeatLayerPickerController } from './controller';
 import type { SeatLayerPickerHapticAdapter } from './hapticPlayer';
@@ -132,6 +133,7 @@ export function SeatLayerPickerModal(props: SeatLayerPickerModalProps): React.Re
       strings={props.strings}
     >
       <SeatLayerPickerCallbackObserver callbacks={props.callbacks} />
+      <SeatLayerPickerHoldOwnershipObserver />
       <ModalBody
         {...props}
         cleanupKey={stage.scopeKey}

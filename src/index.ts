@@ -479,6 +479,9 @@ export {
   type SeatLayerPickerHoldOwnershipNotice as SeatLayerPickerHoldOwnershipNoticeModel,
 } from './picker/holdOwnership';
 export {
+  SeatLayerPickerHoldOwnershipObserver,
+} from './picker/holdOwnershipObserver';
+export {
   SeatLayerPickerGAPrompt,
   SeatLayerPickerGAPrompt as SeatLayerPickerGeneralAdmissionPrompt,
   SeatLayerPickerSeatTierSelector,
