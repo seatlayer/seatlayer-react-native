@@ -51,8 +51,12 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
     : seatLayerPickerTokens.type.peekSummary.weight);
   const words = line.sentence ?? line.summary ?? '';
   const price = splitSeatLayerFromPrice(words, line.fromAmount);
+  const lifts = !expanded && price.amount !== null;
   const muted = {
-    color: expanded ? theme.colors.text : theme.colors.mutedText,
+    // Muted only where something IS lifted out of the line: a sentence with no
+    // loud part is the line the buyer reads, and reading it at caption strength
+    // makes the collapsed bar look disabled.
+    color: lifts ? theme.colors.mutedText : theme.colors.text,
     fontFamily: theme.fontFamily,
     fontSize: summarySize,
     fontWeight: summaryWeight,
@@ -110,18 +114,26 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
           alignSelf: 'flex-start',
           transform: [{ scale: props.summarySwell.interpolate({ inputRange: [0, .55, 1], outputRange: [1, 1.08, 1] }) }],
         }}>
+          {/* The amount is lifted out of the sentence only on the COLLAPSED
+              bar, where the money is what the buyer reads the bar for. Open,
+              the line is one weight throughout — every other reading of it, a
+              ticket count or a whole sentence, already is. */}
           <Text numberOfLines={1} ellipsizeMode="tail" style={[muted, props.summaryStyle]}>
-            {price.before}
-            {price.amount === null ? null : (
-              <Text style={{
-                color: theme.colors.text,
-                fontFamily: theme.fontFamily,
-                fontSize: seatLayerPickerTokens.type.peekFromPrice.size,
-                fontVariant: ['tabular-nums'],
-                fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekFromPrice.weight),
-              }}>{price.amount}</Text>
-            )}
-            {price.after}
+            {!lifts
+              ? words
+              : (
+                <>
+                  {price.before}
+                  <Text style={{
+                    color: theme.colors.text,
+                    fontFamily: theme.fontFamily,
+                    fontSize: seatLayerPickerTokens.type.peekFromPrice.size,
+                    fontVariant: ['tabular-nums'],
+                    fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekFromPrice.weight),
+                  }}>{price.amount}</Text>
+                  {price.after}
+                </>
+              )}
           </Text>
         </Animated.View>
       </Pressable>
