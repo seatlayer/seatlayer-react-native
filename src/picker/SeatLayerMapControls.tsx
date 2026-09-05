@@ -61,6 +61,14 @@ export const seatLayerPickerMapControlsEdgeInset = seatLayerPickerTokens.size.ma
  * in the map's corner, and the corner inset put them a rung too low.
  */
 export const seatLayerPickerMapControlsRailTop = 8;
+/**
+ * The air the Map/3D control carries above its own track so that its press
+ * target clears the touch floor. The anchor takes it back, or the track lands
+ * a bed's depth below the line the test chip opposite it stands on.
+ */
+export const seatLayerPickerViewModeTrackInset =
+  (seatLayerPickerTokens.size.minimumHitTarget -
+    seatLayerPickerTokens.size.viewModeControlHeight) / 2;
 
 type BottomControlPlan = Readonly<{ height: number; zoomOffset: number }>;
 
@@ -404,7 +412,7 @@ function SeatLayerMapControlsView({
       ]}
     >
       {view ? (
-        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: seatLayerPickerMapControlsRailTop }}>
+        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: seatLayerPickerMapControlsRailTop - seatLayerPickerViewModeTrackInset }}>
           {view}
         </SeatLayerPickerBlockedRegion>
       ) : null}
@@ -525,7 +533,7 @@ export function SeatLayerPickerViewModeControlView({
   // A track with the two halves INSIDE it. The bed is what tells a buyer the
   // pair is one control: painted edge to edge, the lit half reads as a block
   // butted against a button rather than as the thumb of a switch.
-  const trackInset = (target - seatLayerPickerTokens.size.viewModeControlHeight) / 2;
+  const trackInset = seatLayerPickerViewModeTrackInset;
   const paintInset = (target - segmentPaintHeight) / 2;
   const chrome = seatLayerPickerMapChromeGround(theme);
   const segment = (

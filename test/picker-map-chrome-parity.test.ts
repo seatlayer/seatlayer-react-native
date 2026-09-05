@@ -20,6 +20,7 @@ import {
   SeatLayerMapControls,
   seatLayerPickerMapControlsEdgeInset,
   seatLayerPickerMapControlsRailTop,
+  seatLayerPickerViewModeTrackInset,
 } from '../src/picker/SeatLayerMapControls';
 import {
   SeatLayerPickerBlockedRegion,
@@ -147,7 +148,7 @@ describe('3.5 map corner controls', () => {
     // The track shares the price rail's line rather than the map's corner, so
     // its top is the rail band's own, not the corner inset.
     expect(anchors).toContainEqual(expect.objectContaining({
-      end: 12, top: seatLayerPickerMapControlsRailTop,
+      end: 12, top: seatLayerPickerMapControlsRailTop - seatLayerPickerViewModeTrackInset,
     }));
   });
 
