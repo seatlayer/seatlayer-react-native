@@ -296,7 +296,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
     ? '' : `${line.categoryLabel}, `;
   const removing = marks.isRemoving(line.item);
   const held = line.held;
-  const removable = canRemove && !held && !removing;
+  const removable = canRemove && !removing;
   const row = (
     <View
       accessible
@@ -378,7 +378,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
           fontWeight: seatLayerPickerBold(800),
         }, styles.denseLineText]}>{amount}</Text>
       </SeatLayerCartCellCrossFade>
-      {canRemove && !held
+      {canRemove
         ? (
           <Pressable
             accessibilityRole="button"

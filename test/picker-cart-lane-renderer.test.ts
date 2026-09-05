@@ -223,7 +223,7 @@ describe('§3.10.2 cart rows', () => {
     expect(fail).toBe(false);
   });
 
-  it('washes a held row, locks its mark and takes its remove control away', async () => {
+  it('washes a held row and locks its mark, and keeps its remove control', async () => {
     const runtime = setupScope();
     runtime.snapshot.hold = { active: true, owner: 'host' };
     runtime.snapshot.cartLines = [line()];
@@ -235,7 +235,10 @@ describe('§3.10.2 cart rows', () => {
     expect(JSON.stringify(renderer.toJSON())).not.toContain('\u{1F512}');
     expect(lock.findAllByType('Text' as never)).toHaveLength(0);
     expect(lock.findAllByType('View' as never).length).toBeGreaterThanOrEqual(2);
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-remove' })).toHaveLength(0);
+    // §3.13.13 — the × stays: pressing it is how a buyer whose hold the host
+    // owns is told the state, and how a held line releases one seat.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-remove' }).length)
+      .toBeGreaterThan(0);
   });
 
   it('collapses only once there are enough runs, behind a row of the generated height', async () => {
