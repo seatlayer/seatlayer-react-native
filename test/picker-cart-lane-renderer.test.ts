@@ -137,17 +137,24 @@ describe('§3.1 header renderer', () => {
     });
   });
 
-  it('keeps the hold pill up for the whole hold and withholds it from a host-owned one', async () => {
+  it('keeps the hold pill up for the whole hold, whoever owns it', async () => {
     const now = 1_000_000;
-    const props = (owner: string) => React.createElement(SeatLayerPickerHeaderView, {
+    const props = (owner: string, showHoldPill?: boolean) => React.createElement(SeatLayerPickerHeaderView, {
       ...headerProps, clock: () => now, hold: { active: true, expiresAt: now + 605_000, owner },
+      ...(showHoldPill === undefined ? {} : { showHoldPill }),
     });
     const picker = await render(props('picker'));
     const pill = picker.root.findByProps({ testID: 'seatlayer-header-hold-pill' });
     expect(JSON.stringify(picker.toJSON())).toContain('10:05');
     expect(pill.props.accessibilityLiveRegion).toBe('polite');
+    // The reference draws the clock on a hold handed to the host too: the
+    // buyer's time is running either way (§3.1, owner call 2026-09-05).
     const host = await render(props('host'));
-    expect(host.root.findAllByProps({ testID: 'seatlayer-header-hold-pill' })).toHaveLength(0);
+    expect(host.root.findAllByProps({ testID: 'seatlayer-header-hold-pill' })).toHaveLength(1);
+    expect(JSON.stringify(host.toJSON())).toContain('10:05');
+    // The one way it goes away is the host asking, through `showHoldPill`.
+    const off = await render(props('host', false));
+    expect(off.root.findAllByProps({ testID: 'seatlayer-header-hold-pill' })).toHaveLength(0);
   });
 
   it('says the throttled sentence rather than the running clock', async () => {
@@ -318,7 +325,7 @@ describe('§3.12 toast surface', () => {
 });
 
 describe('§3.13.6 standalone hold countdown', () => {
-  it('mirrors the header pill: host-owned holds are withheld and the sentence is throttled', async () => {
+  it('mirrors the header pill: the clock runs whoever owns the hold, and the sentence is throttled', async () => {
     setupScope();
     const { SeatLayerPickerHoldCountdownView } = await import('../src/picker/SeatLayerPickerHoldCountdown');
     const now = 1_000_000;
@@ -337,7 +344,8 @@ describe('§3.13.6 standalone hold countdown', () => {
     const host = await render(React.createElement(SeatLayerPickerHoldCountdownView, {
       ...base, hold: { active: true, expiresAt: now + 120_000, owner: 'host' },
     }));
-    expect(host.toJSON()).toBeNull();
+    expect(host.root.findByProps({ testID: 'seatlayer-hold-countdown' })
+      .props.accessibilityLabel).toBe('holdMinutesLeft:2');
   });
 
   it('inverts to the full accent in its last minute', async () => {

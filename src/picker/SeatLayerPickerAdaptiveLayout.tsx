@@ -505,11 +505,11 @@ export function SeatLayerPickerAdaptiveLayout({
       options={{
         eventName: plan.options.eventName,
         hideEventDetails: plan.options.hideEventDetails,
-        showHoldPill: plan.options.chrome.holdPill,
+        showHoldPill: plan.options.chrome.holdPill && plan.options.showHoldPill,
       }}
       reserveInset={false}
       showEventDetails={!plan.options.hideEventDetails}
-      showHoldPill={plan.options.chrome.holdPill}
+      showHoldPill={plan.options.chrome.holdPill && plan.options.showHoldPill}
     />)
     : null;
   const legend = legendVisible

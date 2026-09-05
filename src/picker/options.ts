@@ -82,6 +82,13 @@ export interface SeatLayerPickerBehaviorOptions {
    */
   readonly eventName?: string;
   readonly haptics?: boolean;
+  /**
+   * The header's hold countdown (§3.1). It is drawn for as long as a live hold
+   * exists, whoever owns it — a host that draws its own clock sets this false
+   * so the buyer is not given two. Composes with `chrome.holdPill`: the pill is
+   * drawn only where BOTH are on.
+   */
+  readonly showHoldPill?: boolean;
 }
 
 /** Typed options for the ready-made layout; themes, styles, wording and configuration stay top-level. */
@@ -132,6 +139,7 @@ export interface SeatLayerPickerResolvedOptions {
   readonly panelInitiallyCollapsed: boolean;
   readonly persistColorblindPreference: boolean;
   readonly refreshOnResume: boolean;
+  readonly showHoldPill: boolean;
   readonly announceHoldLapse: boolean;
   readonly showBookedOverlay: boolean;
   readonly eventName?: string;
@@ -298,6 +306,7 @@ export function resolveSeatLayerPickerOptions(
     panelInitiallyCollapsed: booleanOr(ownData(input, 'panelInitiallyCollapsed'), true),
     persistColorblindPreference: booleanOr(ownData(input, 'persistColorblindPreference'), true),
     refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
+    showHoldPill: booleanOr(ownData(input, 'showHoldPill'), true),
     announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
     showBookedOverlay: booleanOr(ownData(input, 'showBookedOverlay'), true),
     eventName: validEventName(ownData(input, 'eventName')),

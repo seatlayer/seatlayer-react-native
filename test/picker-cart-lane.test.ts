@@ -83,10 +83,12 @@ describe('§3.1 header', () => {
     expect(seatLayerHeaderInitial('🎪 Circus')).toBe('🎪');
   });
 
-  it('draws the hold pill for as long as the hold lives, and never for a host-owned one', () => {
+  it('draws the hold pill for as long as the hold lives, whoever owns it', () => {
     expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1, owner: 'picker' })).toBe(true);
-    // §4.8: a hold handed to the host is the host's to display.
-    expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1, owner: 'host' })).toBe(false);
+    // §3.1/§4.8, owner call 2026-09-05: the buyer's time runs on a host-owned
+    // hold too, and the header is the one place the picker states it. What
+    // ownership still governs is what the controls may DO with the hold.
+    expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1, owner: 'host' })).toBe(true);
     expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1 }, true)).toBe(false);
     expect(seatLayerHoldPillDrawn({ active: false })).toBe(false);
     expect(seatLayerHoldPillDrawn(undefined)).toBe(false);

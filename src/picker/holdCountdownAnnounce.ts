@@ -51,13 +51,21 @@ export function seatLayerHoldExpiring(remainingSeconds: unknown): boolean {
     remainingSeconds <= seatLayerHoldExpiringSeconds;
 }
 
-/** The pill is the picker's own clock only while the picker owns the hold. */
+/**
+ * The pill is drawn for as long as a live hold exists, WHOEVER owns it
+ * (spec §3.1/§4.8, owner call 2026-09-05). The buyer's time is running on a
+ * hold handed to the host exactly as it is on the picker's own, and the header
+ * is the one place the picker states it. Ownership still governs what the
+ * native controls may DO with the hold — no extend, no release from a cart row
+ * (§4.8) — it just no longer governs whether the clock is legible. A host that
+ * draws its own clock turns this one off with the `showHoldPill` option.
+ */
 export function seatLayerHoldPillDrawn(
   hold: Readonly<{ active?: boolean; expiresAt?: number; owner?: string }> | undefined,
   holdLapsed = false,
 ): boolean {
   return hold?.active === true && typeof hold.expiresAt === 'number' &&
-    Number.isFinite(hold.expiresAt) && !holdLapsed && hold.owner !== 'host';
+    Number.isFinite(hold.expiresAt) && !holdLapsed;
 }
 
 export const seatLayerHoldPillHeight = seatLayerPickerTokens.size.headerCloseSize;
