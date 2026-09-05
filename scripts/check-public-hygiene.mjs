@@ -73,6 +73,22 @@ const credentialPattern = new RegExp(
 );
 const nonPublicHostPattern = /https?:\/\/[^\s'"`]*(?:-dev\.|\.internal(?:[/:]|$))/gi;
 
+/**
+ * Names that identified a pilot customer and its hosts while the example app
+ * was wired to one. The example is neutral now, and these must never come
+ * back: this repository is a brand surface, and a customer's name, host or
+ * integration shape is theirs, not ours to publish.
+ *
+ * Matched case-insensitively across the whole repository below, and again over
+ * every file under example/, src/, test/ and docs/ so a new file cannot land
+ * with one in a path the sweep above skips by extension.
+ */
+const customerDenylist = [
+  { pattern: /desipass/gi, description: 'a pilot customer name' },
+  { pattern: /flutterscript/gi, description: 'a pilot customer host' },
+];
+const scannedDirectories = ['example', 'src', 'test', 'docs'];
+
 for (const relativePath of trackedPaths) {
   if (relativePath === 'scripts/check-public-hygiene.mjs' ||
     !textExtensions.has(extname(relativePath).toLowerCase())) continue;
@@ -82,6 +98,16 @@ for (const relativePath of trackedPaths) {
   reportMatches(relativePath, contents, localPathPattern, 'developer-machine path');
   reportMatches(relativePath, contents, credentialPattern, 'credential-like value');
   reportMatches(relativePath, contents, nonPublicHostPattern, 'non-public development host');
+  reportCustomerNames(relativePath, contents);
+}
+
+// The sweep above reads only the text extensions it knows; these directories
+// are read whole — every file, and its path — because a customer's name in an
+// unrecognised extension or a directory name is published just the same.
+for (const relativePath of everyFileUnder(...scannedDirectories)) {
+  reportCustomerNames(relativePath, relativePath);
+  if (!textExtensions.has(extname(relativePath).toLowerCase())) continue;
+  reportCustomerNames(relativePath, readFileSync(resolve(root, relativePath), 'utf8'));
 }
 
 if (failures.length > 0) {
@@ -90,6 +116,23 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(`Public hygiene check passed for ${trackedPaths.length} repository files.`);
+}
+
+function reportCustomerNames(relativePath, contents) {
+  for (const { pattern, description } of customerDenylist) {
+    reportMatches(relativePath, contents, pattern, description);
+  }
+}
+
+function everyFileUnder(...directories) {
+  const seen = new Set();
+  return directories.flatMap((directory) =>
+    filesUnder(resolve(root, directory), (name) => name !== 'node_modules'),
+  ).map((file) => relative(root, file)).filter((file) => {
+    if (seen.has(file)) return false;
+    seen.add(file);
+    return true;
+  });
 }
 
 function reportMatches(relativePath, contents, expression, description) {
@@ -114,6 +157,7 @@ function filesUnder(directory, accept) {
   if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name);
+    if (entry.name === 'node_modules' || entry.name === 'dist') return [];
     if (entry.isDirectory()) return filesUnder(path, accept);
     return entry.isFile() && accept(entry.name) ? [path] : [];
   });
