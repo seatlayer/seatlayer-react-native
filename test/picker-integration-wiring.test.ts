@@ -177,7 +177,7 @@ describe('integrated picker composition', () => {
     state.scope = current;
     const { tree } = await render(current);
     expect(state.showToast).toHaveBeenCalledTimes(1);
-    const request = state.showToast.mock.calls[0][0];
+    const request = state.showToast.mock.calls[0]![0] as { message: string; onAction?: () => void };
     expect(typeof request.message).toBe('string');
     // `reselectLapsedSeats` is the one recovery a toast may carry.
     request.onAction?.();
