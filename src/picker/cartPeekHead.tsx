@@ -1,7 +1,9 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, type GestureResponderHandlers, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
-import type { SeatLayerPeekLine } from './checkoutCta';
+import { splitSeatLayerFromPrice, type SeatLayerPeekLine } from './checkoutCta';
+
+export { splitSeatLayerFromPrice };
 import { seatLayerPickerColorAlpha, type resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { seatLayerPickerTokens } from './tokens.g';
 
@@ -21,29 +23,6 @@ type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 export const seatLayerPeekHeadInset = 12;
 const findPillPadding = 20;
 const continuePillPadding = 18;
-
-/**
- * `From €25` printed as one sentence in two weights.
- *
- * The line stays the locale's own — in whatever order the language puts it —
- * and only the amount INSIDE it is lifted. Where the amount cannot be found in
- * the resolved sentence the whole line is printed at the caption weight rather
- * than guessed at.
- */
-export function splitSeatLayerFromPrice(
-  sentence: string,
-  amount: string | null,
-): Readonly<{ before: string; amount: string | null; after: string }> {
-  if (amount === null || amount === '' || !sentence.includes(amount)) {
-    return Object.freeze({ before: sentence, amount: null, after: '' });
-  }
-  const at = sentence.indexOf(amount);
-  return Object.freeze({
-    before: sentence.slice(0, at),
-    amount,
-    after: sentence.slice(at + amount.length),
-  });
-}
 
 export interface SeatLayerCartPeekHeadProps {
   readonly line: SeatLayerPeekLine;

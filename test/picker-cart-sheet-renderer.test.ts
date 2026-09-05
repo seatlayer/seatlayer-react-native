@@ -322,7 +322,9 @@ describe('cart checkout renderer', () => {
   it('forwards safe insets to the standalone best-seats prompt frame without making the scrim safe-area sized', async () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [];
-    runtime.snapshot.categories = [{ key: 'adult', label: 'Adult' }];
+    // §3.11: where there is exactly ONE category the select is omitted and
+    // takes no row, so a chart with a choice is what opens a chooser.
+    runtime.snapshot.categories = [{ key: 'adult', label: 'Adult' }, { key: 'child', label: 'Child' }];
     let claims = 0;
     scope = {
       ...scope,

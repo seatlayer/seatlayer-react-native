@@ -13,6 +13,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { seatLayerHeaderInitial } from "./headerIdentity";
 import {
   seatLayerHoldAnnouncementFor,
   seatLayerHoldClockText,
@@ -110,15 +111,6 @@ function readClock(clock: () => number): number {
   const value = clock();
   if (!Number.isFinite(value)) throw new RangeError("Invalid picker clock");
   return value;
-}
-
-/** The brand mark's letter: the organizer's initial, never a drawn glyph. */
-export function seatLayerHeaderInitial(...names: readonly (string | undefined)[]): string {
-  for (const name of names) {
-    const trimmed = typeof name === "string" ? name.trim() : "";
-    if (trimmed) return [...trimmed][0]!.toUpperCase();
-  }
-  return "";
 }
 
 function LetterMark({ background, foreground, fontFamily, letter, size, style }: {
