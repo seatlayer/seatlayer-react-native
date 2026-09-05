@@ -251,10 +251,12 @@ runtime lane; the Flutter head is 58 pt at rest).
 `lib/src/picker/picker_header.dart`
 
 **Anatomy.** A row of `size.headerHeight`, on the picker's own ground — the
-header's own style slot, which defaults to `color.*.surface` with `color.*.text`
-on it; a ground and its ink are always resolved as a pair, never from two
-independent tokens (a host that darkens `background` for the map must not
-lose the event name) — with a hairline of `color.*.divider` under it. Left: the
+header's own style slot, which defaults to `color.*.background` with
+`color.*.text` on it; a ground and its ink are always resolved as a pair, never
+from two independent tokens (a host that darkens `background` for the map must
+not lose the event name). It draws **no hairline of its own**: the price rail
+beneath it is the first `color.*.surface`, and the two grounds meeting is the
+boundary — a rule as well read as a line drawn through one plate. Left: the
 brand mark, a square of `size.headerLogoSize` at `radius.headerLogo`, filled
 with the accent and carrying either the organizer's logo image (cover-fitted) or
 the first letter of the brand or event name in `color.*.onAccent`. Centre: the
@@ -308,7 +310,9 @@ reader every second; announce it on the minute and on the expiring transition.
 
 **Anatomy.** A band of its own between the header and the map, height
 `size.topRailHeight`, on `color.*.surface` with a `color.*.divider` hairline
-beneath. It is not floated over the map: on a busy chart the seat numbers read
+beneath and `10` of its own margin on each side — the band's chips sit inside
+the surface they are drawn on, so the pinned chip's rounded end is never cut off
+by the screen edge. It is not floated over the map: on a busy chart the seat numbers read
 through the gaps, and the last chip clipped under the Map/3D control. Inside it,
 one horizontally scrolling row of chips.
 
@@ -398,9 +402,16 @@ segments of `size.viewModeButtonMinWidth` × `size.viewModeButtonHeight` at
 `size.viewModeLabelFontSize`, letter-spaced, in `color.*.mutedText`. The active
 segment takes the accent ground and `color.*.onAccent`.
 
+The two segments are held **inside** the track with `3` of its ground around
+them and `2` between them, each a stadium at `radius.pill`; the lit one is
+filled with the accent, the quiet one paints nothing and lets the track through.
+Painted edge to edge instead, the pair reads as a block butted against a button
+rather than as one control.
+
 On a phone it lives in the map's **top-right** corner, on the line below the
-price rail — the rail owns the band, the control owns the corner. On wide it
-joins the corner-control stack.
+price rail — the rail owns the band, the control owns the corner. Its trailing
+inset is `size.mapAnchorInset`; its top is the map's top band, 8, which the test
+chip shares. On wide it joins the corner-control stack.
 
 **Copy.** Left `strings.mapView` (accessible name `strings.flat2dMap`); right
 `strings.venue3D` (accessible name `strings.interactive3dVenueView`). The group
@@ -450,8 +461,10 @@ amber as the floor allows rather than driving to maximum contrast.
 **Copy.** Sentence case `strings.testMode`; the accessible name keeps
 `strings.testModeLong`; the description is `strings.testModeExplained`.
 
-**Placement.** The map's top-left corner in both 2D and 3D, at
-`size.mapAnchorInset`. It steps down by the back pill's height plus
+**Placement.** The map's top-left corner in both 2D and 3D. Its **leading**
+inset is `size.mapAnchorInset`; its **top** is the map's own top band — 8, the
+line the Map/3D control shares — and not the corner inset, which drops it a rung
+below the control beside it. It steps down by the back pill's height plus
 `size.mapAnchorGap` **only while the immersive scene's back pill is actually
 drawn** — not merely whenever the scene is up.
 
