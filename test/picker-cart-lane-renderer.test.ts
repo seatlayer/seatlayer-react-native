@@ -123,10 +123,12 @@ describe('§3.1 header renderer', () => {
         style && style.width === seatLayerPickerTokens.size.headerCloseSize &&
         style.borderRadius === seatLayerPickerTokens.radius.pill));
     expect(ring).toHaveLength(1);
-    // The press target is expanded to the touch floor around it.
+    // The press target is expanded past the touch floor: the ring carries ten
+    // points of reach on each side, so it ends ten points from the trailing
+    // edge while the target still runs out to the corner.
     expect(renderer.root.findByProps({ testID: 'seatlayer-header-close' })
       .props.style({ pressed: false })[0]).toMatchObject({
-      width: seatLayerPickerTokens.size.minimumHitTarget,
+      width: seatLayerPickerTokens.size.headerCloseSize + 20,
       height: seatLayerPickerTokens.size.minimumHitTarget,
     });
   });
