@@ -54,6 +54,12 @@ export function SeatLayerPickerCallbackObserver({ callbacks }: SeatLayerPickerCa
       controller.on('accessUnavailable', (event) => emit('onAccessUnavailable', event)),
       controller.on('selectedObjectsUnavailable', (event) => emit('onSelectedObjectUnavailable', event)),
       controller.on('error', (error) => emit('onError', error)),
+      // §3.13.10 — the sale, not the hand-off. The controller decides when a
+      // handed-off hold has settled to booked; the host is told once.
+      // A custom scope value need not carry every controller surface.
+      typeof lease.controller.subscribeBooked === 'function'
+        ? lease.controller.subscribeBooked((handoff) => emit('onBooked', handoff))
+        : () => undefined,
     ];
     return () => { for (const dispose of remove) try { dispose(); } catch { /* Runtime cleanup is inert. */ } };
   }, [runtimeSession, scope.controller, scope.sessionId]);

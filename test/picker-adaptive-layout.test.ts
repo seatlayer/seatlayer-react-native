@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false }));
+const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn() }));
 
 vi.mock('react-native', () => ({
   View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width }),
@@ -44,6 +44,18 @@ vi.mock('../src/picker/attribution', () => ({ SeatLayerPickerAttribution: 'attri
 vi.mock('../src/picker/systemStatusBar', () => ({ SeatLayerPickerSystemStatusBar: 'system-bars' }));
 vi.mock('../src/picker/scopeBackHandler', () => ({ SeatLayerPickerScopeBackHandler: 'back-handler' }));
 vi.mock('../src/picker/SeatLayerDockBar', () => ({ SeatLayerDockBar: 'dock' }));
+vi.mock('../src/picker/SeatLayerPickerStateOverlays', () => ({
+  SeatLayerPickerSoldOutOverlay: 'sold-out', SeatLayerPickerBookedOverlay: 'booked',
+}));
+vi.mock('../src/picker/SeatLayerPickerAccessPanel', () => ({
+  SeatLayerPickerAccessPanel: 'access-panel', SeatLayerPickerSalesClosedStatement: 'sales-closed',
+}));
+vi.mock('../src/picker/SeatLayerPickerAccessibleStepper', () => ({ SeatLayerPickerAccessibleStepper: 'access-stepper' }));
+vi.mock('../src/picker/SeatLayerHoldOwnershipNotice', () => ({ SeatLayerHoldOwnershipNotice: 'hold-ownership' }));
+vi.mock('../src/picker/SeatLayerPickerToast', () => ({
+  SeatLayerPickerToastLayer: 'toast-layer',
+  useSeatLayerPickerToastQueue: () => ({ queue: { current: null }, show: state.showToast }),
+}));
 
 import { SeatLayerPickerAdaptiveLayout } from '../src/picker/SeatLayerPickerAdaptiveLayout';
 import {
@@ -172,7 +184,6 @@ describe('adaptive picker composition', () => {
     expect(sheet.props.expanded).toBe(true);
     expect(sheet.props.onCheckout).toBe(checkout);
     expect(sheet.props.holdLapse).toBeTruthy();
-    expect(sheet.props.checkoutBar.props.compact).toBe(false);
     expect(tree.root.findByType('dock' as any).props.onSectionChanged).toBe(onSectionFocused);
     await act(async () => { sheet.props.onExpandedChanged(false); });
     expect(state.scope.lease.set).toHaveBeenLastCalledWith({ top: 0, bottom: 106 });
@@ -214,7 +225,6 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findByType('section-navigator' as any).props.onSectionFocused).toBe(onSectionFocused);
     const checkoutBar = tree.root.findByType('checkout' as any);
     expect(checkoutBar.props.onCheckout).toBe(checkout);
-    expect(checkoutBar.props.compact).toBe(false);
     expect(state.scope.lease.remove).toHaveBeenCalledTimes(1);
     expect(state.scope.reportError.mock.calls.length).toBeGreaterThanOrEqual(2);
     await act(async () => { tree.unmount(); });
@@ -457,7 +467,9 @@ describe('adaptive picker composition', () => {
     const floor = tree.root.findByType('floor-selector' as any);
     const access = tree.root.findByType('accessibility' as any);
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
-    const accessStyle = access.parent?.props.style[1] as { bottom: number };
+    // The disc shares its rail with the stepped disc (§3.7), so the rail
+    // carries a row style before its position.
+    const accessStyle = access.parent?.props.style[2] as { bottom: number };
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
     // The dock's 52 px is gone from the phone band: no dock, no lift (§3.6).
     // The price rail is a band above the map (§3.2), so only the TEST chip

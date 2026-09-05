@@ -24,6 +24,7 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   floorRail: { position: 'absolute', left: 0, right: 0 },
   testRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset },
   accessRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset },
+  accessRow: { alignItems: 'flex-end', flexDirection: 'row', gap: seatLayerPickerTokens.size.accessStepGap },
   floorSelectorRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset },
   dockRail: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   wideMapOverlays: absoluteFillObject,

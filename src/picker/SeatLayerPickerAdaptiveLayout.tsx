@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { canRenderSeatLayerPickerAccessibilityFilters, SeatLayerPickerAccessibilityFilters } from './accessibility';
@@ -97,6 +97,8 @@ export interface SeatLayerPickerAdaptiveLayoutProps {
   readonly onSeatViewOpened?: SeatLayerPickerCallbacks['onSeatViewOpened'];
   readonly onSectionFocused?: SeatLayerPickerCallbacks['onSectionFocused'];
   readonly onSeatRemoved?: SeatLayerPickerCallbacks['onSeatRemoved'];
+  /** §3.13.3: the host has been told and may be running its own recovery. */
+  readonly hostOwnsAccessRecovery?: boolean;
   readonly hapticAdapter?: SeatLayerPickerHapticAdapter;
   /** Host safe geometry for the measured ready-made surface. */
   readonly safeAreaInsets?: SeatLayerPickerSafeAreaInsetInput;
@@ -119,6 +121,7 @@ export function SeatLayerPickerAdaptiveLayout({
   onClose,
   onCheckout,
   onSeatRemoved,
+  hostOwnsAccessRecovery = false,
   onSectionFocused,
   onSeatSelected,
   onSeatViewOpened,
@@ -455,6 +458,21 @@ export function SeatLayerPickerAdaptiveLayout({
   const accessibility = accessibilityVisible
     ? part(builders, scope, 'accessibilityFilters', withSafeArea(SeatLayerPickerAccessibilityFilters, safeLayout.insets, { compact: !wide }))
     : null;
+  // §3.12 — one toast at a time, fed by the buyer-state machine's own
+  // payloads. `reselectLapsedSeats` is the only recovery there is.
+  const toasts = useSeatLayerPickerToastQueue();
+  const toldRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const news = seatLayerPickerHoldLapseNews(scope.holdLapse, scope.holdLapsed, scope.strings.locale);
+    if (news === undefined) { toldRef.current = undefined; return; }
+    if (toldRef.current === news.key) return;
+    toldRef.current = news.key;
+    toasts.show(seatLayerPickerToastRequest(news, scope));
+  }, [scope.holdLapse, scope.holdLapsed, scope.strings, toasts]);
+  const toastLayer = <SeatLayerPickerToastLayer
+    lift={wide ? undefined : bottomInset + seatLayerPickerTokens.size.toastCardLift}
+    queue={toasts.queue}
+  />;
   const status = fatal
     ? part(builders, scope, 'error', <SeatLayerPickerErrorView />)
     : !scope.isReady || !framed
@@ -462,8 +480,13 @@ export function SeatLayerPickerAdaptiveLayout({
       : emptySnapshot
         ? part(builders, scope, 'empty', <SeatLayerPickerEmptyView />)
         : null;
+  // §3.13.13 — the hand-off notice is its own inline statement, never the
+  // command error: a hold the host owns is a state, not a failure.
   const actionError = ticketPanelVisible
-    ? part(builders, scope, 'actionError', <SeatLayerPickerActionError />)
+    ? part(builders, scope, 'actionError', <>
+      <SeatLayerHoldOwnershipNotice />
+      <SeatLayerPickerActionError />
+    </>)
     : null;
   const dock = phoneDockVisible
     ? part(builders, scope, 'dockBar', <SeatLayerDockBar onSectionChanged={onSectionFocused} reserveBottomInset={false} />)
@@ -481,7 +504,7 @@ export function SeatLayerPickerAdaptiveLayout({
     ? part(builders, scope, 'bestAvailable', withSafeArea(SeatLayerBestSeatsForm, safeLayout.insets))
     : null;
   const checkout = ticketPanelVisible
-    ? part(builders, scope, 'checkoutBar', <SeatLayerBookButton onCheckout={onCheckout} compact={false} />)
+    ? part(builders, scope, 'checkoutBar', <SeatLayerBookButton onCheckout={onCheckout} />)
     : null;
   const cartSheet = !wide && ticketPanelVisible
     ? part(builders, scope, 'cartSheet', withSafeArea(SeatLayerCartSheet, safeLayout.insets, {
@@ -489,6 +512,7 @@ export function SeatLayerPickerAdaptiveLayout({
       onExpandedChanged: (expanded: boolean) => scope.setPresentation({ type: 'setSheet', sheet: expanded ? 'expanded' : 'collapsed' }),
       onCheckout, reserveBottomInset: true, cartList, bestSeats: bestAvailable,
       checkoutBar: checkout, actionError, holdLapse,
+      salesClosed: <SeatLayerPickerSalesClosedStatement />,
     }))
     : null;
 
@@ -529,7 +553,10 @@ export function SeatLayerPickerAdaptiveLayout({
               pointerEvents="box-none"
               style={[styles.testRail, { top: badgeTop }]}
             ><SeatLayerPickerTestModeIndicator compact /></View> : null}
-            <View pointerEvents="box-none" style={[styles.accessRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>{accessibility}</View>
+            <View pointerEvents="box-none" style={[styles.accessRail, styles.accessRow, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>
+              {accessibility}
+              {accessibility === null ? null : <SeatLayerPickerAccessibleStepper />}
+            </View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorSelectorRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset + Math.max(
               accessibilityVisible ? seatLayerPickerTokens.size.minimumHitTarget : 0,
               phoneControls.bottom ? seatLayerPickerTokens.size.minimumHitTarget : 0,
@@ -553,6 +580,7 @@ export function SeatLayerPickerAdaptiveLayout({
               : seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
             sessionId={`${scope.sessionId}:${snapshot?.sessionId ?? ''}`}
           /> : null}
+          {toastLayer}
           {status === null ? null : <View style={[styles.owner, {
             backgroundColor: seatLayerPickerColorAlpha(
               scope.resolvedTheme.colors.background,
@@ -565,11 +593,15 @@ export function SeatLayerPickerAdaptiveLayout({
           {bestAvailable || accessibility ? <View style={styles.wideAssist}>{bestAvailable}{accessibility}</View> : null}
           {ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null}
           {ticketPanelVisible ? actionError : null}
+          {ticketPanelVisible ? <SeatLayerPickerSalesClosedStatement /> : null}
           <View style={styles.trailingAttribution} testID="seatlayer-wide-attribution"><SeatLayerPickerAttribution compact={false} /></View>
           {ticketPanelVisible ? checkout : null}
         </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<View style={styles.trailingAttribution} testID="seatlayer-phone-attribution"><SeatLayerPickerAttribution /></View></> : null}</View></>}
         </View>
       </View>
+      <SeatLayerPickerSoldOutOverlay />
+      {plan.options.showBookedOverlay ? <SeatLayerPickerBookedOverlay onBackToMap={onClose} /> : null}
+      <SeatLayerPickerAccessPanel hostOwnsRecovery={hostOwnsAccessRecovery} />
       {selectionFlight === undefined ? null : <SeatLayerSelectionFlight
         key={selectionFlight.id}
         moment={selectionFlight}

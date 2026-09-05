@@ -21,25 +21,15 @@ import {
   visibleSeatLayerCartRuns,
 } from './cartSheetUi';
 import { runMembersInSeatOrder, type DenseTicketLine, type DenseTicketRun } from './cartDense';
+import {
+  seatLayerPickerCartLineKeepsRemove, seatLayerPickerHoldOwnershipStore,
+} from './holdOwnership';
 import type { SeatLayerPickerCartLine } from './models';
 
 export interface SeatLayerCartListProps {
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: Pick<SeatLayerPickerStyles, 'denseLineContainer' | 'denseLineText' | 'denseLineRemoveButton' | 'denseLineRemoveButtonText'>;
   readonly onSeatRemoved?: (line: Readonly<SeatLayerPickerCartLine>) => unknown;
-  /**
-   * Fires `haptics.ticketRemoved` before the command is sent, so the gesture is
-   * confirmed under the finger rather than whenever the server finishes. The
-   * picker scope owns no imperative cue channel yet, so the host supplies one.
-   */
-  readonly onRemovalHaptic?: () => unknown;
-  /**
-   * RETIRED. The tray no longer offers Undo: a removal is silent, and the row
-   * itself is the answer to the press (spec §3.10.2). Accepted so the shared
-   * adaptive layout still compiles; never called. The integrator deletes this
-   * together with `onCartUndo` on `SeatLayerPickerAdaptiveLayout`.
-   */
-  readonly onUndo?: (labels: readonly string[]) => unknown;
   readonly children?: ReactNode;
 }
 
@@ -63,7 +53,7 @@ function observe(callback: unknown, value: unknown): void {
 export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const current = useRef<Current>(scope);
-  const observers = useRef({ onSeatRemoved: props.onSeatRemoved, onRemovalHaptic: props.onRemovalHaptic });
+  const observers = useRef({ onSeatRemoved: props.onSeatRemoved });
   const [version, setVersion] = useState(0);
   const mounted = useRef(true);
   const marks = useRef(new CartRemovalMarkCoordinator<SeatLayerPickerCartLine>(() => {
@@ -74,8 +64,8 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   const revision = useRef(-1);
   useLayoutEffect(() => {
     current.current = scope;
-    observers.current = { onSeatRemoved: props.onSeatRemoved, onRemovalHaptic: props.onRemovalHaptic };
-  }, [props.onRemovalHaptic, props.onSeatRemoved, scope]);
+    observers.current = { onSeatRemoved: props.onSeatRemoved };
+  }, [props.onSeatRemoved, scope]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; marks.current.dispose(); }; }, []);
   useLayoutEffect(() => {
     marks.current.reset();
@@ -105,14 +95,18 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
   const visibleRuns = visible.visible;
   if (!visibleRuns.length) return null;
-  const canRemove = !scope.readOnly && scope.snapshot?.hold.owner !== 'host' &&
+  // §3.13.13 — the line keeps its × while the host owns the hold. Removing it
+  // is refused by the runtime, and that refusal is what raises the notice: a
+  // control the buyer can press and be told about beats one that has silently
+  // gone.
+  const canRemove = !scope.readOnly && seatLayerPickerCartLineKeepsRemove(scope.snapshot) &&
     supportsSeatLayerPickerSurface(scope.controller, ['cart-line-remove-v1'], ['picker.removeCartLine']);
 
   const remove = async (line: DenseTicketLine<SeatLayerPickerCartLine>, run?: DenseTicketRun<SeatLayerPickerCartLine>) => {
     const before = current.current;
     const lease = captureSeatLayerCartActionLease(before.controller, before.sessionId);
     const live = lease?.controller.getSnapshot();
-    if (!lease || !live || before.readOnly || live.hold.owner === 'host' ||
+    if (!lease || !live || before.readOnly ||
       !supportsSeatLayerPickerSurface(before.controller, ['cart-line-remove-v1'], ['picker.removeCartLine'])) return;
     // A run's × removes the whole run, and says so.
     const lines = (run?.isGroup ? run.members : [line]).map((member) => member.item);
@@ -121,7 +115,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     const token = started.mark.token;
     // Felt, not just seen: the gesture is confirmed under the finger rather
     // than whenever the server finishes.
-    observe(observers.current.onRemovalHaptic, undefined);
+    try { before.emitHaptic('ticketRemoved'); } catch { /* a cue is advisory */ }
     try {
       for (const label of started.intent.labels) {
         // Inventory mutations are serialised by the controller, so a Continue
@@ -137,6 +131,11 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     } catch (error) {
       if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current)) {
         marks.current.release(token);
+        // A hold the host already owns is not a command failure; it is the
+        // "already in checkout" state, and it is told once, in its own notice.
+        const raised = seatLayerPickerHoldOwnershipStore(before.controller)
+          .raise(error, before.controller.getCheckoutHandoff());
+        if (raised) return;
         try { current.current.reportError(error); } catch { /* scope reporting is advisory */ }
       }
     }

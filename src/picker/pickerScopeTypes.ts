@@ -6,6 +6,7 @@ import type { SeatLayerPickerBackAction } from './backNavigation';
 import type { SeatLayerChartLoad } from './chartLoad';
 import type { SeatLayerChartLoadListener } from './chartLoadSubscription';
 import type { SeatLayerPickerController } from './controller';
+import type { SeatLayerPickerHapticCue } from './haptics';
 import type { SeatLayerPickerHoldLapse } from './holdLapse';
 import type { SeatLayerPickerInsetLease } from './insetOwnership';
 import type { SeatLayerPickerStringResolver } from './locale';
@@ -59,6 +60,12 @@ export interface SeatLayerPickerScopeValue {
   /** True only while this exact logical picker scope session still owns async work. */
   readonly isSessionActive: () => boolean;
   readonly pendingSeat: PendingConfirmationState['pending'];
+  /**
+   * Plays one haptic cue now. A gesture whose confirmation must be felt under
+   * the finger — a ticket removed — cannot wait for the snapshot the rest of
+   * the haptics are read from. Dropped where the host supplied no adapter.
+   */
+  readonly emitHaptic: (cue: SeatLayerPickerHapticCue) => void;
   /** Remains true after the notice is dismissed so stale hold copy cannot return. */
   readonly holdLapsed: boolean;
   readonly holdLapse: SeatLayerPickerHoldLapse | undefined;

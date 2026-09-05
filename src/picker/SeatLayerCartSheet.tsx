@@ -23,6 +23,7 @@ import {
 
 import { SeatLayerPickerAttribution } from './attribution';
 import { SeatLayerPickerActionError } from './actionError';
+import { SeatLayerPickerSalesClosedStatement } from './SeatLayerPickerAccessPanel';
 import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
 import { SeatLayerCartList } from './SeatLayerCartList';
 import { SeatLayerHoldLapseNotice } from './SeatLayerHoldLapseNotice';
@@ -85,11 +86,12 @@ export interface SeatLayerCartSheetProps {
   readonly checkoutBar?: ReactNode;
   readonly actionError?: ReactNode;
   readonly holdLapse?: ReactNode;
+  /** §3.13.4: the tray states a closed sale; it is not an error and not a toast. */
+  readonly salesClosed?: ReactNode;
 }
 
 export interface SeatLayerBookButtonProps {
   readonly onCheckout: (handoff: Readonly<SeatLayerPickerCheckoutHandoff>) => unknown;
-  readonly compact?: boolean;
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: BookSlots;
 }
@@ -450,6 +452,8 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     : props.bestSeats === undefined ? <SeatLayerBestSeatsForm safeAreaInsets={safeInsets} /> : props.bestSeats;
   const holdLapse = props.holdLapse === undefined ? <SeatLayerHoldLapseNotice /> : props.holdLapse;
   const actionError = props.actionError === undefined ? <SeatLayerPickerActionError /> : props.actionError;
+  const salesClosed = props.salesClosed === undefined
+    ? <SeatLayerPickerSalesClosedStatement /> : props.salesClosed;
   const checkoutBar = props.checkoutBar === undefined ? <SeatLayerBookButton onCheckout={props.onCheckout} /> : props.checkoutBar;
   // Exactly ONE named toggle in either state: the head while collapsed, the
   // chevron while open. Never both.
@@ -514,6 +518,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
                     onContentSizeChange={(_width, height) => setContentHeight(height)}
                     style={{ flexShrink: 1 }}
                   >{main}</ScrollView>
+                  {salesClosed}
                   {actionError}
                   {checkoutBar}
                 </>
@@ -522,6 +527,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
                 <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
                   <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
                   <View>{main}</View>
+                  {salesClosed}
                   {actionError}
                 </View>
               )}

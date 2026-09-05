@@ -78,6 +78,8 @@ import type {
   SeatLayerPickerScopeProps,
   SeatLayerPickerScopeValue,
 } from './pickerScopeTypes';
+import { availabilityOfSeatLayerPickerController as availabilityOf } from './scopeAvailability';
+import { seatLayerPickerHapticChannel } from './hapticChannel';
 import { SeatLayerPickerScopeProviders } from './scopeProviders';
 export type {
   SeatLayerPickerAvailability,
@@ -98,18 +100,6 @@ function scopeFrameScheduler() {
     requestAnimationFrame: host.requestAnimationFrame ?? fallbackFrame,
     cancelAnimationFrame: host.cancelAnimationFrame ?? clearTimeout,
   };
-}
-
-function availabilityOf(
-  controller: SeatLayerPickerController,
-): SeatLayerPickerAvailability {
-  return Object.freeze({
-    floorStack: controller.supportsFloorStack,
-    viewportInsets: controller.supportsViewportInsets,
-    venue3D: controller.supportsVenue3D,
-    seatView: controller.supportsSeatView,
-    nativeSeatViewChrome: controller.supportsNativeSeatViewChrome,
-  });
 }
 
 function mapPresentation(
@@ -707,6 +697,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
         sessionId,
         isSessionActive,
         pendingSeat: pendingConfirmation.pending,
+        emitHaptic: seatLayerPickerHapticChannel(activeController).emit,
         holdLapsed,
         holdLapse,
         isHoldLapseBusy: holdLapseBusy,

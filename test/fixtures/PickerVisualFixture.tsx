@@ -512,6 +512,10 @@ function fixtureScope(
     clearGACandidate: noOp,
     getSeatView: () => seatView,
     subscribeSeatView: () => noOp,
+    subscribeSeatRetap: () => noOp,
+    subscribeBooked: () => noOp,
+    getBookedHandoff: () => undefined,
+    getCheckoutHandoff: () => undefined,
     supportsFloorStack: true,
     supportsViewportInsets: true,
     supportsVenue3D: true,
@@ -612,6 +616,7 @@ function fixtureScope(
     sessionId: 1,
     isSessionActive: () => true,
     pendingSeat: scenario === 'variable-table' ? snapshot.selection[0] ?? null : pendingSeat,
+    emitHaptic: () => undefined,
     holdLapsed: scenario === 'hold-lapse',
     holdLapse: scenario === 'hold-lapse' ? Object.freeze({
       key: 'fixture-hold-lapse',
