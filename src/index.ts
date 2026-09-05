@@ -204,6 +204,55 @@ export type {
   SeatLayerPickerViewportInsetBand,
   SeatLayerPickerViewportInsetInput,
 } from './picker/viewportInsets';
+export {
+  SeatLayerPickerBlockedRegionRegistry,
+  seatLayerPickerBlockedRegionCover,
+  seatLayerPickerBlockedRegionFromRect,
+  seatLayerPickerBlockedRegionLingerMs,
+  type SeatLayerPickerBlockedRegionLease,
+  type SeatLayerPickerBlockedRegionSink,
+  type SeatLayerPickerMeasuredRect,
+} from './picker/blockedRegions';
+export {
+  SeatLayerPickerBlockedRegion as SeatLayerPickerBlockedRegionView,
+  SeatLayerPickerBlockedRegionProvider,
+  SeatLayerPickerBlockedRegionSurface,
+  useSeatLayerPickerBlockedRegion,
+  useSeatLayerPickerBlockedRegionCover,
+  useSeatLayerPickerBlockedRegionRegistry,
+  useSeatLayerPickerBlockedRegionSurface,
+  type SeatLayerPickerBlockedRegionBinding,
+  type SeatLayerPickerBlockedRegionProps,
+  type SeatLayerPickerBlockedRegionProviderProps,
+} from './picker/blockedRegionsContext';
+export {
+  seatLayerPickerContrastRatio,
+  seatLayerPickerTestChipContrastFloor,
+  seatLayerPickerTestChipInk,
+  seatLayerPickerTestChipWash,
+} from './picker/testChipInk';
+export {
+  observeSeatLayerPickerMemoryPressure,
+  SeatLayerRuntimePrewarm,
+  seatLayerPickerPrewarmDefaultTtlMs,
+  seatLayerPickerPrewarmFreshnessMs,
+  type SeatLayerPickerPrewarmOptions,
+  type SeatLayerPickerWarmPage,
+} from './picker/prewarm';
+export {
+  reduceSeatLayerPickerReveal,
+  seatLayerPickerAwaitingFraming,
+  seatLayerPickerCanAdoptRuntime,
+  seatLayerPickerInitialRevealState,
+  seatLayerPickerRevealGraceMs,
+  seatLayerPickerRevealed,
+  type SeatLayerPickerRevealEvent,
+  type SeatLayerPickerRevealState,
+} from './picker/chartBoot';
+export {
+  SeatLayerPickerLoadingSurface,
+  type SeatLayerPickerLoadingSurfaceProps,
+} from './picker/loadingSurface';
 export type { SeatLayerPickerHoldLapse } from './picker/holdLapse';
 export {
   decodeSeatLayerPickerAvailabilityOutcome,
@@ -239,6 +288,8 @@ export {
 export {
   SeatLayerPriceLegend,
   SeatLayerPriceLegend as SeatLayerPickerPriceRail,
+  seatLayerPickerLegendChipText,
+  seatLayerPickerLegendSoldOut,
   type SeatLayerPriceLegendProps,
 } from './picker/SeatLayerPriceLegend';
 export { SeatLayerDockBar, type SeatLayerDockBarProps } from './picker/SeatLayerDockBar';

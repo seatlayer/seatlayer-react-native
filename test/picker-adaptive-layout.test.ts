@@ -277,7 +277,7 @@ describe('adaptive picker composition', () => {
     state.scope = first;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
-    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 0 });
+    expect(first.lease.set).toHaveBeenLastCalledWith({ top: 88, bottom: 0 });
     expect(tree.root.findByType('venue' as any).props).toMatchObject({ topInset: 10, bottomInset: 10, reserveInset: true });
     expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
     expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);

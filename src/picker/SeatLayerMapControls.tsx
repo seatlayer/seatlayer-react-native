@@ -7,10 +7,13 @@ import {
 } from './accessibility';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
-import { blendSeatLayerPickerColor, focusedPickerSection, pickerColor, usePickerSingleFlight } from './pickerNavigation';
+import { blendSeatLayerPickerColor, focusedPickerSection, usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
+import { SeatLayerPickerBlockedRegion } from './blockedRegionsContext';
+import { seatLayerPickerMapChromeGround } from './mapChromeTheme';
+import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerMapControlsProps {
   readonly compact?: boolean;
@@ -42,10 +45,13 @@ export interface SeatLayerMapControlsProps {
   readonly onViewModeLayout?: (width: number) => void;
 }
 
-const segmentPaintHeight = 32;
-const controlGap = 6;
-/** Default spacing between a map control and its physical edge. */
-export const seatLayerPickerMapControlsEdgeInset = 10;
+const segmentPaintHeight = seatLayerPickerTokens.size.viewModeButtonHeight;
+/** §3.5 anchor regions: `size.mapAnchorGap` between members of one region. */
+const controlGap = seatLayerPickerTokens.size.mapAnchorGap;
+/** The zoom column is a column, not an anchor region; it carries its own gap. */
+const zoomColumnGap = seatLayerPickerTokens.size.zoomColumnGap;
+/** §3.5: every floating control is inset `size.mapAnchorInset` from the map's edges. */
+export const seatLayerPickerMapControlsEdgeInset = seatLayerPickerTokens.size.mapAnchorInset;
 
 type BottomControlPlan = Readonly<{ height: number; zoomOffset: number }>;
 
@@ -132,17 +138,26 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   const viewAvailable = snapshot !== undefined && props.enable3D !== false &&
     props.includeViewModeControl !== false && snapshot.capabilities.includes('venue3d') &&
     supports('picker.setBuyerView', ['venue-3d-v1']);
-  const zoomInLabel = typeof props.zoomInLabel === 'string' ? props.zoomInLabel.trim() : '';
-  const zoomOutLabel = typeof props.zoomOutLabel === 'string' ? props.zoomOutLabel.trim() : '';
-  const zoomLabelsAvailable = Boolean(zoomInLabel && zoomOutLabel);
-  const zoomPairAvailable = snapshot !== undefined && buyerView === 'map' &&
-    props.showZoomControls === true && zoomLabelsAvailable &&
+  const zoomInLabel = typeof props.zoomInLabel === 'string' && props.zoomInLabel.trim()
+    ? props.zoomInLabel.trim() : scope.strings.translate('zoomIn');
+  const zoomOutLabel = typeof props.zoomOutLabel === 'string' && props.zoomOutLabel.trim()
+    ? props.zoomOutLabel.trim() : scope.strings.translate('zoomOut');
+  const zoomPairAvailable = snapshot !== undefined && buyerView === 'map' && !compact &&
+    props.showZoomControls === true &&
     supports('picker.zoomIn', ['zoom']) && supports('picker.zoomOut', ['zoom']);
-  const stepOutAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
-    props.showZoomToFitControl !== false && props.showStepOutControl !== false &&
-    !zoomPairAvailable && focusedPickerSection(snapshot) !== undefined &&
-    supports('picker.overview');
-  const fitAvailable = snapshot !== undefined && buyerView === 'map' &&
+  // §3.5, owner call 2026-09-05. Narrow carries ONE slot in the bottom-right
+  // and it carries two directions: `+` at the whole venue, `-` the moment a
+  // section is framed or seats are the visible layer. A dimmed `-` answered the
+  // wrong question, and the corner must not grow and shrink under the thumb.
+  const stepDirection: 'in' | 'out' = snapshot?.map.canZoomOut === true ? 'out' : 'in';
+  const stepCommand = stepDirection === 'out' ? 'picker.zoomOut' : 'picker.zoomIn';
+  const stepDiscAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
+    props.showStepOutControl !== false && supports(stepCommand, ['zoom']);
+  const stepOutAvailable = stepDiscAvailable;
+  // Fit-to-screen is not drawn on the phone: both back the camera out, one a
+  // step at a time and one all at once, and nothing on either round button said
+  // which was which. Wide keeps `+`, `-` and fit as they were.
+  const fitAvailable = snapshot !== undefined && buyerView === 'map' && !compact &&
     props.showZoomToFitControl !== false && supports('picker.zoomToFit', ['zoom']);
   const showOverview = props.showOverviewControl ?? !compact;
   const overviewAvailable = snapshot !== undefined && buyerView === 'map' &&
@@ -197,6 +212,16 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       }}
       onZoomIn={() => { requestedAction.current = Object.freeze({ kind: 'zoomIn', sessionId: scope.sessionId }); runAction(); }}
       onZoomOut={() => { requestedAction.current = Object.freeze({ kind: 'zoomOut', sessionId: scope.sessionId }); runAction(); }}
+      onStep={() => {
+        requestedAction.current = Object.freeze({
+          kind: stepDirection === 'out' ? 'zoomOut' : 'zoomIn',
+          sessionId: scope.sessionId,
+        });
+        runAction();
+      }}
+      stepDirection={stepDirection}
+      zoomInLabel={zoomInLabel}
+      zoomOutLabel={zoomOutLabel}
       buyerView={buyerView}
       strings={scope.strings}
       theme={resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, snapshot)}
@@ -243,6 +268,8 @@ function SeatLayerMapControlsView({
   onOverview,
   onZoomIn,
   onZoomOut,
+  onStep,
+  stepDirection,
   onFit,
   onView,
   onViewModeLayout,
@@ -271,6 +298,8 @@ function SeatLayerMapControlsView({
   readonly onOverview: () => void;
   readonly onZoomIn: () => void;
   readonly onZoomOut: () => void;
+  readonly onStep: () => void;
+  readonly stepDirection: 'in' | 'out';
   readonly onFit: () => void;
   readonly onView: (view: 'map' | 'venue3d') => void;
   readonly accessibilityControl: ReactNode;
@@ -309,11 +338,14 @@ function SeatLayerMapControlsView({
     onZoomOut,
     <SeatLayerPickerMinusIcon color={theme.colors.text} />,
   );
-  const stepOut = control(
-    strings.translate('backToVenue'),
-    stepOutAvailable && !overviewBusy,
-    onOverview,
-    <SeatLayerPickerBackIcon color={theme.colors.text} />,
+  // One slot, two directions. Never dimmed, never moved, never withdrawn.
+  const stepDisc = control(
+    stepDirection === 'out' ? usableZoomOutLabel : usableZoomInLabel,
+    stepOutAvailable && !zoomOutBusy && !zoomInBusy,
+    onStep,
+    stepDirection === 'out'
+      ? <SeatLayerPickerMinusIcon color={theme.colors.text} />
+      : <SeatLayerPickerPlusIcon color={theme.colors.text} />,
   );
   const fit = control(
     strings.translate('fitVenue'),
@@ -335,20 +367,21 @@ function SeatLayerMapControlsView({
   ) : null;
   if (!compact) {
     return (
-      <View
+      <SeatLayerPickerBlockedRegion
         style={[
-          { alignSelf: 'flex-end', gap: 7 },
+          { alignSelf: 'flex-end', gap: controlGap },
           slots?.mapControlsContainer,
           sanitizeSeatLayerPickerStyle(style),
         ]}
       >
         {onMap && canOverview ? overview : null}
-        {onMap && zoomPairAvailable ? zoomIn : null}
-        {onMap && zoomPairAvailable ? zoomOut : null}
+        {onMap && zoomPairAvailable ? (
+          <View style={{ gap: zoomColumnGap }}>{zoomIn}{zoomOut}</View>
+        ) : null}
         {onMap && canFit ? fit : null}
         {view}
         {accessibilityControl}
-      </View>
+      </SeatLayerPickerBlockedRegion>
     );
   }
   return (
@@ -361,30 +394,25 @@ function SeatLayerMapControlsView({
         { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
       ]}
     >
-      {view ? <View style={{ end: edgeInset, position: 'absolute', top: edgeInset }}>{view}</View> : null}
+      {view ? (
+        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: edgeInset }}>
+          {view}
+        </SeatLayerPickerBlockedRegion>
+      ) : null}
       {onMap && accessibilityControl ? (
-        <View style={{ bottom, position: 'absolute', start: edgeInset }}>{accessibilityControl}</View>
+        <SeatLayerPickerBlockedRegion style={{ bottom, position: 'absolute', start: edgeInset }}>
+          {accessibilityControl}
+        </SeatLayerPickerBlockedRegion>
       ) : null}
-      {onMap && (stepOutAvailable || canFit) ? (
-        <View style={{ bottom, end: edgeInset, position: 'absolute' }}>
-          {stepOutAvailable ? stepOut : fit}
-        </View>
-      ) : null}
-      {onMap && zoomPairAvailable && zoomIn !== null && zoomOut !== null ? (
-        <View
-          style={{
-            bottom: bottom + zoomBottomOffset,
-            end: edgeInset,
-            gap: controlGap,
-            position: 'absolute',
-          }}
-        >
-          {zoomIn}
-          {zoomOut}
-        </View>
+      {onMap && stepOutAvailable ? (
+        <SeatLayerPickerBlockedRegion style={{ bottom, end: edgeInset, position: 'absolute' }}>
+          {stepDisc}
+        </SeatLayerPickerBlockedRegion>
       ) : null}
       {onMap && canOverview ? (
-        <View style={{ position: 'absolute', start: edgeInset, top: edgeInset }}>{overview}</View>
+        <SeatLayerPickerBlockedRegion style={{ position: 'absolute', start: edgeInset, top: edgeInset }}>
+          {overview}
+        </SeatLayerPickerBlockedRegion>
       ) : null}
     </View>
   );
@@ -415,6 +443,7 @@ export function SeatLayerMapControlButtonView({
   readonly children: ReactNode;
 }): React.ReactElement {
   const size = theme.layout.mapControlSize;
+  const chrome = seatLayerPickerMapChromeGround(theme);
   return (
     <Pressable
       accessibilityLabel={label}
@@ -438,9 +467,9 @@ export function SeatLayerMapControlButtonView({
           {
             alignItems: 'center',
             backgroundColor: active
-              ? blendSeatLayerPickerColor(theme.colors.accent, theme.colors.surface, .13, theme.colors.surface)
-              : pickerColor(theme.colors.surface, theme.colors.surface, 0.94),
-            borderColor: theme.colors.divider,
+              ? blendSeatLayerPickerColor(theme.colors.accent, chrome.ground, .13, chrome.ground)
+              : chrome.ground,
+            borderColor: chrome.line,
             borderRadius: theme.radii.button,
             borderWidth: 1,
             elevation: 3,
@@ -485,10 +514,16 @@ export function SeatLayerPickerViewModeControlView({
   readonly onLayout?: (width: number) => void;
 }): React.ReactElement {
   const paintInset = (target - segmentPaintHeight) / 2;
-  const segment = (label: string, selected: boolean, view: 'map' | 'venue3d') => (
+  const chrome = seatLayerPickerMapChromeGround(theme);
+  const segment = (
+    label: string,
+    spoken: string,
+    selected: boolean,
+    view: 'map' | 'venue3d',
+  ) => (
     <Pressable
       key={view}
-      accessibilityLabel={label}
+      accessibilityLabel={spoken}
       accessibilityRole="button"
       accessibilityState={{ disabled: disabled || selected, selected }}
       disabled={disabled || selected}
@@ -497,7 +532,7 @@ export function SeatLayerPickerViewModeControlView({
         alignItems: 'center',
         height: target,
         justifyContent: 'center',
-        minWidth: 46,
+        minWidth: theme.layout.viewModeButtonMinWidth,
         opacity: disabled ? 0.45 : pressed && !selected ? 0.72 : 1,
         paddingHorizontal: 10,
       })}
@@ -506,7 +541,7 @@ export function SeatLayerPickerViewModeControlView({
         pointerEvents="none"
         style={[
           {
-            backgroundColor: selected ? theme.colors.accent : theme.colors.surface,
+            backgroundColor: selected ? theme.colors.accent : chrome.ground,
             bottom: paintInset,
             left: 0,
             position: 'absolute',
@@ -522,10 +557,11 @@ export function SeatLayerPickerViewModeControlView({
       <Text
         style={[
           {
-            color: selected ? theme.colors.onAccent : theme.colors.text,
+            color: selected ? theme.colors.onAccent : theme.colors.mutedText,
             fontFamily: theme.fontFamily,
-            fontSize: 12,
+            fontSize: theme.layout.viewModeLabelFontSize,
             fontWeight: '800',
+            letterSpacing: 0.4,
           },
           slots?.mapControlLabel,
         ]}
@@ -545,7 +581,7 @@ export function SeatLayerPickerViewModeControlView({
       <View
         pointerEvents="none"
         style={{
-          backgroundColor: theme.colors.surface,
+          backgroundColor: chrome.ground,
           borderRadius: segmentPaintHeight / 2,
           bottom: paintInset,
           elevation: 3,
@@ -559,14 +595,25 @@ export function SeatLayerPickerViewModeControlView({
           top: paintInset,
         }}
       />
-      <View style={{ flexDirection: 'row', height: target }}>
-        {segment(strings.translate('mapView'), mapSelected, 'map')}
-        {segment(strings.translate('venue3D'), venueSelected, 'venue3d')}
+      <View
+        accessibilityRole="tablist"
+        accessibilityLabel={strings.translate('venueView')}
+        style={{ flexDirection: 'row', height: target }}
+      >
+        {segment(
+          strings.translate('mapView'), strings.translate('flat2dMap'), mapSelected, 'map',
+        )}
+        {segment(
+          strings.translate('venue3D'),
+          strings.translate('interactive3dVenueView'),
+          venueSelected,
+          'venue3d',
+        )}
       </View>
       <View
         pointerEvents="none"
         style={{
-          borderColor: theme.colors.divider,
+          borderColor: chrome.line,
           borderRadius: segmentPaintHeight / 2,
           borderWidth: 1,
           bottom: paintInset,

@@ -64,7 +64,12 @@ function setup() {
       strings: { translate: (key: string) => key },
       resolvedTheme: {
         colors: { accent: '#06f', divider: '#ccc', onAccent: '#fff', surface: '#fff', text: '#111' },
-        fontFamily: 'Brand', layout: { mapControlSize: 40, minimumHitTarget: 44 }, radii: { button: 8 }, roles: {},
+        fontFamily: 'Brand',
+        layout: {
+          mapControlSize: 40, minimumHitTarget: 44,
+          viewModeButtonMinWidth: 38, viewModeLabelFontSize: 9.5,
+        },
+        radii: { button: 8 }, roles: {}, themeMode: 'light',
       },
     };
   };
@@ -79,20 +84,39 @@ function setup() {
 beforeEach(() => { setup(); });
 
 describe('standalone picker controls', () => {
-  it('uses the compact corner escape to return directly to the venue overview', async () => {
+  // Spec 3.5, owner call 2026-09-05: the phone's bottom-right slot carries two
+  // directions rather than one dimmed one, and fit-to-screen is wide-only.
+  const compactControls = {
+    compact: true,
+    enable3D: false,
+    showAccessibilityControl: false,
+    showZoomToFitControl: true,
+  } as const;
+
+  it('steps the camera out from the one narrow slot once a section is framed', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
-    await act(async () => { renderer = create(React.createElement(SeatLayerMapControls, {
-      compact: true,
-      enable3D: false,
-      showAccessibilityControl: false,
-      showZoomToFitControl: true,
-      zoomInLabel: 'Zoom in',
-      zoomOutLabel: 'Zoom out',
-    })); });
-    const button = renderer.root.findByProps({ accessibilityLabel: 'backToVenue' });
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerMapControls, compactControls));
+    });
+    const button = renderer.root.findByProps({ accessibilityLabel: 'zoomOut' });
     await act(async () => { button.props.onPress(); });
-    expect(runtime.commands.overview).toHaveBeenCalledOnce();
-    expect(runtime.commands.zoomOut).not.toHaveBeenCalled();
+    expect(runtime.commands.zoomOut).toHaveBeenCalledOnce();
+    expect(runtime.commands.overview).not.toHaveBeenCalled();
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitVenue' })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'zoomIn' })).toHaveLength(0);
+  });
+
+  it('reads + at the whole venue, where there is nothing to step out of', async () => {
+    const runtime = setup(); let renderer!: ReactTestRenderer;
+    runtime.update({ map: { canZoomOut: false, focusedSectionId: undefined } });
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerMapControls, compactControls));
+    });
+    const button = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' });
+    expect(button.props.accessibilityState.disabled).toBe(false);
+    await act(async () => { button.props.onPress(); });
+    expect(runtime.commands.zoomIn).toHaveBeenCalledOnce();
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'zoomOut' })).toHaveLength(0);
   });
 
   it('keeps a 44-point zoom target, honors an aesthetic radius, and dispatches the exact command', async () => {
@@ -100,7 +124,7 @@ describe('standalone picker controls', () => {
     await act(async () => {
       renderer = create(React.createElement(SeatLayerPickerZoomInButton, { style: { borderRadius: 3, height: 1 } }));
     });
-    const button = renderer.root.findByProps({ accessibilityLabel: 'Zoom in' });
+    const button = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' });
     expect(button.props.style({ pressed: false })).toMatchObject({ height: 44, width: 44 });
     const paint = button.findAllByType('View' as any)[0]!;
     expect(paint.props.style).toEqual(expect.arrayContaining([
@@ -114,7 +138,7 @@ describe('standalone picker controls', () => {
   it('drives segmented Map/3D and exposes only capability-backed immersive controls', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerViewModeControl)); });
-    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'venue3D' }).props.onPress(); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'interactive3dVenueView' }).props.onPress(); });
     expect(runtime.commands.setBuyerView).toHaveBeenCalledWith('venue3d');
 
     runtime.update({ map: { buyerView: 'venue3d', view3DNavigationMode: 'orbit' } });
@@ -130,7 +154,7 @@ describe('standalone picker controls', () => {
   it('exposes selected semantics only on true standalone toggles', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerZoomInButton)); });
-    expect(renderer.root.findByProps({ accessibilityLabel: 'Zoom in' }).props.accessibilityState)
+    expect(renderer.root.findByProps({ accessibilityLabel: 'zoomIn' }).props.accessibilityState)
       .toEqual({ disabled: false });
 
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerColorblindButton)); });
@@ -163,7 +187,7 @@ describe('standalone picker controls', () => {
   it('makes retained presses inert after a scope or exact seat replacement', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerZoomInButton)); });
-    const retiredZoom = renderer.root.findByProps({ accessibilityLabel: 'Zoom in' }).props.onPress;
+    const retiredZoom = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' }).props.onPress;
     runtime.replaceSession();
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerZoomInButton)); });
     await act(async () => { retiredZoom(); });

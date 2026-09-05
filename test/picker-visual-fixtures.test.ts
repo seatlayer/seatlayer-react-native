@@ -68,10 +68,10 @@ describe('deterministic native picker visual fixtures', () => {
     expect(tree.root.findAllByType(NeutralMapSurface)).toHaveLength(1);
     expect(tree.root.findAllByProps({ testID: 'seatlayer-visual-fixture-map' })).toHaveLength(1);
 
-    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Map' });
+    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' });
     expect(mapSegment.props.style({ pressed: false })).toMatchObject({
       height: 44,
-      minWidth: 46,
+      minWidth: 38,
       paddingHorizontal: 10,
     });
     expect(mapSegment.props.style({ pressed: false })).not.toHaveProperty('width');
@@ -264,7 +264,7 @@ describe('deterministic native picker visual fixtures', () => {
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Map' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' }).props.onPress();
       await Promise.resolve();
     });
     const mapEvidence = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
@@ -272,7 +272,7 @@ describe('deterministic native picker visual fixtures', () => {
     expect(mapEvidence).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: '3D' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Interactive 3D venue view' }).props.onPress();
       await Promise.resolve();
     });
     const returned3D = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;

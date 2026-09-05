@@ -16,6 +16,7 @@ import {
   type SeatLayerPickerChartBootResult,
 } from './chartBoot';
 import { invokeSeatLayerPickerCallback } from './callback';
+import { useSeatLayerPickerBlockedRegionSurface } from './blockedRegionsContext';
 import {
   type SeatLayerPickerScopeValue,
   useSeatLayerPickerScope,
@@ -118,6 +119,7 @@ function PickerChartReady({
     if (scope.isReady) sync.markReady();
     return release;
   }, [scope.controller]);
+  const surface = useSeatLayerPickerBlockedRegionSurface();
   const bridgeController = useMemo(
     () => createSeatLayerPickerChartRendererController(
       scope.controller,
@@ -137,7 +139,15 @@ function PickerChartReady({
   }, [desiredThemeKey, scope.controller, scope.isReady, scope.reportError]);
 
   return (
-    <View style={[{ flex: 1, backgroundColor: scope.resolvedTheme.mapTheme.background }, style]}>
+    // 2.4: the map surface's own rectangle. Every piece of chrome standing on
+    // it reports its rect measured from this view's top-left, which is the
+    // frame `picker.setBlockedRegions` and `picker.setViewportInsets` share.
+    <View
+      collapsable={false}
+      onLayout={surface.onLayout}
+      ref={surface.ref as never}
+      style={[{ flex: 1, backgroundColor: scope.resolvedTheme.mapTheme.background }, style]}
+    >
       <SeatLayerRenderer
         controller={bridgeController}
         configuration={boot.configuration}
