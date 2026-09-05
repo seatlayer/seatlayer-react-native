@@ -161,6 +161,13 @@ describe('adaptive picker composition', () => {
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, onSectionFocused })); });
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-phone' })).toBeTruthy();
+    // §3.6: there is no phone form of the section dock unless a host asks.
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    await act(async () => {
+      tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, {
+        onCheckout: checkout, onSectionFocused, options: { chrome: { dock: true } },
+      }));
+    });
     const sheet = tree.root.findByType('cart-sheet' as any);
     expect(sheet.props.expanded).toBe(true);
     expect(sheet.props.onCheckout).toBe(checkout);
@@ -450,7 +457,8 @@ describe('adaptive picker composition', () => {
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
     const accessStyle = access.parent?.props.style[1] as { bottom: number };
     expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 168 });
+    // The dock's 52 px is gone from the phone band: no dock, no lift (§3.6).
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });

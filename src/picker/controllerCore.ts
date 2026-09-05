@@ -16,6 +16,7 @@ import type {
   SeatLayerPickerViewportInsets,
   SeatLayerSeatView,
 } from './models';
+import { SeatLayerPickerCommandDispatch } from './controllerDispatch';
 import { SeatLayerPickerGACandidateStore, type SeatLayerPickerGACandidate } from './ga-candidate-store';
 import { SeatLayerPickerSnapshotStore } from './snapshot-store';
 import {
@@ -42,7 +43,7 @@ export type { SeatLayerPickerGACandidate } from './ga-candidate-store';
 export class SeatLayerPickerControllerCore {
   private readonly snapshots = new SeatLayerPickerSnapshotStore();
   private readonly ownsMapController: boolean;
-  private readonly revisionWaitMs: number;
+  private readonly dispatch: SeatLayerPickerCommandDispatch;
   protected disposed = false;
   private unsubscribe: (() => void) | undefined;
   private gaClickUnsubscribe: (() => void) | undefined;
@@ -57,10 +58,7 @@ export class SeatLayerPickerControllerCore {
   );
   private readonly seatViewListeners = new Set<() => void>();
   private currentSeatView: SeatLayerSeatView | undefined;
-  private actionTail: Promise<void> = Promise.resolve();
   private checkoutInFlight: Promise<SeatLayerPickerCheckoutHandoff> | undefined;
-  private readonly revisionCancels = new Set<() => void>();
-  private readonly commandCancels = new Set<() => void>();
   readonly mapController: SeatLayerController;
 
   constructor(
@@ -69,7 +67,10 @@ export class SeatLayerPickerControllerCore {
   ) {
     this.ownsMapController = mapController === undefined;
     this.mapController = mapController ?? new SeatLayerController();
-    this.revisionWaitMs = options.revisionWaitMs ?? 2_000;
+    this.dispatch = new SeatLayerPickerCommandDispatch(
+      () => this.disposed,
+      options.revisionWaitMs ?? 2_000,
+    );
     this.unsubscribe = this.mapController.on(
       'unknownEvent',
       ({ name, payload }) => {
@@ -612,6 +613,7 @@ export class SeatLayerPickerControllerCore {
           'picker.continue returned no checkout handoff.',
         );
       }
+      this.onCheckoutHandoff(handoff);
       return handoff;
     });
     this.checkoutInFlight = flight;
@@ -627,10 +629,7 @@ export class SeatLayerPickerControllerCore {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    for (const cancel of this.commandCancels) cancel();
-    this.commandCancels.clear();
-    for (const cancel of this.revisionCancels) cancel();
-    this.revisionCancels.clear();
+    this.dispatch.cancelAll();
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     this.gaClickUnsubscribe?.();
@@ -675,36 +674,9 @@ export class SeatLayerPickerControllerCore {
         ),
       );
     }
-    return new Promise<JsonValue | undefined>((resolve, reject) => {
-      let settled = false;
-      let cancel: () => void;
-      const finish = (
-        outcome: 'resolve' | 'reject',
-        value: JsonValue | undefined | unknown,
-      ) => {
-        if (settled) return;
-        settled = true;
-        this.commandCancels.delete(cancel);
-        if (outcome === 'resolve') {
-          resolve(value as JsonValue | undefined);
-        } else {
-          reject(value);
-        }
-      };
-      cancel = () => finish('reject', SeatLayerError.destroyed());
-      this.commandCancels.add(cancel);
-      let raw: Promise<JsonValue | undefined>;
-      try {
-        raw = this.mapController.runPickerCommand(command, payload);
-      } catch (error) {
-        finish('reject', error);
-        return;
-      }
-      void raw.then(
-        (value) => finish('resolve', value),
-        (error: unknown) => finish('reject', error),
-      );
-    });
+    return this.dispatch.run(
+      () => this.mapController.runPickerCommand(command, payload),
+    );
   }
   protected async applyMutationResult(
     result: JsonValue | undefined,
@@ -723,31 +695,16 @@ export class SeatLayerPickerControllerCore {
     return snapshot ?? this.snapshots.getSnapshot();
   }
   private async awaitRevision(target: number): Promise<void> {
-    if ((this.snapshots.getSnapshot()?.revision ?? -1) >= target) return;
-    await new Promise<void>((resolve, reject) => {
-      const finish = (error?: SeatLayerError) => {
-        clearTimeout(timer);
-        unsubscribe();
-        this.revisionCancels.delete(cancel);
-        if (error) reject(error);
-        else resolve();
-      };
-      const unsubscribe = this.subscribe(() => {
-        if ((this.snapshots.getSnapshot()?.revision ?? -1) >= target) {
-          finish();
-        }
-      });
-      const timer = setTimeout(() => finish(), this.revisionWaitMs);
-      const cancel = () => finish(SeatLayerError.destroyed());
-      this.revisionCancels.add(cancel);
-    });
-    if ((this.snapshots.getSnapshot()?.revision ?? -1) < target) {
+    const reached = () => (this.snapshots.getSnapshot()?.revision ?? -1) >= target;
+    if (reached()) return;
+    await this.dispatch.awaitRevision(reached, this.subscribe);
+    if (!reached()) {
       const result = await this.command('picker.getSnapshot');
       const snapshot = this.snapshots.ingest(
         asObject(result)?.snapshot ?? result,
       );
       if (snapshot) this.gaCandidates.reconcile();
-      if ((this.snapshots.getSnapshot()?.revision ?? -1) < target) {
+      if (!reached()) {
         throw new SeatLayerError(
           'bad_payload',
           `picker.getSnapshot did not reach revision ${target}.`,
@@ -756,15 +713,7 @@ export class SeatLayerPickerControllerCore {
     }
   }
   protected serial<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
-    const guarded = () =>
-      this.disposed ? Promise.reject(SeatLayerError.destroyed()) : operation();
-    const next = this.actionTail.then(guarded, guarded);
-    this.actionTail = next.then(
-      () => undefined,
-      () => undefined,
-    );
-    return next;
+    return this.dispatch.serial(operation);
   }
   /** Clears runtime-derived state before the same controller starts a new chart. */
   protected resetForRuntimeReload(): void {
@@ -775,6 +724,11 @@ export class SeatLayerPickerControllerCore {
       this.notifySeatViewListeners();
     }
   }
+  /**
+   * The one moment the hold id crosses to this side (§4.8). Subclasses retain
+   * it so a later release can name the hold; ordinary snapshots never do.
+   */
+  protected onCheckoutHandoff(_handoff: SeatLayerPickerCheckoutHandoff): void {}
   protected available(capability: string, command: string): boolean {
     return this.mapController.isReady &&
       this.mapController.supportsPickerCapability(capability) &&
