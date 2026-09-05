@@ -293,6 +293,7 @@ export function SeatLayerPickerAccessibilityFilters(
         countLabel,
         jumpable: supportsJump && counted && (need.count ?? 0) > 0,
         jumpLabel: scope.strings.translate("accessJumpFirstSection"),
+        glyph: "access" as const,
       });
     })
     : [];

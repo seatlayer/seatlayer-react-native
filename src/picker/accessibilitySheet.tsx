@@ -31,6 +31,12 @@ export interface SeatLayerPickerAccessSheetRow {
   readonly countLabel?: string;
   readonly jumpable: boolean;
   readonly jumpLabel?: string;
+  /**
+   * A row for an access need the chart authors carries the drawn wheelchair
+   * mark. The display rows — hide limited view, colourblind-safe — carry none:
+   * a wheelchair beside "Colourblind-friendly colours" says the wrong thing.
+   */
+  readonly glyph?: 'access';
 }
 
 export interface SeatLayerPickerAccessSheetProps {
@@ -167,11 +173,15 @@ function AccessRow(props: Readonly<{
           row.disabled ? styles.rowDim : null,
         ]}
       >
-        <View accessible={false} style={styles.iconCell}>
-          <SeatLayerPickerAccessIcon
-            color={row.on ? theme.colors.accent : theme.colors.mutedText}
-          />
-        </View>
+        {row.glyph === 'access'
+          ? (
+            <View accessible={false} style={styles.iconCell}>
+              <SeatLayerPickerAccessIcon
+                color={row.on ? theme.colors.accent : theme.colors.mutedText}
+              />
+            </View>
+          )
+          : null}
         <View style={styles.rowText}>
           <Text
             style={[styles.rowLabel, {
@@ -264,9 +274,12 @@ const styles = StyleSheet.create({
   scrim: { flex: 1 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   bounds: { flex: 1, justifyContent: "flex-end" },
+  // The sheet sizes to its rows and never clips the last one: a row a buyer
+  // cannot reach is a need the picker has quietly refused to offer.
+
   sheet: {
     maxHeight: "78%",
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderWidth: StyleSheet.hairlineWidth,
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     paddingHorizontal: 20,
