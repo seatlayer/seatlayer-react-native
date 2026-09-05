@@ -126,7 +126,7 @@ describe('picker chrome pure plans', () => {
     cyclic.push({ color: '#123456' }, cyclic);
     expect(sanitizeSeatLayerPickerStyle(cyclic as never, true)).toEqual({ color: '#123456' });
     expect(resolveSeatLayerPickerLayout({ headerHeight: 4096 }).headerHeight).toBe(4096);
-    expect(resolveSeatLayerPickerLayout({ headerHeight: 4097 }).headerHeight).toBe(56);
+    expect(resolveSeatLayerPickerLayout({ headerHeight: 4097 }).headerHeight).toBe(38);
     expect(seatLayerPickerMinimumTargetStyle(1)).toEqual({
       alignItems: 'center', justifyContent: 'center', minWidth: 44,
     });
@@ -231,7 +231,7 @@ describe('picker chrome pure plans', () => {
         hold: { active: false }, sessionId: 1,
       }));
     });
-    expect(reportInset).toHaveBeenCalledWith(56);
+    expect(reportInset).toHaveBeenCalledWith(38);
     expect(heldFor).not.toHaveBeenCalled();
     act(() => renderer!.unmount());
     expect(removeInset).toHaveBeenCalledOnce();

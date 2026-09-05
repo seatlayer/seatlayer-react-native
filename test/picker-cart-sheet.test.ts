@@ -26,13 +26,13 @@ describe('cart sheet projections', () => {
     ]), null).totals.currency).toBeNull();
   });
 
-  it('uses the generated five-run fold and a 60 percent content cap above its peek and safe edge', () => {
+  it('uses the generated four-run fold and a 72 percent content cap above its peek and safe edge', () => {
     const result = projectSeatLayerCartSheet(snapshot(Array.from({ length: 6 }, (_, index) => ({
       lineKey: `line-${index}`, label: `L-${index}`, objectId: `line-${index}`, quantity: 1,
       unitPrice: 20, currency: 'USD', sectionLabel: `Section ${index}`, seatNumber: String(index),
     })) ), null);
-    expect(visibleSeatLayerCartRuns(result, false)).toMatchObject({ hiddenCount: 1, canToggle: true });
-    expect(cartSheetMaximumBodyHeight(1_000, 34)).toBe(522);
+    expect(visibleSeatLayerCartRuns(result, false)).toMatchObject({ hiddenCount: 2, canToggle: true });
+    expect(cartSheetMaximumBodyHeight(1_000, 34)).toBe(628);
     expect(cartSheetMaximumBodyHeight(-10, 34)).toBe(0);
   });
 });

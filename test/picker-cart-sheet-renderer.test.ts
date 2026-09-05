@@ -36,7 +36,7 @@ async function render(element: React.ReactElement) {
 function hasPaint(node: { props: { style?: unknown } }): boolean {
   const styles = Array.isArray(node.props.style) ? node.props.style : [node.props.style];
   return styles.some((style) => Boolean(style) && typeof style === 'object' &&
-    (style as { height?: unknown }).height === 40 && (style as { borderRadius?: unknown }).borderRadius === 8);
+    (style as { height?: unknown }).height === 44 && (style as { borderRadius?: unknown }).borderRadius === 9);
 }
 
 function setup(hostHold = false) {
@@ -234,7 +234,7 @@ describe('cart checkout renderer', () => {
     const layout = renderer.root.findAll((node) => typeof node.props.onLayout === 'function')[0]!;
     await act(async () => { layout.props.onLayout({ nativeEvent: { layout: { height: 350 } } }); });
     await act(async () => { renderer.update(React.createElement(SeatLayerCartSheet, { expanded: false, onExpandedChanged: () => {}, onCheckout: () => {} })); });
-    expect(runtime.insets).toContainEqual({ bottom: 44 });
+    expect(runtime.insets).toContainEqual({ bottom: 58 });
   });
 
   it('keeps the legacy bottom-only inset when no full safe-area input is supplied', async () => {
@@ -243,7 +243,7 @@ describe('cart checkout renderer', () => {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 12,
     }));
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-safe-footer' }).props.style).toMatchObject({ height: 12 });
-    expect(runtime.insets).toContainEqual({ bottom: 56 });
+    expect(runtime.insets).toContainEqual({ bottom: 70 });
   });
 
   it('uses the collapsed safe-area band for required attribution and hides it from backend branding', async () => {
@@ -379,7 +379,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'close' }).length).toBeGreaterThan(0);
   });
 
-  it('keeps disabled best-seat controls truthful with 44 hit targets around 40 painted controls', async () => {
+  it('keeps disabled best-seat controls truthful with 44 hit targets around 44 painted controls', async () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [];
     scope = { ...scope, readOnly: true, strings: { translate: (key: string) => key === 'findBestSeats' ? 'A deliberately long localized best seats action' : key } };
@@ -390,7 +390,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByType('Text' as any).some((node) => node.props.numberOfLines === 1)).toBe(true);
   });
 
-  it('paints hold-lapse actions at 40 inside their 44 target', async () => {
+  it('paints hold-lapse actions at 44 inside their 44 target', async () => {
     setup();
     scope.holdLapse = { key: 'lapse', heldForMs: 1, lapsedLabels: ['A-1'], recoverableLabels: [] };
     const renderer = await render(React.createElement(SeatLayerHoldLapseNotice));

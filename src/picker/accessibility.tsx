@@ -672,8 +672,8 @@ export function SeatLayerPickerAccessibilityFilters(
       apply={apply}
       // The canonical design source removed `applyFilters` when the sheet
       // began applying live; until this sheet follows, the primary action
-      // borrows the shared `select` label rather than an absent token.
-      applyLabel={scope.strings.translate("select")}
+      // borrows the shared `continueWord` label rather than an absent token.
+      applyLabel={scope.strings.translate("continueWord")}
       busy={scope.isBusy}
       cancelLabel={scope.strings.translate("cancel")}
       closeLabel={scope.strings.translate("close")}

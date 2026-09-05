@@ -127,7 +127,7 @@ describe("picker status chrome", () => {
     expect(close.props.style.minHeight).toBe(44);
     const paint = close.findByType("View" as any);
     expect(paint.props.style).toEqual(expect.arrayContaining([
-      expect.objectContaining({ borderRadius: 8 }),
+      expect.objectContaining({ borderRadius: 9 }),
       expect.objectContaining({ borderRadius: 3 }),
     ]));
     expect(paint.props.style.at(-1).borderRadius).toBe(3);

@@ -244,7 +244,7 @@ describe('SeatLayerConfirmCard', () => {
     expect(paint.props.style[paint.props.style.length - 1]).toMatchObject({ backgroundColor: '#456', borderRadius: 1 });
     expect(paint.props.style[paint.props.style.length - 1]).not.toHaveProperty('height');
     expect(paint.props.style[paint.props.style.length - 1]).not.toHaveProperty('minHeight');
-    expect(paint.props.style[0]).toMatchObject({ height: 40 });
+    expect(paint.props.style[0]).toMatchObject({ height: 44 });
   });
 
   it('keeps a long generated identity to one line, owns no external media, and follows the current theme', async () => {

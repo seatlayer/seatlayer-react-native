@@ -169,14 +169,14 @@ describe('checked-in picker design output', () => {
   });
 
   it('keeps native-only cart, prompt, and immersive wording in the canonical token source', () => {
-    expect(seatLayerPickerTokens.radius).toMatchObject({ button: 8, card: 18 });
+    expect(seatLayerPickerTokens.radius).toMatchObject({ button: 9, card: 18 });
     expect(seatLayerPickerTokens.size.minimumHitTarget).toBeGreaterThanOrEqual(44);
     expect(seatLayerPickerTokens.strings).toMatchObject({
       addTickets: 'Add tickets',
       chooseTableGuests: 'Choose the number of guests for this table',
-      collapseCart: 'Collapse cart',
+      collapseCart: 'Collapse ticket panel',
       confirmTable: 'Confirm table',
-      expandCart: 'Expand cart',
+      expandCart: 'Open ticket panel',
       fromPrice: 'From {price}',
       generalAdmission: 'General admission',
       moreCount: '+{count} more',
@@ -185,7 +185,7 @@ describe('checked-in picker design output', () => {
       orbitMode: 'Rotate venue',
       panMode: 'Move venue',
       placesAvailable: '{count} places currently available',
-      removeSeat: 'Remove ticket',
+      removeSeat: 'Remove seat',
       rowIdentity: 'Row {row}',
       rotateVenue: 'Drag to rotate venue',
       seatNumberIdentity: 'Seat {seat}',
@@ -220,8 +220,8 @@ describe('picker theme', () => {
       organizerBranding: { accent: undefined, muted: undefined, logoUrl: undefined },
     });
     expect(theme.colors).toEqual(expect.objectContaining({
-      background: '#F6F7FB',
-      surface: '#FFFFFF',
+      background: '#FFFFFF',
+      surface: '#F6F7FB',
       accent: '#5B4B8A',
       onAccent: '#FFFFFF',
       mapSelection: '#5B4B8A',
@@ -300,11 +300,11 @@ describe('picker theme', () => {
       base: 24,
       card: 24,
       sheet: 24,
-      button: 8,
+      button: 9,
       chip: 999,
       pill: 999,
     });
-    expect(theme.buttonRadius).toBe(8);
+    expect(theme.buttonRadius).toBe(9);
     expect(theme.fontFamily).toBe('Host Sans');
     expect(theme.mapTheme).toEqual({
       background: '#101010',

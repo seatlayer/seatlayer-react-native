@@ -68,7 +68,7 @@ describe('deterministic native picker visual fixtures', () => {
     expect(tree.root.findAllByType(NeutralMapSurface)).toHaveLength(1);
     expect(tree.root.findAllByProps({ testID: 'seatlayer-visual-fixture-map' })).toHaveLength(1);
 
-    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Seat map' });
+    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Map' });
     expect(mapSegment.props.style({ pressed: false })).toMatchObject({
       height: 44,
       minWidth: 46,
@@ -202,7 +202,7 @@ describe('deterministic native picker visual fixtures', () => {
       tree.root.findByProps({ accessibilityLabel: 'Colourblind-friendly colours' }).props.onPress();
     });
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Continue' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
       await Promise.resolve();
@@ -262,7 +262,7 @@ describe('deterministic native picker visual fixtures', () => {
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Seat map' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Map' }).props.onPress();
       await Promise.resolve();
     });
     const mapEvidence = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
