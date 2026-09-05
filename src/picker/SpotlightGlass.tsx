@@ -23,6 +23,14 @@ import { seatLayerPickerTokens } from './tokens.g';
 /** How many rings the feather is drawn with; 32 px of feather over 8 steps. */
 const featherRings = 8;
 
+/**
+ * The four veil rectangles leave a SQUARE clear, and the feather covers a
+ * DISC. Without this the square's four corners were unveiled — a hard-edged
+ * light patch around the seat, measured on device 2026-09-05. One more ring at
+ * full veil, out to the square's own corner distance, closes them.
+ */
+const cornerFill = Math.SQRT2;
+
 export interface SeatLayerPickerSpotlightPoint {
   readonly x: number;
   readonly y: number;
@@ -114,6 +122,15 @@ export function seatLayerPickerSpotlightLayers(
       ring: Object.freeze({ size: outer * 2, radius: outer, border: step, top: point.y - outer, left: point.x - outer }),
     }));
   }
+  const corner = feather * cornerFill;
+  layers.push(Object.freeze({
+    key: 'ring-corner',
+    opacity: veil,
+    ring: Object.freeze({
+      size: corner * 2, radius: corner, border: corner - feather,
+      top: point.y - corner, left: point.x - corner,
+    }),
+  }));
   return Object.freeze(layers);
 }
 

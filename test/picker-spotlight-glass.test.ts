@@ -44,7 +44,7 @@ describe('§3.8.2 the hole', () => {
   it('is clear at 56 px and at full strength by 88 px', () => {
     expect(seatLayerPickerTokens.size.confirmScrimClearRadius).toBe(56);
     expect(seatLayerPickerTokens.size.confirmScrimFeatherRadius).toBe(88);
-    const rings = layers.filter((layer) => layer.ring !== undefined);
+    const rings = layers.filter((layer) => layer.ring !== undefined && layer.key !== 'ring-corner');
     expect(rings).toHaveLength(8);
     const innermost = rings[0]!;
     const outermost = rings[rings.length - 1]!;
@@ -53,6 +53,15 @@ describe('§3.8.2 the hole', () => {
     expect(innermost.opacity).toBeLessThan(outermost.opacity);
     expect(outermost.opacity).toBeLessThan(veil);
     expect(innermost.opacity).toBeGreaterThan(0);
+  });
+
+  it('veils the corners the rectangles leave, out to the square’s own corner', () => {
+    const corner = layers.find((layer) => layer.key === 'ring-corner');
+    expect(corner?.opacity).toBe(veil);
+    // The square the four rectangles leave is 88 px half-side; its corner sits
+    // at 88·√2, which is where this ring's outer edge is.
+    expect(corner?.ring?.radius).toBeCloseTo(88 * Math.SQRT2, 6);
+    expect(corner!.ring!.radius - corner!.ring!.border).toBeCloseTo(88, 6);
   });
 
   it('centres the feather on the seat’s own screen point', () => {
