@@ -31,8 +31,13 @@ export function SeatLayerPickerHoldOwnershipObserver(): null {
   const controller = scope.controller;
   const sessionId = scope.sessionId;
   useEffect(() => {
+    // A custom scope value need not carry every controller surface; a picker
+    // built on one simply never hears the refusal, as it never heard any
+    // other runtime event.
+    const map = controller.mapController as { on?: (name: string, listener: (error: unknown) => void) => () => void } | undefined;
+    if (typeof map?.on !== 'function') return undefined;
     let alive = true;
-    const dispose = controller.mapController.on('error', (error: unknown) => {
+    const dispose = map.on('error', (error: unknown) => {
       if (!alive || scopeRef.current.sessionId !== sessionId) return;
       const handoff = typeof controller.getCheckoutHandoff === 'function'
         ? controller.getCheckoutHandoff()
