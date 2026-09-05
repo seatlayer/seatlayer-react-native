@@ -197,7 +197,7 @@ describe("picker status chrome", () => {
     });
     const attribution = renderer.root.findByProps({ accessibilityLabel: "Powered by SeatLayer" });
     expect(attribution).toBeTruthy();
-    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.64 }));
+    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.72 }));
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTestModeIndicator, { compact: true })); });
     expect(renderer.toJSON()).toBeNull();
     scope.controller.mapController.supportsPickerCapability = (value: string) => value === "native-chrome-contract-v1";
