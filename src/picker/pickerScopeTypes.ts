@@ -6,6 +6,7 @@ import type { SeatLayerPickerBackAction } from './backNavigation';
 import type { SeatLayerChartLoad } from './chartLoad';
 import type { SeatLayerChartLoadListener } from './chartLoadSubscription';
 import type { SeatLayerPickerController } from './controller';
+import type { SeatLayerPickerBusyAction } from './busyState';
 import type { SeatLayerPickerHapticCue } from './haptics';
 import type { SeatLayerPickerHoldLapse } from './holdLapse';
 import type { SeatLayerPickerInsetLease } from './insetOwnership';
@@ -53,6 +54,14 @@ export interface SeatLayerPickerScopeValue {
   readonly presentation: SeatLayerPickerPresentationState;
   readonly error: unknown;
   readonly isBusy: boolean;
+  /** What is in flight, when something is. */
+  readonly busyAction: SeatLayerPickerBusyAction | null;
+  /**
+   * §3.10.2: a removal never stands in the way of Continue — the controller
+   * serialises the two, and the row itself is the answer to the press.
+   */
+  readonly blocksCheckout: boolean;
+  readonly setBusyAction: (action: SeatLayerPickerBusyAction | null) => void;
   readonly isReady: boolean;
   readonly readOnly: boolean;
   readonly availability: SeatLayerPickerAvailability;

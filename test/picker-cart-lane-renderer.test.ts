@@ -88,6 +88,7 @@ function setupScope(over: Record<string, unknown> = {}) {
     resolvedTheme: theme(), styles: {},
     formatMoney: (amount: number, currency: string) => `${currency === 'EUR' ? '€' : ''}${amount}`,
     strings: { translate: (key: string) => key }, reportError: () => {},
+    blocksCheckout: false, busyAction: null, setBusyAction: () => {}, emitHaptic: () => {},
     ...over,
   };
   return { controller, removed, snapshot };

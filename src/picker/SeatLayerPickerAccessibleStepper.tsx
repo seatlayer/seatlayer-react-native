@@ -9,6 +9,7 @@ import {
   type SeatLayerPickerAccessibleTour,
 } from "./accessibilityFocus";
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
+import { SeatLayerPickerBlockedRegion } from "./blockedRegionsContext";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
@@ -78,6 +79,8 @@ export function SeatLayerPickerAccessibleStepper(
     (key, options) => scope.strings.translate(key, options),
   );
   return (
+    // §2.4 — a control on the map reports its own rectangle.
+    <SeatLayerPickerBlockedRegion pointerEvents="auto">
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={[figure, scope.strings.translate("accessJumpNextSection")]
@@ -115,6 +118,7 @@ export function SeatLayerPickerAccessibleStepper(
         </Text>
       </View>
     </Pressable>
+    </SeatLayerPickerBlockedRegion>
   );
 }
 

@@ -23,6 +23,7 @@ import {
   type SeatLayerToastRequest,
   type SeatLayerToastTone,
 } from './toastQueue';
+import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { seatLayerPickerTokens } from './tokens.g';
 
 /**
@@ -173,6 +174,9 @@ export function SeatLayerPickerToastLayer(props: SeatLayerPickerToastLayerProps)
   // layer only draws whatever is up.
   const queue = props.queue;
   const toast = queue.current;
+  // §2.4 — the toast's action is a 44 pt reach over the map; the runtime must
+  // not route the press to a seat underneath it.
+  const blocked = useSeatLayerPickerBlockedRegion(toast !== null);
   useEffect(() => {
     if (toast === null) return;
     // Announced outright as well as live: four seconds inside a cross-fade is
@@ -182,7 +186,10 @@ export function SeatLayerPickerToastLayer(props: SeatLayerPickerToastLayerProps)
   if (toast === null) return null;
   return (
     <View
+      collapsable={false}
+      onLayout={blocked.onLayout}
       pointerEvents="box-none"
+      ref={blocked.ref as never}
       testID="seatlayer-picker-toast-layer"
       style={[{
         alignItems: 'center',

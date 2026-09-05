@@ -116,6 +116,9 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     // Felt, not just seen: the gesture is confirmed under the finger rather
     // than whenever the server finishes.
     try { before.emitHaptic('ticketRemoved'); } catch { /* a cue is advisory */ }
+    // §3.10.2 — in flight, but not in the way: `removingCartLine` is the one
+    // action that does not block Continue.
+    before.setBusyAction('removingCartLine');
     try {
       for (const label of started.intent.labels) {
         // Inventory mutations are serialised by the controller, so a Continue
@@ -138,6 +141,8 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
         if (raised) return;
         try { current.current.reportError(error); } catch { /* scope reporting is advisory */ }
       }
+    } finally {
+      if (isSeatLayerCartActionCurrent(lease, current.current)) current.current.setBusyAction(null);
     }
   };
 

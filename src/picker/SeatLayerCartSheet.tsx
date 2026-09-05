@@ -111,7 +111,7 @@ function canRejectHandoff(controller: Scope['controller']): boolean {
  */
 function checkoutAllowed(scope: Scope): boolean {
   const snapshot = scope.controller.getSnapshot();
-  return snapshot !== undefined && scope.isReady && !scope.readOnly && !scope.isBusy &&
+  return snapshot !== undefined && scope.isReady && !scope.readOnly && !scope.blocksCheckout &&
     scope.pendingSeat === null && !snapshot.event.salesClosed &&
     snapshot.selectionValidity?.isValid !== false &&
     projectSeatLayerCartSheet(snapshot, null).confirmed.items.length > 0 &&

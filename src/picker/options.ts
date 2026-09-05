@@ -41,6 +41,10 @@ export interface SeatLayerPickerChromeOptions {
    * Auto: off on the phone, on in the wide layout (§3.13.8). The phone gives
    * the buyer ONE timer, the header's countdown; a card arriving over the map
    * inside the last minute is a second decision at the worst moment.
+   *
+   * RESERVED. No prompt is drawn on any layout yet — the option is resolved
+   * and carried so a host that sets it does not have to change when the wide
+   * prompt lands, and so the phone's answer (never) is already written down.
    */
   readonly showExtendHoldPrompt?: boolean | null;
   readonly confirmCard?: boolean;

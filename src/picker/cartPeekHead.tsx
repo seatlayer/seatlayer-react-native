@@ -1,6 +1,7 @@
 import React from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, type GestureResponderHandlers, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
+import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { splitSeatLayerFromPrice, type SeatLayerPeekLine } from './checkoutCta';
 
 export { splitSeatLayerFromPrice };
@@ -55,8 +56,13 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
     fontSize: summarySize,
     fontWeight: summaryWeight,
   } as const;
+  // §2.4 — the sheet head stands over the map's foot and takes its own touch.
+  const blocked = useSeatLayerPickerBlockedRegion();
   return (
     <View
+      collapsable={false}
+      onLayout={blocked.onLayout}
+      ref={blocked.ref as never}
       style={[{
         alignItems: 'center',
         flexDirection: 'row',

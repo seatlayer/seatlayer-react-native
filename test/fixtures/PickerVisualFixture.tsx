@@ -617,6 +617,9 @@ function fixtureScope(
     isSessionActive: () => true,
     pendingSeat: scenario === 'variable-table' ? snapshot.selection[0] ?? null : pendingSeat,
     emitHaptic: () => undefined,
+    busyAction: null,
+    blocksCheckout: false,
+    setBusyAction: () => undefined,
     holdLapsed: scenario === 'hold-lapse',
     holdLapse: scenario === 'hold-lapse' ? Object.freeze({
       key: 'fixture-hold-lapse',

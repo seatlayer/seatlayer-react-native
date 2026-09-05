@@ -78,6 +78,7 @@ import type {
   SeatLayerPickerScopeProps,
   SeatLayerPickerScopeValue,
 } from './pickerScopeTypes';
+import { useSeatLayerPickerBusyState } from './busyState';
 import { availabilityOfSeatLayerPickerController as availabilityOf } from './scopeAvailability';
 import { seatLayerPickerHapticChannel } from './hapticChannel';
 import { SeatLayerPickerScopeProviders } from './scopeProviders';
@@ -173,7 +174,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
   const [ready, setReady] = useState(false);
   const readyRef = useRef(false);
   const [error, setError] = useState<unknown>(initialInputs.error);
-  const [busy, setBusy] = useState(false);
+  const busyState = useSeatLayerPickerBusyState();
   const [holdLapsed, setHoldLapsed] = useState(false);
   const [holdLapse, setHoldLapse] = useState<SeatLayerPickerHoldLapse | undefined>();
   const [holdLapseBusy, setHoldLapseBusy] = useState(false);
@@ -331,7 +332,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     setHoldLapsed(false);
     setHoldLapse(undefined);
     setHoldLapseBusy(false);
-    setBusy(false);
+    busyState.set(null);
     candidates.accept(candidate);
     readyRef.current = false;
     setReady(false);
@@ -492,7 +493,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     setHoldLapsed(false);
     setHoldLapse(undefined);
     setHoldLapseBusy(false);
-    setBusy(false);
+    busyState.set(null);
     readyRef.current = false;
     setReady(false);
     setError(undefined);
@@ -536,7 +537,9 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
           setPendingConfirmation(nextState);
         },
         setBusy: (nextBusy) => {
-          if (aliveRef.current && generationRef.current === sessionId) setBusy(nextBusy);
+          if (aliveRef.current && generationRef.current === sessionId) {
+            busyState.set(nextBusy ? 'cancellingSeat' : null);
+          }
         },
         reportError,
       }),
@@ -591,7 +594,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     const lapse = holdLapseRef.current.value;
     const labels = lapse?.recoverableLabels ?? [];
     if (
-      !ready || activeReadOnly || busy || labels.length === 0 ||
+      !ready || activeReadOnly || busyState.isBusy || labels.length === 0 ||
       !holdLapseRef.current.consume(lapse!.key)
     ) return Promise.resolve(false);
     setHoldLapse(undefined);
@@ -620,7 +623,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     });
     holdLapseFlightRef.current = { generation, promise: flight };
     return flight;
-  }, [activeBridgeConfig, activeController, activeReadOnly, busy, ready, reportError, sessionId]);
+  }, [activeBridgeConfig, activeController, activeReadOnly, busyState, ready, reportError, sessionId]);
   const effectiveBackState = useCallback((): SeatLayerPickerPresentationState => {
     return resolveSeatLayerPickerBackState(
       presentationRef.current, activeController.getSnapshot(), pendingRef.current.pending,
@@ -654,7 +657,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     }
     if (result.action.type === 'delegateToHost') return result.action;
     if (!aliveRef.current || generationRef.current !== generation) return result.action;
-    setBusy(true);
+    busyState.set('walkingBack');
     try {
       if (result.action.type === 'dismissPendingConfirmation') {
         await cancelPending();
@@ -669,7 +672,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
     } finally {
       if (aliveRef.current && generationRef.current === generation) {
         coordinator.complete(result.action);
-        setBusy(false);
+        busyState.set(null);
       }
     }
     return result.action;
@@ -690,7 +693,10 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
         strings,
         presentation: presentationForScope,
         error,
-        isBusy: busy,
+        isBusy: busyState.isBusy,
+        busyAction: busyState.action,
+        blocksCheckout: busyState.blocksCheckout,
+        setBusyAction: busyState.set,
         isReady: ready,
         readOnly: activeReadOnly,
         availability: availabilityOf(activeController),
@@ -723,7 +729,7 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       activeConfiguration,
       back,
       activeBridgeConfig,
-      busy,
+      busyState,
       cancelPending,
       confirmPending,
       clearError,
