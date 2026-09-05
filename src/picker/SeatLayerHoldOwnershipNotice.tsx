@@ -47,24 +47,28 @@ export function SeatLayerHoldOwnershipNotice(
       accessibilityLiveRegion="polite"
       style={[
         styles.root,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.divider,
-          borderRadius: seatLayerPickerTokens.radius.base,
-        },
+        // The bar is a STATE, and it wears the error ground the way the
+        // reference does — white ink on it in both themes, because the ink has
+        // to be legible on an authored red rather than on the panel behind it.
+        { backgroundColor: theme.colors.error },
         sanitizeSeatLayerPickerStyle(props.style),
       ]}
     >
-      <Text
-        accessibilityRole="header"
-        style={[styles.title, { color: theme.colors.text, fontFamily: theme.fontFamily }]}
-      >
-        {scope.strings.translate(notice.titleKey)}
-      </Text>
-      <Text style={[styles.body, { color: theme.colors.mutedText, fontFamily: theme.fontFamily }]}>
-        {scope.strings.translate(notice.bodyKey)}
-      </Text>
-      <View style={styles.actions}>
+      <View accessible={false} style={styles.markRing}>
+        <View style={styles.markStem} />
+        <View style={styles.markDot} />
+      </View>
+      <View style={styles.column}>
+        <Text
+          accessibilityRole="header"
+          numberOfLines={2}
+          style={[styles.title, { fontFamily: theme.fontFamily }]}
+        >
+          {scope.strings.translate(notice.titleKey)}
+        </Text>
+        <Text numberOfLines={3} style={[styles.body, { fontFamily: theme.fontFamily }]}>
+          {scope.strings.translate(notice.bodyKey)}
+        </Text>
         {notice.actionKey
           ? (
             <Pressable
@@ -74,67 +78,75 @@ export function SeatLayerHoldOwnershipNotice(
               disabled={releasing}
               onPress={release}
               style={[styles.action, {
-                backgroundColor: theme.colors.accent,
                 borderRadius: seatLayerPickerTokens.radius.button,
+                opacity: releasing ? 0.6 : 1,
               }]}
             >
-              <Text
-                numberOfLines={1}
-                style={[styles.actionText, {
-                  color: theme.colors.onAccent,
-                  fontFamily: theme.fontFamily,
-                }]}
-              >
+              <Text numberOfLines={1} style={[styles.actionText, { fontFamily: theme.fontFamily }]}>
                 {scope.strings.translate(notice.actionKey)}
               </Text>
             </Pressable>
           )
           : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={scope.strings.translate("close")}
-          onPress={() => store.clear()}
-          style={[styles.dismiss, {
-            borderColor: theme.colors.divider,
-            borderRadius: seatLayerPickerTokens.radius.button,
-          }]}
-        >
-          <Text
-            style={[styles.actionText, {
-              color: theme.colors.text,
-              fontFamily: theme.fontFamily,
-            }]}
-          >
-            {scope.strings.translate("close")}
-          </Text>
-        </Pressable>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={scope.strings.translate("close")}
+        onPress={() => store.clear()}
+        style={styles.dismiss}
+      >
+        <View accessible={false} style={styles.cross}>
+          <View style={[styles.crossBar, { transform: [{ rotate: "45deg" }] }]} />
+          <View style={[styles.crossBar, { transform: [{ rotate: "-45deg" }] }]} />
+        </View>
+      </Pressable>
     </View>
   );
 }
 
+/** White in both themes: the ink is read on the authored red, not on the panel. */
+const noticeInk = "#FFFFFF";
+
 const styles = StyleSheet.create({
   root: {
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: 12,
-    gap: 6,
+    alignItems: "flex-start",
+    flexDirection: "row",
+    paddingEnd: 4,
+    paddingStart: 12,
+    paddingVertical: 10,
   },
-  title: { fontSize: 15, fontWeight: "800" },
-  body: { fontSize: 13, lineHeight: 18 },
-  actions: { flexDirection: "row", gap: 8, paddingTop: 4 },
+  column: { flex: 1, gap: 2, paddingStart: 9 },
+  markRing: {
+    alignItems: "center",
+    borderColor: noticeInk,
+    borderRadius: 10,
+    borderWidth: 1.6,
+    height: 20,
+    justifyContent: "center",
+    marginTop: 1,
+    width: 20,
+  },
+  markStem: { backgroundColor: noticeInk, borderRadius: 1, height: 6, marginBottom: 1.5, width: 1.8 },
+  markDot: { backgroundColor: noticeInk, borderRadius: 1.1, height: 2.2, width: 2.2 },
+  title: { color: noticeInk, fontSize: 15, fontWeight: "700" },
+  body: { color: noticeInk, fontSize: 13, lineHeight: 18 },
   action: {
-    flex: 1,
-    minHeight: size.minimumHitTarget,
     alignItems: "center",
+    alignSelf: "flex-start",
+    borderColor: noticeInk,
+    borderWidth: 1,
     justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  dismiss: {
-    minHeight: size.minimumHitTarget,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
+    marginTop: 6,
+    minHeight: 34,
     paddingHorizontal: 14,
   },
-  actionText: { fontSize: 13, fontWeight: "800" },
+  actionText: { color: noticeInk, fontSize: 13, fontWeight: "700" },
+  dismiss: {
+    alignItems: "center",
+    height: size.minimumHitTarget,
+    justifyContent: "center",
+    width: size.minimumHitTarget,
+  },
+  cross: { alignItems: "center", height: 12, justifyContent: "center", width: 12 },
+  crossBar: { backgroundColor: noticeInk, borderRadius: 1, height: 1.6, position: "absolute", width: 13 },
 });
