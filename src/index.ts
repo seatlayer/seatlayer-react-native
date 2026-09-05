@@ -249,6 +249,33 @@ export {
   type SeatLayerConfirmCardProps,
 } from './picker/SeatLayerConfirmCard';
 export {
+  SpotlightGlass,
+  seatLayerPickerSpotlightVeil,
+  setSeatLayerPickerSpotlightBlur,
+  useSeatLayerPickerReducedTransparency,
+  type SeatLayerPickerSpotlightBlurComponent,
+  type SeatLayerPickerSpotlightPoint,
+  type SpotlightGlassProps,
+} from './picker/SpotlightGlass';
+export {
+  SeatLayerPickerSeatLift,
+  seatLayerPickerSeatCardInsetBand,
+  seatLayerPickerSheetLiftFraction,
+  seatLayerPickerSheetRestoreFraction,
+  seatLayerPickerSheetSeatFraction,
+  type SeatLayerPickerSeatFrame,
+  type SeatLayerPickerSeatLiftSync,
+} from './picker/seatLift';
+export {
+  ConfidenceTeaser,
+  type ConfidenceTeaserProps,
+} from './picker/confidenceTeaser';
+export {
+  SeatLayerPickerBuyerAssetLoader,
+  type SeatLayerPickerAssetFetch,
+} from './picker/buyerAssetLoader';
+export { type SeatLayerPickerConfirmCardMode } from './picker/seatRetap';
+export {
   SeatLayerPickerSeatConfirmation,
   type SeatLayerPickerSeatConfirmationActionEvent,
   type SeatLayerPickerSeatConfirmationProps,

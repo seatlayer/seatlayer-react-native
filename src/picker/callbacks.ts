@@ -37,5 +37,11 @@ export interface SeatLayerPickerCallbacks {
   readonly onSeatSelected?: (seat: SelectedSeat) => void | Promise<void>;
   readonly onSeatRemoved?: (label: string) => void | Promise<void>;
   readonly onSeatViewOpened?: (seat: SelectedSeat) => void | Promise<void>;
+  /**
+   * Opens the seat's confidence passport. Supplying it turns the 3D card's
+   * confidence teaser (§3.8.7) into a chip; without it the teaser stays the
+   * static row, because a chip beside a dead target would say nothing.
+   */
+  readonly onSeatConfidence?: (seat: SelectedSeat) => void | Promise<void>;
   readonly onContinue?: (handoff: SeatLayerPickerCheckoutHandoff) => void | Promise<void>;
 }
