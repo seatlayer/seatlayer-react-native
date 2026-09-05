@@ -126,6 +126,12 @@ describe('picker theme runtime boundary', () => {
       theme: { colors: { surface: 'named-colour' } },
       organizerBranding: { surface: '#203040' },
     }).colors.surface).toBe(seatLayerPickerTokens.color.light.surface);
+    // The header is the picker's own ground; the rail below is the first
+    // surface, so the two are never the same colour by default.
+    const roles = resolveSeatLayerPickerTheme({}).roles;
+    expect(roles.header.background).toBe(seatLayerPickerTokens.color.light.background);
+    expect(roles.sheet.background).toBe(seatLayerPickerTokens.color.light.surface);
+
     // The same organizer payload still carries the brand roles through.
     expect(resolveSeatLayerPickerTheme({
       organizerBranding: { accent: '#102030', background: '#0B0D12' },

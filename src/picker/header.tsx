@@ -385,7 +385,7 @@ export function SeatLayerPickerHeaderView(
   // the ink on it must be resolved as a PAIR, or a host that darkened
   // `color.*.background` for the map leaves the event name unreadable.
   const ground = {
-    background: theme.roles?.header?.background ?? theme.colors.surface,
+    background: theme.roles?.header?.background ?? theme.colors.background,
     foreground: theme.roles?.header?.foreground ?? theme.colors.text,
     border: theme.roles?.header?.border ?? theme.colors.divider,
   };
@@ -404,9 +404,6 @@ export function SeatLayerPickerHeaderView(
         styles.root,
         {
           backgroundColor: ground.background,
-          // A hairline of the divider under it.
-          borderBottomColor: ground.border,
-          borderBottomWidth: StyleSheet.hairlineWidth,
           paddingTop: boundedInset(topInset),
         },
         slots.headerContainer,

@@ -272,8 +272,11 @@ function roleDefaults(
   mapTheme: Readonly<SeatLayerPickerResolvedMapTheme>,
 ): SeatLayerPickerThemeRoles {
   return Object.freeze({
+    // The header sits on the picker's own GROUND: the price rail beneath it is
+    // the first surface, and a header painted in the rail's colour makes the
+    // two read as one plate with a line through it.
     header: freezeRole({
-      background: colors.surface,
+      background: colors.background,
       foreground: colors.text,
       border: colors.divider,
     }),

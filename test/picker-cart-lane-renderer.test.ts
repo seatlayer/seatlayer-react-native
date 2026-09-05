@@ -113,6 +113,10 @@ describe('§3.1 header renderer', () => {
     const flattened = (root.props.style as unknown[]).filter(Boolean) as Record<string, unknown>[];
     // The ground and its ink are resolved as a PAIR through the header's slot.
     expect(flattened.some((style) => style.backgroundColor === '#ffffff')).toBe(true);
+    // The rail beneath it is the first surface, so the header carries no line
+    // of its own: two grounds meeting is the boundary, and a hairline as well
+    // read as a rule drawn through one plate.
+    expect(flattened.some((style) => 'borderBottomWidth' in style)).toBe(false);
     expect(flattened.some((style) => style.height === seatLayerPickerTokens.size.headerHeight)).toBe(true);
     // The venue-and-date meta line is NOT drawn on a phone.
     const output = JSON.stringify(renderer.toJSON());
