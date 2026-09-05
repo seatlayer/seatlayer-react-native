@@ -58,14 +58,16 @@ export type SeatLayerPickerReadingRung = keyof typeof seatLayerPickerReadingOrde
  * rung of its own.
  */
 export const seatLayerPickerReadingOrderIds: Readonly<Record<SeatLayerPickerReadingRung, string>> = Object.freeze({
-  header: 'seatlayer-order-header',
-  rail: 'seatlayer-order-rail',
-  map: 'seatlayer-order-map',
-  mapChrome: 'seatlayer-order-map-chrome',
-  dock: 'seatlayer-order-dock',
-  prompt: 'seatlayer-order-prompt',
-  notice: 'seatlayer-order-notice',
-  sheet: 'seatlayer-order-sheet',
+  // The rung number is IN the id, and no id is a prefix of another: a platform
+  // that resolves these by name must never confuse `map` with `map-chrome`.
+  header: 'seatlayer-order-100-header',
+  rail: 'seatlayer-order-200-rail',
+  map: 'seatlayer-order-300-map',
+  mapChrome: 'seatlayer-order-400-chrome',
+  dock: 'seatlayer-order-500-dock',
+  prompt: 'seatlayer-order-600-prompt',
+  notice: 'seatlayer-order-700-notice',
+  sheet: 'seatlayer-order-800-sheet',
 });
 
 const rungs: readonly SeatLayerPickerReadingRung[] = Object.freeze(
