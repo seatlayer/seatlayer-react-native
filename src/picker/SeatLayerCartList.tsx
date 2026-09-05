@@ -349,7 +349,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
                 thirds of every cart line read as a caption. */}
             {trailingParts.map((part) => (
               <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} key={part}>
-                <Text style={{ color: theme.colors.mutedText }}>{' · '}</Text>{part}
+                <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{ color: theme.colors.mutedText }}>{' · '}</Text>{part}
               </Text>
             ))}
           </Text>
