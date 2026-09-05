@@ -220,6 +220,16 @@ The customization layers have distinct ownership:
 - `builders` replaces any of 25 complete parts and receives the live scope plus
   `defaultChild`. Use a builder when structure or placement must change.
 
+An app that wants the picker set in its own typeface passes
+`themeOptions.theme.fontFamily` and loads the face itself — with `expo-font`,
+`react-native.config.js` asset linking, or whatever the app already uses — and
+every line the picker draws then takes that family. Without it the picker draws
+the platform's own face, which is the right default: React Native has no
+inherited text style, so a picker that guessed at the surrounding typography
+would be guessing. Pass the family name the platform registers the face under,
+and load every weight the app expects to see; a weight that is not loaded is
+resolved to the nearest one that is.
+
 `options.pricing.formatter` formats every native amount: confirmation, ticket
 rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
 It changes presentation only. Runtime selection, hold totals, and the trusted
