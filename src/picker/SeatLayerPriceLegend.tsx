@@ -61,13 +61,23 @@ type LegendMetrics = Readonly<{
 }>;
 
 const edgeWidth = seatLayerPickerTokens.size.legendRailEdgeFade;
-const chipGap = 6;
+const chipGap = 5;
+/** The point of air the reference's own scroller keeps around its chips. */
+const railScrollerAir = 1;
+/** The pinned chip's inset inside the rail, so its border is not shaved. */
+const pinnedChipInset = 1;
 /**
  * The band's own margin. The rail is a band, not a bleed: the pinned chip's
  * rounded end has to sit inside the surface it is drawn on, the way the header
  * mark beneath it does, or the first price reads as clipped by the screen.
  */
 const railInset = 10;
+/** The chip's own hairline. */
+const chipBorder = 1;
+/** Width of the ring the light map's pale swatch wears, drawn outside it. */
+const dotRing = 1.5;
+/** How much of the category's colour the light map's swatch carries. */
+const dotWash = 0.32;
 
 /**
  * §3.2 amount rule. A single price prints as itself; equal minimum and maximum
@@ -395,7 +405,10 @@ function SeatLayerPriceLegendView({
             flexDirection: rtl ? 'row-reverse' : 'row',
             gap: chipGap,
             paddingEnd: edgeWidth,
-            paddingStart: pinnedWidth + chipGap,
+            // The pinned chip's own point of inset, its width, and the five
+            // the reference separates it by plus the one point of air its
+            // scroller keeps — the same six the first price stands off by.
+            paddingStart: pinnedChipInset + pinnedWidth + chipGap + railScrollerAir,
           }}
           onContentSizeChange={onContentSizeChange}
           onScroll={onScroll}
@@ -439,7 +452,12 @@ function SeatLayerPriceLegendView({
             bottom: 0,
             justifyContent: 'center',
             position: 'absolute',
-            start: 1,
+            // The rail's own inset PLUS the chip's point of air: an absolutely
+            // positioned child's inset is measured from its parent's border
+            // box, not from the box the parent's padding leaves, so `start: 1`
+            // put the pinned chip one point from the phone's edge instead of
+            // eleven — the reference's ten of rail and one of air.
+            start: railInset + pinnedChipInset,
             top: 0,
             // While the scroller has scrolled the pinned chip carries a halo of
             // the band ground, so chips slide UNDER it rather than through it;
@@ -539,7 +557,10 @@ function LegendChip({
     fontFamily: theme.fontFamily,
     fontSize: theme.layout.legendChipFontSize,
     fontVariant: ['tabular-nums'],
-    fontWeight: seatLayerPickerBold(800),
+    // The way out is the one chip that is a word rather than a number, and
+    // the reference sets it a little lighter than the prices it leads
+    // (`picker_legend.dart`: `naming ? w800 : FontWeight(750)`).
+    fontWeight: seatLayerPickerBold(allPrices ? 750 : 800),
   };
   // 3.2: on LIGHT the dot is the category colour mixed into the surface with a
   // full-strength ring of the category colour — matching how the map tints
@@ -547,11 +568,17 @@ function LegendChip({
   // A selected chip inverts, so the dot gains a ring in the ink colour and the
   // colour key survives the inversion.
   const ringColor = selected ? ink : color;
+  // The reference draws the ring OUTSIDE the swatch (`strokeAlign: 1`), so the
+  // key is the dot's own size with the ring around it; React Native paints a
+  // border inside its box, so the box carries the ring's width on both sides
+  // and the fill left inside it is the dot the token names.
+  const ringed = selected || !dark;
+  const dotBox = ringed ? dotSize + dotRing * 2 : dotSize;
   const dotFill = selected
     ? color
     : dark
       ? color
-      : blendSeatLayerPickerColor(color, theme.colors.surface, 0.45, color);
+      : blendSeatLayerPickerColor(color, theme.colors.surface, dotWash, color);
   return (
     <Pressable
       accessibilityLabel={allPrices ? label : `${label}, ${money}`}
@@ -569,33 +596,48 @@ function LegendChip({
         style={[
           {
             alignItems: 'center',
+            // A chip that names a category stands on the picker's own ground;
+            // the way out of a filter wears the rail's surface, so it reads as
+            // part of the rail rather than as one more category.
             backgroundColor: selected
               ? theme.colors.accent
-              : theme.colors.background,
+              : allPrices ? theme.colors.surface : theme.colors.background,
             borderColor: selected ? theme.colors.accent : theme.colors.divider,
             borderRadius: theme.radii.chip,
-            borderWidth: 1,
+            borderWidth: chipBorder,
             flexDirection: 'row',
             height: paintHeight,
             opacity: soldOut ? 0.55 : 1,
-            paddingHorizontal: 9,
+            // Seven leading, nine trailing (`picker_legend.dart` §_ink), LESS
+            // the hairline: the reference's `Material` paints its stadium's
+            // side without insetting what it wraps, where a React Native
+            // border always boxes its content.
+            paddingEnd: 9 - chipBorder,
+            paddingStart: 7 - chipBorder,
           },
           slots?.legendChipContainer,
           { height: paintHeight },
         ]}
       >
         {allPrices ? null : (
-          <View
-            style={{
-              backgroundColor: dotFill,
-              borderColor: ringColor,
-              borderRadius: dotSize,
-              borderWidth: selected || !dark ? 1.5 : 0,
-              height: dotSize,
-              marginEnd: 6,
-              width: dotSize,
-            }}
-          />
+          // The swatch takes the DOT's room and no more: the reference's ring
+          // is drawn outside the shape (`strokeAlign: 1`), so it bleeds into
+          // the chip's own padding rather than widening the chip by three.
+          <View style={{ height: dotSize, marginEnd: 5, width: dotSize }}>
+            <View
+              style={{
+                backgroundColor: dotFill,
+                borderColor: ringColor,
+                borderRadius: dotBox / 2,
+                borderWidth: ringed ? dotRing : 0,
+                height: dotBox,
+                left: ringed ? -dotRing : 0,
+                position: 'absolute',
+                top: ringed ? -dotRing : 0,
+                width: dotBox,
+              }}
+            />
+          </View>
         )}
         <Text
           maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('rail')}

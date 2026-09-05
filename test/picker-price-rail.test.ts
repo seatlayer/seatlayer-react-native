@@ -153,11 +153,21 @@ describe('3.2 All prices', () => {
   });
 });
 
+/**
+ * The swatch, whose BOX carries the ring on both sides: the reference draws
+ * the ring outside the dot (`strokeAlign: 1`), and React Native paints a
+ * border inside its box, so the box is the dot plus twice the ring and the
+ * fill left inside it is the dot the token names.
+ */
+const ringedDotBox = seatLayerPickerTokens.size.legendChipDotSize + 3;
+
 function dotOf(renderer: ReactTestRenderer, label: string): Record<string, any> {
   const chip = renderer.root.findByProps({ accessibilityLabel: label });
   const dot = chip.findAllByType('View' as never)
     .map((node) => node.props.style as Record<string, any>)
-    .find((style) => style?.height === seatLayerPickerTokens.size.legendChipDotSize);
+    .find((style) => style?.borderRadius !== undefined
+      && (style?.height === ringedDotBox
+        || style?.height === seatLayerPickerTokens.size.legendChipDotSize));
   expect(dot).toBeDefined();
   return dot!;
 }
@@ -186,7 +196,7 @@ describe('3.2 the band and its chips', () => {
     expect(lightDot).toMatchObject({
       borderColor: 'rgba(204, 0, 0, 1)',
       borderWidth: 1.5,
-      height: seatLayerPickerTokens.size.legendChipDotSize,
+      height: ringedDotBox,
     });
     expect(lightDot.backgroundColor).not.toBe('rgba(204, 0, 0, 1)');
 
