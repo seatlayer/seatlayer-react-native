@@ -63,10 +63,9 @@ export function SeatLayerPickerTestModeIndicatorView(props: SeatLayerPickerTestM
       sanitizeSeatLayerPickerStyle(props.style),
     ]}
   >
-    <View
-      pointerEvents="none"
-      style={[styles.dot, { backgroundColor: warning, shadowColor: warning }]}
-    />
+    <View pointerEvents="none" style={[styles.halo, { backgroundColor: seatLayerPickerColorAlpha(warning, .22) }]}>
+      <View style={[styles.dot, { backgroundColor: warning }]} />
+    </View>
     <Text
       numberOfLines={1}
       ellipsizeMode="tail"
@@ -80,31 +79,52 @@ export function SeatLayerPickerTestModeIndicator(props: SeatLayerPickerTestModeI
   return <SeatLayerPickerTestModeIndicatorView {...props} testMode theme={resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot)} strings={scope.strings} themeStyles={scope.styles} />;
 }
 const dotSize = seatLayerPickerTokens.size.testChipDotSize;
+/** How far the status light's halo stands out past the light itself. */
+const haloSpread = 3;
+/** The pill's hairline, a whole point as the reference draws it. */
+const chipBorder = 1;
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "center",
     alignSelf: "flex-start",
     borderRadius: seatLayerPickerTokens.radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    // One point, not a hairline: the reference's `Border.all` is a whole point.
+    borderWidth: chipBorder,
     flexDirection: "row",
     height: seatLayerPickerTokens.size.testChipHeight,
     justifyContent: "center",
   },
-  compact: { paddingHorizontal: 8 },
-  wide: { paddingHorizontal: 10 },
+  // Eight before the light, ten after the word: `fromSTEB(8, 0, 10, 0)`, LESS
+  // the hairline. The reference paints its border with a `DecoratedBox`, which
+  // does not inset what it wraps; a React Native border always boxes its
+  // content, so the pill's padding carries the border's own width or the chip
+  // comes out two points wide with its word a point late.
+  compact: { paddingEnd: 10 - chipBorder, paddingStart: 8 - chipBorder },
+  wide: { paddingEnd: 12 - chipBorder, paddingStart: 10 - chipBorder },
+  // The status light's own halo, drawn as the ring it is: the reference casts
+  // it with `BoxShadow(spreadRadius: 3)` and NO blur, which is a hard ring of
+  // three points in the warning colour at just over a fifth.
+  halo: {
+    alignItems: 'center',
+    borderRadius: dotSize / 2 + haloSpread,
+    height: dotSize + haloSpread * 2,
+    justifyContent: 'center',
+    marginEnd: 7 - haloSpread,
+    marginStart: -haloSpread,
+    width: dotSize + haloSpread * 2,
+  },
   dot: {
     borderRadius: dotSize / 2,
     height: dotSize,
-    marginEnd: 6,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: .55,
-    shadowRadius: 4,
     width: dotSize,
   },
   text: {
     fontSize: seatLayerPickerTokens.size.testChipFontSize,
-    fontWeight: "800",
-    letterSpacing: .1,
+    fontWeight: "700",
+    letterSpacing: seatLayerPickerTokens.size.testChipFontSize * .01,
+    // Measured, not copied: the reference's own `height: 1` puts the word a
+    // point ABOVE where the reference frame prints it once React Native has
+    // centred the line box in the pill, so the box keeps its three points.
     lineHeight: seatLayerPickerTokens.size.testChipFontSize + 3,
   },
 }));
