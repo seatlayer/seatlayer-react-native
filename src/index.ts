@@ -345,6 +345,7 @@ export {
   seatLayerPickerSalesClosedToast,
   seatLayerPickerSeatTakenToast,
   seatLayerPickerSeatsTakenToast,
+  seatLayerPickerMapErrorState,
   seatLayerPickerToastDwellMs,
   type SeatLayerPickerAccessPanelState,
   type SeatLayerPickerHoldLapseTelling as SeatLayerPickerHoldLapseTellingModel,

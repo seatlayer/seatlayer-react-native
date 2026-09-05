@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { seatLayerPickerHoldLapseTelling } from './buyerStates';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
@@ -21,6 +22,13 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
   const minutes = typeof lapse.heldForMs === 'number' && Number.isFinite(lapse.heldForMs) && lapse.heldForMs > 0
     ? Math.max(1, Math.ceil(lapse.heldForMs / 60_000)) : undefined;
   const unrecovered = Math.max(0, lapse.lapsedLabels.length - lapse.recoverableLabels.length);
+  // §3.13.7: the counted sentence leads — it is the one the toast said, and the
+  // buyer will look for it here after four seconds have taken the toast away.
+  const telling = seatLayerPickerHoldLapseTelling(lapse, scope.strings.locale);
+  const tellingText = scope.strings.translate(telling.messageKey, {
+    count: telling.count,
+    values: { count: telling.count },
+  });
   const offersReselect = lapse.recoverableLabels.length > 0;
   const canReselect = offersReselect && scope.isReady && !scope.isHoldLapseBusy && !scope.readOnly;
   const reselectLabel = scope.strings.translate('reselectSeats', {
@@ -28,8 +36,9 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
     values: { count: lapse.recoverableLabels.length },
   });
   return (
-    <View accessibilityLiveRegion="polite" style={[sanitizeSeatLayerPickerStyle(props.style), styles.statusContainer, styles.errorContainer, { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.roles.notice.background, borderBottomWidth: 1, borderColor: theme.roles.notice.border }]}>
-      <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
+    <View accessibilityLiveRegion="polite" style={[sanitizeSeatLayerPickerStyle(props.style), styles.statusContainer, styles.errorContainer, { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.roles.notice.background, borderBottomWidth: 1, borderColor: telling.tone === 'error' ? theme.colors.error : theme.roles.notice.border }]}>
+      <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.statusText, styles.errorText]}>{tellingText}</Text>
+      <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
       {minutes === undefined ? null : <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { values: { n: minutes } })}</Text>}
       {unrecovered > 0 ? <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { values: { n: unrecovered } })}</Text> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>

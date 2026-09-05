@@ -236,3 +236,16 @@ export function seatLayerPickerAccessPanel(
 }
 
 export const seatLayerPickerAccessPanels = accessPanels;
+
+/**
+ * §3.13.2. Replaces the loading content on the same ground. Retry fully
+ * remounts the picker rather than patching a half-built one.
+ */
+export const seatLayerPickerMapErrorState = Object.freeze({
+  titleKey: 'mapDidNotLoad',
+  bodyKey: 'checkConnection',
+  actionKey: 'retry',
+  /** For a host that would rather say what the button does to the map. */
+  alternateActionKey: 'reloadSeatMap',
+  recovery: 'retry',
+} as const);
