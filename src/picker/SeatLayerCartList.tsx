@@ -342,9 +342,15 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             fontVariant: ['tabular-nums'],
             fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseLine.weight),
           }, styles.denseLineText]}>
-            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: seatLayerPickerBold(800) }}>{leading}</Text>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: seatLayerPickerBold(700) }}>{leading}</Text>
+            {/* ONLY THE SEPARATOR IS MUTED. The row letter and the seat number
+                are the identity the buyer is checking against the map, and the
+                reference keeps them in the line's own ink; muting them made two
+                thirds of every cart line read as a caption. */}
             {trailingParts.map((part) => (
-              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} key={part} style={{ color: theme.colors.mutedText }}>{` · ${part}`}</Text>
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} key={part}>
+                <Text style={{ color: theme.colors.mutedText }}>{' · '}</Text>{part}
+              </Text>
             ))}
           </Text>
         </SeatLayerCartCellCrossFade>
