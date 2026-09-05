@@ -33,6 +33,20 @@ future native Android integrations:
 
 No chart is constructed when the protocol ranges do not overlap.
 
+## Capabilities and the command table
+
+`hello` carries both the capability strings the renderer advertises and the
+list of commands it accepts. A picker surface is drawn only where the
+capability behind it is advertised, and a command is sent only where the table
+lists it.
+
+Three of the native-chrome commands — `picker.setSelectionFocus`,
+`picker.setBlockedRegions` and `picker.frameSeat` — change nothing a snapshot
+reports, so the contract gives them no capability string and their presence in
+the command table is the whole gate. Each resolves with nothing on a renderer
+that does not list it: a capability the renderer does not advertise is a
+feature the host does not offer, never a failure.
+
 ## Transport
 
 Web to React Native uses:
