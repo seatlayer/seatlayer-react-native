@@ -55,13 +55,17 @@ describe('§3.8.2 the hole', () => {
     expect(innermost.opacity).toBeGreaterThan(0);
   });
 
-  it('veils the corners the rectangles leave, out to the square’s own corner', () => {
-    const corner = layers.find((layer) => layer.key === 'ring-corner');
-    expect(corner?.opacity).toBe(veil);
-    // The square the four rectangles leave is 88 px half-side; its corner sits
-    // at 88·√2, which is where this ring's outer edge is.
-    expect(corner?.ring?.radius).toBeCloseTo(88 * Math.SQRT2, 6);
-    expect(corner!.ring!.radius - corner!.ring!.border).toBeCloseTo(88, 6);
+  it('veils everything outside the feather with ONE ring once measured', () => {
+    const measured = seatLayerPickerSpotlightLayers({ x: 200, y: 300 }, veil, { width: 390, height: 700 });
+    // Four rectangles leave a square while the feather covers a disc, so the
+    // square's corners were left clear; a second full-strength layer over them
+    // only doubled the veil where it overlapped. One ring overlaps nothing.
+    expect(measured.filter((layer) => layer.rect !== undefined)).toHaveLength(0);
+    const outer = measured.find((layer) => layer.key === 'outer');
+    expect(outer?.opacity).toBe(veil);
+    // The farthest corner of a 390×700 surface from (200, 300) is (0, 700).
+    expect(outer!.ring!.radius).toBe(Math.ceil(Math.sqrt(200 * 200 + 400 * 400)) + 1);
+    expect(outer!.ring!.radius - outer!.ring!.border).toBe(88);
   });
 
   it('centres the feather on the seat’s own screen point', () => {

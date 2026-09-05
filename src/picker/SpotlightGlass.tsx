@@ -1,5 +1,8 @@
 import React, { useSyncExternalStore } from 'react';
-import { AccessibilityInfo, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  AccessibilityInfo, StyleSheet, View,
+  type LayoutChangeEvent, type StyleProp, type ViewStyle,
+} from 'react-native';
 
 import { seatLayerPickerColorAlpha } from './colors';
 import { seatLayerPickerTokens } from './tokens.g';
@@ -23,13 +26,18 @@ import { seatLayerPickerTokens } from './tokens.g';
 /** How many rings the feather is drawn with; 32 px of feather over 8 steps. */
 const featherRings = 8;
 
-/**
- * The four veil rectangles leave a SQUARE clear, and the feather covers a
- * DISC. Without this the square's four corners were unveiled — a hard-edged
- * light patch around the seat, measured on device 2026-09-05. One more ring at
- * full veil, out to the square's own corner distance, closes them.
- */
-const cornerFill = Math.SQRT2;
+/** The map's own size, once it has laid out. */
+export interface SeatLayerPickerSpotlightSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The farthest any corner of the surface is from the spotlit seat. */
+function reachFrom(point: SeatLayerPickerSpotlightPoint, size: SeatLayerPickerSpotlightSize): number {
+  const dx = Math.max(Math.abs(point.x), Math.abs(size.width - point.x));
+  const dy = Math.max(Math.abs(point.y), Math.abs(size.height - point.y));
+  return Math.ceil(Math.sqrt(dx * dx + dy * dy)) + 1;
+}
 
 export interface SeatLayerPickerSpotlightPoint {
   readonly x: number;
@@ -97,6 +105,7 @@ export interface SeatLayerPickerSpotlightLayer {
 export function seatLayerPickerSpotlightLayers(
   point: SeatLayerPickerSpotlightPoint | undefined,
   veil: number,
+  size?: SeatLayerPickerSpotlightSize,
 ): readonly SeatLayerPickerSpotlightLayer[] {
   const clear = seatLayerPickerTokens.size.confirmScrimClearRadius;
   const feather = seatLayerPickerTokens.size.confirmScrimFeatherRadius;
@@ -104,12 +113,33 @@ export function seatLayerPickerSpotlightLayers(
     return Object.freeze([Object.freeze({ key: 'flat', opacity: veil, rect: Object.freeze({ top: 0, bottom: 0, left: 0, right: 0 }) })]);
   }
   const step = (feather - clear) / featherRings;
-  const layers: SeatLayerPickerSpotlightLayer[] = [
-    { key: 'above', opacity: veil, rect: Object.freeze({ top: 0, left: 0, right: 0, height: Math.max(0, point.y - feather) }) },
-    { key: 'below', opacity: veil, rect: Object.freeze({ bottom: 0, left: 0, right: 0, top: point.y + feather }) },
-    { key: 'leading', opacity: veil, rect: Object.freeze({ top: Math.max(0, point.y - feather), left: 0, width: Math.max(0, point.x - feather), height: feather * 2 }) },
-    { key: 'trailing', opacity: veil, rect: Object.freeze({ top: Math.max(0, point.y - feather), left: point.x + feather, right: 0, height: feather * 2 }) },
-  ].map((layer) => Object.freeze(layer));
+  // Everything outside the feather is ONE ring out to the farthest corner of
+  // the map, not four rectangles: rectangles leave a square, the feather
+  // covers a disc, and the square's four corners were left unveiled — a
+  // hard-edged light patch around the seat, measured on device 2026-09-05.
+  // Patching them with a second full-strength layer only doubled the veil
+  // where the two overlapped, which read as a dark halo. One ring overlaps
+  // nothing.
+  const measured = size !== undefined && Number.isFinite(size.width) && Number.isFinite(size.height) &&
+    size.width > 0 && size.height > 0;
+  const reach = measured ? reachFrom(point, size as SeatLayerPickerSpotlightSize) : 0;
+  const layers: SeatLayerPickerSpotlightLayer[] = (measured
+    ? [{
+      key: 'outer',
+      opacity: veil,
+      ring: Object.freeze({
+        size: reach * 2, radius: reach, border: reach - feather,
+        top: point.y - reach, left: point.x - reach,
+      }),
+    }]
+    // Before the surface has a size — one frame — the veil is the four
+    // rectangles it always was.
+    : [
+      { key: 'above', opacity: veil, rect: Object.freeze({ top: 0, left: 0, right: 0, height: Math.max(0, point.y - feather) }) },
+      { key: 'below', opacity: veil, rect: Object.freeze({ bottom: 0, left: 0, right: 0, top: point.y + feather }) },
+      { key: 'leading', opacity: veil, rect: Object.freeze({ top: Math.max(0, point.y - feather), left: 0, width: Math.max(0, point.x - feather), height: feather * 2 }) },
+      { key: 'trailing', opacity: veil, rect: Object.freeze({ top: Math.max(0, point.y - feather), left: point.x + feather, right: 0, height: feather * 2 }) },
+    ]).map((layer) => Object.freeze(layer));
   for (let index = 0; index < featherRings; index += 1) {
     const inner = clear + index * step;
     const outer = inner + step;
@@ -122,15 +152,6 @@ export function seatLayerPickerSpotlightLayers(
       ring: Object.freeze({ size: outer * 2, radius: outer, border: step, top: point.y - outer, left: point.x - outer }),
     }));
   }
-  const corner = feather * cornerFill;
-  layers.push(Object.freeze({
-    key: 'ring-corner',
-    opacity: veil,
-    ring: Object.freeze({
-      size: corner * 2, radius: corner, border: corner - feather,
-      top: point.y - corner, left: point.x - corner,
-    }),
-  }));
   return Object.freeze(layers);
 }
 
@@ -144,19 +165,31 @@ export function seatLayerPickerSpotlightVeil(reducedTransparency: boolean): numb
 /** The map's glass while one seat card is up. Never takes a pointer event. */
 export function SpotlightGlass(props: SpotlightGlassProps): React.ReactElement | null {
   const platform = useSeatLayerPickerReducedTransparency();
-  if (!props.visible) return null;
+  // The veil outside the feather reaches the farthest corner of THIS surface,
+  // so the glass has to know how big it is.
+  const [size, setSize] = React.useState<SeatLayerPickerSpotlightSize | undefined>(undefined);
+  const measure = React.useCallback((event: LayoutChangeEvent) => {
+    const { height, width } = event.nativeEvent.layout;
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return;
+    setSize((current) => current !== undefined &&
+      Math.abs(current.width - width) < .5 && Math.abs(current.height - height) < .5
+      ? current
+      : Object.freeze({ height, width }));
+  }, []);
   const flat = props.reducedTransparency ?? platform;
   const veil = seatLayerPickerSpotlightVeil(flat);
   const Blur = flat ? undefined : installedBlur;
+  if (!props.visible) return null;
   return <View
     accessibilityElementsHidden
     importantForAccessibility="no-hide-descendants"
+    onLayout={measure}
     pointerEvents="none"
     style={[StyleSheet.absoluteFill, props.style]}
     testID="seatLayerSpotlightGlass"
   >
     {Blur === undefined ? null : <Blur blurAmount={seatLayerPickerTokens.size.confirmScrimBlur} pointerEvents="none" style={StyleSheet.absoluteFill} />}
-    {seatLayerPickerSpotlightLayers(props.screenPoint, veil).map((layer) => layer.ring
+    {seatLayerPickerSpotlightLayers(props.screenPoint, veil, size).map((layer) => layer.ring
       ? <View
         key={layer.key}
         pointerEvents="none"
