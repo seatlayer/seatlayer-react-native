@@ -15,6 +15,11 @@ import { useSeatLayerPickerScope, type SeatLayerPickerScopeValue } from './SeatL
 import { resolveSeatLayerPickerStyles, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 
+/**
+ * Host-composed map chrome. The host owns placement, so it also owns the §2.4
+ * blocked region: wrap these in `SeatLayerPickerBlockedRegionView` where they
+ * stand over the map. The SDK's own `SeatLayerMapControls` registers its own.
+ */
 type StandaloneSlots = Pick<SeatLayerPickerStyles,
   'mapControlButton' | 'mapControlLabel' | 'mapControlsContainer'>;
 
@@ -86,8 +91,8 @@ function actionLabel(scope: SeatLayerPickerScopeValue, action: MapAction, overri
   if (typeof override === 'string' && override.trim()) return override.trim();
   const snapshot = scope.snapshot;
   if (action === 'overview') return scope.strings.translate('backToVenue');
-  if (action === 'zoomIn') return 'Zoom in';
-  if (action === 'zoomOut') return 'Zoom out';
+  if (action === 'zoomIn') return scope.strings.translate('zoomIn');
+  if (action === 'zoomOut') return scope.strings.translate('zoomOut');
   if (action === 'fit') return scope.strings.translate('fitVenue');
   if (action === 'colorblind') return scope.strings.translate('colorblindSafe');
   if (action === 'navigation') {
