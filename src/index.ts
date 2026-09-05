@@ -220,6 +220,7 @@ export {
   useSeatLayerPickerBlockedRegion,
   useSeatLayerPickerBlockedRegionCover,
   useSeatLayerPickerBlockedRegionRegistry,
+  useSeatLayerPickerBlockedRegionSurface,
   type SeatLayerPickerBlockedRegionBinding,
   type SeatLayerPickerBlockedRegionProps,
   type SeatLayerPickerBlockedRegionProviderProps,

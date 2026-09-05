@@ -136,6 +136,28 @@ export function useSeatLayerPickerBlockedRegionCover(active: boolean): void {
   }, [active, registry]);
 }
 
+/**
+ * Binds the map surface itself. Every reported rectangle is measured against
+ * it, so the runtime receives the map's own logical px — the same frame as
+ * `picker.setViewportInsets`.
+ */
+export function useSeatLayerPickerBlockedRegionSurface(): SeatLayerPickerBlockedRegionBinding {
+  const registry = useSeatLayerPickerBlockedRegionRegistry();
+  const ref = useRef<SeatLayerPickerMeasurableView | null>(null);
+  const remeasure = useMemo(
+    () => () => measure(ref.current, (rect) => registry?.setSurface(rect)),
+    [registry],
+  );
+  useEffect(() => {
+    remeasure();
+    return () => registry?.setSurface(undefined);
+  }, [registry, remeasure]);
+  return useMemo(
+    () => Object.freeze({ ref, onLayout: () => remeasure(), remeasure }),
+    [remeasure],
+  );
+}
+
 export interface SeatLayerPickerBlockedRegionProps extends PropsWithChildren {
   readonly enabled?: boolean;
   readonly style?: StyleProp<ViewStyle>;
@@ -168,14 +190,12 @@ export function SeatLayerPickerBlockedRegion(
 export function SeatLayerPickerBlockedRegionSurface(
   props: PropsWithChildren<{ readonly style?: StyleProp<ViewStyle> }>,
 ): React.ReactElement {
-  const registry = useSeatLayerPickerBlockedRegionRegistry();
-  const ref = useRef<SeatLayerPickerMeasurableView | null>(null);
+  const binding = useSeatLayerPickerBlockedRegionSurface();
   return (
     <View
       collapsable={false}
-      onLayout={() => measure(ref.current, (rect) => registry?.setSurface(rect))}
-      pointerEvents="box-none"
-      ref={ref as never}
+      onLayout={binding.onLayout}
+      ref={binding.ref as never}
       style={props.style}
     >
       {props.children}
