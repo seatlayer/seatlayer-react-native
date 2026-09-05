@@ -384,6 +384,55 @@ event does not crash an older app.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
 
+## Accessibility
+
+The ready-made picker declares its own reading order, type-size ceilings, live
+regions and focus handling. Two of those need something from the host app.
+
+### iOS reading order needs a native feature flag
+
+The picker walks a screen reader through the seat map in buyer order — event,
+prices, map, then the tray — rather than in the order the views happen to be
+painted. It declares that with React Native's own
+`experimental_accessibilityOrder`, naming the `nativeID` of each surface at the
+composition root.
+
+**On iOS that prop is only honoured when the app turns the native feature flag
+on.** Without it, nothing breaks and nothing is announced twice — VoiceOver
+simply falls back to the paint order, in which the cart tray is reached before
+the map. On Android the order is honoured without a flag.
+
+Turn it on once, early in the app's native start-up, before the first React
+Native view is created — in `AppDelegate`:
+
+```objc
+// AppDelegate.mm, above [super application:didFinishLaunchingWithOptions:]
+#import <React/RCTConstants.h>
+
+RCTSetAccessibilityElementOrderEnabled(YES);
+```
+
+or, in a Swift `AppDelegate`:
+
+```swift
+RCTSetAccessibilityElementOrderEnabled(true)
+```
+
+Expo apps reach the same file through a config plugin or a prebuild; a managed
+project that cannot run native code does not get the declared order, and the
+picker stays usable on the fallback.
+
+Check your React Native version's release notes for the flag's exact name — it
+has been an experimental API, and the SDK deliberately spreads the prop rather
+than typing it, so a runtime that does not know it simply ignores it.
+
+### Bold text and text size
+
+`Bold Text` and the platform's text-size setting are answered by the picker
+itself, with no host wiring: every weight the picker states moves up one step
+(200, clamped at 900) while `Bold Text` is on, and each surface caps how far
+its type may grow so a sheet cannot push its own buttons off screen.
+
 ## Frequently asked questions
 
 ### How do I add a seat map to a React Native app?
