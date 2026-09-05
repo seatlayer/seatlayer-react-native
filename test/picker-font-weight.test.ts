@@ -21,8 +21,14 @@ describe('picker font weight', () => {
 
   it('leaves no design weight the platform would drop', () => {
     const painted = new Set(['100', '200', '300', '400', '500', '600', '700', '800', '900']);
-    for (const entry of Object.values(seatLayerPickerTokens.type)) {
-      expect(painted.has(String(seatLayerPickerFontWeight(entry.weight)))).toBe(true);
+    const weights = Object.values(seatLayerPickerTokens.type)
+      .flatMap((entry: unknown) => {
+        const weight = (entry as { weight?: unknown }).weight;
+        return typeof weight === 'number' ? [weight] : [];
+      });
+    expect(weights.length).toBeGreaterThan(10);
+    for (const weight of weights) {
+      expect(painted.has(String(seatLayerPickerFontWeight(weight)))).toBe(true);
     }
   });
 });
