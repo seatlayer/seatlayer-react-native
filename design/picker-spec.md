@@ -251,10 +251,16 @@ runtime lane; the Flutter head is 58 pt at rest).
 `lib/src/picker/picker_header.dart`
 
 **Anatomy.** A row of `size.headerHeight`, on the picker's own ground — the
-header's own style slot, which defaults to `color.*.surface` with `color.*.text`
-on it; a ground and its ink are always resolved as a pair, never from two
-independent tokens (a host that darkens `background` for the map must not
-lose the event name) — with a hairline of `color.*.divider` under it. Left: the
+header's own style slot, which defaults to `color.*.background` with
+`color.*.text` on it; a ground and its ink are always resolved as a pair, never
+from two independent tokens (a host that darkens `background` for the map must
+not lose the event name). It draws **no hairline of its own**: the price rail
+beneath it is the first `color.*.surface`, and the two grounds meeting is the
+boundary — a rule as well read as a line drawn through one plate. (This
+sentence said `surface` plus a divider until 2026-09-05; the reference
+implementation's own header has always painted `theme.background` at elevation
+0 with no `BorderSide` anywhere but the close ring, and the reference frames
+sample #FFFFFF, so the prose was the thing that was wrong.) Left: the
 brand mark, a square of `size.headerLogoSize` at `radius.headerLogo`, filled
 with the accent and carrying either the organizer's logo image (cover-fitted) or
 the first letter of the brand or event name in `color.*.onAccent`. Centre: the
