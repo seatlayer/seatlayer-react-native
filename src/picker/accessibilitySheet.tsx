@@ -80,11 +80,13 @@ export function SeatLayerPickerAccessibilitySheet(
         />
         <View
           pointerEvents="box-none"
+          // The sheet reaches the bottom and both edges: a bottom sheet floated
+          // in from the sides reads as a dialog, and the one it opens from is a
+          // control in the map's own corner.
           style={[styles.bounds, {
             paddingTop: insets.top + 16,
-            paddingRight: insets.right + 16,
-            paddingBottom: insets.bottom + 16,
-            paddingLeft: insets.left + 16,
+            paddingRight: insets.right,
+            paddingLeft: insets.left,
           }]}
         >
           <Pressable
@@ -95,6 +97,7 @@ export function SeatLayerPickerAccessibilitySheet(
               {
                 backgroundColor: props.theme.colors.surface,
                 borderColor: props.theme.colors.divider,
+                paddingBottom: insets.bottom + 16,
               },
               props.slots.accessibilityModalContainer,
             ]}
@@ -283,7 +286,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     paddingHorizontal: 20,
-    paddingBottom: 16,
   },
   handleTarget: {
     alignSelf: "center",
