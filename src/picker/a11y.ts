@@ -263,10 +263,16 @@ export class SeatLayerPickerBoldTextStore {
   }
 }
 
-const boldTextStore = new SeatLayerPickerBoldTextStore(AccessibilityInfo as unknown as SeatLayerPickerBoldTextSource);
+let boldTextStore: SeatLayerPickerBoldTextStore | undefined;
+
+/** Created on first use, so importing the clamps never touches the platform. */
+function defaultBoldTextStore(): SeatLayerPickerBoldTextStore {
+  boldTextStore ??= new SeatLayerPickerBoldTextStore(AccessibilityInfo as unknown as SeatLayerPickerBoldTextSource);
+  return boldTextStore;
+}
 
 export function useSeatLayerPickerBoldText(
-  store: SeatLayerPickerBoldTextStore = boldTextStore,
+  store: SeatLayerPickerBoldTextStore = defaultBoldTextStore(),
 ): boolean {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }

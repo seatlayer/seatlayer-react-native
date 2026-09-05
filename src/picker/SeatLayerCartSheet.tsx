@@ -64,6 +64,7 @@ import {
   sanitizeSeatLayerPickerStyle,
   type SeatLayerPickerStyles,
 } from './styles';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 
@@ -248,7 +249,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
         paddingHorizontal: 12,
       }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style)]}>
         {cta.busy ? <Spinner color={disabled ? theme.colors.mutedText : theme.colors.onAccent} /> : null}
-        <Text numberOfLines={1} ellipsizeMode="tail" style={[{
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{
           color: disabled ? theme.colors.mutedText : theme.colors.onAccent,
           flexShrink: 1,
           fontFamily: theme.fontFamily,
@@ -319,7 +320,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   // the sheet holds — never a second number.
   const headHeight = Math.max(
     seatLayerPickerTokens.size.minimumHitTarget,
-    theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
+    // §4.10 — the collapsed bar grows with what is in it; unchanged at 1.0.
+    seatLayerPickerScaledExtent(
+      theme.layout?.peekHeight ?? seatLayerPickerTokens.size.peekHeight,
+      seatLayerPickerTypeScaleClamp('peek'),
+    ),
   );
   const openHeadHeight = seatLayerPickerTokens.size.sheetOpenHeadHeight +
     seatLayerPickerTokens.size.peekClockLift;
@@ -525,7 +530,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               )
               : (
                 <View style={{ paddingBottom: 8, paddingHorizontal: 14 }}>
-                  <Text accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
+                  <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityRole="text" style={{ height: 1, opacity: 0, position: 'absolute', width: 1 }}>{scope.strings.translate('emptyTrayHint')}</Text>
                   <View>{main}</View>
                   {salesClosed}
                   {actionError}

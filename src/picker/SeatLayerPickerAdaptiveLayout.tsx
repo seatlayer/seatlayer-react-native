@@ -6,6 +6,8 @@ import {
   seatLayerPickerAccessibilityOrder,
   seatLayerPickerFocusOn,
   seatLayerPickerReadingOrderId,
+  seatLayerPickerScaledExtent,
+  seatLayerPickerTypeScaleClamp,
   type SeatLayerPickerReadingRung,
 } from './a11y';
 import { useSeatLayerPickerAdaptiveInteraction } from './adaptiveInteraction';
@@ -295,7 +297,13 @@ export function SeatLayerPickerAdaptiveLayout({
     topRailHeight,
     testBadgeVisible ? badgeTop + seatLayerPickerTestModeIndicatorCompactHeight : 0,
   );
-  const bottomInset = phoneDockVisible ? seatLayerPickerTokens.size.dockBarHeight : 0;
+  // §4.10 — the dock's reported band has to be the height it DRAWS, or a
+  // focused section lands under a dock that grew with the buyer's type.
+  const drawnDockHeight = seatLayerPickerScaledExtent(
+    seatLayerPickerTokens.size.dockBarHeight,
+    seatLayerPickerTypeScaleClamp('dock'),
+  );
+  const bottomInset = phoneDockVisible ? drawnDockHeight : 0;
   const phoneBands = planSeatLayerPickerPhoneBands({
     topHeight,
     dockHeight: bottomInset,
@@ -532,7 +540,7 @@ export function SeatLayerPickerAdaptiveLayout({
       zoomOutLabel="Zoom out"
       includeViewModeControl
       onViewModeLayout={setViewModeWidth}
-      bottomInset={phoneDockVisible ? seatLayerPickerTokens.size.dockBarHeight : 0}
+      bottomInset={phoneDockVisible ? drawnDockHeight : 0}
       reserveInset={false}
     />)
     : null;
@@ -642,6 +650,7 @@ export function SeatLayerPickerAdaptiveLayout({
         {wide || legend === null ? null : <View style={[styles.legendBand, {
           backgroundColor: scope.resolvedTheme.colors.surface,
           borderBottomColor: scope.resolvedTheme.colors.divider,
+          height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.topRailHeight, seatLayerPickerTypeScaleClamp('rail')),
         }]} nativeID={seatLayerPickerReadingOrderId('rail')} testID="seatlayer-price-band" {...underDialog(decisionUp)}>{legend}</View>}
         <View style={wide ? styles.wide : styles.phone}>
         <View onLayout={(event) => {

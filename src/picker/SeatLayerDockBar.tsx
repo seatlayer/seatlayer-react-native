@@ -15,6 +15,7 @@ import {
 
 import { chartSeatLayerPickerColor } from './chartColor';
 import { seatLayerDockCountCopy, type SeatLayerDockCountCopy } from './dockCount';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
@@ -132,6 +133,7 @@ function MeasureText({
 }): React.ReactElement {
   return (
     <Text
+      maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
       accessible={false}
       importantForAccessibility="no-hide-descendants"
       onTextLayout={onMeasure}
@@ -238,7 +240,11 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
     setActualHeight(undefined);
   }, [measurementToken]);
   const bottomInset = props.reserveBottomInset === true ? safeInset(props.safeAreaBottomInset) : 0;
-  const bandHeight = actualHeight ?? theme.layout.dockBarHeight + bottomInset;
+  // §4.10 — the bar is `base × the dock's clamped scale`, and §2.3 wants the
+  // REPORTED band to be the height it actually draws: a section focused
+  // against a shorter number lands under a dock that grew.
+  const drawnDockHeight = seatLayerPickerScaledExtent(theme.layout.dockBarHeight, seatLayerPickerTypeScaleClamp('dock'));
+  const bandHeight = actualHeight ?? drawnDockHeight + bottomInset;
   const insetLease = useMemo(
     () => props.reserveBottomInset ? scope.claimViewportInsetBand('dock') : undefined,
     [props.reserveBottomInset, scope.claimViewportInsetBand, scope.sessionId],
@@ -296,7 +302,7 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
       enterCurve={theme.motion.curve.easeEnter.cubicBezier}
       reducedMotion={reducedMotion}
       sessionId={scope.sessionId}
-      travelDistance={seatLayerDockTravelDistance(theme.layout.dockBarHeight, bottomInset)}
+      travelDistance={seatLayerDockTravelDistance(drawnDockHeight, bottomInset)}
       visible={visible}
     >
       {content}
@@ -507,6 +513,8 @@ function SeatLayerDockBarView({
     : displayPlan.count === 'short'
       ? shortCount
       : undefined;
+  // §4.10 — the drawn bar and the reported band are the same number.
+  const drawnDockHeight = seatLayerPickerScaledExtent(theme.layout.dockBarHeight, seatLayerPickerTypeScaleClamp('dock'));
   return (
     <View
       accessible={false}
@@ -523,7 +531,7 @@ function SeatLayerDockBarView({
           borderTopWidth: 1,
           elevation: theme.elevation.dockBar,
           flexDirection: leftToRight ? 'row' : 'row-reverse',
-          height: theme.layout.dockBarHeight + bottomInset,
+          height: drawnDockHeight + bottomInset,
           paddingBottom: bottomInset,
           shadowColor: theme.colors.text,
           shadowOffset: { height: 4, width: 0 },
@@ -533,8 +541,8 @@ function SeatLayerDockBarView({
         slots?.dockContainer,
         sanitizeSeatLayerPickerStyle(style),
         {
-          height: theme.layout.dockBarHeight + bottomInset,
-          minHeight: theme.layout.dockBarHeight + bottomInset,
+          height: drawnDockHeight + bottomInset,
+          minHeight: drawnDockHeight + bottomInset,
           paddingBottom: bottomInset,
         },
       ]}
@@ -580,6 +588,7 @@ function SeatLayerDockBarView({
             }}
           >
             <Text
+              maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
               ellipsizeMode="tail"
               numberOfLines={displayPlan.lines}
               style={[
@@ -607,6 +616,7 @@ function SeatLayerDockBarView({
                   }}
                 />
                 <Text
+                  maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
                   numberOfLines={1}
                   style={[countStyle, slots?.dockCountText]}
                 >
@@ -653,7 +663,7 @@ function SeatLayerDockBarView({
             >
               <VenueOverviewIcon color={theme.colors.text} />
               <View style={{ width: 8 }} />
-              <Text numberOfLines={1} style={textStyle}>
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')} numberOfLines={1} style={textStyle}>
                 {strings.translate('overview')}
               </Text>
             </View>

@@ -31,6 +31,7 @@ import {
   useSeatLayerPickerSeatEvidence, type SeatLayerPickerConfirmCardModel,
 } from './seatConfirmationRemoval';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 
 type ConfirmSlots = Pick<SeatLayerPickerStyles,
@@ -198,6 +199,11 @@ function Card({ model, props, viewportWidth }: Readonly<{
     }).start(() => dispatch('swept'));
   };
 
+  // §4.10 — the card's action row is `base x the card's clamped scale`.
+  const actionHeight = seatLayerPickerScaledExtent(
+    seatLayerPickerTokens.size.confirmActionHeight,
+    seatLayerPickerTypeScaleClamp('card'),
+  );
   const remove = mode === 'remove';
   const primaryColor = remove ? theme.error : theme.accent;
   const primaryLabel = motion.answered && !remove
@@ -282,7 +288,7 @@ function Card({ model, props, viewportWidth }: Readonly<{
           onPress={() => run('cancel')}
           style={[nativeStyles.action, { flexBasis: `${seatLayerPickerConfirmCancelShare * 100}%`, flexGrow: 0, flexShrink: 0 }]}
           testID="seatLayerConfirmCancel"
-        ><View style={[nativeStyles.actionPaint, {
+        ><View style={[nativeStyles.actionPaint, { height: actionHeight }, {
           backgroundColor: theme.surface,
           borderColor: theme.divider,
           borderWidth: StyleSheet.hairlineWidth,
@@ -303,7 +309,7 @@ function Card({ model, props, viewportWidth }: Readonly<{
           ref={primaryRef as never}
           style={nativeStyles.primary}
           testID="seatLayerConfirmPrimary"
-        ><View style={[nativeStyles.actionPaint, { backgroundColor: primaryColor, overflow: 'hidden' }, styles.confirmCardPrimaryButton]}>
+        ><View style={[nativeStyles.actionPaint, { backgroundColor: primaryColor, height: actionHeight, overflow: 'hidden' }, styles.confirmCardPrimaryButton]}>
           <Animated.View
             pointerEvents="none"
             style={[nativeStyles.fill, {
