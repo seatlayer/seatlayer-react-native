@@ -609,6 +609,14 @@ export function SeatLayerPickerHeader(
   );
 }
 
+/**
+ * The cross the ring holds, measured corner to corner rather than by the em box
+ * a glyph would sit in: two strokes rotated 45 degrees span their own length
+ * times root two, so a 12 pt stroke draws a cross half again as wide as the
+ * reference's, which measures six points across.
+ */
+const closeGlyphSpan = 6;
+
 const styles = StyleSheet.create({
   root: {
     minHeight: seatLayerPickerTokens.size.headerHeight,
@@ -620,7 +628,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingLeft: 12,
-    paddingRight: 6,
+    // No trailing pad on a phone: the close control carries its own reach, so
+    // its ring ends ten points from the edge while the target it answers to
+    // runs out to the corner.
+    paddingRight: 0,
   },
   mark: { alignItems: "center", justifyContent: "center" },
   titleWrap: { flex: 1, minWidth: 0 },
@@ -644,7 +655,7 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   closeHit: {
-    width: seatLayerPickerTokens.size.minimumHitTarget,
+    width: seatLayerPickerTokens.size.headerCloseSize + 20,
     height: seatLayerPickerTokens.size.minimumHitTarget,
     alignItems: "center",
     justifyContent: "center",
@@ -656,10 +667,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeIcon: {
-    width: 12,
-    height: 12,
+    width: closeGlyphSpan,
+    height: closeGlyphSpan,
     alignItems: "center",
     justifyContent: "center",
   },
-  closeStroke: { position: "absolute", width: 12, height: 1.5, borderRadius: 1 },
+  closeStroke: {
+    position: "absolute",
+    width: closeGlyphSpan * Math.SQRT2,
+    height: 1.5,
+    borderRadius: 1,
+  },
 });

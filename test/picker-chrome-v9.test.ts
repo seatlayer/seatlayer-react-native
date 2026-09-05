@@ -301,7 +301,7 @@ describe('picker chrome pure plans', () => {
     expect(newRemove).toHaveBeenCalledOnce();
   });
 
-  it('renders fixed 44/40 header action geometry and one error announcement', () => {
+  it('renders fixed 46/44 header action geometry and one error announcement', () => {
     const theme = {
       themeMode: 'light', colors: {
         accent: '#111111', onAccent: '#ffffff', surface: '#ffffff', background: '#ffffff',
@@ -317,7 +317,9 @@ describe('picker chrome pure plans', () => {
       }));
     });
     const close = renderer.root.findAllByType('Pressable' as any)[0]!;
-    expect(close.props.style({ pressed: false })[0]).toMatchObject({ width: 44, height: 44 });
+    // Ring plus twenty points of reach, so the ring lands ten points from the
+    // trailing edge while the target still runs out to the corner.
+    expect(close.props.style({ pressed: false })[0]).toMatchObject({ width: 46, height: 44 });
     let error!: TestRenderer.ReactTestRenderer;
     act(() => {
       error = TestRenderer.create(React.createElement(SeatLayerPickerErrorStatus, {
