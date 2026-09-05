@@ -320,7 +320,10 @@ function Card({ model, props, viewportWidth }: Readonly<{
             backgroundColor: blendSeatLayerPickerColor(theme.onAccent, primaryColor, 0.22, primaryColor),
             transform: [{ translateX: invite.interpolate({ inputRange: [0, 1], outputRange: [-120, 320] }) }],
           }]} />
-          {motion.answered || remove ? <ConfirmAnswerMark color={theme.onAccent} mode={remove ? 'remove' : 'add'} /> : null}
+          {/* The mark stands in the button from the moment it is offered: it is
+              the glyph slot of the answer, tick to accept and cross to release,
+              not a confirmation drawn after the fact. */}
+          <ConfirmAnswerMark color={theme.onAccent} mode={remove ? 'remove' : 'add'} />
           <Text
             adjustsFontSizeToFit
             maxFontSizeMultiplier={seatLayerPickerTokens.type.scaleClamp.card}

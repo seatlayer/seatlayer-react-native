@@ -187,6 +187,22 @@ describe('§3.8.3 the card’s anatomy', () => {
     expect(findAll(withVenue, 'seatLayerConfirmPhotoStrip')).toHaveLength(0);
     const square = find(withVenue, 'seatLayerConfirm3dSquare');
     expect(square.props.accessibilityLabel).toBe('seeItIn3D');
+    // A drawn cube OVER the word: `3D` alone in a tinted box reads as a tag.
+    expect(square.findAllByType('View' as never)
+      .some((node) => {
+        const style = node.props.style;
+        const parts = Array.isArray(style) ? style : [style];
+        return parts.some((part: Record<string, unknown> | undefined) =>
+          part !== undefined && part !== null && part.borderWidth === 1.4);
+      })).toBe(true);
+  });
+
+  it('carries the answer mark in the primary action before it is answered', async () => {
+    setup();
+    const tree = await mount();
+    // Tick to accept — the glyph slot of the answer, not a receipt for one.
+    expect(findAll(tree, 'seatLayerConfirmTick')).toHaveLength(1);
+    expect(findAll(tree, 'seatLayerConfirmCross')).toHaveLength(0);
   });
 
   it('scales the answer down before it truncates, and clamps the platform’s scale', async () => {

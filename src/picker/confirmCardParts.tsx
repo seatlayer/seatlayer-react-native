@@ -245,14 +245,28 @@ export function ConfirmAnswerMark(props: Readonly<{ mode: 'add' | 'remove'; colo
     : <View style={[styles.tick, { borderColor: props.color }]} testID="seatLayerConfirmTick" />;
 }
 
-/** The cube glyph the decision row's 3D square carries. */
+/**
+ * The decision row's 3D square: a drawn cube OVER the word, never the word
+ * alone. Read on its own, `3D` in a tinted box is a tag; the cube is what says
+ * the box is a way into the venue.
+ */
 export function ConfirmCubeGlyph(props: Readonly<{ color: string; fontFamily?: string; label: string }>): React.ReactElement {
-  return <Text
-    maxFontSizeMultiplier={clamp}
-    numberOfLines={1}
-    style={[styles.cube, { color: props.color, fontFamily: props.fontFamily }]}
-  >{props.label}</Text>;
+  return <>
+    <View accessible={false} style={[styles.cubeMark, { borderColor: props.color }]}>
+      <View style={[styles.cubeStem, { backgroundColor: props.color }]} />
+      <View style={[styles.cubeEdge, styles.cubeEdgeStart, { backgroundColor: props.color }]} />
+      <View style={[styles.cubeEdge, styles.cubeEdgeEnd, { backgroundColor: props.color }]} />
+    </View>
+    <Text
+      maxFontSizeMultiplier={clamp}
+      numberOfLines={1}
+      style={[styles.cube, { color: props.color, fontFamily: props.fontFamily }]}
+    >{props.label}</Text>
+  </>;
 }
+
+/** Edge length of the drawn cube on the decision row's 3D square. */
+const cubeSize = 15;
 
 /** The dark plate the strip's pills and sight line stand on, in BOTH themes. */
 const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
@@ -296,6 +310,13 @@ const styles = StyleSheet.create({
   cross: { alignItems: 'center', height: 12, justifyContent: 'center', width: 12 },
   crossBar: { height: 2, position: 'absolute', width: 13 },
   cube: { fontSize: seatLayerPickerTokens.size.confirm3dSquareFontSize, fontWeight: '800' },
+  // A box with the near corner's three edges inside it: the smallest drawing
+  // that still reads as a solid rather than as an empty frame.
+  cubeMark: { borderRadius: 3, borderWidth: 1.4, height: cubeSize, marginBottom: 1, width: cubeSize },
+  cubeStem: { bottom: 1.6, height: cubeSize / 2 - 1.6, left: cubeSize / 2 - 0.7, position: 'absolute', width: 1.4 },
+  cubeEdge: { height: 1.4, position: 'absolute', top: cubeSize / 2 - 2.4, width: cubeSize / 2 - 1 },
+  cubeEdgeStart: { left: 0.8, transform: [{ rotate: '-32deg' }] },
+  cubeEdgeEnd: { right: 0.8, transform: [{ rotate: '32deg' }] },
 });
 
 export type ConfirmCardStyleProp = StyleProp<ViewStyle>;
