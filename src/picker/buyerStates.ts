@@ -230,11 +230,14 @@ export function seatLayerPickerAccessPanel(
   // measured on device 2026-09-05, and the reason the reference reads the two
   // statuses rather than the absence of the others.
   if (status !== 'unavailable' && status !== 'expired') return undefined;
-  const reason = status === 'paused' || snapshot.accessReason === 'paused'
+  // The telling comes from the reason the runtime gives; an expired status
+  // is its own reason even when none is named.
+  const named = snapshot.accessReason;
+  const reason = named === 'paused'
     ? 'paused'
-    : status === 'revoked' || snapshot.accessReason === 'revoked'
+    : named === 'revoked'
       ? 'revoked'
-      : status === 'expired' || snapshot.accessReason === 'expired'
+      : status === 'expired' || named === 'expired'
         ? 'expired'
         : 'unverified';
   return accessPanels[reason];
