@@ -28,6 +28,7 @@ import {
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBold } from './boldText';
 
 export interface SeatLayerPriceLegendProps {
   /**
@@ -538,7 +539,7 @@ function LegendChip({
     fontFamily: theme.fontFamily,
     fontSize: theme.layout.legendChipFontSize,
     fontVariant: ['tabular-nums'],
-    fontWeight: '800',
+    fontWeight: seatLayerPickerBold(800),
   };
   // 3.2: on LIGHT the dot is the category colour mixed into the surface with a
   // full-strength ring of the category colour — matching how the map tints

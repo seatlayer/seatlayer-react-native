@@ -35,6 +35,7 @@ export {
   type SeatLayerPickerTestModeIndicatorProps,
   type SeatLayerPickerTestModeIndicatorViewProps,
 } from "./testModeIndicator";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type StatusSlots = Pick<
   SeatLayerPickerStyles,
@@ -348,7 +349,7 @@ export function SeatLayerPickerErrorView(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "center",
     justifyContent: "center",
@@ -417,4 +418,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   retryText: { fontSize: 15, fontWeight: "800" },
-});
+}));

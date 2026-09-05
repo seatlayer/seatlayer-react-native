@@ -19,6 +19,7 @@ import {
   type SeatLayerPickerStyles,
 } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 export interface SeatLayerFloorStripProps {
   readonly compact?: boolean;
@@ -240,7 +241,7 @@ function report(scope: SeatLayerPickerScopeValue, error: unknown): void {
   try { scope.reportError(error); } catch { /* Host reporting is observational. */ }
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { justifyContent: 'center', width: '100%' },
   scroll: { alignItems: 'center', gap: seatLayerPickerTokens.size.floorRailGap },
   target: { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' },
@@ -259,4 +260,4 @@ const nativeStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   infoGlyph: { fontSize: 13, fontWeight: '800' },
-});
+}));

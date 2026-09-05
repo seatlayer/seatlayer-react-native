@@ -482,6 +482,13 @@ export {
   SeatLayerPickerHoldOwnershipObserver,
 } from './picker/holdOwnershipObserver';
 export {
+  SeatLayerPickerBoldTextRoot,
+  seatLayerPickerBold,
+  seatLayerPickerBoldFontWeight,
+  seatLayerPickerBoldStyles,
+  seatLayerPickerBoldTextEnabled,
+} from './picker/boldText';
+export {
   SeatLayerPickerGAPrompt,
   SeatLayerPickerGAPrompt as SeatLayerPickerGeneralAdmissionPrompt,
   SeatLayerPickerSeatTierSelector,

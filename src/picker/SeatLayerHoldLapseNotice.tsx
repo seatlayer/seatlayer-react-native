@@ -6,6 +6,7 @@ import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBold } from './boldText';
 
 export interface SeatLayerHoldLapseNoticeProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -37,7 +38,7 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
   });
   return (
     <View accessibilityLiveRegion="polite" style={[sanitizeSeatLayerPickerStyle(props.style), styles.statusContainer, styles.errorContainer, { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.roles.notice.background, borderBottomWidth: 1, borderColor: telling.tone === 'error' ? theme.colors.error : theme.roles.notice.border }]}>
-      <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.statusText, styles.errorText]}>{tellingText}</Text>
+      <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: seatLayerPickerBold(700) }, styles.statusText, styles.errorText]}>{tellingText}</Text>
       <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
       {minutes === undefined ? null : <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { values: { n: minutes } })}</Text>}
       {unrecovered > 0 ? <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { values: { n: unrecovered } })}</Text> : null}
@@ -48,7 +49,7 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
             disabled={!canReselect} onPress={() => { void scope.reselectHoldLapse(); }}
             style={[styles.statusAction, { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }]}>
             <View style={{ height: seatLayerPickerTokens.size.confirmActionHeight, minWidth: seatLayerPickerTokens.size.confirmActionHeight, paddingHorizontal: 8, borderRadius: seatLayerPickerTokens.radius.button, justifyContent: 'center', alignItems: 'center', backgroundColor: canReselect ? theme.colors.accent : theme.colors.divider }}>
-              <Text numberOfLines={1} style={[{ color: canReselect ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.statusActionText]}>{reselectLabel}</Text>
+              <Text numberOfLines={1} style={[{ color: canReselect ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontWeight: seatLayerPickerBold(700) }, styles.statusActionText]}>{reselectLabel}</Text>
             </View>
           </Pressable>
         ) : (

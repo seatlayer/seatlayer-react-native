@@ -17,6 +17,7 @@ import {
 } from './styles';
 import type { SeatLayerPickerThemeData } from './theme';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type HoldSlots = Pick<SeatLayerPickerStyles, 'holdPillContainer' | 'holdPillText'>;
 
@@ -183,7 +184,7 @@ export function SeatLayerPickerHoldCountdown(
   />;
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   hold: {
     alignItems: 'center',
     borderRadius: seatLayerPickerTokens.radius.pill,
@@ -208,4 +209,4 @@ const nativeStyles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontWeight: '800',
   },
-});
+}));

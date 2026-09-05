@@ -9,6 +9,12 @@ vi.mock('react-native', () => ({
   SafeAreaView: 'SafeAreaView',
   View: 'View',
   useWindowDimensions: () => ({ width: 700, height: 900 }),
+  // The picker root reads the platform's Bold Text setting (§4.10); a mock
+  // without it takes the whole composition down.
+  AccessibilityInfo: {
+    isBoldTextEnabled: () => Promise.resolve(false),
+    addEventListener: () => ({ remove: () => undefined }),
+  },
 }));
 
 let scope: any;

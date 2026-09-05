@@ -14,6 +14,7 @@ import { supportsSeatLayerPickerSurface } from './surfaces';
 import { SeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { seatLayerPickerMapChromeGround } from './mapChromeTheme';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBold } from './boldText';
 
 export interface SeatLayerMapControlsProps {
   readonly compact?: boolean;
@@ -591,7 +592,7 @@ export function SeatLayerPickerViewModeControlView({
             color: selected ? theme.colors.onAccent : theme.colors.mutedText,
             fontFamily: theme.fontFamily,
             fontSize: theme.layout.viewModeLabelFontSize,
-            fontWeight: '800',
+            fontWeight: seatLayerPickerBold(800),
             letterSpacing: 0.4,
           },
           slots?.mapControlLabel,

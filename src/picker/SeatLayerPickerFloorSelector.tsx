@@ -33,6 +33,7 @@ import {
   supportsSeatLayerPickerWideNavigation,
   type SeatLayerPickerWideNavigationLease,
 } from './wideNavigation';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 export interface SeatLayerPickerFloorSelectorProps {
   readonly safeAreaInsets?: SeatLayerPickerSafeAreaInsetInput;
@@ -216,7 +217,7 @@ function Choice({ label, selected, busy, styles, scope, onPress }: Readonly<{
   </Pressable>;
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   target: { justifyContent: 'center' },
   trigger: { alignItems: 'center', flexDirection: 'row', height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
   triggerText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '800' },
@@ -229,4 +230,4 @@ const nativeStyles = StyleSheet.create({
   choiceTarget: { justifyContent: 'center' },
   choicePaint: { height: 40, maxWidth: 220, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
   choiceText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
-});
+}));

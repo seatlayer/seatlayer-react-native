@@ -68,6 +68,7 @@ import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a1
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
+import { seatLayerPickerBold } from './boldText';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type BookSlots = Pick<SeatLayerPickerStyles, 'continueButton' | 'continueButtonText'>;
@@ -255,7 +256,7 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
           flexShrink: 1,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.bookButton.size,
-          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.bookButton.weight),
+          fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bookButton.weight),
         }, styles.continueButtonText]}>{cta.label}</Text>
       </View>
     </Pressable>

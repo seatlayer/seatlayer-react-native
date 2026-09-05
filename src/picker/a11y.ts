@@ -274,8 +274,13 @@ function defaultBoldTextStore(): SeatLayerPickerBoldTextStore {
 }
 
 export function useSeatLayerPickerBoldText(
-  store: SeatLayerPickerBoldTextStore = defaultBoldTextStore(),
+  store?: SeatLayerPickerBoldTextStore,
 ): boolean {
+  const resolved = store ?? defaultBoldTextStore();
+  return useBoldTextStore(resolved);
+}
+
+function useBoldTextStore(store: SeatLayerPickerBoldTextStore): boolean {
   return useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 }
 

@@ -18,6 +18,7 @@ import {
 } from "./styles";
 import { seatLayerPickerFontWeight } from "./fontWeight";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type AttributionSlots = Pick<
   SeatLayerPickerStyles,
@@ -112,7 +113,7 @@ const creditOpacity = 0.72;
 const markPlate = "#0C1220";
 const markBar = "#FCF7EE";
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   compactRoot: {
     flexDirection: "row",
     alignItems: "center",
@@ -154,4 +155,4 @@ const styles = StyleSheet.create({
     fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.attribution.weight),
     letterSpacing: 0.24,
   },
-});
+}));

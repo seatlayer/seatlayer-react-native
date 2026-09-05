@@ -5,6 +5,7 @@ import type { SeatLayerPickerBuyerAssetLoader } from './buyerAssetLoader';
 import { blendSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
 import { seatLayerPickerConfirmBandInk, type SeatLayerPickerConfirmIdentityCell } from './confirmCardIdentity';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 /** §3.8.3 — the parts the seat card is assembled from. */
 
@@ -275,7 +276,7 @@ const cubeInner = cubeSize - 2.8;
 /** The dark plate the strip's pills and sight line stand on, in BOTH themes. */
 const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   grid: { borderBottomWidth: StyleSheet.hairlineWidth },
   cell: { alignItems: 'center', flex: 1, gap: 2, justifyContent: 'center', paddingHorizontal: 6, paddingVertical: 6 },
   cellKey: {
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
   cubeEdge: { height: 1.4, position: 'absolute', top: cubeInner / 2 - 2, width: cubeInner / 2 + 0.3 },
   cubeEdgeStart: { left: 0, transform: [{ rotate: '24deg' }] },
   cubeEdgeEnd: { right: 0, transform: [{ rotate: '-24deg' }] },
-});
+}));
 
 export type ConfirmCardStyleProp = StyleProp<ViewStyle>;
 export type ConfirmCardTextStyleProp = StyleProp<TextStyle>;

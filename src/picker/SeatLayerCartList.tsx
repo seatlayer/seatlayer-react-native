@@ -27,6 +27,7 @@ import {
   seatLayerPickerCartLineKeepsRemove, seatLayerPickerHoldOwnershipStore,
 } from './holdOwnership';
 import type { SeatLayerPickerCartLine } from './models';
+import { seatLayerPickerBold } from './boldText';
 
 export interface SeatLayerCartListProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -205,7 +206,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
                 color: theme.colors.accent,
                 fontFamily: theme.fontFamily,
                 fontSize: seatLayerPickerTokens.type.denseMore.size,
-                fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseMore.weight),
+                fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseMore.weight),
               }, styles.denseLineText]}>{moreLabel}</Text>
             </Pressable>
           )
@@ -338,9 +339,9 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             fontFamily: theme.fontFamily,
             fontSize: seatLayerPickerTokens.type.denseLine.size,
             fontVariant: ['tabular-nums'],
-            fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseLine.weight),
+            fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseLine.weight),
           }, styles.denseLineText]}>
-            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: '800' }}>{leading}</Text>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: seatLayerPickerBold(800) }}>{leading}</Text>
             {trailingParts.map((part) => (
               <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} key={part} style={{ color: theme.colors.mutedText }}>{` · ${part}`}</Text>
             ))}
@@ -355,7 +356,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
               fontFamily: theme.fontFamily,
               fontSize: seatLayerPickerTokens.type.denseMultiplier.size,
               fontVariant: ['tabular-nums'],
-              fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseMultiplier.weight),
+              fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseMultiplier.weight),
               marginEnd: 6,
             }, styles.denseLineText]}>{quantityAmount}</Text>
           </SeatLayerCartCellCrossFade>
@@ -367,7 +368,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.denseLine.size,
           fontVariant: ['tabular-nums'],
-          fontWeight: '800',
+          fontWeight: seatLayerPickerBold(800),
         }, styles.denseLineText]}>{amount}</Text>
       </SeatLayerCartCellCrossFade>
       {canRemove && !held

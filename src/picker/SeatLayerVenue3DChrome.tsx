@@ -39,6 +39,7 @@ import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBold } from './boldText';
 
 type VenueSlots = Pick<
   SeatLayerPickerStyles,
@@ -167,7 +168,7 @@ function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next
   if (kind === 'fit' || kind === 'recentre') return <FocusIcon color={color} />;
   if (kind === 'navigation') return <PanIcon color={color} />;
   if (kind === 'zoomIn' || kind === 'zoomOut') {
-    return <Text style={{ color, fontSize: 22, fontWeight: '500', lineHeight: 24 }}>{kind === 'zoomIn' ? '+' : '−'}</Text>;
+    return <Text style={{ color, fontSize: 22, fontWeight: seatLayerPickerBold(500), lineHeight: 24 }}>{kind === 'zoomIn' ? '+' : '−'}</Text>;
   }
   const pointsRight = (kind === 'next') !== rtl;
   return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
@@ -390,9 +391,9 @@ const styles = {
   animatedRoot: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   backRail: { gap: 8, position: 'absolute', start: 10 } as ViewStyle,
   button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
-  buttonText: { fontSize: size.immersiveNavChipFontSize, fontWeight: '800' } as TextStyle,
+  buttonText: { fontSize: size.immersiveNavChipFontSize, fontWeight: seatLayerPickerBold(800) } as TextStyle,
   caption: { borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, marginBottom: 8, maxWidth: '90%', paddingHorizontal: 12, paddingVertical: 7 } as ViewStyle,
-  captionText: { fontSize: size.immersiveCaptionFontSize, fontWeight: '700' } as TextStyle,
+  captionText: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(700) } as TextStyle,
   chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: size.immersiveBackIconSize / 2, width: size.immersiveBackIconSize / 2 } as ViewStyle,
   controls: { alignItems: 'center', gap: 8, justifyContent: 'center' } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,

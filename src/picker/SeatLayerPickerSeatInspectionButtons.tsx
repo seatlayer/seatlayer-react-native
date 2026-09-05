@@ -7,6 +7,7 @@ import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type InspectionSlots = Pick<SeatLayerPickerStyles,
   'confirmCardSecondaryButton' | 'confirmCardSecondaryButtonText'>;
@@ -152,7 +153,7 @@ function CubeIcon({ color }: Readonly<{ color: string }>): React.ReactElement {
   return <View style={[nativeStyles.cube, { borderColor: color }]} />;
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   hit: { justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, width: '100%' },
   paint: {
     alignItems: 'center',
@@ -167,4 +168,4 @@ const nativeStyles = StyleSheet.create({
   eye: { alignItems: 'center', borderRadius: 8, borderWidth: 1.5, height: 10, justifyContent: 'center', width: 16 },
   eyeDot: { borderRadius: 2, height: 4, width: 4 },
   cube: { borderWidth: 1.5, height: 12, transform: [{ rotate: '45deg' }], width: 12 },
-});
+}));

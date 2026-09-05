@@ -9,6 +9,7 @@ import { seatLayerPickerHoldOwnershipStore } from "./holdOwnership";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -184,7 +185,7 @@ export function SeatLayerPickerBookedOverlay(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   veil: {
     position: "absolute",
     top: 0,
@@ -234,4 +235,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   actionText: { fontSize: 15, fontWeight: "800" },
-});
+}));

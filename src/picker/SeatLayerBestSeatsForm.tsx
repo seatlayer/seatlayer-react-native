@@ -34,6 +34,7 @@ import {
 import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
+import { seatLayerPickerBold } from './boldText';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type ChoiceKind = 'category' | 'zone';
@@ -212,7 +213,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
       testID={`seatlayer-best-seats-${kind}`}
       style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignSelf: 'stretch', justifyContent: 'center' }}>
       <View style={[{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.bestSeatsSelectHeight, paddingHorizontal: 10 }, styles.bestSeatsSelector]}>
-        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
         <View accessible={false} style={{ borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 }} />
       </View>
     </Pressable>
@@ -264,7 +265,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
               grey; disabled uses the checkout button's designed language. */}
           <View style={[{ alignItems: 'center', backgroundColor: allowed || submitting ? theme.colors.accent : theme.colors.surface, borderColor: allowed || submitting ? 'transparent' : theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: allowed || submitting ? 0 : 1, flexDirection: 'row', gap: 6, height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.minimumHitTarget, seatLayerPickerTypeScaleClamp('sheet')), justifyContent: 'center', opacity: submitting ? .72 : 1, paddingHorizontal: 8 }, styles.bestSeatsButton]}>
             <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessible={false} style={{ color: allowed || submitting ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
-            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed || submitting ? theme.colors.onAccent : theme.colors.mutedText, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsGo.size, fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.bestSeatsGo.weight) }, styles.bestSeatsButtonText]}>{submitting ? scope.strings.translate('findingBestSeats') : scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed || submitting ? theme.colors.onAccent : theme.colors.mutedText, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsGo.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsGo.weight) }, styles.bestSeatsButtonText]}>{submitting ? scope.strings.translate('findingBestSeats') : scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
           </View>
         </Pressable>
       </View>
@@ -286,7 +287,7 @@ function BestSeatsStepper({ allowed, count, maximum, onDecrease, onIncrease, sco
   const increaseDisabled = !allowed || count >= maximum;
   return <View testID="seatlayer-best-seats-stepper" style={{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.minimumHitTarget, seatLayerPickerTypeScaleClamp('sheet')), justifyContent: 'space-between', width: seatLayerPickerTokens.size.bestSeatsStepperWidth }}>
     <StepperButton label={scope.strings.translate('fewerTickets')} disabled={decreaseDisabled} onPress={onDecrease} theme={theme}>−</StepperButton>
-    <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontVariant: ['tabular-nums'], fontWeight: '800', textAlign: 'center' }}>{count}</Text>
+    <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontVariant: ['tabular-nums'], fontWeight: seatLayerPickerBold(800), textAlign: 'center' }}>{count}</Text>
     <StepperButton label={scope.strings.translate('moreTickets')} disabled={increaseDisabled} onPress={onIncrease} theme={theme}>+</StepperButton>
   </View>;
 }

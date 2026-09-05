@@ -5,6 +5,7 @@ import { blendSeatLayerPickerColor } from './colors';
 import { seatLayerPickerReadableAccent } from './confirmCardIdentity';
 import type { SeatLayerPickerSeatConfidence } from './models';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 /**
  * §3.8.7 — the confidence teaser, on the 3D card only.
@@ -84,7 +85,7 @@ export function ConfidenceTeaser(props: ConfidenceTeaserProps): React.ReactEleme
     >{body}</Pressable>;
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   row: {
     alignItems: 'center',
     borderRadius: seatLayerPickerTokens.size.confidenceTeaserRadius,
@@ -100,4 +101,4 @@ const styles = StyleSheet.create({
   headline: { fontSize: seatLayerPickerTokens.size.confidenceTeaserHeadFont, fontWeight: '700' },
   detail: { fontSize: seatLayerPickerTokens.size.confidenceTeaserDetailFont },
   badge: { flexShrink: 0, fontSize: seatLayerPickerTokens.size.confidenceTeaserBadgeFont, fontWeight: '700' },
-});
+}));

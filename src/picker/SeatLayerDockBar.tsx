@@ -21,6 +21,7 @@ import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
 import { focusedPickerSection, seatsLeftInPickerSection, usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
+import { seatLayerPickerBold } from './boldText';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
@@ -476,13 +477,13 @@ function SeatLayerDockBarView({
     color: theme.colors.text,
     fontFamily: theme.fontFamily,
     fontSize: size.dockNameFontSize,
-    fontWeight: String(type.dockSection.weight) as '800',
+    fontWeight: seatLayerPickerBold(type.dockSection.weight),
   };
   const countStyle = {
     color: theme.colors.mutedText,
     fontFamily: theme.fontFamily,
     fontSize: size.dockCountFontSize,
-    fontWeight: String(type.dockCount.weight) as '600',
+    fontWeight: seatLayerPickerBold(type.dockCount.weight),
   };
   const plan = useMemo(
     () => planSeatLayerDock(width, widths, seatsLeft !== undefined, theme.layout.minimumHitTarget),

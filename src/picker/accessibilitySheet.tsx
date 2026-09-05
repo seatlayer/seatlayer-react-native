@@ -11,6 +11,7 @@ import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaIns
 import type { SeatLayerPickerStyles } from "./styles";
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -297,7 +298,7 @@ function AccessRow(props: Readonly<{
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { flex: 1 },
   backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
   bounds: { flex: 1, justifyContent: "flex-end" },
@@ -369,4 +370,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   jumpText: { fontSize: size.accessStepFontSize, fontWeight: "800" },
-});
+}));

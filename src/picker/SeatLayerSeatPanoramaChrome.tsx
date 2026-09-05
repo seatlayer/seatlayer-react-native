@@ -27,6 +27,7 @@ import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLa
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatLayerSeatView } from './models';
+import { seatLayerPickerBold } from './boldText';
 
 const captionGlass = seatLayerPickerImmersiveCaptionGlass;
 const size = seatLayerPickerTokens.size;
@@ -184,14 +185,14 @@ const styles = {
     paddingVertical: 4,
     justifyContent: 'center',
   } as ViewStyle,
-  badgeText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.2 } as TextStyle,
-  caption: { fontSize: size.immersiveCaptionFontSize, fontWeight: '600', lineHeight: 17, marginTop: 3 } as TextStyle,
+  badgeText: { fontSize: 12, fontWeight: seatLayerPickerBold(800), letterSpacing: 0.2 } as TextStyle,
+  caption: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600), lineHeight: 17, marginTop: 3 } as TextStyle,
   captionStrip: { alignItems: 'flex-start', alignSelf: 'stretch', borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, gap: 10, maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 10 } as ViewStyle,
   content: { alignItems: 'stretch', bottom: 0, justifyContent: 'flex-end', left: 18, position: 'absolute', right: 18, top: 0 } as ViewStyle,
   copy: { flex: 1, minWidth: 0 } as ViewStyle,
-  hint: { fontSize: size.immersiveCaptionFontSize, fontWeight: '600' } as TextStyle,
+  hint: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600) } as TextStyle,
   hintChip: { alignSelf: 'center', borderRadius: seatLayerPickerTokens.radius.chip, marginTop: 8, maxWidth: '92%', paddingHorizontal: 10, paddingVertical: 5 } as ViewStyle,
   root: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   rootSafety: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
-  title: { fontSize: size.immersiveCaptionFontSize + 2, fontWeight: '800', lineHeight: 18 } as TextStyle,
+  title: { fontSize: size.immersiveCaptionFontSize + 2, fontWeight: seatLayerPickerBold(800), lineHeight: 18 } as TextStyle,
 } as const;

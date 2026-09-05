@@ -12,6 +12,7 @@ import {
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles, type SeatLayerPickerThemeStyles } from "./styles";
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type Slots = Pick<SeatLayerPickerStyles, "statusContainer" | "statusText">;
 /**
@@ -79,7 +80,7 @@ export function SeatLayerPickerTestModeIndicator(props: SeatLayerPickerTestModeI
   return <SeatLayerPickerTestModeIndicatorView {...props} testMode theme={resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot)} strings={scope.strings} themeStyles={scope.styles} />;
 }
 const dotSize = seatLayerPickerTokens.size.testChipDotSize;
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "center",
     alignSelf: "flex-start",
@@ -106,4 +107,4 @@ const styles = StyleSheet.create({
     letterSpacing: .1,
     lineHeight: seatLayerPickerTokens.size.testChipFontSize + 3,
   },
-});
+}));

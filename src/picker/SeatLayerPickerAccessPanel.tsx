@@ -9,6 +9,7 @@ import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { seatLayerPickerStateScaleClamp } from "./SeatLayerPickerStateOverlays";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -209,7 +210,7 @@ export function seatLayerPickerEventDateLine(
   }
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   veil: {
     position: "absolute",
     top: 0,
@@ -253,4 +254,4 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 15, fontWeight: "800" },
   statement: { padding: 14, gap: 6 },
   statementTitle: { fontSize: 15, fontWeight: "800" },
-});
+}));

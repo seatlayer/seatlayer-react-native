@@ -9,6 +9,7 @@ import { seatLayerPickerColorAlpha, type resolveSeatLayerPickerMapChromeTheme } 
 import { seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
+import { seatLayerPickerBold } from './boldText';
 
 type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 
@@ -47,7 +48,7 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
   const summarySize = expanded
     ? seatLayerPickerTokens.type.peekSummaryOpen.size
     : seatLayerPickerTokens.type.peekSummary.size;
-  const summaryWeight = seatLayerPickerFontWeight(expanded
+  const summaryWeight = seatLayerPickerBold(expanded
     ? seatLayerPickerTokens.type.peekSummaryOpen.weight
     : seatLayerPickerTokens.type.peekSummary.weight);
   const words = line.sentence ?? line.summary ?? '';
@@ -130,7 +131,7 @@ export function SeatLayerCartPeekHead(props: SeatLayerCartPeekHeadProps): React.
                     fontFamily: theme.fontFamily,
                     fontSize: seatLayerPickerTokens.type.peekFromPrice.size,
                     fontVariant: ['tabular-nums'],
-                    fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekFromPrice.weight),
+                    fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.peekFromPrice.weight),
                   }}>{price.amount}</Text>
                   {price.after}
                 </>
@@ -172,7 +173,7 @@ export function SeatLayerFindSeatsPill({ label, theme, onPress }: Readonly<{
           color: theme.colors.onAccent,
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.findPill.size,
-          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.findPill.weight),
+          fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.findPill.weight),
         }}>{label}</Text>
       </View>
     </Pressable>
@@ -216,7 +217,7 @@ export function SeatLayerPeekContinuePill({ label, total, theme, busy, onPress, 
           fontFamily: theme.fontFamily,
           fontSize: seatLayerPickerTokens.type.peekPill.size,
           fontVariant: ['tabular-nums'],
-          fontWeight: seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekPill.weight),
+          fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.peekPill.weight),
         }, textStyle]}>{words}</Text>
       </View>
     </Pressable>

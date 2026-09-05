@@ -33,6 +33,7 @@ import {
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type ConfirmSlots = Pick<SeatLayerPickerStyles,
   'confirmCardContainer' | 'confirmCardIdentityText' | 'confirmCardPrimaryButton' |
@@ -394,7 +395,7 @@ function insets(value: unknown): Required<SeatLayerConfirmCardInsets> {
 }
 
 const gutter = seatLayerPickerTokens.size.confirmCardGutter;
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   hit: { alignSelf: 'center', width: '100%' },
   card: {
     borderWidth: StyleSheet.hairlineWidth,
@@ -430,4 +431,4 @@ const nativeStyles = StyleSheet.create({
   halo: { borderRadius: seatLayerPickerTokens.radius.button, borderWidth: 2, bottom: -2, left: -2, position: 'absolute', right: -2, top: -2 },
   inviteBand: { bottom: 0, position: 'absolute', top: 0, width: 60 },
   actionText: { fontSize: seatLayerPickerTokens.type.confirmAction.size, fontWeight: '800' },
-});
+}));

@@ -23,6 +23,7 @@ import type { SeatLayerPickerSnapshot } from "./models";
 import { seatLayerPickerMapChromeGround } from "./mapChromeTheme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsetInput } from "./safeAreaInsets";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type AccessibilitySlots = Pick<
   SeatLayerPickerStyles,
@@ -430,7 +431,7 @@ export function SeatLayerPickerAccessibilityFilters(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { width: size.accessibilityControlSize, height: size.accessibilityControlSize },
   wideRoot: { alignSelf: "flex-start" },
   control: {
@@ -461,4 +462,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   badgeText: { fontSize: 10, fontWeight: "800" },
-});
+}));

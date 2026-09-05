@@ -36,6 +36,7 @@ import {
 } from "./styles";
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBold, seatLayerPickerBoldStyles } from './boldText';
 
 type HeaderSlots = Pick<
   SeatLayerPickerStyles,
@@ -146,7 +147,7 @@ function LetterMark({ background, foreground, fontFamily, letter, size, style }:
           color: foreground,
           fontFamily,
           fontSize: Math.round(size * .55),
-          fontWeight: "800",
+          fontWeight: seatLayerPickerBold(800),
         }}
       >
         {letter}
@@ -614,7 +615,7 @@ export function SeatLayerPickerHeader(
  */
 const closeGlyphSpan = 6;
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     minHeight: seatLayerPickerTokens.size.headerHeight,
     justifyContent: "flex-end",
@@ -675,4 +676,4 @@ const styles = StyleSheet.create({
     height: 1.5,
     borderRadius: 1,
   },
-});
+}));

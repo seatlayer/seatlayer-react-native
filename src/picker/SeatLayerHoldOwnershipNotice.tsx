@@ -5,6 +5,7 @@ import { seatLayerPickerHoldOwnershipStore } from "./holdOwnership";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 const size = seatLayerPickerTokens.size;
 
@@ -107,7 +108,7 @@ export function SeatLayerHoldOwnershipNotice(
 /** White in both themes: the ink is read on the authored red, not on the panel. */
 const noticeInk = "#FFFFFF";
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "flex-start",
     flexDirection: "row",
@@ -149,4 +150,4 @@ const styles = StyleSheet.create({
   },
   cross: { alignItems: "center", height: 12, justifyContent: "center", width: 12 },
   crossBar: { backgroundColor: noticeInk, borderRadius: 1, height: 1.6, position: "absolute", width: 13 },
-});
+}));

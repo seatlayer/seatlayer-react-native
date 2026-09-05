@@ -12,6 +12,7 @@ import {
 } from './seatConfirmationState';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
 
 type WideSlots = Pick<SeatLayerPickerStyles,
   'confirmCardContainer' | 'confirmCardIdentityText' | 'confirmCardPrimaryButton' |
@@ -96,6 +97,6 @@ function layoutWidth(event: unknown): number | undefined {
     return typeof width === 'number' && Number.isFinite(width) && width >= 0 ? width : undefined;
   } catch { return undefined; }
 }
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: 12 }, hit: { width: '100%', maxWidth: 430, minHeight: seatLayerPickerTokens.size.minimumHitTarget }, card: { borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', maxHeight: '100%' }, scroll: { flexGrow: 1 }, grid: { borderBottomWidth: StyleSheet.hairlineWidth }, field: { flex: 1, minHeight: 62, padding: 10, borderEndWidth: StyleSheet.hairlineWidth, justifyContent: 'center' }, fieldLabel: { fontSize: 11, fontWeight: '800' }, fieldValue: { fontSize: 15, fontWeight: '900' }, categoryBand: { minHeight: 58, alignItems: 'center', gap: 10, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth }, categoryDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1 }, categorySpacer: { flex: 1 }, categoryLabel: { flex: 1, fontSize: 16, fontWeight: '800' }, price: { fontSize: 19, fontWeight: '900' }, body: { gap: 10, padding: 16 }, notice: { borderStartWidth: 3, paddingStart: 10, gap: 2 }, noticeTitle: { fontSize: 13, fontWeight: '900' }, noticeText: { fontSize: 13 }, inspection: { gap: 8 }, actions: { gap: 10 }, actionHit: { flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, actionPaint: { height: seatLayerPickerTokens.size.confirmActionHeight, borderWidth: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 8 }, actionText: { fontSize: 14, fontWeight: '800' },
-});
+}));

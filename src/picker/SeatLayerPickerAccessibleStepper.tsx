@@ -13,6 +13,7 @@ import { SeatLayerPickerBlockedRegion } from "./blockedRegionsContext";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
 
 const size = seatLayerPickerTokens.size;
 
@@ -122,7 +123,7 @@ export function SeatLayerPickerAccessibleStepper(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   target: {
     minHeight: size.minimumHitTarget,
     minWidth: size.minimumHitTarget,
@@ -145,4 +146,4 @@ const styles = StyleSheet.create({
     fontVariant: ["tabular-nums"],
   },
   chevron: { fontSize: size.accessStepFontSize + 4, fontWeight: "700" },
-});
+}));
