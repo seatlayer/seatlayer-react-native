@@ -117,6 +117,21 @@ export function seatLayerPickerReadingOrderFor(
     .map(({ entry }) => seatLayerPickerReadingOrderId(entry.rung, entry.suffix)));
 }
 
+/**
+ * The props the composition root spreads to declare the whole order.
+ *
+ * `experimental_accessibilityOrder` is React Native's own answer to the
+ * missing sort key: a container names the `nativeID`s its descendants are
+ * walked in. It is not in the published type surface yet, so the prop is
+ * produced here, once, rather than cast at the call site — and a runtime that
+ * does not know the prop simply ignores an unknown one.
+ */
+export function seatLayerPickerAccessibilityOrder(
+  entries: readonly SeatLayerPickerReadingOrderEntry[],
+): Readonly<Record<string, readonly string[]>> {
+  return Object.freeze({ experimental_accessibilityOrder: seatLayerPickerReadingOrderFor(entries) });
+}
+
 export type SeatLayerPickerTypeScaleSurface = Exclude<keyof typeof seatLayerPickerTokens.type.scaleClamp, 'note'>;
 
 /**

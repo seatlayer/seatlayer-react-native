@@ -2,6 +2,11 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncEx
 import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { canRenderSeatLayerPickerAccessibilityFilters, SeatLayerPickerAccessibilityFilters } from './accessibility';
+import {
+  seatLayerPickerAccessibilityOrder,
+  seatLayerPickerReadingOrderId,
+  type SeatLayerPickerReadingRung,
+} from './a11y';
 import { useSeatLayerPickerAdaptiveInteraction } from './adaptiveInteraction';
 import {
   planSeatLayerPickerAdaptiveLayout,
@@ -113,6 +118,27 @@ function withSafeArea(
   props?: Readonly<Record<string, unknown>>,
 ): React.ReactElement {
   return React.createElement(Component, { ...props, safeAreaInsets });
+}
+
+/**
+ * §4.10 — one reading order, declared once at the composition root.
+ *
+ * React Native has no per-node sort key, so the root names the `nativeID`s it
+ * walks in and each surface carries its own. The wrapper is a plain box for a
+ * column child and an absolute fill for an overlay, so nothing moves on screen:
+ * the order the picker is READ in and the order it is PAINTED in are allowed to
+ * disagree, and here they do.
+ */
+function ordered(
+  rung: SeatLayerPickerReadingRung,
+  child: React.ReactNode,
+  options?: Readonly<{ suffix?: string; overlay?: boolean }>,
+): React.ReactElement | null {
+  if (child === null || child === undefined || child === false) return null;
+  const nativeID = seatLayerPickerReadingOrderId(rung, options?.suffix);
+  return options?.overlay === true
+    ? <View collapsable={false} nativeID={nativeID} pointerEvents="box-none" style={styles.phoneOverlays}>{child}</View>
+    : <View collapsable={false} nativeID={nativeID}>{child}</View>;
 }
 
 /** Inner adaptive composition. The outer route, provider, and page lifecycle remain host-owned. */
@@ -401,7 +427,7 @@ export function SeatLayerPickerAdaptiveLayout({
     if (!Number.isFinite(width) || width < 0 || !Number.isFinite(height) || height < 0) return;
     setBounds((previous) => previous?.width === width && previous.height === height ? previous : Object.freeze({ width, height }));
   };
-  const chart = <View pointerEvents={blocked ? 'none' : 'auto'} style={styles.chartOwner} testID="seatlayer-chart-owner">{part(builders, scope, 'map', <SeatLayerPickerChart onReady={onReady} />)}</View>;
+  const chart = <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('map')} pointerEvents={blocked ? 'none' : 'auto'} style={styles.chartOwner} testID="seatlayer-chart-owner">{part(builders, scope, 'map', <SeatLayerPickerChart onReady={onReady} />)}</View>;
   const holdCountdown = plan.options.chrome.header && plan.options.chrome.holdPill
     ? part(builders, scope, 'holdCountdown', <SeatLayerPickerHoldCountdown />)
     : null;
@@ -516,8 +542,37 @@ export function SeatLayerPickerAdaptiveLayout({
     }))
     : null;
 
+  // §4.10 — the ONE reading order, declared here and nowhere else. Sibling
+  // surfaces are all ordered or none are, so every surface that is mounted
+  // appears: a group with some ordered members falls back to geometry for the
+  // rest, which is how the map came to be read before the prices.
+  const readingOrder = seatLayerPickerAccessibilityOrder([
+    { rung: 'header', mounted: header !== null },
+    { rung: 'rail', mounted: !wide && legend !== null },
+    { rung: 'rail', mounted: wide && legend !== null, suffix: 'wide' },
+    { rung: 'map', mounted: true },
+    { rung: 'mapChrome', mounted: true },
+    { rung: 'mapChrome', mounted: venueVisible, suffix: 'venue3d' },
+    { rung: 'mapChrome', mounted: plan.options.chrome.seatViewChrome && chromeEligibility.panorama, suffix: 'seat-view' },
+    { rung: 'dock', mounted: !wide && dock !== null },
+    { rung: 'dock', mounted: wide && sections !== null },
+    { rung: 'prompt', mounted: status === null && !immersiveInspectionVisible },
+    { rung: 'notice', mounted: true, suffix: 'toast' },
+    { rung: 'notice', mounted: status !== null, suffix: 'status' },
+    { rung: 'notice', mounted: !wide, suffix: 'foot' },
+    { rung: 'notice', mounted: true, suffix: 'states' },
+    { rung: 'sheet', mounted: !wide && cartSheet !== null },
+    { rung: 'sheet', mounted: wide && ticketPanelVisible, suffix: 'wide' },
+  ]);
+
   return (
-    <View ref={rootRef} onLayout={onLayout} style={[styles.root, sanitizeSeatLayerPickerStyle(style)]} testID={`seatlayer-adaptive-${plan.layout}`}>
+    <View
+      ref={rootRef}
+      onLayout={onLayout}
+      style={[styles.root, sanitizeSeatLayerPickerStyle(style)]}
+      testID={`seatlayer-adaptive-${plan.layout}`}
+      {...readingOrder}
+    >
       {presentationActive && plan.options.chrome.systemBars ? <SeatLayerPickerSystemStatusBar /> : null}
       {presentationActive && plan.options.haptics && hapticAdapter ? <SeatLayerPickerHaptics adapter={hapticAdapter} /> : null}
       {presentationActive ? <SeatLayerPickerScopeBackHandler /> : null}
@@ -528,11 +583,11 @@ export function SeatLayerPickerAdaptiveLayout({
         paddingStart: safeLayout.insets.left,
         paddingTop: safeLayout.insets.top,
       }]} testID="seatlayer-adaptive-safe-content">
-        {header}
+        {ordered('header', header)}
         {wide || legend === null ? null : <View style={[styles.legendBand, {
           backgroundColor: scope.resolvedTheme.colors.surface,
           borderBottomColor: scope.resolvedTheme.colors.divider,
-        }]} testID="seatlayer-price-band">{legend}</View>}
+        }]} nativeID={seatLayerPickerReadingOrderId('rail')} testID="seatlayer-price-band">{legend}</View>}
         <View style={wide ? styles.wide : styles.phone}>
         <View onLayout={(event) => {
           const next = event.nativeEvent.layout.height;
@@ -541,7 +596,7 @@ export function SeatLayerPickerAdaptiveLayout({
         }} style={styles.map}>
           {chart}
           {wide ? null : <SpotlightGlass screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
-          {wide ? null : <View pointerEvents="box-none" style={styles.phoneOverlays}>
+          {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
             {testBadgeVisible ? <View
@@ -561,16 +616,19 @@ export function SeatLayerPickerAdaptiveLayout({
               accessibilityVisible ? seatLayerPickerTokens.size.minimumHitTarget : 0,
               phoneControls.bottom ? seatLayerPickerTokens.size.minimumHitTarget : 0,
             ) + (floorSelectorVisible && (accessibilityVisible || phoneControls.bottom) ? seatLayerPickerPhoneRailGap : 0) }]}>{floorSelector}</View>}
-            <View pointerEvents="box-none" style={styles.dockRail}>{dock}</View>
           </View>}
-          {wide ? <View pointerEvents="box-none" style={styles.wideMapOverlays}>
+          {/* §4.10 — the dock is its own rung, so it is never read between two
+              halves of the map's chrome. It is absolutely positioned either
+              way, so lifting it out of the overlay stack paints identically. */}
+          {wide || dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail}>{dock}</View>}
+          {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays}>
             {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: venueMode && venueVisible ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
             <View pointerEvents="box-none" style={styles.wideFloorSelectorRail}>{floorSelector}</View>
           </View> : null}
-          {venueVisible ? part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : immersiveTopInset} />) : null}
-          {plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null}
-          {status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
+          {ordered('mapChrome', venueVisible ? part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : immersiveTopInset} />) : null, { overlay: true, suffix: 'venue3d' })}
+          {ordered('mapChrome', plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null, { overlay: true, suffix: 'seat-view' })}
+          {ordered('prompt', status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
             anchor={!wide && cardActive ? 'foot' : 'centre'}
             bottomInset={phoneBands.bottom}
             prompt={prompt}
@@ -579,9 +637,9 @@ export function SeatLayerPickerAdaptiveLayout({
               ? 'transparent'
               : seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
             sessionId={`${scope.sessionId}:${snapshot?.sessionId ?? ''}`}
-          /> : null}
-          {toastLayer}
-          {status === null ? null : <View style={[styles.owner, {
+          /> : null, { overlay: true })}
+          {ordered('notice', toastLayer, { overlay: true, suffix: 'toast' })}
+          {status === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'status')} style={[styles.owner, {
             backgroundColor: seatLayerPickerColorAlpha(
               scope.resolvedTheme.colors.background,
               fatal ? .98 : .94,
@@ -589,19 +647,21 @@ export function SeatLayerPickerAdaptiveLayout({
           }]}>{status}</View>}
         </View>
         {wide ? <View style={[styles.rail, { width: plan.sideRailWidth, backgroundColor: scope.resolvedTheme.colors.surface, borderStartColor: scope.resolvedTheme.colors.divider }]} testID="seatlayer-wide-rail">
-          {legend}{floors ? <View style={styles.wideFloors}>{floors}</View> : null}{sections}
+          {ordered('rail', legend, { suffix: 'wide' })}{floors ? <View style={styles.wideFloors}>{floors}</View> : null}{ordered('dock', sections)}
           {bestAvailable || accessibility ? <View style={styles.wideAssist}>{bestAvailable}{accessibility}</View> : null}
-          {ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null}
+          {ordered('sheet', ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null, { suffix: 'wide' })}
           {ticketPanelVisible ? actionError : null}
           {ticketPanelVisible ? <SeatLayerPickerSalesClosedStatement /> : null}
           <View style={styles.trailingAttribution} testID="seatlayer-wide-attribution"><SeatLayerPickerAttribution compact={false} /></View>
           {ticketPanelVisible ? checkout : null}
-        </View> : <>{cartSheet}<View pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<View style={styles.trailingAttribution} testID="seatlayer-phone-attribution"><SeatLayerPickerAttribution /></View></> : null}</View></>}
+        </View> : <>{ordered('sheet', cartSheet)}<View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'foot')} pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<View style={styles.trailingAttribution} testID="seatlayer-phone-attribution"><SeatLayerPickerAttribution /></View></> : null}</View></>}
         </View>
       </View>
-      <SeatLayerPickerSoldOutOverlay />
-      {plan.options.showBookedOverlay ? <SeatLayerPickerBookedOverlay onBackToMap={onClose} /> : null}
-      <SeatLayerPickerAccessPanel hostOwnsRecovery={hostOwnsAccessRecovery} />
+      <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'states')} pointerEvents="box-none" style={styles.phoneOverlays}>
+        <SeatLayerPickerSoldOutOverlay />
+        {plan.options.showBookedOverlay ? <SeatLayerPickerBookedOverlay onBackToMap={onClose} /> : null}
+        <SeatLayerPickerAccessPanel hostOwnsRecovery={hostOwnsAccessRecovery} />
+      </View>
       {selectionFlight === undefined ? null : <SeatLayerSelectionFlight
         key={selectionFlight.id}
         moment={selectionFlight}
