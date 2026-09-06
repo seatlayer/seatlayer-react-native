@@ -122,6 +122,7 @@ function decodeSelectedSeatStrings(
     'currency',
     'bookingMode',
     'wheelchairSpaceType',
+    'status',
   ]) {
     const value = asString(object?.[key]);
     if (value !== undefined) result[key] = value;

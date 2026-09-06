@@ -179,6 +179,13 @@ export interface SelectedSeat {
   maxOccupancy?: number;
   accessibility?: string[];
   wheelchairSpaceType?: string | (string & {});
+  /**
+   * What the runtime says the seat's inventory state is.
+   *
+   * Present-only, and the chrome must treat an absent value as "available":
+   * a build that cannot answer is not a build reporting every seat as sold.
+   */
+  status?: string | (string & {});
 }
 
 export interface SelectionValidity {

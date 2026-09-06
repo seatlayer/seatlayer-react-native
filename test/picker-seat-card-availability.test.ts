@@ -174,3 +174,15 @@ describe('§3.8.10 no card over a seat nobody can take', () => {
   });
 });
 
+
+// The rule above is only reachable if the field survives the wire. `status` is
+// present-only: a runtime that does not report it leaves the seat askable.
+describe('§3.8.10 the status the rule reads', () => {
+  it('carries selection[].status through the decode, and only when it is there', async () => {
+    const { decodeSelectedSeat } = await import('../src/decode');
+    expect(decodeSelectedSeat({ id: "s1", label: "A-1", status: "booked" })!.status).toBe('booked');
+    expect(decodeSelectedSeat({ id: 's1', label: 'A-1' })).not.toHaveProperty('status');
+    // A non-string is not a status; it is dropped rather than coerced.
+    expect(decodeSelectedSeat({ id: 's1', label: 'A-1', status: 3 })).not.toHaveProperty('status');
+  });
+});
