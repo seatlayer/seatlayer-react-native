@@ -9,7 +9,10 @@ import {
 } from './availability';
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
-import { SeatLayerPickerBookedDetector } from './holdOwnership';
+import {
+  SeatLayerPickerBookedDetector,
+  seatLayerPickerHoldOwnershipStore,
+} from './holdOwnership';
 import {
   decodeSeatLayerPickerAccessibleSectionStep,
   decodeSeatLayerPickerFrameSeatResult,
@@ -202,6 +205,12 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
 
   protected override onCheckoutHandoff(handoff: SeatLayerPickerCheckoutHandoff): void {
     this.booked.handedOff(handoff);
+    // A handoff LANDED, so whatever the runtime refused before it is no longer
+    // the state the buyer is in. Continue now replaces the hold with every
+    // seat rather than being refused for a selection the old hold did not
+    // cover (Flutter 0.9.1), and a notice left standing from that refusal
+    // would tell a buyer on their way to pay that their seats are stuck.
+    seatLayerPickerHoldOwnershipStore(this).clear();
   }
 
   /**

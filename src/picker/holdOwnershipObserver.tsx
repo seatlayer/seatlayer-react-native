@@ -20,9 +20,13 @@ import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
  * it there), which is why the notice is drawn in the sheet and not over the
  * map: it belongs to the tray the seats are in.
  *
- * Only the three ownership refusals are taken. Anything else stays the host's
- * to handle, exactly as before — an unsolicited failure is not turned into a
- * new inline surface here.
+ * Only the ownership refusals the runtime raises UNPROMPTED are taken:
+ * `hold_owned_by_host` and `hold_already_active`. Anything else stays the
+ * host's to handle, exactly as before — an unsolicited failure is not turned
+ * into a new inline surface here. `hold_selection_mismatch` is only ever the
+ * answer to `picker.continue`, which now replaces the hold and asks again
+ * instead of refusing, so an echo of it here would state a stuck cart the
+ * buyer no longer has.
  */
 export function SeatLayerPickerHoldOwnershipObserver(): null {
   const scope = useSeatLayerPickerScope();
@@ -43,7 +47,8 @@ export function SeatLayerPickerHoldOwnershipObserver(): null {
         ? controller.getCheckoutHandoff()
         : undefined;
       try {
-        seatLayerPickerHoldOwnershipStore(controller).raise(error, handoff);
+        seatLayerPickerHoldOwnershipStore(controller)
+          .raiseUnsolicited(error, handoff);
       } catch {
         // A notice that cannot be raised must not take the session with it.
       }

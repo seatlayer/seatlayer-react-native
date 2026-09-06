@@ -18,6 +18,7 @@ import type {
 } from './models';
 import { SeatLayerPickerCommandDispatch } from './controllerDispatch';
 import { SeatLayerPickerGACandidateStore, type SeatLayerPickerGACandidate } from './ga-candidate-store';
+import { seatLayerPickerHoldOwnershipCode } from './holdOwnership';
 import { SeatLayerPickerSnapshotStore } from './snapshot-store';
 import {
   validateBoolean,
@@ -599,10 +600,7 @@ export class SeatLayerPickerControllerCore {
     if (invalidTtl) return Promise.reject(invalidTtl);
     if (this.checkoutInFlight) return this.checkoutInFlight;
     const flight = this.serial(async () => {
-      const result = await this.command(
-        'picker.continue',
-        ttlMs === undefined ? undefined : { ttlMs },
-      );
+      const result = await this.continueWithEverySelectedSeat(ttlMs);
       await this.applyMutationResult(result);
       const handoff = decodeSeatLayerPickerCheckoutHandoff(
         asObject(result)?.handoff,
@@ -661,6 +659,40 @@ export class SeatLayerPickerControllerCore {
     return this.serial(async () => {
       await this.command(command, payload);
     });
+  }
+  /**
+   * `picker.continue`, and the one refusal it answers by replacing the hold.
+   *
+   * BACK FROM CHECKOUT WITH MORE SEATS. A hold handed off to the host is
+   * checkout's, and a runtime asked to continue with a selection the hold does
+   * not cover refuses with `hold_selection_mismatch`. That refusal is right
+   * when a cart control tries to grow or shrink the hold behind checkout's
+   * back, and wrong here: the host is the one asking to continue again, over a
+   * cart the buyer can see. So the hold is REPLACED with the whole selection —
+   * the runtime's own hold call carries every held seat along with the new
+   * ones — and the handoff is asked for again. A retry that is refused in turn
+   * throws, so §3.13.13 still says the state for a hold the picker genuinely
+   * may not touch.
+   *
+   * Gated on the hello command table: a runtime that does not advertise `hold`
+   * simply keeps the refusal it gave.
+   */
+  private async continueWithEverySelectedSeat(
+    ttlMs: number | undefined,
+  ): Promise<JsonValue | undefined> {
+    const payload = ttlMs === undefined ? undefined : { ttlMs };
+    try {
+      return await this.command('picker.continue', payload);
+    } catch (error) {
+      if (
+        seatLayerPickerHoldOwnershipCode(error) !== 'hold_selection_mismatch' ||
+        !this.mapController.supportsPickerCommand('hold')
+      ) {
+        throw error;
+      }
+      await this.mapController.hold(ttlMs === undefined ? {} : { ttlMs });
+      return await this.command('picker.continue', payload);
+    }
   }
   protected command(
     command: string,

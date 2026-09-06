@@ -14,6 +14,10 @@ import {
 } from '../json';
 import type { CategoryTier, GAArea, SelectedSeat } from '../types';
 import {
+  completeSeatLayerPickerCartLines,
+  seatLayerPickerCartLineQuantity,
+} from './cartCompletion';
+import {
   type SeatLayerPickerAccessNeed,
   type SeatLayerPickerCartLine,
   type SeatLayerPickerCategory,
@@ -414,7 +418,11 @@ export function decodeSeatLayerPickerSnapshot(
       seenAccessNeeds.add(entry.key);
       return true;
     });
-  const lineTotal = cartLines.reduce(
+  // A runtime with a live hold reports the HOLD's lines as its cart and drops
+  // a seat the buyer selected since; the seat is still in the same snapshot,
+  // so the cart is completed from it (Flutter 0.9.1, `cartCompletion.ts`).
+  const completedCart = completeSeatLayerPickerCartLines(cartLines, seats);
+  const lineTotal = completedCart.lines.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
@@ -507,9 +515,13 @@ export function decodeSeatLayerPickerSnapshot(
     selection: seats,
     ...(selectionValidity === undefined ? {} : { selectionValidity }),
     maxSelection: asInteger(selection?.maxSelection) ?? 10,
-    ticketCount: asInteger(cart?.quantity) ?? seats.length,
-    cartLines,
-    cartTotal: numberOr(cart?.total, lineTotal),
+    // The runtime's own count and total describe the lines IT reported; once
+    // a line has been added here they are recounted from the lines themselves.
+    ticketCount: completedCart.completed
+      ? seatLayerPickerCartLineQuantity(completedCart.lines)
+      : asInteger(cart?.quantity) ?? seats.length,
+    cartLines: completedCart.lines,
+    cartTotal: completedCart.completed ? lineTotal : numberOr(cart?.total, lineTotal),
     currency: asString(cart?.currency) ?? asString(event?.currency) ?? 'USD',
     hold: {
       active: asBoolean(hold?.active) ?? false,
