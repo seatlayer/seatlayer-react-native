@@ -287,7 +287,7 @@ describe('§3.10.2 cart cards', () => {
       .toBeGreaterThan(0);
   });
 
-  it('takes the map to the seat and steps the sheet down when a card is pressed', async () => {
+  it('takes the map to the seat and KEEPS the sheet open when a card is pressed', async () => {
     const framed: unknown[][] = [];
     const sheet: unknown[] = [];
     const runtime = setupScope({ setPresentation: (event: unknown) => sheet.push(event) });
@@ -299,7 +299,10 @@ describe('§3.10.2 cart cards', () => {
     await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card' }).props.onPress(); });
     expect(framed[0]![0]).toBe('seat-1');
     expect(framed[0]![1]).toMatchObject({ fraction: seatLayerSheetRestoreFraction });
-    expect(sheet).toEqual([{ type: 'setSheet', sheet: 'collapsed' }]);
+    // Owner call, both platforms: the sheet stays. A tap on a cart card asks
+    // "where is this one?", and closing the list the buyer was reading through
+    // to answer it made checking a second seat cost a re-open every time.
+    expect(sheet).toEqual([]);
   });
 
   it('draws one card per cart line, with no run model left to fold them', async () => {

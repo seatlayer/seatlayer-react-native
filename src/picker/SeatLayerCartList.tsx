@@ -167,16 +167,20 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   };
 
   /**
-   * The map frames the seat at its resting place and, on the phone, the sheet
-   * steps down so the map is what the buyer sees.
+   * The map frames the seat at its resting place, and the SHEET STAYS OPEN.
+   *
+   * Owner call, carried on both platforms: stepping the sheet down as well
+   * answered a question the buyer had not asked. A tap on a cart card means
+   * "where is this one?", and closing the list they were reading through to
+   * answer it made checking a second seat cost a re-open every time. The card
+   * frames the seat under the sheet's own restore fraction, so the seat lands
+   * in the band of map that is still showing.
    */
   const showSeat = (seatId: string) => {
     const before = current.current;
-    if (before.controller.supportsFrameSeat) {
-      void Promise.resolve(before.controller.frameSeat(seatId, { fraction: seatLayerSheetRestoreFraction }))
-        .catch(() => { /* framing is a courtesy, never an error the buyer owns */ });
-    }
-    try { before.setPresentation({ type: 'setSheet', sheet: 'collapsed' }); } catch { /* controlled */ }
+    if (!before.controller.supportsFrameSeat) return;
+    void Promise.resolve(before.controller.frameSeat(seatId, { fraction: seatLayerSheetRestoreFraction }))
+      .catch(() => { /* framing is a courtesy, never an error the buyer owns */ });
   };
 
   const locate = (seatId: string) => {
