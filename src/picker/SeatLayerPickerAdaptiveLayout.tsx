@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { canRenderSeatLayerPickerAccessibilityFilters, SeatLayerPickerAccessibilityFilters } from './accessibility';
@@ -23,6 +23,13 @@ import { SeatLayerPickerAttribution } from './attribution';
 import type { SeatLayerPickerBuilders } from './builders';
 import { SeatLayerConfirmCard } from './SeatLayerConfirmCard';
 import { SeatLayerPickerSeatConfirmation } from './SeatLayerPickerSeatConfirmation';
+import {
+  seatLayerPickerConfirmAddInitial, seatLayerPickerConfirmAddReduce,
+  seatLayerPickerConfirmMotionPlan, seatLayerPickerConfirmSwellMs,
+  type SeatLayerPickerConfirmAddEvent,
+} from './confirmCardMotion';
+import { useSeatLayerPickerReducedMotion } from './reducedMotion';
+import { SeatLayerCartLandingProvider } from './cartLanding';
 import { SpotlightGlass } from './SpotlightGlass';
 import { useSeatLayerPickerSeatRemovalSeat } from './seatConfirmationRemoval';
 import { useSeatLayerPickerSeatLiftBinding } from './seatLiftBinding';
@@ -182,6 +189,22 @@ export function SeatLayerPickerAdaptiveLayout({
   const confirmOriginRef = useRef<Readonly<{ x: number; y: number }> | undefined>(undefined);
   const flightSequenceRef = useRef(0);
   const [selectionFlight, setSelectionFlight] = useState<SeatLayerSelectionFlightMoment | undefined>(undefined);
+  // §3.8.4/§3.9 — the add choreography is one sentence, and this is its only
+  // tense: press launches the chip and HOLDS the lift, the landing swells the
+  // foot, the swell ending releases the map. Three surfaces read it; none of
+  // them times itself off the press.
+  const reducedMotion = useSeatLayerPickerReducedMotion();
+  const addPlan = useMemo(() => seatLayerPickerConfirmMotionPlan(reducedMotion), [reducedMotion]);
+  const [addStage, setAddStage] = useState(seatLayerPickerConfirmAddInitial);
+  const advanceAdd = useCallback((event: SeatLayerPickerConfirmAddEvent) => {
+    setAddStage((current) => seatLayerPickerConfirmAddReduce(current, event, addPlanRef.current));
+  }, []);
+  const addPlanRef = useRef(addPlan);
+  addPlanRef.current = addPlan;
+  // §3.8.2 — `picker.frameSeat` is camera only and publishes no snapshot, so a
+  // seat's reported `screenPoint` is where it sat BEFORE the lift. The hole
+  // adds this, or it lands a whole lift band below the seat.
+  const [anchorDy, setAnchorDy] = useState(0);
   const [bounds, setBounds] = useState<SeatLayerPickerAdaptiveMeasuredBounds | undefined>(undefined);
   const [mapHeight, setMapHeight] = useState(0);
   // The band the seat card covers, measured from the map's foot (§3.8.2).
@@ -359,6 +382,7 @@ export function SeatLayerPickerAdaptiveLayout({
     if (action === 'confirm') invokeSeatLayerPickerCallback(onSeatSelected, seat as never, scope.reportError);
     if (action === 'seatView' || action === 'venue3d') invokeSeatLayerPickerCallback(onSeatViewOpened, seat as never, scope.reportError);
     if (action !== 'confirm') return;
+    advanceAdd({ kind: 'press' });
     const origin = confirmOriginRef.current;
     confirmOriginRef.current = undefined;
     const root = rootRef.current;
@@ -411,6 +435,21 @@ export function SeatLayerPickerAdaptiveLayout({
     if (!shouldRetirePending) retiredPendingRef.current = undefined;
   }, [shouldRetirePending]);
   useLayoutEffect(() => { if (!cardActive) setCardBand(0); }, [cardActive]);
+  // The swell owns the last beat: when it ends the map may put itself back.
+  // Under reduced motion the press has already released, and this never runs.
+  useEffect(() => {
+    if (!addStage.swelling) return undefined;
+    const ms = seatLayerPickerConfirmSwellMs(addPlan);
+    if (ms <= 0) { advanceAdd({ kind: 'swelled' }); return undefined; }
+    const timer = setTimeout(() => advanceAdd({ kind: 'swelled' }), ms);
+    return () => clearTimeout(timer);
+  }, [addPlan, addStage.swelling, advanceAdd]);
+  // A card that went away without an answer is owed nothing; a new session is
+  // a new runtime and the choreography never carries across one.
+  useEffect(() => {
+    if (cardActive) return;
+    advanceAdd({ kind: 'dismissed' });
+  }, [advanceAdd, cardActive, scope.sessionId]);
   // §4.10 — a decision surface that hands the screen back, accepted or
   // cancelled, returns focus to the map region. Falling to the top of the tree
   // would put a buyer back at the header after every seat.
@@ -422,12 +461,18 @@ export function SeatLayerPickerAdaptiveLayout({
   // §3.8.2 — one lift per session: the runtime pans the map out from under the
   // card where it can, and is given the card's band as a viewport inset where
   // it cannot. Never both.
+  // The lift is held past the card's own life while the chip is still flying:
+  // releasing it on the press slid the seat out from under the chip mid-air.
+  const heldLiftSeatRef = useRef<string | null>(null);
+  if (cardSeatId !== null) heldLiftSeatRef.current = cardSeatId;
+  const liftSeatId = wide ? null : cardSeatId ?? (addStage.liftHeld ? heldLiftSeatRef.current : null);
   const liftInset = useSeatLayerPickerSeatLiftBinding({
     bottom: phoneBands.bottom,
     controller: scope.controller,
     mapHeight,
+    onAnchorDy: setAnchorDy,
     revision: snapshot?.revision ?? 0,
-    seatId: wide ? null : cardSeatId,
+    seatId: liftSeatId,
     sessionId: scope.sessionId,
     sheet: wide ? 0 : cardBand,
     top: phoneBands.top,
@@ -650,6 +695,7 @@ export function SeatLayerPickerAdaptiveLayout({
   ]);
 
   return (
+    <SeatLayerCartLandingProvider landing={addStage.stage === 'flying'}>
     <View
       ref={rootRef}
       onLayout={onLayout}
@@ -680,7 +726,7 @@ export function SeatLayerPickerAdaptiveLayout({
           setMapHeight((current) => Math.abs(current - next) < .5 ? current : next);
         }} style={styles.map}>
           {chart}
-          {wide ? null : <SpotlightGlass screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
+          {wide ? null : <SpotlightGlass anchorDy={anchorDy} screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
           {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(decisionUp)}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
@@ -751,8 +797,12 @@ export function SeatLayerPickerAdaptiveLayout({
       {selectionFlight === undefined ? null : <SeatLayerSelectionFlight
         key={selectionFlight.id}
         moment={selectionFlight}
-        onComplete={(id) => setSelectionFlight((current) => current?.id === id ? undefined : current)}
+        onComplete={(id) => {
+          setSelectionFlight((current) => current?.id === id ? undefined : current);
+          advanceAdd({ kind: 'landed' });
+        }}
       />}
     </View>
+    </SeatLayerCartLandingProvider>
   );
 }

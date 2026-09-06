@@ -26,6 +26,9 @@ import { SeatLayerPickerSalesClosedStatement } from './SeatLayerPickerAccessPane
 import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
 import { SeatLayerCartList } from './SeatLayerCartList';
 import { SeatLayerHoldLapseNotice } from './SeatLayerHoldLapseNotice';
+import {
+  seatLayerPickerCardAsking, useSeatLayerPickerSeatRemovalSeat,
+} from './seatConfirmationRemoval';
 import { SeatLayerSheetHandle } from './sheetHandle';
 import { SeatLayerSheetFoot } from './sheetFoot';
 import { SeatLayerSheetFinderProvider, useSeatLayerSheetFinder } from './sheetFinder';
@@ -356,7 +359,11 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   // The handle leaves while a confirm card is up: the disc sat half under the
   // card's scrim, and the card is the only question on the screen until it is
   // answered.
-  const confirming = scope.pendingSeat !== null;
+  const removalSeat = useSeatLayerPickerSeatRemovalSeat();
+  // §3.8.1 — the ONE boolean. The handle used to read `pendingSeat` alone,
+  // which left it drawn under the REMOVE card: a second thing to press while
+  // the card is the only question on screen.
+  const confirming = seatLayerPickerCardAsking(scope, removalSeat);
 
   // Everything that is NOT the cart region, measured rather than assumed: the
   // foot grows with the platform's text size, with a lapse notice and with an

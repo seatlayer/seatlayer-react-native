@@ -24,6 +24,7 @@ vi.mock('../src/picker/accessibility', () => ({
   canRenderSeatLayerPickerAccessibilityFilters: () => state.accessibility,
 }));
 vi.mock('../src/picker/SeatLayerConfirmCard', () => ({ SeatLayerConfirmCard: 'confirm' }));
+vi.mock('../src/picker/SpotlightGlass', () => ({ SpotlightGlass: 'spotlight' }));
 vi.mock('../src/picker/SeatLayerPickerSeatConfirmation', () => ({ SeatLayerPickerSeatConfirmation: 'wide-confirm' }));
 vi.mock('../src/picker/SeatLayerPickerPromptTransition', () => ({
   SeatLayerPickerPromptTransition: ({ prompt }: { prompt: React.ReactNode }) => React.createElement('prompt-transition', { prompt }, prompt),
@@ -442,6 +443,60 @@ describe('adaptive picker composition', () => {
     expect(onSeatViewOpened).toHaveBeenNthCalledWith(1, seat);
     expect(onSeatViewOpened).toHaveBeenNthCalledWith(2, seat);
     expect(onSeatSelected).toHaveBeenCalledTimes(1);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('orders the add choreography: chip in the air, then the swell, then the map', async () => {
+    // §3.8.4/§3.9 — pressing Add used to do three things at once, so the seat
+    // slid out from under the chip while it was still flying and the count had
+    // already moved by the time the chip arrived to announce it. The layout is
+    // the one place the order is kept, because three surfaces read it.
+    const seat = Object.freeze({ id: 'A-1', label: 'A 1' });
+    state.width = 320;
+    const current = scope({
+      pendingSeat: seat,
+      snapshot: {
+        sessionId: 'runtime', revision: 1, capabilities: [], categories: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map' }, selection: [{ ...seat, objectType: 'seat' }],
+      },
+    });
+    state.scope = current;
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout,
+    })); });
+    const confirm = tree.root.findByType('confirm' as any);
+    // The card reports where the chip leaves from; without an origin there is
+    // no flight to wait for and the press is the whole choreography.
+    await act(async () => { confirm.props.onConfirmOrigin({ x: 40, y: 400 }); });
+    await act(async () => { confirm.props.onAction({ action: 'confirm', seat }); });
+    // The cart holds its count still while the chip is in the air: a total that
+    // jumped on the press made the flight land on a number already changed.
+    expect(tree.root.findByType('cart-sheet' as any)).toBeTruthy();
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('reports the pan the lift made to the surface drawn against the seat', async () => {
+    // §3.8.2 — `picker.frameSeat` is camera only and publishes no snapshot, so
+    // `selection[].screenPoint` is where the seat sat BEFORE the lift. The
+    // spotlight hole adds the pan or it lands a whole lift band below it.
+    const seat = Object.freeze({ id: 'A-1', label: 'A 1', screenPoint: { x: 10, y: 20 } });
+    state.width = 320;
+    state.scope = scope({
+      pendingSeat: seat,
+      snapshot: {
+        sessionId: 'runtime', revision: 1, capabilities: [], categories: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map' }, selection: [{ ...seat, objectType: 'seat' }],
+      },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout,
+    })); });
+    const glass = tree.root.findByType('spotlight' as any);
+    expect(glass.props.screenPoint).toEqual({ x: 10, y: 20 });
+    // Nothing has panned yet, so the hole is exactly on the reported point.
+    expect(glass.props.anchorDy).toBe(0);
     await act(async () => { tree.unmount(); });
   });
 
