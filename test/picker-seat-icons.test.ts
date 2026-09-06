@@ -1,4 +1,12 @@
+import React from 'react';
+import TestRenderer from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
+
+function renderToJson(element: React.ReactElement): any {
+  let tree!: TestRenderer.ReactTestRenderer;
+  TestRenderer.act(() => { tree = TestRenderer.create(element); });
+  return tree.toJSON();
+}
 
 vi.mock('react-native', () => ({ Image: 'Image' }));
 
@@ -73,5 +81,33 @@ describe('§3.8.9 the shared icon set', () => {
     expect(seatLayerPickerSeatIconSvg('telepathy', '#111')).toBeUndefined();
     expect(seatLayerPickerSeatIconSource('telepathy', '#111')).toBeUndefined();
     expect(seatLayerPickerHasSeatIcon('toString')).toBe(false);
+  });
+});
+
+describe('the optional vector renderer', () => {
+  it('draws the same glyph through a host react-native-svg, and gives it back', async () => {
+    const {
+      installSeatLayerPickerSvgIcons, seatLayerPickerSeatIconRenderer,
+      seatLayerPickerSeatGlyphs,
+    } = await import('../src/picker/seatIcons');
+    // The module is an OPTIONAL peer, so nothing is imported here: the host
+    // hands its own two components in, exactly as the blur module is handed in.
+    installSeatLayerPickerSvgIcons({ Svg: 'Svg' as never, Path: 'Path' as never, Circle: 'Circle' as never });
+    const Renderer = seatLayerPickerSeatIconRenderer();
+    expect(Renderer).toBeDefined();
+    const drawn = renderToJson(React.createElement(Renderer!, { color: '#111', iconKey: 'wheelchair', size: 20 }));
+    expect(drawn.type).toBe('Svg');
+    const glyph = seatLayerPickerSeatGlyphs.wheelchair!;
+    // Every authored circle and path is drawn, and the ink is the row's.
+    expect(drawn.children).toHaveLength((glyph.circles?.length ?? 0) + (glyph.paths?.length ?? 0));
+    expect(drawn.props.stroke).toBe('#111');
+    // A key this build has no drawing for still draws nothing.
+    expect(renderToJson(React.createElement(Renderer!, { color: '#111', iconKey: 'nope' }))).toBeNull();
+    // Without `Circle`, the circles become arcs rather than disappearing.
+    installSeatLayerPickerSvgIcons({ Svg: 'Svg' as never, Path: 'Path' as never });
+    const paths = renderToJson(React.createElement(seatLayerPickerSeatIconRenderer()!, { color: '#111', iconKey: 'wheelchair' }));
+    expect(paths.children.every((child: { type: string }) => child.type === 'Path')).toBe(true);
+    installSeatLayerPickerSvgIcons(undefined);
+    expect(seatLayerPickerSeatIconRenderer()).toBeUndefined();
   });
 });

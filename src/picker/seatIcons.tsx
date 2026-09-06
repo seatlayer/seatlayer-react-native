@@ -255,3 +255,79 @@ function escapeXml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+/**
+ * The two `react-native-svg` exports the built-in renderer needs.
+ *
+ * Typed structurally rather than imported: this package must build in an app
+ * that does not have the module, and a bundler resolves `require` statically,
+ * so a guarded import at module scope is not an option — it would make the
+ * dependency mandatory in every consumer's build graph.
+ */
+export interface SeatLayerPickerSvgIconModules {
+  readonly Svg: React.ComponentType<Record<string, unknown>>;
+  readonly Path: React.ComponentType<Record<string, unknown>>;
+  /** Optional: without it the circles in a glyph are drawn as paths. */
+  readonly Circle?: React.ComponentType<Record<string, unknown>>;
+}
+
+/**
+ * Installs the built-in vector renderer, drawing the glyphs with the host's
+ * own `react-native-svg`.
+ *
+ * `react-native-svg` is an OPTIONAL peer. A host that has it calls this once at
+ * start-up with its own imports — the same shape as
+ * {@link setSeatLayerPickerSpotlightBlur} — and every glyph in the picker is
+ * drawn natively, so it scales without resampling and takes the row's ink
+ * directly. A host without it changes nothing: the data-URI fallback stays.
+ *
+ * ```tsx
+ * import Svg, { Circle, Path } from 'react-native-svg';
+ * installSeatLayerPickerSvgIcons({ Svg, Path, Circle });
+ * ```
+ *
+ * Pass `undefined` to go back to the fallback.
+ */
+export function installSeatLayerPickerSvgIcons(
+  modules: SeatLayerPickerSvgIconModules | undefined,
+): void {
+  if (modules === undefined) { setSeatLayerPickerSeatIconRenderer(undefined); return; }
+  const { Svg, Path, Circle } = modules;
+  setSeatLayerPickerSeatIconRenderer(function SeatLayerPickerSvgSeatIcon(
+    props: SeatLayerPickerSeatIconProps,
+  ): React.ReactElement | null {
+    const glyph = seatLayerPickerSeatGlyphs[props.iconKey];
+    if (glyph === undefined) return null;
+    const size = props.size ?? seatLayerPickerSeatIconViewBox;
+    const box = seatLayerPickerSeatIconViewBox;
+    const children: React.ReactElement[] = [];
+    (glyph.circles ?? []).forEach((circle, index) => {
+      const [cx, cy, r] = circle;
+      children.push(Circle === undefined
+        // Two arcs make a full circle; one arc of 360° is a no-op in SVG.
+        ? <Path
+          d={`M${cx! - r!} ${cy} a${r} ${r} 0 1 0 ${r! * 2} 0 a${r} ${r} 0 1 0 ${-(r! * 2)} 0`}
+          key={`c${index}`}
+        />
+        : <Circle cx={cx} cy={cy} key={`c${index}`} r={r} />);
+    });
+    (glyph.paths ?? []).forEach((d, index) => children.push(<Path d={d} key={`p${index}`} />));
+    (glyph.fills ?? []).forEach((d, index) => children.push(
+      <Path d={d} fill={props.color} key={`f${index}`} stroke="none" />,
+    ));
+    return <Svg
+      accessibilityElementsHidden
+      fill="none"
+      height={size}
+      importantForAccessibility="no-hide-descendants"
+      stroke={props.color}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={seatLayerPickerSeatIconStrokeWidth}
+      style={props.style}
+      testID={`seatLayerSeatIcon-${props.iconKey}`}
+      viewBox={`0 0 ${box} ${box}`}
+      width={size}
+    >{children}</Svg>;
+  });
+}

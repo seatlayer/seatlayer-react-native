@@ -346,6 +346,7 @@ export {
 } from './picker/seatNotes';
 export {
   SeatLayerPickerSeatIcon,
+  installSeatLayerPickerSvgIcons,
   seatLayerPickerHasSeatIcon,
   seatLayerPickerSeatGlyphs,
   seatLayerPickerSeatIconStrokeWidth,
@@ -355,6 +356,7 @@ export {
   type SeatLayerPickerSeatGlyph,
   type SeatLayerPickerSeatIconProps,
   type SeatLayerPickerSeatIconRenderer,
+  type SeatLayerPickerSvgIconModules,
 } from './picker/seatIcons';
 export {
   seatLayerPickerConfirmAddInitial,

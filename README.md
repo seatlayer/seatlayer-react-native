@@ -385,6 +385,34 @@ degraded one. Pass `undefined` to remove it again. The picker drops the blur
 and deepens the veil by itself when the buyer has asked for reduced
 transparency.
 
+## Optional vector seat glyphs
+
+A seat can say what it is — an accessible physical seat, an empty wheelchair
+space, a restricted view, a premium seat — and each of those wears a drawing
+shared with every other SeatLayer SDK, so the same seat wears the same mark
+everywhere. Out of the box the picker hands each glyph to `Image` as an SVG
+data URI, which needs no dependency at all and looks correct.
+
+`react-native-svg` is an **optional peer**. An app that already has it installs
+the built-in vector renderer once, at start-up, and every glyph is drawn
+natively instead — scaling without resampling and taking each row's ink
+directly:
+
+```tsx
+import Svg, { Circle, Path } from 'react-native-svg';
+import { installSeatLayerPickerSvgIcons } from '@seatlayer/react-native';
+
+installSeatLayerPickerSvgIcons({ Svg, Path, Circle });
+```
+
+You pass your own imports rather than the SDK requiring the module, for the
+same reason as the blur above: a bundler resolves `require` statically, so a
+guarded import here would put `react-native-svg` in every consumer's build
+graph whether they wanted it or not. `Circle` is optional — without it the
+circles in a glyph are drawn as paths. Pass `undefined` to go back to the data
+URI, and `setSeatLayerPickerSeatIconRenderer` to draw them some other way
+entirely.
+
 ## Run the example app
 
 ```bash
