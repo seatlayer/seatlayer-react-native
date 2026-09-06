@@ -20,6 +20,42 @@ import { seatLayerPickerSeatIdentity } from './pendingConfirmationState';
 
 export type SeatLayerPickerConfirmCardMode = 'add' | 'remove';
 
+/**
+ * §3.8.10 — no card over a seat nobody can take.
+ *
+ * A seat that is sold, blocked, or in another buyer's hold is INERT. The
+ * engine swallows the tap; this is the same rule on this side of the bridge,
+ * for the case where an older runtime still reports one. A card asking "add
+ * this seat?" over a seat with no true answer would tell the buyer a reason
+ * they can do nothing about instead of leaving them on the map, so there is no
+ * "held by another buyer" and no "already booked" card anywhere in the picker,
+ * and no string for one.
+ *
+ * `held` is the one status that depends on WHOSE hold it is: the picker's own
+ * hold makes the buyer's seats held, and those seats keep their card — it is
+ * the card that offers them back. A status this build does not recognise is
+ * left alone; an unknown word is not a reason to swallow a seat the runtime
+ * selected, and every runtime shipped before the field omits it entirely.
+ */
+export function seatLayerPickerMayAskAboutSeat(
+  // `label` is required only so this is not a weak type: every seat the
+  // runtime reports carries one, and `status` is what the rule reads.
+  seat: Readonly<{ label: string; status?: string }>,
+  holdActive: boolean,
+): boolean {
+  switch (seat.status) {
+    case undefined:
+      return true;
+    case 'booked':
+    case 'blocked':
+      return false;
+    case 'held':
+      return holdActive;
+    default:
+      return true;
+  }
+}
+
 export interface SeatLayerPickerSeatRetapSource {
   subscribeSeatRetap(listener: (seat: SelectedSeat) => void): () => void;
 }
@@ -27,6 +63,8 @@ export interface SeatLayerPickerSeatRetapSource {
 export interface SeatLayerPickerSeatRetapPolicy {
   /** A read-only picker never raises the question at all. */
   readonly readOnly: boolean;
+  /** Whether the picker's OWN hold is live; §3.8.10 turns on it. */
+  readonly holdActive?: boolean;
   /** An unanswered ADD outranks a retap. */
   readonly hasPendingAdd: boolean;
   /** The seat an add card is already open about, if any. */
@@ -39,6 +77,8 @@ export function seatLayerPickerAcceptsSeatRetap(
   policy: SeatLayerPickerSeatRetapPolicy,
 ): boolean {
   if (policy.readOnly) return false;
+  // §3.8.10 — a seat nobody can take raises no card, in either question.
+  if (!seatLayerPickerMayAskAboutSeat(seat, policy.holdActive === true)) return false;
   const identity = seatLayerPickerSeatIdentity(seat);
   if (identity === null) return false;
   // Turning an open question round under the buyer's finger is a worse
