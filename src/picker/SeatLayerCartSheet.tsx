@@ -558,12 +558,12 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           borderTopLeftRadius: seatLayerPickerTokens.radius.sheet,
           borderTopRightRadius: seatLayerPickerTokens.radius.sheet,
           borderTopWidth: seatLayerPickerLineWidth,
+          // A HAIRLINE AND NOTHING ELSE ABOVE IT. The web's upward shadow
+          // read as a grey band over the map on a phone — a few points of
+          // nothing between the venue and the handle — and the disc is lifted
+          // by its own shadow instead.
           elevation: seatLayerPickerTokens.elevation.sheet,
           paddingBottom: inset,
-          shadowColor: '#000000',
-          shadowOffset: { height: -8, width: 0 },
-          shadowOpacity: .72,
-          shadowRadius: 26,
         }, styles.sheetContainer]}
       >
         {/* The lower half of the handle, and NOTHING DRAWN UNDER IT: no
@@ -576,12 +576,16 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
             contentContainerStyle={{ paddingHorizontal: seatLayerPickerTokens.size.cartTrayPadX }}
             style={{ flexGrow: 0 }}
           >
+            {/* An empty cart takes no gutters at all: the tray's own padding
+                around nothing is a band of daylight under the handle. */}
             <View
               onLayout={(event) => setCartNatural(event.nativeEvent.layout.height)}
-              style={{
-                paddingBottom: seatLayerPickerTokens.size.cartTrayPadBottom,
-                paddingTop: seatLayerPickerTokens.size.cartTrayPadTop,
-              }}
+              style={hasTickets
+                ? {
+                  paddingBottom: seatLayerPickerTokens.size.cartTrayPadBottom,
+                  paddingTop: seatLayerPickerTokens.size.cartTrayPadTop,
+                }
+                : undefined}
             >{hasTickets ? cartList : null}</View>
             {/* The extras stay LAID OUT while the sheet is shut — off-screen,
                 not unmounted — so the sheet always knows how tall it would open

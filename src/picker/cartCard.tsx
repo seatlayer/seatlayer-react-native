@@ -194,6 +194,10 @@ export function SeatLayerCartCardNotes({ notes, theme }: Readonly<{
       accessible={false}
       testID="seatlayer-cart-card-notes"
       style={{
+        // The rule is as wide as the notes under it, not as wide as the card:
+        // a hairline spanning the whole column read as a divider cutting the
+        // ticket in two rather than as a footnote's own rule.
+        alignSelf: 'flex-start',
         borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .72),
         borderTopWidth: seatLayerPickerLineWidth,
         marginTop: seatLayerPickerTokens.size.cartNotePadTop,

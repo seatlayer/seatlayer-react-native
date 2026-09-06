@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, I18nManager, PanResponder, View, type ViewStyle } from 'react-native';
 
 import { seatLayerCartSwipeCommits, seatLayerCartSwipeTravel } from './cartSwipe';
@@ -68,24 +68,23 @@ export function SeatLayerCartCellCrossFade(
   const reducedMotion = useSeatLayerPickerReducedMotion();
   const opacity = useRef(new Animated.Value(1)).current;
   const previous = useRef(token);
-  const [rendered, setRendered] = useState<ReactNode>(children);
+  // KEYED ON THE WORDS, AND ON NOTHING ELSE. It used to hold the drawn children
+  // in state and list them as a dependency, so every render of the cell re-ran
+  // the effect: a render that arrived mid-fade took the "same words" branch,
+  // the cleanup stopped the fade that was still running, and the cell stayed at
+  // zero. The total line, which re-renders on its own swell, printed nothing.
   useEffect(() => {
-    if (previous.current === token) {
-      setRendered(children);
-      return undefined;
-    }
+    if (previous.current === token) return undefined;
     previous.current = token;
     const motion = resolveSeatLayerPickerMotion('crossfade', reducedMotion, 'easeEnter');
     // Under reduced motion the new words are simply there.
     if (motion.durationMs === 0) {
       opacity.setValue(1);
-      setRendered(children);
       return undefined;
     }
     const [x1, y1, x2, y2] = motion.curve.cubicBezier;
     opacity.stopAnimation();
     opacity.setValue(0);
-    setRendered(children);
     const animation = Animated.timing(opacity, {
       duration: motion.durationMs,
       easing: Easing.bezier(x1, y1, x2, y2),
@@ -93,9 +92,11 @@ export function SeatLayerCartCellCrossFade(
       useNativeDriver: true,
     });
     animation.start();
-    return () => animation.stop();
-  }, [children, opacity, reducedMotion, token]);
-  return <Animated.View style={[style, { opacity }]}>{rendered}</Animated.View>;
+    // A fade that is torn down owes the words their ink back: the value outlives
+    // the effect, and a cell left at zero is a cell that says nothing.
+    return () => { animation.stop(); opacity.setValue(1); };
+  }, [opacity, reducedMotion, token]);
+  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
 }
 
 /**
