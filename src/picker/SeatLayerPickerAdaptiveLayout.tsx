@@ -205,6 +205,12 @@ export function SeatLayerPickerAdaptiveLayout({
   // seat's reported `screenPoint` is where it sat BEFORE the lift. The hole
   // adds this, or it lands a whole lift band below the seat.
   const [anchorDy, setAnchorDy] = useState(0);
+  // The lift reports its pan from a `useLayoutEffect` that runs on EVERY
+  // render, so an unconditional write here would re-render, re-sync and report
+  // again. The value is a pixel offset that settles; only a move is news.
+  const reportAnchorDy = useCallback((dy: number) => {
+    setAnchorDy((current) => Math.abs(current - dy) < .5 ? current : dy);
+  }, []);
   const [bounds, setBounds] = useState<SeatLayerPickerAdaptiveMeasuredBounds | undefined>(undefined);
   const [mapHeight, setMapHeight] = useState(0);
   // The band the seat card covers, measured from the map's foot (§3.8.2).
@@ -470,7 +476,7 @@ export function SeatLayerPickerAdaptiveLayout({
     bottom: phoneBands.bottom,
     controller: scope.controller,
     mapHeight,
-    onAnchorDy: setAnchorDy,
+    onAnchorDy: reportAnchorDy,
     revision: snapshot?.revision ?? 0,
     seatId: liftSeatId,
     sessionId: scope.sessionId,
