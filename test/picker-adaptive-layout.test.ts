@@ -162,6 +162,28 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('mounts no section dock on a WIDE layout either, unless the host asks (§3.6)', async () => {
+    // The bar is opt-in on every width now (owner call 2026-09-06): it used to
+    // be auto-resolved wide-on, so a wide picker got a bar nobody asked for.
+    state.width = 920;
+    state.scope = scope({
+      presentation: { prompt: null, sheet: 'collapsed', mapRung: 'seats' },
+      snapshot: {
+        categories: [], capabilities: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map', rung: 'seats', focusedSectionId: 's1' },
+        sections: [{ id: 's1', label: 'One' }],
+      },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout }));
+    });
+    await act(async () => { measure(tree, 920); });
+    expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-wide' })).toBeTruthy();
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    await act(async () => { tree.unmount(); });
+  });
+
   it('keeps one chart instance across a theme rebuild, uses the phone band, and collapses a pending sheet', async () => {
     state.width = 320;
     state.chartMounts = 0;
