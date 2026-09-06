@@ -206,6 +206,20 @@ describe('3.2 the band and its chips', () => {
       .toMatchObject({ backgroundColor: 'rgba(204, 0, 0, 1)', borderWidth: 0 });
   });
 
+  it('carries the prices alone on the phone \u2014 no unavailable key closing the row', async () => {
+    // \u00a73.2 / `picker_legend.dart`: the wide rail closes the row with a key for
+    // the grey the map paints on a seat nobody can take; the phone does not.
+    // A key that ends the row half off the screen reads as a cut word, and the
+    // grey disc explains itself the moment a seat is tapped. Reference frame
+    // 01: `All prices` then \u20ac180 / \u20ac95 / \u20ac140 / \u20ac42, and nothing after them.
+    setup();
+    const renderer = await render();
+    const chips = renderer.root.findAllByType('Pressable' as never);
+    // One pinned `All prices` plus one chip per sellable category. Nothing else.
+    expect(chips).toHaveLength(categories.length + 1);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'notAvailable' })).toHaveLength(0);
+  });
+
   it('keeps the colour key when a chip inverts', async () => {
     setup('dark', ['a']);
     const renderer = await render();
