@@ -15,6 +15,26 @@ export type SeatLayerPickerHoldOwnershipCode =
   typeof seatLayerPickerHoldOwnershipCodes[number];
 
 /**
+ * The refusals the runtime raises UNPROMPTED, on the map, with no native
+ * command in flight — a second tap on a seat under a host-owned hold, a second
+ * hold. Those are the ones an unsolicited bridge `error` may turn into the
+ * notice.
+ *
+ * `hold_selection_mismatch` is deliberately NOT one of them. It is only ever
+ * the answer to `picker.continue`, and since Flutter 0.9.1 that path answers
+ * it by REPLACING the hold with every selected seat and asking again, rather
+ * than by refusing with "Your seats are already in checkout". An echo of that
+ * attempt on the event channel must not raise a notice for a Continue that
+ * went on to succeed. The code stays in the list above, because the same
+ * refusal reaching a command the picker cannot retry is still a state
+ * (§3.13.13).
+ */
+export const seatLayerPickerUnsolicitedHoldOwnershipCodes = Object.freeze([
+  'hold_owned_by_host',
+  'hold_already_active',
+] as const satisfies readonly SeatLayerPickerHoldOwnershipCode[]);
+
+/**
  * What the inline action bar says instead of the refusal. `inCheckout` has one
  * action — release the handoff so the seats go back on sale; `alreadyHeld` has
  * no handoff to give back and so offers nothing but dismiss.
@@ -186,6 +206,25 @@ export class SeatLayerPickerHoldOwnershipStore {
     if (notice === undefined) return false;
     this.write(notice);
     return true;
+  }
+
+  /**
+   * The same, for a refusal that arrived on the event channel rather than as
+   * an answer to a command. Only the codes the runtime raises unprompted are
+   * taken; see [seatLayerPickerUnsolicitedHoldOwnershipCodes].
+   */
+  raiseUnsolicited(
+    error: unknown,
+    handoff: SeatLayerPickerCheckoutHandoff | undefined,
+  ): boolean {
+    const code = seatLayerPickerHoldOwnershipCode(error);
+    if (
+      code === undefined ||
+      !(seatLayerPickerUnsolicitedHoldOwnershipCodes as readonly string[]).includes(code)
+    ) {
+      return false;
+    }
+    return this.raise(error, handoff);
   }
 
   clear(): void {

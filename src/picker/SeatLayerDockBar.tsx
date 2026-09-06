@@ -145,7 +145,16 @@ function MeasureText({
   );
 }
 
-/** Scoped focused-section dock with data-only layout below the adapter. */
+/**
+ * Where the buyer is, and the two ways out, docked under the map. Rung 2 only,
+ * sliding away when the map climbs a level.
+ *
+ * THE DROP-IN MOUNTS NO DOCK ON ANY WIDTH (§3.6, owner call 2026-09-06): the
+ * pinch and the single stepped `-` control already walk a buyer back to the
+ * venue, and the bar's height plus the home-indicator inset pushed every
+ * bottom-corner control up the screen. A host that wants it sets
+ * `chrome.showDockBar`; this component stays mountable standalone regardless.
+ */
 export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const reducedMotion = useSeatLayerPickerReducedMotion();
