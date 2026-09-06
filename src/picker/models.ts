@@ -149,7 +149,22 @@ export interface SeatLayerPickerMapState {
   readonly focusedSection?: SeatLayerPickerSectionSummary;
   readonly colorblindSafe: boolean;
   readonly hideLimitedView: boolean;
-  readonly canZoomIn: boolean;
+  /**
+   * The camera is exactly at the whole-venue fit — the ONE state a "−" or
+   * "show whole venue" control may dim on. Runtime 0.84.0 and later.
+   *
+   * PRESENT-ONLY, never `false` as a stand-in: absent means the renderer
+   * cannot say, which is not the same answer as "no". A host that read
+   * `canZoomOut` alone re-created the dead "−" between the venue fit and the
+   * seats rung, so this is the field to dim on when it is there.
+   */
+  readonly atVenueFit?: boolean;
+  /**
+   * False only at the zoom ceiling. Runtime 0.84.0 and later, and
+   * PRESENT-ONLY for the same reason as `atVenueFit`: an older runtime says
+   * nothing here, and "nothing" must not read as "cannot zoom in".
+   */
+  readonly canZoomIn?: boolean;
   readonly canZoomOut: boolean;
   readonly categoryFilter: readonly string[];
   readonly accessibilityFilter: readonly string[];

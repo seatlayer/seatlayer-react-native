@@ -483,7 +483,15 @@ export function decodeSeatLayerPickerSnapshot(
       ...(focusedSection === undefined ? {} : { focusedSection }),
       colorblindSafe: asBoolean(map?.colorblindSafe) ?? false,
       hideLimitedView: asBoolean(map?.hideLimitedView) ?? false,
-      canZoomIn: asBoolean(map?.canZoomIn) ?? true,
+      // `atVenueFit`/`canZoomIn` are PRESENT-ONLY (runtime 0.84.0+): the key
+      // is carried only when the renderer could answer, so a host can tell
+      // "no" from "the engine cannot say" and fall back to `canZoomOut`.
+      ...(asBoolean(map?.atVenueFit) === undefined
+        ? {}
+        : { atVenueFit: asBoolean(map?.atVenueFit) }),
+      ...(asBoolean(map?.canZoomIn) === undefined
+        ? {}
+        : { canZoomIn: asBoolean(map?.canZoomIn) }),
       // Older hosted runtimes reported `false` while the buyer was already on
       // the seats rung. Keep the native escape hatch trustworthy during a
       // rolling web/native rollout; the new explicit semantic flag still wins

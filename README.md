@@ -30,7 +30,7 @@ parts a host can turn off, restyle, or replace.
 > **Production SDK:** Pin the release you validated, and check your event,
 > checkout handoff, lifecycle, and supported physical devices before rollout.
 > Each release pins one immutable hosted runtime; this one loads
-> `seatlayer-js@0.80.3` from `https://cdn.seatlayer.io`.
+> `seatlayer-js@0.84.1` from `https://cdn.seatlayer.io`.
 
 ## Install
 
@@ -421,8 +421,8 @@ before connecting payment and booking.
 It loads the immutable, version-pinned SeatLayer runtime and its lazy assets
 from the canonical CDN origin, which gives iOS and Android one canonical HTTPS
 origin for origin-bound buyer sessions. This release pins
-`seatlayer-js@0.80.3`, so views load
-`https://cdn.seatlayer.io/seatlayer-js@0.80.3/mobile.html`; the pinned version
+`seatlayer-js@0.84.1`, so views load
+`https://cdn.seatlayer.io/seatlayer-js@0.84.1/mobile.html`; the pinned version
 is also exported as `seatLayerHostedWebVersion`. Register
 `https://cdn.seatlayer.io` on the publishable key used for public startup.
 For private inventory, omit

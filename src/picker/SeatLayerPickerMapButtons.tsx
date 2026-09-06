@@ -75,7 +75,7 @@ async function dispatchMapAction(scope: SeatLayerPickerScopeValue, action: MapAc
   const current = { ...scope, snapshot: live } as SeatLayerPickerScopeValue;
   if (controller !== scope.controller || !actionAvailable(current, action) || !live) return;
   if (action === 'overview') await controller.overview();
-  else if (action === 'zoomIn' && live.map.canZoomIn) await controller.zoomIn();
+  else if (action === 'zoomIn' && live.map.canZoomIn !== false) await controller.zoomIn();
   else if (action === 'zoomOut' && live.map.canZoomOut) await controller.zoomOut();
   else if (action === 'fit') await controller.zoomToFit();
   else if (action === 'toggleView') {

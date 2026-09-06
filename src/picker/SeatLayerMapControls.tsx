@@ -149,7 +149,8 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
         if (currentView !== 'map') return undefined;
         await execute('picker.zoomToFit', ['zoom'], () => controller.zoomToFit());
       } else if (action === 'zoomIn') {
-        if (currentView !== 'map' || !latest.map.canZoomIn) return undefined;
+        // Absent is not "no": only an explicit `false` is the zoom ceiling.
+        if (currentView !== 'map' || latest.map.canZoomIn === false) return undefined;
         await execute('picker.zoomIn', ['zoom'], () => controller.zoomIn());
       } else if (action === 'zoomOut') {
         if (currentView !== 'map' || !latest.map.canZoomOut) return undefined;
@@ -238,7 +239,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       zoomBottomOffset={bottomPlan.zoomOffset}
       canFit={fitAvailable}
       canOverview={overviewAvailable}
-      canZoomIn={zoomPairAvailable && snapshot.map.canZoomIn}
+      canZoomIn={zoomPairAvailable && snapshot.map.canZoomIn !== false}
       canZoomOut={zoomPairAvailable && snapshot.map.canZoomOut}
       compact={compact}
       disabled={disabled}
