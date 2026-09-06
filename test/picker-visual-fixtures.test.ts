@@ -196,7 +196,7 @@ describe('deterministic native picker visual fixtures', () => {
     await act(async () => {
       tree.root.findByProps({ accessibilityLabel: 'Accessibility and view filters' }).props.onPress();
     });
-    expect(tree.root.findByProps({ accessibilityLabel: 'Wheelchair' }).props.accessibilityState)
+    expect(tree.root.findByProps({ accessibilityLabel: 'Wheelchair space' }).props.accessibilityState)
       .toMatchObject({ checked: false, disabled: true });
     expect(tree.root.findAllByProps({ accessibilityLabel: 'Hearing support' })).toHaveLength(0);
 
@@ -206,7 +206,7 @@ describe('deterministic native picker visual fixtures', () => {
       await Promise.resolve();
     });
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Companion' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Companion seat' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });

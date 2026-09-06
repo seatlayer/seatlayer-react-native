@@ -292,3 +292,25 @@ describe('every row wears the drawing that row is about (§3.5)', () => {
     expect(seatLayerPickerAccessRowGlyphIsPlaceholder).toBe(true);
   });
 });
+
+describe('the row names come from the generated short set (§3.5)', () => {
+  it('names a provision in the buyer language, English included', async () => {
+    const { createSeatLayerPickerStringResolver } = await import('../src/picker/locale');
+    // The extractor takes all thirty-seven from the runtime's own
+    // `picker.accessShort.*`, so the sheet, the seat card and the runtime say
+    // the same words. English has no locale dictionary of its own, so it used
+    // to fall through to the longer names in the token table.
+    expect(createSeatLayerPickerStringResolver({ locale: 'en' }).accessNeed('wheelchair'))
+      .toBe('Wheelchair space');
+    expect(createSeatLayerPickerStringResolver({}).accessNeed('semi-ambulatory'))
+      .toBe('Limited mobility');
+    expect(createSeatLayerPickerStringResolver({ locale: 'fr' }).accessNeed('wheelchair'))
+      .toBe('Emplacement fauteuil roulant');
+    // A host override still wins, and an unknown key is still its own name.
+    expect(createSeatLayerPickerStringResolver({
+      overrides: { accessNeeds: { wheelchair: 'Wheelchair bays' } },
+    }).accessNeed('wheelchair')).toBe('Wheelchair bays');
+    expect(createSeatLayerPickerStringResolver({ locale: 'fr' }).accessNeed('quiet-room'))
+      .toBe('quiet-room');
+  });
+});

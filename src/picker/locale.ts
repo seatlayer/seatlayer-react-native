@@ -202,6 +202,27 @@ function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Rea
   return undefined;
 }
 
+/**
+ * The generated short name for one access provision, in the buyer's language.
+ *
+ * These live in the locale table under `accessNeeds.<key>` — the extractor
+ * takes all thirty-seven from the runtime's own `picker.accessShort.*` (§3.5),
+ * so the sheet's rows, the seat card and the runtime agree word for word. They
+ * are read HERE rather than through `translate`, because English deliberately
+ * has no locale dictionary and would otherwise fall through to the older,
+ * longer names in the token table. Those stay the last resort, for a provision
+ * key the generated set has no entry for.
+ */
+function generatedAccessNeedLabel(
+  locale: SeatLayerPickerLocale | null | undefined,
+  need: string,
+): string | undefined {
+  const key = `accessNeeds.${need}`;
+  const english = seatLayerPickerLocaleStrings.en as Readonly<Record<string, string>> | undefined;
+  const value = localeDictionary(locale)?.[key] ?? english?.[key];
+  return typeof value === 'string' && value ? value : undefined;
+}
+
 function pluralCategory(locale: SeatLayerPickerLocale | null | undefined, count: number): string {
   try {
     return new Intl.PluralRules(typeof locale === 'string' ? locale : 'en').select(count);
@@ -348,6 +369,7 @@ export function createSeatLayerPickerStringResolver(
       const safeNeed = safeKey(need);
       const values = resolvedValues({ need: safeNeed }, count);
       const label = resolveOverride(overrides.accessNeeds, [safeNeed], contextFor(safeNeed, locale, count, values))
+        ?? generatedAccessNeedLabel(locale, safeNeed)
         ?? seatLayerPickerEnglishAccessNeeds[safeNeed as SeatLayerPickerKnownAccessNeed]
         ?? safeNeed;
       return count === undefined || !Number.isFinite(count)
