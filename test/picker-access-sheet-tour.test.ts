@@ -92,7 +92,7 @@ function setup(options: {
           hideLimitedView: english.hideLimitedView,
           colorblindSafe: english.colorblindSafe,
           companionSeatsNote: english.companionSeatsNote,
-          accessNoneLeft: english.accessNoneLeft,
+          notAvailable: english.notAvailable,
           accessJumpFirstSection: english.accessJumpFirstSection,
           accessJumpNextSection: english.accessJumpNextSection,
         };
@@ -173,7 +173,7 @@ describe('accessibility sheet applies live (§3.5, Flutter 0.7.3)', () => {
     // Absent is not zero: an uncounted provision shows no number and stays live.
     expect(renderer.root.findByProps({ accessibilityLabel: 'hearing' }).props.accessibilityState)
       .toMatchObject({ checked: false, disabled: false });
-    expect(renderer.root.findAllByProps({ accessibilityLabel: 'None left' })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'Not available' })).toHaveLength(0);
   });
 
   it('turns the count into a jump that applies, closes and takes the first step', async () => {

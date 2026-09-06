@@ -280,7 +280,7 @@ export function SeatLayerPickerAccessibilityFilters(
       const counted = usesReportedNeeds && typeof need.count === "number";
       const countLabel = counted
         ? (need.count === 0
-          ? scope.strings.translate("accessNoneLeft")
+          ? scope.strings.translate("notAvailable")
           : scope.strings.translate("accessFreeCount", { count: need.count }))
         : undefined;
       return Object.freeze({

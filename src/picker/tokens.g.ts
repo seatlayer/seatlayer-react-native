@@ -1,8 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: 0ecb3e0a62d1c33e61a1c08d5496d5ca0ab2ab5f6acb56ab74f2187d19e67787
+// Canonical token input SHA-256: 27751f1d250d9492c5f38bc93aa5ca1bb0db32ab4732cc20dff918ee5fda85a1
 // Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = '0ecb3e0a62d1c33e61a1c08d5496d5ca0ab2ab5f6acb56ab74f2187d19e67787' as const;
+export const seatLayerPickerTokenSourceSha256 = '27751f1d250d9492c5f38bc93aa5ca1bb0db32ab4732cc20dff918ee5fda85a1' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -26,14 +26,17 @@ export const seatLayerPickerTokens = {
       "mapText": "#F4F7FB",
       "mutedText": "#A5AEC2",
       "onAccent": "#110D20",
+      "premium": "#E8C15A",
+      "premiumText": "#DCCBA5",
       "surface": "#1A2234",
       "text": "#EEF1F8",
+      "warnText": "#E3CC93",
       "warning": "#F4B740"
     },
     "light": {
       "accent": "#5B4B8A",
       "background": "#FFFFFF",
-      "chrome": "#FFFFFF",
+      "chrome": "#d6dce6",
       "chromeLine": "#1720338C",
       "divider": "#17203329",
       "error": "#B42318",
@@ -43,8 +46,11 @@ export const seatLayerPickerTokens = {
       "mapText": "#172033",
       "mutedText": "#667085",
       "onAccent": "#FFFFFF",
+      "premium": "#E8C15A",
+      "premiumText": "#6C5E3F",
       "surface": "#F6F7FB",
       "text": "#172033",
+      "warnText": "#745F2C",
       "warning": "#F4B740"
     }
   },
@@ -141,6 +147,11 @@ export const seatLayerPickerTokens = {
   "opacity": {
     "confirmScrim": 0.38,
     "confirmScrimFlat": 0.5,
+    "mapControlDisabled": 0.42,
+    "noteBodyInk": 0.75,
+    "noteHairline": 0.6,
+    "noteNeutralWash": 0.06,
+    "noteToneWash": 0.1,
     "removing": 0.45,
     "warnPillWash": 0.18
   },
@@ -158,12 +169,17 @@ export const seatLayerPickerTokens = {
     "smallRatio": 0.55
   },
   "size": {
+    "accessNoteIconSize": 15,
     "accessRowGap": 10,
     "accessRowIconCell": 20,
+    "accessRowIconSize": 17,
     "accessRowLabelFontSize": 12.5,
     "accessRowNoteFontSize": 10.5,
     "accessRowPaddingX": 8,
     "accessRowPaddingY": 6,
+    "accessRowSwitchGap": 12,
+    "accessSheetMaxHeightFraction": 0.72,
+    "accessSheetMinHeight": 240,
     "accessStepFontSize": 11,
     "accessStepGap": 5,
     "accessStepHeight": 30,
@@ -171,10 +187,19 @@ export const seatLayerPickerTokens = {
     "accessSwitchHeight": 20,
     "accessSwitchKnob": 16,
     "accessSwitchWidth": 34,
-    "accessibilityControlSize": 44,
+    "accessibilityControlSize": 36,
     "attributionHeight": 18,
     "bestSeatsSelectHeight": 34,
     "bestSeatsStepperWidth": 112,
+    "cartCardGap": 6,
+    "cartCardMinHeight": 52,
+    "cartCardRadius": 12,
+    "cartNoteGap": 3,
+    "cartNotePadTop": 5,
+    "cartPeekMaxHeight": 189,
+    "cartTrayPadBottom": 2,
+    "cartTrayPadTop": 10,
+    "cartTrayPadX": 14,
     "checkoutButtonHeight": 44,
     "confidenceTeaserBadgeFont": 11,
     "confidenceTeaserDetailFont": 9.5,
@@ -230,12 +255,6 @@ export const seatLayerPickerTokens = {
     "confirmSightPadX": 8,
     "confirmSightPadY": 3,
     "confirmTierHeight": 38,
-    "denseCollapseFrom": 6,
-    "denseLineHeight": 44,
-    "denseMoreRowHeight": 40,
-    "denseRemoveSize": 32,
-    "denseRunToggleWidth": 24,
-    "denseVisibleLines": 4,
     "dockBackChevronSize": 18,
     "dockBackFontSize": 12.5,
     "dockBackHeight": 36,
@@ -258,6 +277,10 @@ export const seatLayerPickerTokens = {
     "floorInfoSize": 26,
     "floorRailGap": 1,
     "floorRailPadding": 3,
+    "footPadBottom": 2,
+    "footPadTop": 4,
+    "footPadX": 16,
+    "footTotalGap": 8,
     "headerCloseSize": 26,
     "headerHeight": 38,
     "headerLogoSize": 22,
@@ -280,6 +303,14 @@ export const seatLayerPickerTokens = {
     "mapAnchorInset": 12,
     "mapControlSize": 36,
     "minimumHitTarget": 44,
+    "noteCompactIconSize": 15,
+    "noteCompactPadLeading": 15,
+    "noteCompactPadX": 12,
+    "noteCompactPadY": 7,
+    "noteIconGap": 9,
+    "noteIconSize": 17,
+    "notePadX": 14,
+    "notePadY": 9,
     "peekButtonHeight": 48,
     "peekClockLift": 8,
     "peekHeight": 58,
@@ -289,6 +320,10 @@ export const seatLayerPickerTokens = {
     "sheetGrabberHeight": 4,
     "sheetGrabberInset": 4,
     "sheetGrabberWidth": 35,
+    "sheetHandleHeight": 44,
+    "sheetHandleOverhang": 22,
+    "sheetHandleWidth": 44,
+    "sheetHeadHeight": 16,
     "sheetMaxHeight": 480,
     "sheetMaxHeightFraction": 0.72,
     "sheetOpenHeadHeight": 36,
@@ -307,6 +342,7 @@ export const seatLayerPickerTokens = {
     "zoomColumnGap": 6
   },
   "strings": {
+    "aboutBestSeats": "About finding seats together",
     "accessCart": "Mobility cart",
     "accessCompanion": "Companion",
     "accessDesignatedAisle": "Aisle seat",
@@ -319,7 +355,6 @@ export const seatLayerPickerTokens = {
     "accessLiftArmrest": "Lift armrest",
     "accessLowVision": "Low vision",
     "accessNeedWithCount": "{need} · {count}",
-    "accessNoneLeft": "None left",
     "accessPausedCopy": "The organizer has paused this selection. Try again in a few minutes.",
     "accessPausedTitle": "These seats are on hold right now",
     "accessPlusSize": "Plus-size seat",
@@ -335,6 +370,7 @@ export const seatLayerPickerTokens = {
     "accessWheelchair": "Wheelchair",
     "accessibility": "Accessibility and view filters",
     "accessibilityTitle": "Accessibility and view",
+    "accessiblePhysicalSeat": "Accessible physical seat",
     "accessibleSections": "{count} sections",
     "accessibleStep": "{index} of {total}",
     "addMinutes": "+{count} min",
@@ -361,6 +397,7 @@ export const seatLayerPickerTokens = {
     "chooseTableGuests": "Choose the number of guests for this table",
     "chooseTickets": "Choose tickets",
     "close": "Close seat selection",
+    "closestGroupChosenInstantly": "Closest available group, chosen instantly.",
     "collapseCart": "Collapse ticket panel",
     "colorblindSafe": "Colourblind-friendly colours",
     "companionSeatsNote": "Companion places beside them stay selectable",
@@ -374,16 +411,20 @@ export const seatLayerPickerTokens = {
     "couldNotAddMoreTime": "Couldn't add more time — please head to checkout now.",
     "displayOptions": "Display options",
     "emptyTrayHint": "Tap a seat on the map, or let us pick the best available for you.",
+    "emptyWheelchairSpace": "Empty wheelchair space",
     "errorMessage": "The seat map could not be loaded.",
     "expandCart": "Open ticket panel",
     "fewerGuests": "Fewer guests",
     "fewerTickets": "Fewer tickets",
     "findBestSeats": "Find {count} best seats",
+    "findBestSeatsCta": "Find best seats",
     "findBestSeatsOne": "Find {count} best seat",
     "findBestSeatsOther": "Find {count} best seats",
     "findSeats": "Find seats",
+    "findSeatsTogether": "Find seats together",
     "findingBestSeats": "Finding the best seats…",
     "fitVenue": "Fit venue",
+    "fitWholeVenue": "Show whole venue",
     "flat2dMap": "Flat 2D map",
     "fromPrice": "From {price}",
     "generalAdmission": "General admission",
@@ -418,13 +459,16 @@ export const seatLayerPickerTokens = {
     "moveVenue": "Drag to move venue",
     "nextSeat": "Next seat",
     "nextSection": "Next section",
+    "noSeatsSelected": "No seats selected",
     "noSelectableSeats": "No selectable seats are currently available.",
+    "notAvailable": "Not available",
     "numberOfGuests": "Number of guests",
     "obstructedView": "Obstructed view",
     "onlyLeft": "Only {count} left",
     "openVenue360": "Open venue 360°",
     "openingCheckout": "Opening secure checkout…",
     "orbitMode": "Rotate venue",
+    "organizerNote": "Organizer note",
     "overview": "Venue",
     "panMode": "Move venue",
     "passport": "Passport",
@@ -505,6 +549,7 @@ export const seatLayerPickerTokens = {
     "viewFromHere": "View from here",
     "viewFromThisSeat": "View from this seat",
     "viewFromYourSeat": "view from your seat",
+    "viewGroupTitle": "VIEW",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out"
   },
@@ -529,6 +574,26 @@ export const seatLayerPickerTokens = {
       "size": 14,
       "weight": 800
     },
+    "cartCardAmount": {
+      "size": 13,
+      "weight": 800
+    },
+    "cartCardName": {
+      "size": 13,
+      "weight": 700
+    },
+    "cartCardPosition": {
+      "size": 11.5,
+      "weight": 600
+    },
+    "cartNoteText": {
+      "size": 10,
+      "weight": 600
+    },
+    "cartNoteTitle": {
+      "size": 10,
+      "weight": 800
+    },
     "confirmAction": {
       "size": 14,
       "weight": 800
@@ -536,18 +601,6 @@ export const seatLayerPickerTokens = {
     "confirmIdentity": {
       "size": 14,
       "weight": 800
-    },
-    "denseLine": {
-      "size": 13,
-      "weight": 600
-    },
-    "denseMore": {
-      "size": 12.5,
-      "weight": 650
-    },
-    "denseMultiplier": {
-      "size": 11,
-      "weight": 600
     },
     "dockCount": {
       "size": 13,
@@ -561,6 +614,14 @@ export const seatLayerPickerTokens = {
       "size": 16,
       "weight": 800
     },
+    "footTotalAmount": {
+      "size": 17,
+      "weight": 700
+    },
+    "footTotalLabel": {
+      "size": 13,
+      "weight": 600
+    },
     "headerTitle": {
       "size": 16,
       "weight": 800
@@ -568,6 +629,22 @@ export const seatLayerPickerTokens = {
     "legendChip": {
       "size": 11,
       "weight": 800
+    },
+    "noteBody": {
+      "size": 11,
+      "weight": 400
+    },
+    "noteBodyCompact": {
+      "size": 10.5,
+      "weight": 400
+    },
+    "noteTitle": {
+      "size": 12.5,
+      "weight": 800
+    },
+    "noteTitleCompact": {
+      "size": 11.5,
+      "weight": 750
     },
     "peekFromPrice": {
       "size": 19,
