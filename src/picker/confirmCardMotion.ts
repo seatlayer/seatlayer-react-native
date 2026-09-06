@@ -122,3 +122,92 @@ export function seatLayerPickerConfirmMotionReduce(
 export function seatLayerPickerConfirmAcceptsPress(state: SeatLayerPickerConfirmMotionState): boolean {
   return state.phase !== 'committing' && state.phase !== 'leaving';
 }
+
+/**
+ * §3.8.4 / §3.9 (0.9.1) — the ADD choreography, as its own ordering.
+ *
+ * Pressing `Add seat` used to do three things at once: the chip left the card,
+ * the foot's count changed, and the map dropped its lift — so the seat the chip
+ * was flying from slid out from under it while it was still in the air, and the
+ * count had already moved by the time the chip arrived to announce it.
+ *
+ * The order is now fixed, and it is one thing at a time:
+ *
+ *  1. **press** — the answer commits (see the reducer above: the cart, the
+ *     totals and every snapshot-derived surface still update on the press
+ *     tick). The chip is launched from the seat and the map KEEPS its lift.
+ *  2. **landed** — the chip reaches the foot's total line. Only now does the
+ *     count-and-total block swell {@link seatLayerPickerConfirmSwellScale} with
+ *     an accent blink, over `motion.duration.bump`.
+ *  3. **released** — the swell is done and the map may put itself back.
+ *
+ * Under reduced motion there is no chip at all, so there is nothing to wait
+ * for: the press releases the lift immediately and the foot never swells.
+ *
+ * **Ownership.** The stage machine is here; the chip is
+ * `SeatLayerSelectionFlight` and the swell belongs to the foot, so the two
+ * surfaces that draw it read `swelling` and `liftHeld` rather than timing
+ * themselves off the press.
+ */
+export type SeatLayerPickerConfirmAddStage = 'idle' | 'flying' | 'landed' | 'released';
+
+/** How far the count and the total swell when the chip lands. */
+export const seatLayerPickerConfirmSwellScale = 1.3;
+
+export interface SeatLayerPickerConfirmAddState {
+  readonly stage: SeatLayerPickerConfirmAddStage;
+  /** Whether the map must keep the pan it made for the answered seat. */
+  readonly liftHeld: boolean;
+  /** Whether the foot's count and total are playing their swell right now. */
+  readonly swelling: boolean;
+}
+
+export type SeatLayerPickerConfirmAddEvent =
+  /** `Add seat` was pressed and the answer committed. */
+  | { readonly kind: 'press' }
+  /** The chip reached the foot. */
+  | { readonly kind: 'landed' }
+  /** The swell finished. */
+  | { readonly kind: 'swelled' }
+  /** The card went away without an answer; nothing is owed. */
+  | { readonly kind: 'dismissed' };
+
+const idleAdd: SeatLayerPickerConfirmAddState = Object.freeze({
+  stage: 'idle', liftHeld: false, swelling: false,
+});
+const releasedAdd: SeatLayerPickerConfirmAddState = Object.freeze({
+  stage: 'released', liftHeld: false, swelling: false,
+});
+
+export function seatLayerPickerConfirmAddInitial(): SeatLayerPickerConfirmAddState {
+  return idleAdd;
+}
+
+/** How long the foot's swell runs; 0 under reduced motion. */
+export function seatLayerPickerConfirmSwellMs(plan: SeatLayerPickerConfirmMotionPlan): number {
+  return plan.flight ? seatLayerPickerTokens.motion.duration.bump : 0;
+}
+
+export function seatLayerPickerConfirmAddReduce(
+  state: SeatLayerPickerConfirmAddState,
+  event: SeatLayerPickerConfirmAddEvent,
+  plan: SeatLayerPickerConfirmMotionPlan,
+): SeatLayerPickerConfirmAddState {
+  switch (event.kind) {
+    case 'press':
+      if (state.stage !== 'idle') return state;
+      // No chip means nothing to wait for: the map goes back on the press.
+      return plan.flight
+        ? Object.freeze({ stage: 'flying' as const, liftHeld: true, swelling: false })
+        : releasedAdd;
+    case 'landed':
+      if (state.stage !== 'flying') return state;
+      return Object.freeze({ stage: 'landed' as const, liftHeld: true, swelling: true });
+    case 'swelled':
+      return state.stage === 'landed' ? releasedAdd : state;
+    case 'dismissed':
+      return state.stage === 'idle' ? state : releasedAdd;
+    default:
+      return state;
+  }
+}
