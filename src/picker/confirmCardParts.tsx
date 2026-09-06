@@ -4,8 +4,14 @@ import { I18nManager, Image, Pressable, StyleSheet, Text, View, type StyleProp, 
 import type { SeatLayerPickerBuyerAssetLoader } from './buyerAssetLoader';
 import { blendSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
 import { seatLayerPickerConfirmBandInk, type SeatLayerPickerConfirmIdentityCell } from './confirmCardIdentity';
+import { SeatLayerPickerSeatIcon } from './seatIcons';
+import {
+  seatLayerPickerSeatNoteHairline, seatLayerPickerSeatNoteToneColors,
+  type SeatLayerPickerSeatNote, type SeatLayerPickerSeatNotePalette,
+} from './seatNotes';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerFontWeight } from './fontWeight';
 import { seatLayerPickerLineWidth } from './lineWidth';
 
 /** §3.8.3 — the parts the seat card is assembled from. */
@@ -229,26 +235,75 @@ export function ConfirmPhotoStrip(props: Readonly<{
 }
 
 /** A premium chip and a limited-view warning, as their own small blocks. */
-export function ConfirmNotices(props: Readonly<{
-  premium?: string;
-  limited?: string;
-  theme: ConfirmCardTheme;
+/**
+ * §3.8.9 — a seat's notes, as full-bleed BANDS under the category band.
+ *
+ * No radius, no border and no inset: a band is the card's full width or it is
+ * a plate again — four rounded plates inset inside the card's padding read as
+ * four small cards floating inside a card. The hairline lives on the JOIN, so
+ * the first band sits flush against the category band above it and the block
+ * reads as a continuation of that band rather than as a new object.
+ *
+ * `compact` is the wide layout's tap card — a narrower popup floating over the
+ * map — so the type comes down a rung and the text inset moves to that card's
+ * own leading inset. The bands stay bands.
+ */
+export function ConfirmSeatNotes(props: Readonly<{
+  rows: readonly SeatLayerPickerSeatNote[];
+  palette: SeatLayerPickerSeatNotePalette;
+  compact?: boolean;
+  fontFamily?: string;
 }>): React.ReactElement | null {
-  if (props.premium === undefined && props.limited === undefined) return null;
-  return <View style={styles.notices} testID="seatLayerConfirmNotices">
-    {props.premium === undefined ? null : <Text
-      maxFontSizeMultiplier={clamp}
-      numberOfLines={1}
-      style={[styles.notice, { color: props.theme.accent, fontFamily: props.theme.fontFamily }]}
-    >{props.premium}</Text>}
-    {/* Not a live region: the notice is part of the card's own statement and
-        never changes while the card is up. A live region here re-announces the
-        sightline on every repaint. */}
-    {props.limited === undefined ? null : <Text
-      maxFontSizeMultiplier={clamp}
-      numberOfLines={2}
-      style={[styles.notice, { color: props.theme.warning, fontFamily: props.theme.fontFamily }]}
-    >{props.limited}</Text>}
+  if (props.rows.length === 0) return null;
+  const compact = props.compact === true;
+  const hairline = seatLayerPickerSeatNoteHairline(props.palette.divider);
+  const size = seatLayerPickerTokens.size;
+  const type = seatLayerPickerTokens.type;
+  const title = compact ? type.noteTitleCompact : type.noteTitle;
+  const body = compact ? type.noteBodyCompact : type.noteBody;
+  return <View testID="seatLayerConfirmSeatNotes">
+    {props.rows.map((row, index) => {
+      const tone = seatLayerPickerSeatNoteToneColors(props.palette, row.tone);
+      return <View
+        key={row.key}
+        style={[styles.noteBand, {
+          backgroundColor: tone.ground,
+          borderTopColor: hairline,
+          // Only BETWEEN bands: a line above the first would fight the
+          // category band's own edge.
+          borderTopWidth: index === 0 ? 0 : seatLayerPickerLineWidth,
+          paddingBottom: compact ? size.noteCompactPadY : size.notePadY,
+          paddingEnd: compact ? size.noteCompactPadX : size.notePadX,
+          paddingStart: compact ? size.noteCompactPadLeading : size.notePadX,
+          paddingTop: compact ? size.noteCompactPadY : size.notePadY,
+        }]}
+        testID={`seatLayerConfirmSeatNote-${row.key}`}
+      >
+        <SeatLayerPickerSeatIcon
+          color={tone.iconInk}
+          iconKey={row.iconKey}
+          size={compact ? size.noteCompactIconSize : size.noteIconSize}
+          style={styles.noteIcon}
+        />
+        <View style={styles.noteText}>
+          <Text
+            maxFontSizeMultiplier={clamp}
+            style={[styles.noteTitle, {
+              color: tone.ink, fontFamily: props.fontFamily,
+              fontSize: title.size, fontWeight: seatLayerPickerFontWeight(title.weight),
+            }]}
+          >{row.title}</Text>
+          {row.note === undefined ? null : <Text
+            maxFontSizeMultiplier={clamp}
+            style={[styles.noteBody, {
+              color: tone.bodyInk, fontFamily: props.fontFamily,
+              fontSize: body.size, lineHeight: body.size * 1.4,
+              fontWeight: seatLayerPickerFontWeight(body.weight),
+            }]}
+          >{row.note}</Text>}
+        </View>
+      </View>;
+    })}
   </View>;
 }
 
@@ -329,8 +384,13 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     top: 6,
   },
   sightText: { color: '#FFFFFF', fontSize: seatLayerPickerTokens.size.confirmSightFont, fontWeight: '700' },
-  notices: { gap: 4, paddingHorizontal: seatLayerPickerTokens.size.confirmCardGutter, paddingTop: 8 },
-  notice: { fontSize: 12, fontWeight: '700' },
+  noteBand: { alignItems: 'flex-start', flexDirection: 'row' },
+  // A point down, matching the reference: the glyph's own box is taller
+  // than its cap height, so a flush top reads as a point high.
+  noteIcon: { marginEnd: seatLayerPickerTokens.size.noteIconGap, marginTop: 1 },
+  noteText: { flexGrow: 1, flexShrink: 1 },
+  noteTitle: {},
+  noteBody: { marginTop: 2 },
   tick: { borderBottomWidth: 2, borderLeftWidth: 2, height: 7, transform: [{ rotate: '-45deg' }], width: 12 },
   cross: { alignItems: 'center', height: 12, justifyContent: 'center', width: 12 },
   crossBar: { height: 2, position: 'absolute', width: 13 },

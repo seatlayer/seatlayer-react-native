@@ -95,11 +95,24 @@ export class SeatLayerPickerSeatLift {
   private seatId: string | null = null;
   private fraction = 0;
   private total = 0;
+  private anchor = 0;
   private gestures: number | undefined;
   private revision = -1;
   private generation = 0;
   private seenHeight: number | undefined;
   private settling = false;
+  private anchorListener: ((dy: number) => void) | undefined;
+
+  /**
+   * Watch the pan standing over the current snapshot.
+   *
+   * The lift moves the map from an async command reply, so a surface drawn
+   * against `selection[].screenPoint` — the spotlight hole — cannot learn about
+   * it from a render. It is told.
+   */
+  setAnchorListener(listener: ((dy: number) => void) | undefined): void {
+    this.anchorListener = listener;
+  }
 
   constructor(
     private readonly sink: SeatLayerPickerSeatLiftSink,
@@ -115,6 +128,22 @@ export class SeatLayerPickerSeatLift {
   /** The total pan standing, in screen pixels. */
   get dy(): number {
     return this.total;
+  }
+
+  /**
+   * The pan made since the snapshot the chrome is reading, in screen pixels.
+   *
+   * `selection[].screenPoint` is computed when the runtime BUILDS a snapshot,
+   * and `picker.frameSeat` publishes none — it is camera only, no revision, no
+   * selection — so a seat's reported point is where it sat BEFORE this lift.
+   * Anything the shell draws against that point adds this, or it lands a whole
+   * lift band away from the seat: the spotlight hole did, on device (iOS 26.5),
+   * showing the candidate's neighbours while the seat stayed under the blur.
+   * A newer snapshot already contains the pans made before it, so this resets
+   * the moment one arrives rather than accumulating for the card's life.
+   */
+  get anchorDy(): number {
+    return this.anchor;
   }
 
   /**
@@ -146,6 +175,10 @@ export class SeatLayerPickerSeatLift {
     this.settling = false;
     const fraction = seatLayerPickerSheetLiftFraction(input);
     if (input.seatId === this.seatId && fraction === this.fraction && input.revision === this.revision) return;
+    // A newer snapshot recomputed every screen point against the camera this
+    // lift has already moved, so the pans folded into it are no longer the
+    // shell's to add.
+    if (input.revision !== this.revision) this.publishAnchor(0);
     this.seatId = input.seatId;
     this.fraction = fraction;
     this.revision = input.revision;
@@ -184,6 +217,7 @@ export class SeatLayerPickerSeatLift {
     this.seatId = null;
     this.fraction = 0;
     this.total = 0;
+    this.publishAnchor(0);
     this.gestures = undefined;
     this.revision = -1;
   }
@@ -202,6 +236,7 @@ export class SeatLayerPickerSeatLift {
     if (this.gestures !== undefined && answer.gestures !== this.gestures) return;
     this.gestures = answer.gestures;
     this.total += answer.dy;
+    this.publishAnchor(this.anchor + answer.dy);
     if (this.timers.length > 0) return;
     for (const delay of this.settleDelaysMs) {
       this.timers.push(this.clock.setTimeout(() => {
@@ -209,6 +244,12 @@ export class SeatLayerPickerSeatLift {
         void this.lift(seatId, fraction, generation);
       }, delay));
     }
+  }
+
+  private publishAnchor(value: number): void {
+    if (this.anchor === value) return;
+    this.anchor = value;
+    try { this.anchorListener?.(value); } catch { /* one broken reader never stops the lift */ }
   }
 
   private cancelSettle(): void {

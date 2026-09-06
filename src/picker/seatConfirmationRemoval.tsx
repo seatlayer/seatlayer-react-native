@@ -104,9 +104,32 @@ export function seatLayerPickerRemovalPolicy(
   const pending = scope.pendingSeat;
   return Object.freeze({
     hasPendingAdd: pending !== null,
+    holdActive: scope.snapshot?.hold?.active === true,
     pendingSeatIdentity: pending === null ? null : seatLayerPickerSeatIdentity(pending),
     readOnly: scope.readOnly,
   });
+}
+
+/**
+ * Whether a seat card is ASKING right now — either question.
+ *
+ * The one boolean the rest of the chrome turns on while a card is up: the
+ * sheet hides its handle (§3.9 — the drawer handle over a card reads as a
+ * second thing to press while the card is the only question on screen), the
+ * map's disc column fades (§3.5), the anchors stop taking presses and the
+ * cart sheet goes inert (§3.8.1). It is deliberately ONE value: two surfaces
+ * deciding separately what "a card is up" means is how the bottom-centre
+ * region ended up above the card while the sheet still thought it was live.
+ *
+ * The bottom-centre toast region is the ONE exception and does not read this:
+ * it comes forward at full opacity above the card, press-through, because it
+ * carries the reply to the tap.
+ */
+export function seatLayerPickerCardAsking(
+  scope: Readonly<{ pendingSeat: unknown }>,
+  seatAwaitingRemoval: unknown,
+): boolean {
+  return (scope.pendingSeat ?? null) !== null || (seatAwaitingRemoval ?? null) !== null;
 }
 
 /** The session key the remove question is held under. */

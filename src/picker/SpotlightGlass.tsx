@@ -81,6 +81,18 @@ export interface SpotlightGlassProps {
    * without `seat-screen-point-v1`: the card then stands over flat glass.
    */
   readonly screenPoint?: SeatLayerPickerSpotlightPoint;
+  /**
+   * The pan the seat lift has made SINCE that snapshot (§3.8.2).
+   *
+   * `screenPoint` is computed when the runtime builds a snapshot and
+   * `picker.frameSeat` publishes none, so the reported point is where the seat
+   * sat before the lift. Cut the hole at the reported point alone and it lands
+   * one lift band below the seat — showing its neighbours while the seat itself
+   * stays under the blur, measured on device. The lift reports what it has
+   * panned and the hole moves by it; the count resets the moment a newer
+   * snapshot arrives, whose own points already stand where the map now is.
+   */
+  readonly anchorDy?: number;
   /** Overrides the platform reading; the store is used when this is absent. */
   readonly reducedTransparency?: boolean;
   readonly style?: StyleProp<ViewStyle>;
@@ -162,6 +174,16 @@ export function seatLayerPickerSpotlightVeil(reducedTransparency: boolean): numb
     : seatLayerPickerTokens.opacity.confirmScrim;
 }
 
+/** Where the hole is actually cut: the reported point plus the standing pan. */
+export function seatLayerPickerSpotlightAnchor(
+  point: SeatLayerPickerSpotlightPoint | undefined,
+  anchorDy: number | undefined,
+): SeatLayerPickerSpotlightPoint | undefined {
+  if (point === undefined) return undefined;
+  if (anchorDy === undefined || !Number.isFinite(anchorDy) || anchorDy === 0) return point;
+  return Object.freeze({ x: point.x, y: point.y + anchorDy });
+}
+
 /** The map's glass while one seat card is up. Never takes a pointer event. */
 export function SpotlightGlass(props: SpotlightGlassProps): React.ReactElement | null {
   const platform = useSeatLayerPickerReducedTransparency();
@@ -189,7 +211,7 @@ export function SpotlightGlass(props: SpotlightGlassProps): React.ReactElement |
     testID="seatLayerSpotlightGlass"
   >
     {Blur === undefined ? null : <Blur blurAmount={seatLayerPickerTokens.size.confirmScrimBlur} pointerEvents="none" style={StyleSheet.absoluteFill} />}
-    {seatLayerPickerSpotlightLayers(props.screenPoint, veil, size).map((layer) => layer.ring
+    {seatLayerPickerSpotlightLayers(seatLayerPickerSpotlightAnchor(props.screenPoint, props.anchorDy), veil, size).map((layer) => layer.ring
       ? <View
         key={layer.key}
         pointerEvents="none"

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-native', () => ({
-  I18nManager: { isRTL: false }, Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  I18nManager: { isRTL: false }, Image: 'Image', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   useWindowDimensions: () => ({ width: 1200, height: 900 }), StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
 }));
 let scope: Record<string, any>;
@@ -88,7 +88,25 @@ describe('SeatLayerPickerSeatConfirmation', () => {
     expect(text).not.toContain('"seat"');
     expect(text).not.toContain('wire-wheelchair-space');
     expect(renderer.root.findAllByType('Text' as any).filter((node) => node.children.join('') === 'Orchestra')).toHaveLength(1);
-    expect(text).toContain('access:wheelchair');
+    // §3.8.9 — a provision this build does not know draws no row at all, and
+    // the wheelchair accommodation beside it yields to the provision either
+    // way. The card no longer invents a notice titled from the sheet's copy.
+    expect(text).not.toContain('access:wheelchair');
+    expect(text).not.toContain('emptyWheelchairSpace');
+  });
+
+  it('§3.8.9 says the seat notes as bands, from the one row model', async () => {
+    setup({ wheelchairSpaceType: 'no-seat' }); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerSeatConfirmation)); });
+    const bands = renderer.root.findAll((node) =>
+      typeof node.props?.testID === 'string' && node.props.testID.startsWith('seatLayerConfirmSeatNote-'));
+    expect([...new Set(bands.map((node) => node.props.testID as string))]).toEqual([
+      'seatLayerConfirmSeatNote-wheelchair:no-seat',
+      'seatLayerConfirmSeatNote-mark:restrictedView',
+    ]);
+    // The organizer's sentence explains the restriction rather than standing
+    // alone in a bordered notice.
+    expect(JSON.stringify(renderer.toJSON())).toContain('Obstructed stage edge');
   });
 
   it('uses a safe category-colour fallback and buyer-authored restricted note only', async () => {
