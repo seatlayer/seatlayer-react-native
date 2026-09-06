@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-native', () => ({
-  I18nManager: { isRTL: false }, Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  I18nManager: { isRTL: false }, Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
   useWindowDimensions: () => ({ width: 390, height: 844 }),
 }));
@@ -230,9 +230,12 @@ describe('accessibility sheet applies live (§3.5, Flutter 0.7.3)', () => {
     const colorblind = renderer.root.findByProps({
       accessibilityRole: 'switch', accessibilityLabel: english.colorblindSafe,
     });
-    const split = colorblind.findAll((node: any) =>
-      Array.isArray(node.props?.style) && node.props.style.some((s: any) => s && s.overflow === 'hidden'));
-    expect(split.length).toBeGreaterThan(0);
+    // The disc comes from the SHARED set now (§3.8.9), by its own key. It is
+    // deliberately NOT a seat attribute: this row recolours the map rather
+    // than picking seats, so it wears a contrast disc and never a wheelchair.
+    expect(colorblind.findAllByProps({ testID: 'seatLayerSeatIcon-contrast' }).length)
+      .toBeGreaterThan(0);
+    expect(colorblind.findAllByProps({ testID: 'seatLayerSeatIcon-wheelchair' })).toHaveLength(0);
   });
 
 });

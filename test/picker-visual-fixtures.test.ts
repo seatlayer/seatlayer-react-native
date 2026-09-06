@@ -114,7 +114,11 @@ describe('deterministic native picker visual fixtures', () => {
       expect(tree.root.findAllByType(NeutralMapSurface)).toHaveLength(1);
       tree.unmount();
     }
-  });
+  // Every scenario, each through the complete production composition. Under
+  // the parallel suite this contends for the scheduler rather than doing more
+  // work, so it gets a budget that fails on a real regression instead of on a
+  // busy machine — it runs in about a quarter of this on its own.
+  }, 30_000);
 
   it('exposes the production widget that owns each specialist fixture state', async () => {
     const confirmation = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'confirmation' }));
@@ -147,7 +151,7 @@ describe('deterministic native picker visual fixtures', () => {
       expect.objectContaining({ width: seatLayerVisualFixtureWideWidth, height: seatLayerVisualFixtureWideHeight }),
     ]));
     expect(wide.root.findByType(SeatLayerPickerAdaptiveLayout).props.options.layout).toBe('wide');
-  });
+  }, 30_000);
 
   it('carries a chosen Child tier from the native confirmation into cart and checkout handoff', async () => {
     const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'seat-tier' }));

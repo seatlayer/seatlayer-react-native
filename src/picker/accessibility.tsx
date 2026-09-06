@@ -308,7 +308,12 @@ export function SeatLayerPickerAccessibilityFilters(
         // A count that is NOT counted shows no number and is never disabled.
         // A provision the venue HAS but has sold out of stays on the sheet and
         // goes dark; one it never had is absent.
-        disabled: disabled || (counted && need.count === 0),
+        //
+        // A switch that is ON stays LIVE at zero, though: the buyer holding the
+        // last space is the one who emptied it, and a filter they cannot turn
+        // off traps them on a map with nothing left to show. A sold-out row
+        // that is OFF stays disabled — there is nothing there to filter to.
+        disabled: disabled || (!on && counted && need.count === 0),
         countLabel,
         jumpable: supportsJump && counted && (need.count ?? 0) > 0,
         jumpLabel: scope.strings.translate("accessJumpFirstSection"),

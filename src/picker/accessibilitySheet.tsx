@@ -4,7 +4,8 @@ import {
   StyleSheet, Text, View,
 } from "react-native";
 
-import { SeatLayerPickerAccessIcon, SeatLayerPickerContrastIcon } from "./accessibilityIcon";
+import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
+import { SeatLayerPickerSeatIcon, seatLayerPickerHasSeatIcon } from "./seatIcons";
 import { seatLayerPickerColorAlpha } from "./colors";
 import { SeatLayerPickerPromptModal } from "./promptModal";
 import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsets } from "./safeAreaInsets";
@@ -205,23 +206,27 @@ export function SeatLayerPickerAccessibilitySheet(
 }
 
 /**
- * PLACEHOLDER for the shared per-attribute icon set (§3.8.9), which Lane A
- * builds as `seatIcons.tsx` with exactly this prop contract
- * (`{ iconKey, color, size }`). Until that file lands, every provision key
- * falls back to the upright seated figure and `contrast` to the split disc,
- * which is what this sheet drew before the set existed. Swap the two lines
- * below for `<SeatLayerSeatIcon … />` at integration; nothing else moves.
+ * The row's glyph, from the SHARED per-attribute set (§3.8.9).
+ *
+ * The same drawing the seat card puts on its note bands: a sheet with its own
+ * icons meant one seat wore a different mark depending on where the buyer met
+ * it. The set covers the twelve accommodation keys and `contrast`; a key it
+ * does not know keeps the upright seated figure rather than drawing nothing,
+ * because this row still has a name and a switch to line up beside.
  */
-export const seatLayerPickerAccessRowGlyphIsPlaceholder = true;
-
 function AccessRowGlyph(props: Readonly<{
   iconKey: string;
   color: string;
   size: number;
 }>): React.ReactElement {
-  return props.iconKey === 'contrast'
-    ? <SeatLayerPickerContrastIcon color={props.color} size={props.size} />
-    : <SeatLayerPickerAccessIcon color={props.color} size={props.size} variant="iso" />;
+  if (seatLayerPickerHasSeatIcon(props.iconKey)) {
+    return <SeatLayerPickerSeatIcon
+      color={props.color}
+      iconKey={props.iconKey}
+      size={props.size}
+    />;
+  }
+  return <SeatLayerPickerAccessIcon color={props.color} size={props.size} variant="iso" />;
 }
 
 /** One height for every row, whatever it carries. */

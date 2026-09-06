@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-native', () => ({
-  I18nManager: { isRTL: false }, Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  I18nManager: { isRTL: false }, Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
   useWindowDimensions: () => ({ width: 390, height: 844 }),
 }));
@@ -19,7 +19,6 @@ vi.mock('../src/picker/SeatLayerPickerScope', () => ({
 import { SeatLayerPickerAccessibilityFilters } from '../src/picker/accessibility';
 import {
   seatLayerPickerAccessSheetMaxHeight,
-  seatLayerPickerAccessRowGlyphIsPlaceholder,
 } from '../src/picker/accessibilitySheet';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
@@ -116,7 +115,10 @@ async function openSheet(): Promise<ReactTestRenderer> {
     renderer = create(React.createElement(SeatLayerPickerAccessibilityFilters, { compact: true }));
   });
   await act(async () => {
-    renderer.root.findByProps({ accessibilityLabel: english.accessibility }).props.onPress();
+    // The disc's own label carries the active filter count, so the opener is
+    // the only BUTTON standing before the sheet is up, not a fixed string.
+    renderer.root.findAllByProps({ accessibilityRole: 'button' })
+      .find((node) => typeof node.props.onPress === 'function')!.props.onPress();
     await Promise.resolve();
     renderer.update(React.createElement(SeatLayerPickerAccessibilityFilters, { compact: true }));
   });
@@ -213,6 +215,27 @@ describe('one aligned list of fixed rows (§3.5, Flutter 0.9.0/0.9.1)', () => {
     expect(row(renderer, 'hearing').props.accessibilityState).toMatchObject({ disabled: false });
   });
 
+  it('keeps a sold-out switch LIVE while it is on, and lets the last one off', async () => {
+    // The buyer holding the last space is the one who emptied it. A filter
+    // they cannot turn off traps them on a map with nothing left to show, so
+    // an ON row stays live at zero; a sold-out row that is OFF stays disabled,
+    // because there is nothing there to filter to.
+    const runtime = setup({ needs: [{ key: 'wheelchair', count: 0 }, { key: 'companion', count: 0 }], active: ['wheelchair'] });
+    const renderer = await openSheet();
+    expect(row(renderer, 'wheelchair').props.accessibilityState)
+      .toMatchObject({ checked: true, disabled: false });
+    expect(row(renderer, 'companion').props.accessibilityState)
+      .toMatchObject({ checked: false, disabled: true });
+    // Turning the LAST one off empties the set, and an empty set is `null` on
+    // the wire — "no filter", not "a filter matching nothing".
+    await act(async () => {
+      row(renderer, 'wheelchair').props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(runtime.calls).toEqual([['filter']]);
+  });
+
   it('closes each row with a hairline, and the last row of the sheet without one', async () => {
     setup();
     const renderer = await openSheet();
@@ -286,10 +309,18 @@ describe('every row wears the drawing that row is about (§3.5)', () => {
     expect(texts.some((text) => text.includes('♿'))).toBe(false);
   });
 
-  it('is still standing on the placeholder set until the shared glyphs land', () => {
-    // Lane A owns `seatIcons.tsx` (§3.8.9). This flag is the one thing to
-    // delete when it is merged, and it fails loudly if it is forgotten.
-    expect(seatLayerPickerAccessRowGlyphIsPlaceholder).toBe(true);
+  it('takes its drawings from the SHARED set the seat card uses', async () => {
+    // §3.8.9: one drawing per attribute across every surface. A sheet with its
+    // own icons meant the same seat wore a different mark depending on where
+    // the buyer met it.
+    const { seatLayerPickerHasSeatIcon } = await import('../src/picker/seatIcons');
+    setup({ needs: [{ key: 'wheelchair', count: 4 }, { key: 'companion', count: 2 }] });
+    const renderer = await openSheet();
+    for (const key of ['wheelchair', 'companion']) {
+      expect(seatLayerPickerHasSeatIcon(key)).toBe(true);
+      expect(row(renderer, key).findAllByProps({ testID: `seatLayerSeatIcon-${key}` }).length)
+        .toBeGreaterThan(0);
+    }
   });
 });
 
