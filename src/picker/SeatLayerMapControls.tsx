@@ -564,25 +564,27 @@ function SeatLayerMapControlsView({
         { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
         slots?.mapControlsContainer,
         sanitizeSeatLayerPickerStyle(style),
-        {
-          bottom: 0,
-          left: 0,
-          // §3.5, 0.9.1: the discs step out of the way of a seat card. None of
-          // them may be pressed while it asks, so the fade and the pointer
-          // guard are one decision.
-          opacity: cardAsking ? 0 : 1,
-          position: 'absolute',
-          right: 0,
-          top: 0,
-        },
+        { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
       ]}
     >
+      {/* §3.5, 0.9.1: while a card asks, the corner DISC COLUMN goes — a
+          stack of controls poking out beside the sheet asking about a seat
+          reads as clutter. The top rail is a different decision: Map | 3D
+          stays DRAWN and steps back to `opacity.mapControlDisabled`, because
+          it says which view the map is in, and a control that disappears while
+          a card is up reads as a map that lost its 3D (reference frame 19).
+          Nothing here takes a press either way — the guard is on the parent. */}
       {view ? (
-        <SeatLayerPickerBlockedRegion style={{ end: edgeInset, position: 'absolute', top: seatLayerPickerMapControlsRailTop - seatLayerPickerViewModeTrackInset }}>
+        <SeatLayerPickerBlockedRegion style={{
+          end: edgeInset,
+          opacity: cardAsking ? seatLayerPickerTokens.opacity.mapControlDisabled : 1,
+          position: 'absolute',
+          top: seatLayerPickerMapControlsRailTop - seatLayerPickerViewModeTrackInset,
+        }}>
           {view}
         </SeatLayerPickerBlockedRegion>
       ) : null}
-      {columnMembers.length > 0 ? (
+      {cardAsking ? null : columnMembers.length > 0 ? (
         <SeatLayerPickerBlockedRegion
           style={{
             alignItems: 'flex-end',

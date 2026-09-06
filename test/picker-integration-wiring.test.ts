@@ -193,7 +193,11 @@ describe('integrated picker composition', () => {
     expect(tree.root.findAllByType('sold-out' as any)).toHaveLength(1);
     expect(tree.root.findAllByType('booked' as any)).toHaveLength(1);
     expect(tree.root.findAllByType('access-panel' as any)).toHaveLength(1);
-    expect(tree.root.findAllByType('access-stepper' as any)).toHaveLength(1);
+    // §3.4.1/§3.5, 0.9.1: the accessible-section stepper rides BESIDE the
+    // accessibility disc, which now heads the map's control column, so both
+    // are drawn by that column rather than by a rail of the layout's own.
+    expect(tree.root.findAllByType('access-stepper' as any)).toHaveLength(0);
+    expect(tree.root.findByType('controls' as any).props.accessibilityControl).toBeTruthy();
     // The hand-off notice rides the tray's inline action slot (§3.13.13).
     const sheet = tree.root.findByType('cart-sheet' as any);
     let inline!: TestRenderer.ReactTestRenderer;

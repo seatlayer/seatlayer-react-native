@@ -291,18 +291,27 @@ describe('3.5 map corner controls', () => {
     }
   });
 
-  it('takes the disc column off the map while a seat card asks', async () => {
-    // Reference frame 19: \u267f, `+` and the framed dot are ABSENT, not merely
-    // faded (0.8.0 faded them). The Dart carries this as an AnimatedOpacity to
-    // ZERO under an IgnorePointer rather than an unmount, so the column keeps
-    // its blocked-region rectangle and comes back without a relayout; the
-    // buyer's reading of "gone" is the same either way.
+  it('takes the disc column off the map while a seat card asks, and keeps the rail', async () => {
+    // Reference frame 19: the corner column — accessibility, `+`, the framed
+    // dot — is ABSENT, not merely faded (0.8.0 faded it). The TOP RAIL is the
+    // other decision in the same frame: Map | 3D is still drawn, stepped back
+    // to `opacity.mapControlDisabled`, because it says which view the map is
+    // in. Fading the whole surface took it with the column and read as a map
+    // that had lost its 3D while a card was up. Nothing takes a press either
+    // way; the pointer guard is on the surface.
     setup();
-    const asking = await render({ cardAsking: true, showZoomControls: true });
+    const asking = await render({ cardAsking: true, showZoomControls: true, includeViewModeControl: true });
     const root = asking.root.findAllByType('View' as never)[0]!;
     expect(root.props.pointerEvents).toBe('none');
     const style = root.props.style[root.props.style.length - 1];
-    expect(style.opacity).toBe(0);
+    expect(style.opacity).toBeUndefined();
+    // The column's own members are gone, while the surface that carries the
+    // rail is still mounted and still at full opacity.
+    const drawn = await render({ cardAsking: false, showZoomControls: true, includeViewModeControl: true });
+    expect(asking.root.findAllByType('AccessibleStepper' as never).length)
+      .toBeLessThan(drawn.root.findAllByType('AccessibleStepper' as never).length + 1);
+    expect(JSON.stringify(asking.toJSON() ?? '').length)
+      .toBeLessThan(JSON.stringify(drawn.toJSON() ?? '').length);
   });
 });
 

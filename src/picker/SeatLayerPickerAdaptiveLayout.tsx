@@ -17,7 +17,6 @@ import {
   seatLayerPickerAdaptiveInteractionBlocked,
   seatLayerPickerPendingCandidateEpochFor,
   seatLayerPickerPhoneChromeTop,
-  seatLayerPickerPhoneRailGap,
 } from './adaptiveLayoutState';
 import { useSeatLayerPickerAdaptiveSheetOpening } from './adaptiveSheetOpening';
 import { SeatLayerPickerAttribution } from './attribution';
@@ -29,7 +28,6 @@ import { useSeatLayerPickerSeatRemovalSeat } from './seatConfirmationRemoval';
 import { useSeatLayerPickerSeatLiftBinding } from './seatLiftBinding';
 import { SeatLayerPickerToastLayer, useSeatLayerPickerToastQueue } from './SeatLayerPickerToast';
 import { seatLayerPickerHoldLapseNews, seatLayerPickerToastRequest } from './toastBridge';
-import { SeatLayerPickerAccessibleStepper } from './SeatLayerPickerAccessibleStepper';
 import { SeatLayerHoldOwnershipNotice } from './SeatLayerHoldOwnershipNotice';
 import {
   SeatLayerPickerAccessPanel, SeatLayerPickerSalesClosedStatement,
@@ -235,7 +233,7 @@ export function SeatLayerPickerAdaptiveLayout({
   );
   const venueMode = snapshot?.map.buyerView === 'venue3d';
   const immersiveInspectionVisible = panoramaUp || venueMode;
-  const phoneDockVisible = !wide && !venueMode && !panoramaUp && plan.options.chrome.showDockBar && nativeChrome &&
+  const dockVisible = !venueMode && !panoramaUp && plan.options.chrome.showDockBar && nativeChrome &&
     snapshot?.map.rung === 'seats' && focusedSection !== undefined;
   const phoneControls = !wide && !panoramaUp && plan.options.chrome.mapControls
     ? Object.freeze({
@@ -264,7 +262,17 @@ export function SeatLayerPickerAdaptiveLayout({
   useLayoutEffect(() => {
     setTestBadgeWidth(undefined);
   }, [scope.sessionId, snapshot?.sessionId, testBadgeCopy, testBadgeVisible]);
+  // §3.5, 0.9.1: the disc HEADS the map's control column on both compositions,
+  // so it is drawn BY that column and cannot outlive it. A host that turns the
+  // column off turns the disc off with it — and, decisively, stops the phone
+  // leasing the runtime a bottom band for a control nobody drew.
+  //
+  // The disc is not a camera control, though, so it is its own reason for the
+  // column to exist: a runtime that answers no zoom, fit or overview command
+  // still filters seats, and gating the disc on the camera's eligibility took
+  // the filter off that buyer's map entirely.
   const accessibilityVisible = !venueMode && !panoramaUp && nativeChrome && plan.options.chrome.accessibility &&
+    plan.options.chrome.mapControls &&
     canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
   const priceRailAvailable = plan.options.chrome.priceLegend && categoriesVisible;
   // A band between the header and the map cannot collide with the Map / 3D
@@ -306,7 +314,7 @@ export function SeatLayerPickerAdaptiveLayout({
     seatLayerPickerTokens.size.dockBarHeight,
     seatLayerPickerTypeScaleClamp('dock'),
   );
-  const bottomInset = phoneDockVisible ? drawnDockHeight : 0;
+  const bottomInset = dockVisible ? drawnDockHeight : 0;
   const phoneBands = planSeatLayerPickerPhoneBands({
     topHeight,
     dockHeight: bottomInset,
@@ -528,27 +536,36 @@ export function SeatLayerPickerAdaptiveLayout({
   const sections = wide && nativeChrome
     ? part(builders, scope, 'sectionNavigator', <SeatLayerPickerSectionNavigator onSectionFocused={onSectionFocused} />)
     : null;
+  const accessibility = accessibilityVisible
+    ? part(builders, scope, 'accessibilityFilters', withSafeArea(SeatLayerPickerAccessibilityFilters, safeLayout.insets, { compact: !wide }))
+    : null;
   // Panorama owns the complete gesture surface and its web close button. The
   // Map / 3D switch occupies that same top-right slot, so leaving it mounted
   // hides the buyer's only exit behind native chrome.
-  const controls = !panoramaUp && plan.options.chrome.mapControls && chromeEligibility.mapControls
+  const controls = !panoramaUp && plan.options.chrome.mapControls &&
+    (chromeEligibility.mapControls || accessibilityVisible)
     ? part(builders, scope, 'mapControls', <SeatLayerMapControls
       compact={!wide}
       enable3D={plan.options.enable3D && plan.options.chrome.map3D}
-      showAccessibilityControl={false}
+      showAccessibilityControl
       showOverviewControl={plan.options.chrome.overview}
       showZoomControls={plan.options.chrome.zoom}
       showZoomToFitControl={plan.options.chrome.fit}
       zoomInLabel="Zoom in"
       zoomOutLabel="Zoom out"
+      // §3.5, 0.9.1: the accessibility disc HEADS the column. It used to be
+      // anchored bottom-left on its own, which put two ways to reach the same
+      // filter on the same map once the column grew one.
+      accessibilityControl={accessibility}
+      // Map | 3D is drawn in the top rail by this same component on both
+      // compositions, and it is not a member of the disc column, so there is
+      // nothing to withhold on a phone.
       includeViewModeControl
+      cardAsking={cardActive}
       onViewModeLayout={setViewModeWidth}
-      bottomInset={phoneDockVisible ? drawnDockHeight : 0}
+      bottomInset={dockVisible ? drawnDockHeight : 0}
       reserveInset={false}
     />)
-    : null;
-  const accessibility = accessibilityVisible
-    ? part(builders, scope, 'accessibilityFilters', withSafeArea(SeatLayerPickerAccessibilityFilters, safeLayout.insets, { compact: !wide }))
     : null;
   // §3.12 — one toast at a time, fed by the buyer-state machine's own
   // payloads. `reselectLapsedSeats` is the only recovery there is.
@@ -581,7 +598,7 @@ export function SeatLayerPickerAdaptiveLayout({
       <SeatLayerPickerActionError />
     </>)
     : null;
-  const dock = phoneDockVisible
+  const dock = dockVisible
     ? part(builders, scope, 'dockBar', <SeatLayerDockBar onSectionChanged={onSectionFocused} reserveBottomInset={false} />)
     : null;
   const holdLapse = plan.options.announceHoldLapse && ticketPanelVisible
@@ -621,7 +638,7 @@ export function SeatLayerPickerAdaptiveLayout({
     { rung: 'mapChrome', mounted: true },
     { rung: 'mapChrome', mounted: venueVisible, suffix: 'venue3d' },
     { rung: 'mapChrome', mounted: plan.options.chrome.seatViewChrome && chromeEligibility.panorama, suffix: 'seat-view' },
-    { rung: 'dock', mounted: !wide && dock !== null },
+    { rung: 'dock', mounted: dock !== null },
     { rung: 'dock', mounted: wide && sections !== null },
     { rung: 'prompt', mounted: status === null && !immersiveInspectionVisible },
     { rung: 'notice', mounted: true, suffix: 'toast' },
@@ -676,19 +693,14 @@ export function SeatLayerPickerAdaptiveLayout({
               pointerEvents="box-none"
               style={[styles.testRail, { top: badgeTop }]}
             ><SeatLayerPickerTestModeIndicator compact /></View> : null}
-            <View pointerEvents="box-none" style={[styles.accessRail, styles.accessRow, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>
-              {accessibility}
-              {accessibility === null ? null : <SeatLayerPickerAccessibleStepper />}
-            </View>
-            {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorSelectorRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset + Math.max(
-              accessibilityVisible ? seatLayerPickerTokens.size.minimumHitTarget : 0,
-              phoneControls.bottom ? seatLayerPickerTokens.size.minimumHitTarget : 0,
-            ) + (floorSelectorVisible && (accessibilityVisible || phoneControls.bottom) ? seatLayerPickerPhoneRailGap : 0) }]}>{floorSelector}</View>}
+            {/* The accessibility disc has moved into the control column, so
+                the bottom-left corner is the floor selector's alone. */}
+            {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorSelectorRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>{floorSelector}</View>}
           </View>}
           {/* §4.10 — the dock is its own rung, so it is never read between two
               halves of the map's chrome. It is absolutely positioned either
               way, so lifting it out of the overlay stack paints identically. */}
-          {wide || dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail} {...underDialog(decisionUp)}>{dock}</View>}
+          {dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail} {...underDialog(decisionUp)}>{dock}</View>}
           {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays} {...underDialog(decisionUp)}>
             {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: venueMode && venueVisible ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
@@ -722,7 +734,7 @@ export function SeatLayerPickerAdaptiveLayout({
         </View>
         {wide ? <View style={[styles.rail, { width: plan.sideRailWidth, backgroundColor: scope.resolvedTheme.colors.surface, borderStartColor: scope.resolvedTheme.colors.divider }]} testID="seatlayer-wide-rail">
           {ordered('rail', legend, { suffix: 'wide' })}{floors ? <View style={styles.wideFloors}>{floors}</View> : null}{ordered('dock', sections)}
-          {bestAvailable || accessibility ? <View style={styles.wideAssist}>{bestAvailable}{accessibility}</View> : null}
+          {bestAvailable ? <View style={styles.wideAssist}>{bestAvailable}</View> : null}
           {ordered('sheet', ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null, { suffix: 'wide' })}
           {ticketPanelVisible ? actionError : null}
           {ticketPanelVisible ? <SeatLayerPickerSalesClosedStatement /> : null}
