@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
  * §4.10 — which surfaces speak without being asked.
  *
  * A live region is a promise that the words change on their own and that
- * nothing else will say so. The spec names three that are always up — the peek
- * summary, the section dock's name and seats-left, and the hold countdown —
+ * nothing else will say so. The spec names three that are always up — the
+ * foot's total line, the section dock's name and seats-left, and the hold
+ * countdown —
  * and the toast, which is announced outright as well because four seconds
  * inside a cross-fade is a window a live region cannot be relied on to catch.
  * Beside those stand the surfaces that ARRIVE unasked: the buyer-facing states
@@ -20,7 +21,7 @@ const directory = new URL('../src/picker/', import.meta.url);
 
 const declared: Readonly<Record<string, number>> = Object.freeze({
   // The three the spec names.
-  'cartPeekHead.tsx': 1,
+  'sheetFoot.tsx': 1,
   'SeatLayerDockBar.tsx': 1,
   'SeatLayerPickerHoldCountdown.tsx': 1,
   'header.tsx': 1,

@@ -6,7 +6,8 @@ vi.mock('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator', Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', StatusBar: 'StatusBar', Text: 'Text', View: 'View',
   Animated: {
     View: 'AnimatedView',
-    Value: class { constructor(readonly value: number) {} interpolate() { return this.value; } setValue() {} stopAnimation() {} },
+    Text: 'AnimatedText',
+    Value: class { constructor(readonly value: number) {} interpolate() { return this.value; } setValue() {} stopAnimation(done?: (value: number) => void) { done?.(this.value); } addListener() { return 1; } removeListener() {} },
     delay: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
     sequence: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
     loop: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
@@ -165,7 +166,11 @@ describe('deterministic native picker visual fixtures', () => {
       await Promise.resolve();
     });
     expect(tree.root.findAllByType(SeatLayerConfirmCard)).toHaveLength(0);
-    const checkout = tree.root.findByProps({ accessibilityLabel: 'Continue · €60' });
+    // §3.9: there is no second Continue on a collapsed bar any more — the
+    // foot's own button is the one door, and the total is on the line above it.
+    const checkout = tree.root.findByProps({ testID: 'seatlayer-cart-checkout' });
+    expect(checkout.props.accessibilityLabel).toBe('Hold seats & checkout');
+    expect(tree.root.findByProps({ testID: 'seatlayer-cart-foot-total' }).props.children).toBe('€60');
 
     await act(async () => {
       checkout.props.onPress();

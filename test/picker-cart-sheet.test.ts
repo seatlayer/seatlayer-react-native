@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CartRemovalMarkCoordinator } from '../src/picker/cartRemovalUndoState';
-import { cartSheetMaximumBodyHeight, projectSeatLayerCartSheet } from '../src/picker/cartSheetUi';
+import { projectSeatLayerCartSheet } from '../src/picker/cartSheetUi';
 import type { SeatLayerPickerSnapshot } from '../src/picker/models';
 import { CartSheetMeasurementCoordinator } from '../src/picker/cartSheetState';
 
@@ -26,15 +26,13 @@ describe('cart sheet projections', () => {
     ]), null).totals.currency).toBeNull();
   });
 
-  it('projects one line per cart line and a 72 percent content cap above its peek and safe edge', () => {
+  it('projects one card per cart line, with no run model left to fold them', () => {
     const result = projectSeatLayerCartSheet(snapshot(Array.from({ length: 6 }, (_, index) => ({
       lineKey: `line-${index}`, label: `L-${index}`, objectId: `line-${index}`, quantity: 1,
       unitPrice: 20, currency: 'USD', sectionLabel: `Section ${index}`, seatNumber: String(index),
     })) ), null);
-    // MINIMUM SURFACE: the four-run fold went with the dense tokens.
+    // ONE CARD PER TICKET: the run model, the fold and the `+N more` are gone.
     expect(result.lines).toHaveLength(6);
-    expect(cartSheetMaximumBodyHeight(1_000, 34)).toBe(628);
-    expect(cartSheetMaximumBodyHeight(-10, 34)).toBe(0);
   });
 });
 

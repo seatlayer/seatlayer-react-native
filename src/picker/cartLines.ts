@@ -1,9 +1,14 @@
 /**
- * Pure cart shaping for the native picker's cart list.
+ * Pure cart shaping for the native picker's cart cards (spec §3.10.2).
  *
  * This module intentionally does not decode snapshots or format money. Its
  * inputs are the cart and selection shapes after the bridge has validated
  * them, and its outputs are plain data a React Native surface can render.
+ *
+ * ONE CARD PER TICKET. The folded dense list this used to shape — consecutive
+ * seats gathered into runs behind a `+N more` — went with the `dense*` tokens:
+ * the collapsed sheet caps the list at three cards and scrolls instead, which
+ * is the same answer folding gave without a second design.
  */
 
 import { normalizeSeatLayerPickerRowLabel } from './format';
@@ -51,7 +56,7 @@ export interface TicketIdentity {
  * Render values supplied by the native picker surface after it has applied
  * category lookup, row normalization, and locale-specific money formatting.
  */
-export interface DenseTicketDisplayEnrichment {
+export interface SeatLayerTicketDisplay {
   readonly section?: string | null;
   readonly rowLabel?: string | null;
   readonly seatLabel?: string | null;
@@ -59,17 +64,17 @@ export interface DenseTicketDisplayEnrichment {
   readonly amountText?: string | null;
 }
 
-export interface ResolveDenseTicketLineOptions {
+export interface ResolveSeatLayerTicketLineOptions {
   readonly held?: boolean;
-  readonly display?: DenseTicketDisplayEnrichment;
+  readonly display?: SeatLayerTicketDisplay;
 }
 
-export interface ResolveDenseTicketLinesOptions<T extends SeatLayerCartLineLike> {
+export interface ResolveSeatLayerTicketLinesOptions<T extends SeatLayerCartLineLike> {
   readonly held?: boolean;
-  readonly displayForItem?: (item: T) => DenseTicketDisplayEnrichment | undefined;
+  readonly displayForItem?: (item: T) => SeatLayerTicketDisplay | undefined;
 }
 
-export interface DenseTicketLine<T extends SeatLayerCartLineLike = SeatLayerCartLineLike> {
+export interface SeatLayerTicketLine<T extends SeatLayerCartLineLike = SeatLayerCartLineLike> {
   readonly item: T;
   readonly identity: TicketIdentity;
   readonly selection: SeatLayerSelectedSeatLike | null;
@@ -116,11 +121,11 @@ export function ticketIdentityOf(line: SeatLayerCartLineLike): TicketIdentity {
  * Cart-owned address fields win, since Best Available and resumed holds do
  * not necessarily remain in renderer selection.
  */
-export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
+export function resolveSeatLayerTicketLine<T extends SeatLayerCartLineLike>(
   item: T,
   selection: readonly SeatLayerSelectedSeatLike[] = [],
-  options: ResolveDenseTicketLineOptions = {},
-): DenseTicketLine<T> {
+  options: ResolveSeatLayerTicketLineOptions = {},
+): SeatLayerTicketLine<T> {
   const identity = ticketIdentityOf(item);
   const selected = selectionBehind(item, selection);
   const display = options.display;
@@ -173,12 +178,12 @@ export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
   };
 }
 
-export function resolveDenseTicketLines<T extends SeatLayerCartLineLike>(
+export function resolveSeatLayerTicketLines<T extends SeatLayerCartLineLike>(
   items: readonly T[],
   selection: readonly SeatLayerSelectedSeatLike[] = [],
-  options: ResolveDenseTicketLinesOptions<T> = {},
-): readonly DenseTicketLine<T>[] {
-  return items.map((item) => resolveDenseTicketLine(item, selection, {
+  options: ResolveSeatLayerTicketLinesOptions<T> = {},
+): readonly SeatLayerTicketLine<T>[] {
+  return items.map((item) => resolveSeatLayerTicketLine(item, selection, {
     held: options.held,
     display: options.displayForItem?.(item),
   }));

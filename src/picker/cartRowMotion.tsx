@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, I18nManager, PanResponder, View, type ViewStyle } from 'react-native';
 
 import { seatLayerCartSwipeCommits, seatLayerCartSwipeTravel } from './cartSwipe';
@@ -19,12 +19,14 @@ export function SeatLayerCartRowArrival(
   { index, children }: Readonly<{ index: number; children: ReactNode }>,
 ): React.ReactElement {
   const reducedMotion = useSeatLayerPickerReducedMotion();
-  const progress = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
+  const progress = useRef(new Animated.Value(reducedMotion || index < 0 ? 1 : 0)).current;
   useEffect(() => {
     const enter = resolveSeatLayerPickerMotion('enter', reducedMotion, 'easeEnter');
     const stagger = resolveSeatLayerPickerMotion('stagger', reducedMotion, 'easeEnter');
     progress.stopAnimation();
-    if (enter.durationMs === 0 || stagger.skipped) {
+    // A card that was already in the cart has not arrived: only the set that
+    // landed this frame is staged, so a removal does not replay the whole list.
+    if (index < 0 || enter.durationMs === 0 || stagger.skipped) {
       progress.setValue(1);
       return undefined;
     }
@@ -66,24 +68,23 @@ export function SeatLayerCartCellCrossFade(
   const reducedMotion = useSeatLayerPickerReducedMotion();
   const opacity = useRef(new Animated.Value(1)).current;
   const previous = useRef(token);
-  const [rendered, setRendered] = useState<ReactNode>(children);
+  // KEYED ON THE WORDS, AND ON NOTHING ELSE. It used to hold the drawn children
+  // in state and list them as a dependency, so every render of the cell re-ran
+  // the effect: a render that arrived mid-fade took the "same words" branch,
+  // the cleanup stopped the fade that was still running, and the cell stayed at
+  // zero. The total line, which re-renders on its own swell, printed nothing.
   useEffect(() => {
-    if (previous.current === token) {
-      setRendered(children);
-      return undefined;
-    }
+    if (previous.current === token) return undefined;
     previous.current = token;
     const motion = resolveSeatLayerPickerMotion('crossfade', reducedMotion, 'easeEnter');
     // Under reduced motion the new words are simply there.
     if (motion.durationMs === 0) {
       opacity.setValue(1);
-      setRendered(children);
       return undefined;
     }
     const [x1, y1, x2, y2] = motion.curve.cubicBezier;
     opacity.stopAnimation();
     opacity.setValue(0);
-    setRendered(children);
     const animation = Animated.timing(opacity, {
       duration: motion.durationMs,
       easing: Easing.bezier(x1, y1, x2, y2),
@@ -91,9 +92,11 @@ export function SeatLayerCartCellCrossFade(
       useNativeDriver: true,
     });
     animation.start();
-    return () => animation.stop();
-  }, [children, opacity, reducedMotion, token]);
-  return <Animated.View style={[style, { opacity }]}>{rendered}</Animated.View>;
+    // A fade that is torn down owes the words their ink back: the value outlives
+    // the effect, and a cell left at zero is a cell that says nothing.
+    return () => { animation.stop(); opacity.setValue(1); };
+  }, [opacity, reducedMotion, token]);
+  return <Animated.View style={[style, { opacity }]}>{children}</Animated.View>;
 }
 
 /**
@@ -103,10 +106,18 @@ export function SeatLayerCartCellCrossFade(
  * disappears because the snapshot no longer has it. A held row is never
  * swipeable — those seats belong to a hold, and the row says so with a lock.
  */
-export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children }: Readonly<{
+export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children, radius, plateColor, plateInk }: Readonly<{
   enabled: boolean;
   onRemove: () => void;
   children: ReactNode;
+  /** The card's own corner: the plate under it is clipped to the same one. */
+  radius?: number;
+  /**
+   * The one place in the picker that is never the accent: a brand colour that
+   * happens to be red would make every other swipe look like a warning.
+   */
+  plateColor?: string;
+  plateInk?: string;
 }>): React.ReactElement {
   const reducedMotion = useSeatLayerPickerReducedMotion();
   // The pan responder is built once; the live preference is read through a ref.
@@ -150,6 +161,40 @@ export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children }: Read
       testID="seatlayer-cart-swipe"
       {...(enabled ? responder.panHandlers : {})}
     >
+      {enabled && plateColor
+        ? (
+          <Animated.View
+            accessible={false}
+            pointerEvents="none"
+            testID="seatlayer-cart-swipe-plate"
+            style={{
+              alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end',
+              backgroundColor: plateColor,
+              borderRadius: radius ?? 0,
+              bottom: 0,
+              justifyContent: 'center',
+              left: 0,
+              // Only drawn while there is something to see, so a list at rest
+              // is the same list it has always been.
+              opacity: offset.interpolate({
+                inputRange: [-1, 0, 1], outputRange: [1, 0, 1], extrapolate: 'clamp',
+              }),
+              paddingHorizontal: 14,
+              position: 'absolute',
+              right: 0,
+              top: 0,
+            }}
+          >
+            <View style={{
+              borderColor: plateInk ?? '#FFFFFF',
+              borderRadius: 2,
+              borderWidth: 1.4,
+              height: 12,
+              width: 10,
+            }} />
+          </Animated.View>
+        )
+        : null}
       <Animated.View style={{ transform: [{ translateX: offset }] }}>{children}</Animated.View>
     </View>
   );

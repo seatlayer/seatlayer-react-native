@@ -16,7 +16,7 @@ import { CartSheetMeasurementCoordinator } from '../src/picker/cartSheetState';
 import { SeatLayerPickerScopeHoldLapse } from '../src/picker/scopeHoldLapse';
 import { seatLayerPickerConfirmIdentity } from '../src/picker/confirmCardIdentity';
 import { SeatLayerPickerPendingCancelCoordinator } from '../src/picker/pendingConfirmationActions';
-import type { SeatLayerCartLineLike, SeatLayerSelectedSeatLike } from '../src/picker/cartDense';
+import type { SeatLayerCartLineLike, SeatLayerSelectedSeatLike } from '../src/picker/cartLines';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
 const seat = (id: string, label: string): SeatLayerSelectedSeatLike => ({ id, label, objectId: `row-${id}` });

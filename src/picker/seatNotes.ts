@@ -271,3 +271,14 @@ export function seatLayerPickerSeatNoteHairline(divider: string): string {
 function freezeRow(row: SeatLayerPickerSeatNote): SeatLayerPickerSeatNote {
   return Object.freeze(row);
 }
+
+/**
+ * The whole row as it is read out.
+ *
+ * The cart card says a seat's notes in words rather than in bands, and a
+ * screen reader must hear the organizer's sentence attached to the mark it
+ * explains rather than as an orphan after it.
+ */
+export function seatLayerPickerSeatNoteSpoken(note: SeatLayerPickerSeatNote): string {
+  return note.note === undefined ? note.title : `${note.title}: ${note.note}`;
+}

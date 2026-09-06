@@ -2,17 +2,17 @@ import type { SeatLayerPickerCartLine, SeatLayerPickerSnapshot } from './models'
 import {
   projectCartTotals,
   projectConfirmedCart,
-  resolveDenseTicketLines,
-  type DenseTicketLine,
+  resolveSeatLayerTicketLines,
+  type SeatLayerTicketLine,
   type ConfirmedCartProjection,
-} from './cartDense';
+} from './cartLines';
 import { seatLayerPickerTokens } from './tokens.g';
 
 /** The cart-sheet's snapshot-only buyer projection.  Pending confirmation is never a ticket. */
 export interface SeatLayerCartSheetProjection {
   readonly confirmed: ConfirmedCartProjection<SeatLayerPickerCartLine>;
   readonly totals: ReturnType<typeof projectCartTotals>;
-  readonly lines: readonly DenseTicketLine<SeatLayerPickerCartLine>[];
+  readonly lines: readonly SeatLayerTicketLine<SeatLayerPickerCartLine>[];
 }
 
 export function projectSeatLayerCartSheet(
@@ -31,8 +31,8 @@ export function projectSeatLayerCartSheet(
 export function projectSeatLayerCartLines(
   snapshot: SeatLayerPickerSnapshot | undefined,
   items: readonly SeatLayerPickerCartLine[],
-): readonly DenseTicketLine<SeatLayerPickerCartLine>[] {
-  return resolveDenseTicketLines(items, snapshot?.selection ?? [], {
+): readonly SeatLayerTicketLine<SeatLayerPickerCartLine>[] {
+  return resolveSeatLayerTicketLines(items, snapshot?.selection ?? [], {
     held: snapshot?.hold.owner === 'host',
     displayForItem: (item) => ({
       section: item.sectionLabel,
@@ -43,28 +43,53 @@ export function projectSeatLayerCartLines(
   });
 }
 
-/** The cheapest ticket the chart still sells, for the empty bar's `From` line. */
-export function seatLayerCartCheapestPrice(
-  snapshot: SeatLayerPickerSnapshot | undefined,
-): number | undefined {
-  return snapshot?.categories.reduce<number | undefined>(
-    (lowest, category) => !category.notForSale && Number.isFinite(category.priceMin)
-      ? Math.min(lowest ?? category.priceMin, category.priceMin)
-      : lowest,
-    undefined,
-  );
+/**
+ * The two ceilings the cart region is drawn under (spec §3.10.1).
+ *
+ * Both are a fraction of the screen capped at a fixed height: a tall phone
+ * must not give three quarters of itself to a cart, and a short one must not
+ * be told that seventy-two per cent is enough. `chromeHeight` is everything
+ * that is NOT the cart region — the head, the measured foot and the safe inset
+ * — measured rather than assumed, because the foot grows with the platform's
+ * text size, with a lapse notice and with an inline error, and a cap derived
+ * from a guess would clip the button rather than the list.
+ */
+export function seatLayerCartSheetCeilings(
+  viewportHeight: unknown,
+  chromeHeight: unknown,
+  hasTickets: boolean,
+  layout: Readonly<Record<string, number>> = seatLayerPickerTokens.size,
+): Readonly<{ body: number; full: number }> {
+  const viewport = finiteNonNegative(viewportHeight);
+  const chrome = finiteNonNegative(chromeHeight);
+  const ceiling = hasTickets
+    ? Math.min(
+      viewport * (layout.sheetMaxHeightFraction ?? seatLayerPickerTokens.size.sheetMaxHeightFraction),
+      layout.sheetMaxHeight ?? seatLayerPickerTokens.size.sheetMaxHeight,
+    )
+    : Math.min(
+      viewport * (layout.emptyTrayMaxHeightFraction ?? seatLayerPickerTokens.size.emptyTrayMaxHeightFraction),
+      layout.emptyTrayMaxHeight ?? seatLayerPickerTokens.size.emptyTrayMaxHeight,
+    );
+  const fullCeiling =
+    viewport * (layout.sheetFullHeightFraction ?? seatLayerPickerTokens.size.sheetFullHeightFraction);
+  return Object.freeze({
+    body: Math.min(Math.max(0, ceiling - chrome), viewport),
+    full: Math.min(Math.max(0, fullCeiling - chrome), viewport),
+  });
 }
 
-export function cartSheetMaximumBodyHeight(
-  viewportHeight: unknown,
-  bottomInset: unknown,
-  peekHeight: unknown = seatLayerPickerTokens.size.peekHeight,
-): number {
-  const viewport = finiteNonNegative(viewportHeight);
-  const inset = finiteNonNegative(bottomInset);
-  const peek = finiteNonNegative(peekHeight);
-  const maxSheet = viewport * seatLayerPickerTokens.size.sheetMaxHeightFraction;
-  return Math.max(0, maxSheet - peek - inset);
+/**
+ * The seats a collapsed sheet lists under its count, in the runtime's own
+ * inventory labels: `A-12` reads as `A · 12`, and the line opens the cards.
+ */
+export function seatLayerCartSeatsLine(
+  lines: readonly Readonly<{ label?: string | null }>[],
+): string {
+  return lines
+    .map((line) => (line.label ?? '').trim().replace(/-/g, ' \u00b7 '))
+    .filter((label) => label.length > 0)
+    .join(',  ');
 }
 
 export function finiteNonNegative(value: unknown): number {

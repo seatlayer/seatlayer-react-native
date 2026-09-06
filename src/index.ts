@@ -335,6 +335,7 @@ export {
   seatLayerPickerSeatNoteHairline,
   seatLayerPickerSeatNotePalette,
   seatLayerPickerSeatNoteRows,
+  seatLayerPickerSeatNoteSpoken,
   seatLayerPickerSeatNoteToneColors,
   seatLayerPickerSeatNotes,
   type SeatLayerPickerSeatNote,
@@ -393,8 +394,21 @@ export {
   seatLayerCheckoutCtaState,
   type SeatLayerCheckoutCtaInput,
   type SeatLayerCheckoutCtaState,
-  type SeatLayerPeekLine,
 } from './picker/checkoutCta';
+export {
+  SeatLayerSheetFinderProvider,
+  useSeatLayerSheetFinder,
+  type SeatLayerSheetFinderProviderProps,
+} from './picker/sheetFinder';
+export {
+  SeatLayerCartLandingProvider,
+  useSeatLayerCartLanding,
+  type SeatLayerCartLandingProviderProps,
+} from './picker/cartLanding';
+export {
+  SeatLayerCartCard,
+  type SeatLayerCartCardProps,
+} from './picker/cartCard';
 export {
   SeatLayerPickerToastCard,
   SeatLayerPickerToastLayer,
@@ -567,20 +581,19 @@ export {
 export {
   projectCartTotals,
   projectConfirmedCart,
-  resolveDenseTicketLine,
-  resolveDenseTicketLines,
+  resolveSeatLayerTicketLine,
+  resolveSeatLayerTicketLines,
   ticketIdentityOf,
   type CartTotalsProjection,
   type ConfirmedCartProjection,
-  type DenseTicketDisplayEnrichment,
-  type DenseTicketLine,
-  type DenseTicketLine as SeatLayerTicketLine,
-  type ResolveDenseTicketLineOptions,
-  type ResolveDenseTicketLinesOptions,
+  type ResolveSeatLayerTicketLineOptions,
+  type ResolveSeatLayerTicketLinesOptions,
   type SeatLayerCartLineLike,
   type SeatLayerSelectedSeatLike,
+  type SeatLayerTicketDisplay,
+  type SeatLayerTicketLine,
   type TicketIdentity,
-} from './picker/cartDense';
+} from './picker/cartLines';
 export {
   SeatLayerSeatPanoramaChrome,
   SeatLayerSeatViewChrome,

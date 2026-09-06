@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   projectConfirmedCart,
   projectCartTotals,
-  resolveDenseTicketLines,
+  resolveSeatLayerTicketLines,
   type SeatLayerCartLineLike,
-} from '../src/picker/cartDense';
+} from '../src/picker/cartLines';
 
 const seat = (overrides: Partial<SeatLayerCartLineLike> = {}): SeatLayerCartLineLike => ({
   lineKey: 'line-1',
@@ -27,7 +27,7 @@ describe('cart line resolution', () => {
   it('prints the row with its section prefix stripped', () => {
     // A chart that authors `206-I` inside section `206` made the line read
     // `206 · 206-I · 4`: the section twice and the row not at all.
-    const [line] = resolveDenseTicketLines([
+    const [line] = resolveSeatLayerTicketLines([
       seat({ lineKey: 'one', label: '206-I-4', sectionLabel: '206', rowLabel: '206-I', seatNumber: '4' }),
     ]);
     expect(line?.section).toBe('206');
@@ -35,7 +35,7 @@ describe('cart line resolution', () => {
 
     // A row that does not repeat its section is printed exactly as authored,
     // through the same normalizer the seat card's identity grid uses.
-    const [bare] = resolveDenseTicketLines([
+    const [bare] = resolveSeatLayerTicketLines([
       seat({ lineKey: 'two', label: 'R-6', sectionLabel: '205', rowLabel: 'R', seatNumber: '6' }),
     ]);
     expect(bare?.rowLabel).toBe('R');
@@ -46,11 +46,11 @@ describe('cart line resolution', () => {
 describe('cart projections and identity safety', () => {
   it('uses cart-owned identity before selection and refuses ambiguous fallback labels', () => {
     const cart = seat({ seatId: 'seat-9', sectionLabel: 'Choir', rowLabel: 'Choir A', seatNumber: '9' });
-    const [addressed] = resolveDenseTicketLines([cart], [{ id: 'seat-9', label: 'A-9', sectionLabel: 'Wrong', rowLabel: 'Wrong', seatNumber: '99' }]);
+    const [addressed] = resolveSeatLayerTicketLines([cart], [{ id: 'seat-9', label: 'A-9', sectionLabel: 'Wrong', rowLabel: 'Wrong', seatNumber: '99' }]);
     expect(addressed?.section).toBe('Choir');
     expect(addressed?.seatLabel).toBe('9');
 
-    const [ambiguous] = resolveDenseTicketLines([seat({ seatId: null, sectionLabel: null, rowLabel: null, seatNumber: null })], [
+    const [ambiguous] = resolveSeatLayerTicketLines([seat({ seatId: null, sectionLabel: null, rowLabel: null, seatNumber: null })], [
       { label: 'A-1', sectionLabel: 'First', rowLabel: 'A', seatNumber: '1' },
       { label: 'A-1', sectionLabel: 'Second', rowLabel: 'B', seatNumber: '2' },
     ]);

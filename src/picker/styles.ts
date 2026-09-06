@@ -31,10 +31,10 @@ export interface SeatLayerPickerStyles {
   peekSummaryText?: StyleProp<TextStyle>;
   continueButton?: StyleProp<ViewStyle>;
   continueButtonText?: StyleProp<TextStyle>;
-  denseLineContainer?: StyleProp<ViewStyle>;
-  denseLineText?: StyleProp<TextStyle>;
-  denseLineRemoveButton?: StyleProp<ViewStyle>;
-  denseLineRemoveButtonText?: StyleProp<TextStyle>;
+  cartCardContainer?: StyleProp<ViewStyle>;
+  cartCardText?: StyleProp<TextStyle>;
+  cartCardActionButton?: StyleProp<ViewStyle>;
+  cartCardActionButtonText?: StyleProp<TextStyle>;
   bestSeatsContainer?: StyleProp<ViewStyle>;
   bestSeatsSelector?: StyleProp<ViewStyle>;
   bestSeatsButton?: StyleProp<ViewStyle>;
@@ -81,8 +81,8 @@ const styleSlotKeys: readonly (keyof SeatLayerPickerStyles)[] = Object.freeze([
   "confirmCardPhoto", "confirmCardPrimaryButton", "confirmCardPrimaryButtonText",
   "confirmCardSecondaryButton", "confirmCardSecondaryButtonText", "sheetContainer",
   "peekContainer", "peekSummaryText", "continueButton", "continueButtonText",
-  "denseLineContainer", "denseLineText", "denseLineRemoveButton",
-  "denseLineRemoveButtonText", "bestSeatsContainer", "bestSeatsSelector",
+  "cartCardContainer", "cartCardText", "cartCardActionButton",
+  "cartCardActionButtonText", "bestSeatsContainer", "bestSeatsSelector",
   "bestSeatsButton", "bestSeatsButtonText", "mapControlsContainer",
   "mapControlButton", "mapControlLabel", "accessibilityControlsContainer",
   "accessibilityControlButton", "accessibilityControlLabel", "accessibilityModalContainer",
@@ -113,7 +113,7 @@ const safeTextKeys = new Set([
 const textSlots = new Set<keyof SeatLayerPickerStyles>([
   'headerTitle', 'holdPillText', 'legendChipText', 'dockSectionText', 'dockCountText',
   'confirmCardIdentityText', 'confirmCardPrimaryButtonText', 'confirmCardSecondaryButtonText',
-  'peekSummaryText', 'continueButtonText', 'denseLineText', 'denseLineRemoveButtonText',
+  'peekSummaryText', 'continueButtonText', 'cartCardText', 'cartCardActionButtonText',
   'bestSeatsButtonText', 'mapControlLabel', 'accessibilityControlLabel',
   'accessibilityNeedText', 'accessibilityActionText', 'floorChipText',
   'immersiveChromeButtonText', 'seatViewChromeButtonText', 'statusText',
@@ -371,11 +371,11 @@ export function resolveSeatLayerPickerStyles(
     peekSummaryText: mergeStyle(themeStyles.peekSummaryText, componentStyles.peekSummaryText),
     continueButton: mergeStyle(themeStyles.continueButton, componentStyles.continueButton),
     continueButtonText: mergeStyle(themeStyles.continueButtonText, componentStyles.continueButtonText),
-    denseLineContainer: mergeStyle(themeStyles.denseLineContainer, componentStyles.denseLineContainer),
-    denseLineText: mergeStyle(themeStyles.denseLineText, componentStyles.denseLineText),
-    denseLineRemoveButton: mergeStyle(themeStyles.denseLineRemoveButton, componentStyles.denseLineRemoveButton),
-    denseLineRemoveButtonText: mergeStyle(
-      themeStyles.denseLineRemoveButtonText, componentStyles.denseLineRemoveButtonText),
+    cartCardContainer: mergeStyle(themeStyles.cartCardContainer, componentStyles.cartCardContainer),
+    cartCardText: mergeStyle(themeStyles.cartCardText, componentStyles.cartCardText),
+    cartCardActionButton: mergeStyle(themeStyles.cartCardActionButton, componentStyles.cartCardActionButton),
+    cartCardActionButtonText: mergeStyle(
+      themeStyles.cartCardActionButtonText, componentStyles.cartCardActionButtonText),
     bestSeatsContainer: mergeStyle(themeStyles.bestSeatsContainer, componentStyles.bestSeatsContainer),
     bestSeatsSelector: mergeStyle(themeStyles.bestSeatsSelector, componentStyles.bestSeatsSelector),
     bestSeatsButton: mergeStyle(themeStyles.bestSeatsButton, componentStyles.bestSeatsButton),

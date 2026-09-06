@@ -3,9 +3,9 @@ import {
   projectConfirmedCart,
   type SeatLayerCartLineLike,
   type SeatLayerSelectedSeatLike,
-} from "./cartDense";
+} from "./cartLines";
 
-export type { SeatLayerSelectedSeatLike } from "./cartDense";
+export type { SeatLayerSelectedSeatLike } from "./cartLines";
 
 /** The immutable portion of a picker snapshot this local coordinator needs. */
 export interface PickerSelectionSnapshotLike {

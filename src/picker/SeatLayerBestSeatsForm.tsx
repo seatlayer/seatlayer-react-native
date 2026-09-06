@@ -99,6 +99,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
   const [zoneId, setZoneId] = useState<string | undefined>();
   const [choice, setChoice] = useState<ChoiceState | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useLayoutEffect(() => {
     scopeRef.current = scope;
@@ -273,6 +274,72 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
       gap: trackRowGap,
       padding: 8,
     }, styles.bestSeatsContainer, sanitizeSeatLayerPickerStyle(props.style)]}>
+      {/* ONE TITLE LINE, AND IT CANNOT WRAP. The card says what it is before
+          the buyer reads the controls, which matters most while the action
+          below is busy saying "Finding the best seats…" instead of what it
+          does. The words are the only part of the line that may shrink, and
+          they shrink by truncating: a title that wrapped to two lines was the
+          whole cost this card was trying not to pay. */}
+      <View style={{ alignItems: 'center', flexDirection: 'row' }}>
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessible={false} style={{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontSize: 14 }}>✦</Text>
+        <View style={{ width: 6 }} />
+        <Text
+          maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          testID="seatlayer-best-seats-title"
+          style={{
+            color: theme.colors.text,
+            flexShrink: 1,
+            fontFamily: theme.fontFamily,
+            fontSize: titleSize,
+            fontWeight: seatLayerPickerBold(800),
+          }}
+        >{scope.strings.translate('findSeatsTogether')}</Text>
+        {/* The one-line explanation rides behind a ⓘ right after the title,
+            not under it as a paragraph. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={scope.strings.translate('aboutBestSeats')}
+          accessibilityState={{ expanded: aboutOpen }}
+          onPress={() => setAboutOpen((open) => !open)}
+          testID="seatlayer-best-seats-about"
+          hitSlop={aboutReach}
+          style={{ alignItems: 'center', justifyContent: 'center', padding: 6 }}
+        >
+          <View accessible={false} style={{
+            alignItems: 'center',
+            backgroundColor: aboutOpen ? theme.colors.accent : 'transparent',
+            borderColor: aboutOpen ? theme.colors.accent : theme.colors.mutedText,
+            borderRadius: aboutGlyphSize / 2,
+            borderWidth: 1.2,
+            height: aboutGlyphSize,
+            justifyContent: 'center',
+            width: aboutGlyphSize,
+          }}>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{
+              color: aboutOpen ? theme.colors.onAccent : theme.colors.mutedText,
+              fontFamily: theme.fontFamily,
+              fontSize: 9.5,
+              fontWeight: seatLayerPickerBold(800),
+            }}>i</Text>
+          </View>
+        </Pressable>
+      </View>
+      {aboutOpen
+        ? (
+          <Text
+            maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+            testID="seatlayer-best-seats-about-text"
+            style={{
+              color: theme.colors.mutedText,
+              fontFamily: theme.fontFamily,
+              fontSize: 12,
+              marginTop: -2,
+            }}
+          >{scope.strings.translate('closestGroupChosenInstantly')}</Text>
+        )
+        : null}
       {/* One decision per row. Where there is exactly one category the select
           is omitted and takes no row; the zone row exists only where the venue
           has zones (spec §3.11). */}
@@ -354,3 +421,8 @@ const trackWash = .08;
 const trackEdge = .34;
 /** Six between every row of the track, and between the stepper and its action. */
 const trackRowGap = 6;
+/** The title's own size; SHORT on purpose, and the only shrinking part. */
+const titleSize = 12.5;
+/** The ⓘ beside it: a small disc, reaching the platform's floor through slop. */
+const aboutGlyphSize = 15;
+const aboutReach = (seatLayerPickerTokens.size.minimumHitTarget - aboutGlyphSize - 12) / 2;

@@ -2,7 +2,7 @@ import {
   type SeatLayerCartLineLike,
   type TicketIdentity,
   ticketIdentityOf,
-} from './cartDense';
+} from './cartLines';
 
 /**
  * The press is answered by the row (spec §3.10.2 and §3.13).
