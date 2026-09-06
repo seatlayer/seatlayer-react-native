@@ -301,6 +301,7 @@ export {
 } from './picker/SeatLayerConfirmCard';
 export {
   SpotlightGlass,
+  seatLayerPickerSpotlightAnchor,
   seatLayerPickerSpotlightVeil,
   setSeatLayerPickerSpotlightBlur,
   useSeatLayerPickerReducedTransparency,
@@ -325,7 +326,45 @@ export {
   SeatLayerPickerBuyerAssetLoader,
   type SeatLayerPickerAssetFetch,
 } from './picker/buyerAssetLoader';
-export { type SeatLayerPickerConfirmCardMode } from './picker/seatRetap';
+export {
+  seatLayerPickerMayAskAboutSeat,
+  type SeatLayerPickerConfirmCardMode,
+} from './picker/seatRetap';
+export {
+  seatLayerPickerSeatNoteAccessLabel,
+  seatLayerPickerSeatNoteHairline,
+  seatLayerPickerSeatNotePalette,
+  seatLayerPickerSeatNoteRows,
+  seatLayerPickerSeatNoteToneColors,
+  seatLayerPickerSeatNotes,
+  type SeatLayerPickerSeatNote,
+  type SeatLayerPickerSeatNotePalette,
+  type SeatLayerPickerSeatNoteStrings,
+  type SeatLayerPickerSeatNoteTone,
+  type SeatLayerPickerSeatNoteToneColors,
+} from './picker/seatNotes';
+export {
+  SeatLayerPickerSeatIcon,
+  seatLayerPickerHasSeatIcon,
+  seatLayerPickerSeatGlyphs,
+  seatLayerPickerSeatIconStrokeWidth,
+  seatLayerPickerSeatIconSvg,
+  seatLayerPickerSeatIconViewBox,
+  setSeatLayerPickerSeatIconRenderer,
+  type SeatLayerPickerSeatGlyph,
+  type SeatLayerPickerSeatIconProps,
+  type SeatLayerPickerSeatIconRenderer,
+} from './picker/seatIcons';
+export {
+  seatLayerPickerConfirmAddInitial,
+  seatLayerPickerConfirmAddReduce,
+  seatLayerPickerConfirmSwellMs,
+  seatLayerPickerConfirmSwellScale,
+  type SeatLayerPickerConfirmAddEvent,
+  type SeatLayerPickerConfirmAddStage,
+  type SeatLayerPickerConfirmAddState,
+} from './picker/confirmCardMotion';
+export { seatLayerPickerCardAsking } from './picker/seatConfirmationRemoval';
 export {
   SeatLayerPickerSeatConfirmation,
   type SeatLayerPickerSeatConfirmationActionEvent,
