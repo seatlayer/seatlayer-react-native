@@ -19,7 +19,7 @@ describe('picker customization foundation', () => {
       dockBarHeight: 52,
       peekHeight: 58,
       sheetMaxHeightFraction: 0.72,
-      denseLineHeight: 44,
+      cartCardMinHeight: 52,
       confirmActionHeight: 44,
       confirmCardMaxWidth: 310,
       minimumHitTarget: 44,
@@ -38,14 +38,14 @@ describe('picker customization foundation', () => {
       headerHeight: Number.NaN,
       peekHeight: -1,
       sheetMaxHeightFraction: 2,
-      denseVisibleLines: 1.5,
+      cartCardMinHeight: -1,
       minimumHitTarget: 40,
       unexpected: 99,
     } as unknown as Record<string, number>);
     expect(layout.headerHeight).toBe(38);
     expect(layout.peekHeight).toBe(58);
     expect(layout.sheetMaxHeightFraction).toBe(0.72);
-    expect(layout.denseVisibleLines).toBe(4);
+    expect(layout.cartCardMinHeight).toBe(52);
     expect(layout.minimumHitTarget).toBe(44);
     expect('unexpected' in layout).toBe(false);
     expect(resolveSeatLayerPickerLayout({ minimumHitTarget: 48 }).minimumHitTarget).toBe(48);

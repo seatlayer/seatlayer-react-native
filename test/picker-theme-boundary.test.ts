@@ -186,9 +186,9 @@ describe('picker layout runtime boundary', () => {
 
     expect(resolveSeatLayerPickerLayout(inherited).headerHeight).toBe(38);
     expect(() => resolveSeatLayerPickerLayout(throwingProxy)).not.toThrow();
-    expect(resolveSeatLayerPickerLayout({ headerHeight: 64, denseVisibleLines: 3 })).toMatchObject({
+    expect(resolveSeatLayerPickerLayout({ headerHeight: 64, cartCardMinHeight: 60 })).toMatchObject({
       headerHeight: 64,
-      denseVisibleLines: 3,
+      cartCardMinHeight: 60,
     });
   });
 

@@ -7,9 +7,9 @@ describe('picker font weight', () => {
   it('rounds a design weight to a weight React Native paints', () => {
     expect(seatLayerPickerFontWeight(800)).toBe('800');
     expect(seatLayerPickerFontWeight(700)).toBe('700');
-    // The two off-hundred design weights, and the weights the reference picks.
+    // The off-hundred design weights, and the weights the reference picks.
     expect(seatLayerPickerFontWeight(seatLayerPickerTokens.type.peekFromPrice.weight)).toBe('800');
-    expect(seatLayerPickerFontWeight(seatLayerPickerTokens.type.denseMore.weight)).toBe('600');
+    expect(seatLayerPickerFontWeight(seatLayerPickerTokens.type.noteTitleCompact.weight)).toBe('700');
     expect(seatLayerPickerFontWeight(851)).toBe('900');
   });
 

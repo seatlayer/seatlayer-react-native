@@ -187,7 +187,7 @@ describe('§3.10.2 cart rows', () => {
     sectionLabel: '103', rowLabel: 'A', seatNumber: '9', ...over,
   });
 
-  it('draws one plate at the generated line height, with the section as the only ellipsis', async () => {
+  it('draws one plate at the generated row height, with the section as the only ellipsis', async () => {
     const runtime = setupScope();
     runtime.snapshot.cartLines = [line()];
     const renderer = await render(React.createElement(SeatLayerCartList));
@@ -195,7 +195,7 @@ describe('§3.10.2 cart rows', () => {
       .toMatchObject({ borderRadius: seatLayerPickerTokens.radius.base * seatLayerPickerTokens.radius.smallRatio });
     const row = renderer.root.findByProps({ testID: 'seatlayer-cart-row' });
     expect((row.props.style as any[])[0]).toMatchObject({
-      height: seatLayerPickerTokens.size.denseLineHeight, opacity: 1,
+      minHeight: seatLayerPickerTokens.size.cartCardMinHeight, opacity: 1,
     });
     // The category name is not on the line; its colour is the dot and the name
     // goes to the accessible label.
@@ -241,22 +241,17 @@ describe('§3.10.2 cart rows', () => {
       .toBeGreaterThan(0);
   });
 
-  it('collapses only once there are enough runs, behind a row of the generated height', async () => {
+  it('draws one row per cart line', async () => {
+    // MINIMUM SURFACE: the folded runs and the `+N more` row went with the
+    // dense tokens; the cart cards of §3.10 replace them in the cart lane.
     const runtime = setupScope();
-    const rows = (count: number) => Array.from({ length: count }, (_, index) => line({
+    runtime.snapshot.cartLines = Array.from({ length: 6 }, (_, index) => line({
       lineKey: `l-${index}`, label: `L-${index}`, objectId: `l-${index}`,
       sectionLabel: `S${index}`, seatNumber: String(index),
     }));
-    runtime.snapshot.cartLines = rows(seatLayerPickerTokens.size.denseCollapseFrom - 1);
-    let renderer = await render(React.createElement(SeatLayerCartList));
+    const renderer = await render(React.createElement(SeatLayerCartList));
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-more-row' })).toHaveLength(0);
-    runtime.snapshot.cartLines = rows(seatLayerPickerTokens.size.denseCollapseFrom);
-    renderer = await render(React.createElement(SeatLayerCartList));
-    const more = renderer.root.findByProps({ testID: 'seatlayer-cart-more-row' });
-    expect(more.props.style).toMatchObject({ height: seatLayerPickerTokens.size.denseMoreRowHeight });
-    expect(more.props.accessibilityLabel).toBe('moreCount');
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-row' }))
-      .toHaveLength(seatLayerPickerTokens.size.denseVisibleLines);
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-row' })).toHaveLength(6);
   });
 });
 

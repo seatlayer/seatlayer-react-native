@@ -364,7 +364,7 @@ describe('cart checkout renderer', () => {
 
   });
 
-  it('renders a dense quantity with a truthful unit and total amount', async () => {
+  it('renders a quantity line with a truthful unit and total amount', async () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [{ lineKey: 'two', label: 'A-2', objectId: 'two', quantity: 2, unitPrice: 20, currency: 'USD', rowLabel: 'A', seatNumber: '2' }];
     const renderer = await render(React.createElement(SeatLayerCartList));
@@ -374,7 +374,9 @@ describe('cart checkout renderer', () => {
     expect(output).toContain('2 × $20, $40');
   });
 
-  it('folds a seat run without repeating its category and keeps unit and total columns', async () => {
+  it('draws one row per seat and does not repeat the category on the line', async () => {
+    // MINIMUM SURFACE: the folded run this used to assert went with the dense
+    // tokens; the §3.10 cart cards replace it.
     const runtime = setup();
     runtime.snapshot.categories = [{ key: 'guest', label: 'Guest tables', color: '#D45C87' }];
     runtime.snapshot.cartLines = [1, 2, 3].map((number) => ({
@@ -384,10 +386,9 @@ describe('cart checkout renderer', () => {
       sectionLabel: 'Guest Tables', unitPrice: 20,
     }));
     const renderer = await render(React.createElement(SeatLayerCartList));
-    expect(renderer.root.findByProps({ accessibilityLabel: 'Guest Tables · T22 · 1–3' })).toBeTruthy();
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-row' })).toHaveLength(3);
+    expect(renderer.root.findByProps({ accessibilityLabel: 'Guest Tables · T22 · 1, $20' })).toBeTruthy();
     const output = JSON.stringify(renderer.toJSON());
-    expect(output).toContain('3 × $20');
-    expect(output).toContain('$60');
     expect(output).not.toContain('Guest tables · Guest Tables');
   });
 

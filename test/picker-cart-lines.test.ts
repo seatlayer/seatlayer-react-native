@@ -1,15 +1,9 @@
-import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 import { describe, expect, it } from 'vitest';
 
 import {
-  formatSeatRunLabel,
-  groupDenseTicketLines,
   projectConfirmedCart,
   projectCartTotals,
-  projectVisibleRuns,
   resolveDenseTicketLines,
-  runMembersInSeatOrder,
-  ticketIsGroupable,
   type SeatLayerCartLineLike,
 } from '../src/picker/cartDense';
 
@@ -29,20 +23,7 @@ const seat = (overrides: Partial<SeatLayerCartLineLike> = {}): SeatLayerCartLine
   ...overrides,
 });
 
-describe('dense cart grouping', () => {
-  it('folds adjacent compatible seats and orders their expanded members by seat number', () => {
-    const lines = resolveDenseTicketLines([
-      seat({ lineKey: 'three', label: 'A-3', objectId: 'seat-a-3', seatNumber: '3' }),
-      seat({ lineKey: 'one', label: 'A-1', objectId: 'seat-a-1', seatNumber: '1' }),
-      seat({ lineKey: 'two', label: 'A-2', objectId: 'seat-a-2', seatNumber: '2' }),
-    ]);
-    const [run] = groupDenseTicketLines(lines);
-
-    expect(run?.seatsLabel).toBe('1–3');
-    expect(run?.total).toBe(75);
-    expect(runMembersInSeatOrder(run!).map((member) => member.seatLabel)).toEqual(['1', '2', '3']);
-  });
-
+describe('cart line resolution', () => {
   it('prints the row with its section prefix stripped', () => {
     // A chart that authors `206-I` inside section `206` made the line read
     // `206 · 206-I · 4`: the section twice and the row not at all.
@@ -60,86 +41,6 @@ describe('dense cart grouping', () => {
     expect(bare?.rowLabel).toBe('R');
   });
 
-  it('uses the buyer-facing category and formatted amount as the dense run key', () => {
-    const items = [
-      seat({ lineKey: 'first', label: 'A-1', seatNumber: '1', categoryKey: 'standard' }),
-      seat({ lineKey: 'second', label: 'A-2', seatNumber: '2', categoryKey: 'premium' }),
-    ];
-    const categorySplit = resolveDenseTicketLines(items, [], {
-      displayForItem: (item) => ({
-        section: 'Gallery', rowLabel: 'A', seatLabel: item.seatNumber,
-        categoryLabel: item.categoryKey === 'premium' ? 'Premium' : 'Standard', amountText: '€25',
-      }),
-    });
-    expect(groupDenseTicketLines(categorySplit)).toHaveLength(2);
-
-    const sameRenderedValues = resolveDenseTicketLines(items, [], {
-      displayForItem: (item) => ({
-        section: 'Gallery', rowLabel: 'A', seatLabel: item.seatNumber,
-        categoryLabel: 'Adult', amountText: '€25',
-      }),
-    });
-    expect(groupDenseTicketLines(sameRenderedValues)).toHaveLength(1);
-
-    const amountSplit = resolveDenseTicketLines(items, [], {
-      displayForItem: (item) => ({
-        section: 'Gallery', rowLabel: 'A', seatLabel: item.seatNumber,
-        categoryLabel: 'Adult', amountText: item.label === 'A-2' ? '€30' : '€25',
-      }),
-    });
-    expect(groupDenseTicketLines(amountSplit)).toHaveLength(2);
-
-    const collisionSafe = resolveDenseTicketLines(items, [], {
-      displayForItem: (item) => item.label === 'A-2'
-        ? { section: 'A', rowLabel: 'B\u0000C', seatLabel: '2', categoryLabel: 'Adult', amountText: '€25' }
-        : { section: 'A\u0000B', rowLabel: 'C', seatLabel: '1', categoryLabel: 'Adult', amountText: '€25' },
-    });
-    // The render key compares its fields rather than serializing a delimiter-
-    // joined string, so buyer strings cannot cross a key boundary.
-    expect(groupDenseTicketLines(collisionSafe)).toHaveLength(2);
-
-    const separatedByArrival = resolveDenseTicketLines([
-      seat({ lineKey: 'first', label: 'A-1', seatNumber: '1' }),
-      seat({ lineKey: 'middle', label: 'B-1', sectionLabel: 'Balcony', rowLabel: 'B' }),
-      seat({ lineKey: 'second', label: 'A-2', seatNumber: '2' }),
-    ]);
-    expect(groupDenseTicketLines(separatedByArrival)).toHaveLength(3);
-
-    const held = resolveDenseTicketLines([seat({ label: 'A-1' }), seat({ label: 'A-2', seatNumber: '2' })], [], { held: true });
-    const fresh = resolveDenseTicketLines([seat({ label: 'A-3', seatNumber: '3' })]);
-    expect(groupDenseTicketLines([...held, ...fresh])).toHaveLength(2);
-  });
-
-  it('keeps GA and invalid controls atomic, but preserves booth and open object types', () => {
-    const atomicCases: readonly SeatLayerCartLineLike[][] = [
-      [seat({ label: 'A-1' }), seat({ label: 'A-2', seatNumber: '2', objectType: 'ga', quantity: 2 })],
-      [seat({ label: 'A-1' }), seat({ label: 'A-2', seatNumber: '2', unitPrice: null })],
-      [seat({ label: 'A-1' }), seat({ label: 'A-2', seatNumber: '2', sectionLabel: null })],
-    ];
-
-    for (const items of atomicCases) expect(groupDenseTicketLines(resolveDenseTicketLines(items))).toHaveLength(2);
-    for (const objectType of ['booth', 'table', 'future-object'] as const) {
-      const items = [seat({ label: 'A-1', objectType }), seat({ label: 'A-2', objectType, seatNumber: '2' })];
-      expect(groupDenseTicketLines(resolveDenseTicketLines(items))).toHaveLength(1);
-    }
-    const tierControlled = resolveDenseTicketLines([
-      seat({ label: 'A-1', seatId: 'seat-1' }),
-      seat({ label: 'A-2', seatId: 'seat-2', seatNumber: '2' }),
-    ], [
-      { id: 'seat-1', tiers: [{}, {}] },
-      { id: 'seat-2', tiers: [{}, {}] },
-    ]);
-    expect(groupDenseTicketLines(tierControlled)).toHaveLength(2);
-    expect(ticketIsGroupable(seat())).toBe(true);
-    expect(ticketIsGroupable(seat({ objectType: 'ga', quantity: 2 }))).toBe(false);
-    expect(ticketIsGroupable(seat(), { tiers: [{}, {}] })).toBe(false);
-  });
-
-  it('does not invent a range for non-adjacent or duplicate seat labels', () => {
-    expect(formatSeatRunLabel(['1', '2', '4', '5', '6'])).toBe('1, 2, 4 +2');
-    expect(formatSeatRunLabel(['1', '1', '2'])).toBe('1, 1, 2');
-    expect(formatSeatRunLabel(['A', 'C', 'E', 'G'])).toBe('A, C, E +1');
-  });
 });
 
 describe('cart projections and identity safety', () => {
@@ -192,20 +93,4 @@ describe('cart projections and identity safety', () => {
     expect(projectConfirmedCart(items, { id: 'missing', label: 'other' })).toMatchObject({ quantity: 3, total: 75 });
   });
 
-  it('reports visible runs and the exact +N-more tail', () => {
-    const runs = groupDenseTicketLines(resolveDenseTicketLines([
-      seat({ lineKey: '1', label: 'A-1', objectId: 'row-1', rowLabel: '1' }),
-      seat({ lineKey: '2', label: 'B-1', objectId: 'row-2', rowLabel: '2' }),
-      seat({ lineKey: '3', label: 'C-1', objectId: 'row-3', rowLabel: '3' }),
-      seat({ lineKey: '4', label: 'D-1', objectId: 'row-4', rowLabel: '4' }),
-      seat({ lineKey: '5', label: 'E-1', objectId: 'row-5', rowLabel: '5' }),
-    ]));
-    // Spec §3.10.2: nothing folds until there are `denseCollapseFrom` runs.
-    // Five runs under a three-run window still print in full.
-    expect(projectVisibleRuns(runs, 3, false, 6)).toMatchObject({ hiddenCount: 0, canToggle: false });
-    expect(projectVisibleRuns(runs, 3, false, 5)).toMatchObject({ hiddenCount: 2, canToggle: true });
-    expect(projectVisibleRuns(runs, 3, true, 5)).toMatchObject({ hiddenCount: 0, canToggle: true });
-    expect(seatLayerPickerTokens.size.denseCollapseFrom).toBe(6);
-    expect(seatLayerPickerTokens.size.denseVisibleLines).toBe(4);
-  });
 });

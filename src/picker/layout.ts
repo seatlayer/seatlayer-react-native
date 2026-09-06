@@ -29,7 +29,6 @@ function isValidLayoutValue(
 ): value is number {
   if (!isFiniteNonNegativeNumber(value) || value > 4096) return false;
   if (key === 'sheetMaxHeightFraction') return value > 0 && value <= 1;
-  if (key === 'denseVisibleLines') return Number.isInteger(value) && value >= 1;
   if (key === 'minimumHitTarget') return value >= 44;
   return true;
 }

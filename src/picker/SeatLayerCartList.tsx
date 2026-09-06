@@ -18,11 +18,10 @@ import { seatLayerPickerFontWeight } from './fontWeight';
 import {
   captureSeatLayerCartActionLease,
   isSeatLayerCartActionCurrent,
-  projectSeatLayerCartRuns,
+  projectSeatLayerCartLines,
   projectSeatLayerCartSheet,
-  visibleSeatLayerCartRuns,
 } from './cartSheetUi';
-import { runMembersInSeatOrder, type DenseTicketLine, type DenseTicketRun } from './cartDense';
+import { type DenseTicketLine } from './cartDense';
 import {
   seatLayerPickerCartLineKeepsRemove, seatLayerPickerHoldOwnershipStore,
 } from './holdOwnership';
@@ -46,8 +45,15 @@ function observe(callback: unknown, value: unknown): void {
 }
 
 /**
- * The dense, folded confirmed cart — ONE PLATE, rows divided by hairlines
- * rather than each row being its own card (spec §3.10.2).
+ * The confirmed cart — ONE PLATE, one row per ticket, rows divided by
+ * hairlines.
+ *
+ * MINIMUM SURFACE. The folded dense list this used to draw (runs, the `+N
+ * more` row, the expandable member rows) went with the `size.dense*` /
+ * `type.dense*` tokens; the cart cards of spec §3.10 that replace it are not
+ * built here. What stands is one plain row per cart line, so the removal,
+ * swipe, held-lock and hold-ownership behaviour keeps its tests while the
+ * card surface is authored.
  *
  * Nothing is said when a line goes: the press is answered by the row itself,
  * which fades to `opacity.removing`, goes inert and stops being swipeable until
@@ -63,8 +69,6 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   const marks = useRef(new CartRemovalMarkCoordinator<SeatLayerPickerCartLine>(() => {
     if (mounted.current) setVersion((value) => value + 1);
   }));
-  const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
-  const [showAll, setShowAll] = useState(false);
   const revision = useRef(-1);
   useLayoutEffect(() => {
     current.current = scope;
@@ -74,8 +78,6 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   useLayoutEffect(() => {
     marks.current.reset();
     revision.current = -1;
-    setOpenRuns(new Set());
-    setShowAll(false);
     setVersion((value) => value + 1);
   }, [scope.controller, scope.sessionId, scope.snapshot?.sessionId]);
   useLayoutEffect(() => {
@@ -90,15 +92,10 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     () => projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat),
     [scope.snapshot, scope.pendingSeat, version],
   );
-  const renderProjection = {
-    ...projection,
-    runs: projectSeatLayerCartRuns(scope.snapshot, projection.confirmed.items),
-  };
-  const visible = visibleSeatLayerCartRuns(renderProjection, showAll);
+  const lines = projectSeatLayerCartLines(scope.snapshot, projection.confirmed.items);
   const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
-  const visibleRuns = visible.visible;
-  if (!visibleRuns.length) return null;
+  if (!lines.length) return null;
   // §3.13.13 — the line keeps its × while the host owns the hold. Removing it
   // is refused by the runtime, and that refusal is what raises the notice: a
   // control the buyer can press and be told about beats one that has silently
@@ -106,15 +103,13 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   const canRemove = !scope.readOnly && seatLayerPickerCartLineKeepsRemove(scope.snapshot) &&
     supportsSeatLayerPickerSurface(scope.controller, ['cart-line-remove-v1'], ['picker.removeCartLine']);
 
-  const remove = async (line: DenseTicketLine<SeatLayerPickerCartLine>, run?: DenseTicketRun<SeatLayerPickerCartLine>) => {
+  const remove = async (line: DenseTicketLine<SeatLayerPickerCartLine>) => {
     const before = current.current;
     const lease = captureSeatLayerCartActionLease(before.controller, before.sessionId);
     const live = lease?.controller.getSnapshot();
     if (!lease || !live || before.readOnly ||
       !supportsSeatLayerPickerSurface(before.controller, ['cart-line-remove-v1'], ['picker.removeCartLine'])) return;
-    // A run's × removes the whole run, and says so.
-    const lines = (run?.isGroup ? run.members : [line]).map((member) => member.item);
-    const started = marks.current.beginMany(lines, before.sessionId);
+    const started = marks.current.beginMany([line.item], before.sessionId);
     if (!started.intent || !started.mark) return;
     const token = started.mark.token;
     // Felt, not just seen: the gesture is confirmed under the finger rather
@@ -157,136 +152,53 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     borderWidth: seatLayerPickerLineWidth,
     overflow: 'hidden' as const,
   };
-  const moreLabel = scope.strings.translate(showAll ? 'showLess' : 'moreCount', {
-    count: visible.hiddenCount,
-    values: { count: visible.hiddenCount },
-  });
   return (
     <View style={[sanitizeSeatLayerPickerStyle(props.style), { direction: I18nManager.isRTL ? 'rtl' : 'ltr' }]}>
       <View style={plate} testID="seatlayer-cart-plate">
-        {visibleRuns.map((run, index) => {
-          const runKey = JSON.stringify(run.members.map((member) =>
-            [member.identity.lineKey, member.identity.removalLabel, member.identity.objectId, member.identity.seatId]));
+        {lines.map((line, index) => {
+          const key = JSON.stringify([
+            line.identity.lineKey, line.identity.removalLabel, line.identity.objectId, line.identity.seatId,
+          ]);
           return (
-            <SeatLayerCartRowArrival key={runKey} index={index}>
-              <Run
-                run={run}
+            <SeatLayerCartRowArrival key={key} index={index}>
+              <CartLineRow
+                line={line}
                 first={index === 0}
-                open={openRuns.has(runKey)}
                 canRemove={canRemove}
                 marks={marks.current}
                 theme={theme}
                 styles={styles}
-                onToggle={() => setOpenRuns((value) => {
-                  const next = new Set(value);
-                  if (next.has(runKey)) next.delete(runKey); else next.add(runKey);
-                  return next;
-                })}
                 onRemove={remove}
               />
             </SeatLayerCartRowArrival>
           );
         })}
-        {visible.canToggle
-          ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={moreLabel}
-              accessibilityState={{ expanded: showAll }}
-              onPress={() => setShowAll((value) => !value)}
-              testID="seatlayer-cart-more-row"
-              style={{
-                borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
-                borderTopWidth: seatLayerPickerLineWidth,
-                height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseMoreRowHeight, seatLayerPickerTypeScaleClamp('sheet')),
-                justifyContent: 'center',
-                paddingHorizontal: 9,
-              }}
-            >
-              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={[{
-                color: theme.colors.accent,
-                fontFamily: theme.fontFamily,
-                fontSize: seatLayerPickerTokens.type.denseMore.size,
-                fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseMore.weight),
-              }, styles.denseLineText]}>{moreLabel}</Text>
-            </Pressable>
-          )
-          : null}
       </View>
       {props.children}
     </View>
   );
 }
 
-function Run({ run, first, open, canRemove, marks, theme, styles, onToggle, onRemove }: Readonly<{
-  run: DenseTicketRun<SeatLayerPickerCartLine>;
-  first: boolean;
-  open: boolean;
-  canRemove: boolean;
-  marks: CartRemovalMarkCoordinator<SeatLayerPickerCartLine>;
-  theme: Theme;
-  styles: SeatLayerPickerStyles;
-  onToggle: () => void;
-  onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>, run?: DenseTicketRun<SeatLayerPickerCartLine>) => void;
-}>): React.ReactElement {
-  const head = (
-    <DenseLine
-      key="summary"
-      line={run.members[0]!}
-      run={run}
-      first={first}
-      expanded={open}
-      canRemove={canRemove}
-      marks={marks}
-      theme={theme}
-      styles={styles}
-      onToggle={run.isGroup ? onToggle : undefined}
-      onRemove={onRemove}
-    />
-  );
-  if (!run.isGroup || !open) return <View>{head}</View>;
-  // An opened run lists its members in seat order, matching the range its own
-  // label states, indented on a faint ground.
-  return <View>{head}{runMembersInSeatOrder(run).map((line, index) => (
-    <DenseLine
-      key={`${line.identity.lineKey ?? line.identity.removalLabel ?? index}`}
-      line={line}
-      member
-      first={false}
-      canRemove={canRemove}
-      marks={marks}
-      theme={theme}
-      styles={styles}
-      onRemove={onRemove}
-    />
-  ))}</View>;
-}
-
-function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme, styles, onToggle, onRemove }: Readonly<{
+function CartLineRow({ line, first, canRemove, marks, theme, styles, onRemove }: Readonly<{
   line: DenseTicketLine<SeatLayerPickerCartLine>;
-  run?: DenseTicketRun<SeatLayerPickerCartLine>;
   first: boolean;
-  member?: boolean;
-  expanded?: boolean;
   canRemove: boolean;
   marks: CartRemovalMarkCoordinator<SeatLayerPickerCartLine>;
   theme: Theme;
   styles: SeatLayerPickerStyles;
-  onToggle?: () => void;
-  onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>, run?: DenseTicketRun<SeatLayerPickerCartLine>) => void;
+  onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>) => void;
 }>): React.ReactElement {
   const scope = useSeatLayerPickerScope();
-  const group = run?.isGroup === true ? run : undefined;
-  const total = run?.total ?? line.total;
+  const total = line.total;
   const amount = total === null || !line.currency ? '' : scope.formatMoney(total, line.currency);
   const unit = line.unitPrice === null || !line.currency ? '' : scope.formatMoney(line.unitPrice, line.currency);
-  const seats = run?.seatsLabel ?? line.seatLabel;
+  const seats = line.seatLabel;
   // The SECTION is the only part that ellipsizes — or the seat label where
   // there is no section; the row and seats never shrink.
   const leading = line.section || seats;
   const trailingParts = (line.section ? [line.rowLabel, seats] : [line.rowLabel]).filter(Boolean);
   const identity = [leading, ...trailingParts].filter(Boolean).join(' · ');
-  const quantity = run?.quantity ?? line.quantity;
+  const quantity = line.quantity;
   const quantityAmount = quantity > 1 && unit ? `${quantity} × ${unit}` : '';
   const category = scope.snapshot?.categories.find((item) => item.key === line.categoryKey);
   const categoryColor = chartSeatLayerPickerColor(category?.color, theme.colors.accent);
@@ -305,42 +217,34 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         alignItems: 'center',
         // A held row is inventory the server has already set aside: a wash of
         // the accent and a bar down its leading edge say so without a word.
-        backgroundColor: held
-          ? seatLayerPickerColorAlpha(theme.colors.accent, .07)
-          : member
-            ? seatLayerPickerColorAlpha(theme.colors.divider, .16)
-            : 'transparent',
+        backgroundColor: held ? seatLayerPickerColorAlpha(theme.colors.accent, .07) : 'transparent',
         borderTopColor: seatLayerPickerColorAlpha(theme.colors.divider, .7),
         borderTopWidth: first ? 0 : seatLayerPickerLineWidth,
         flexDirection: 'row',
         // §4.10 — a cart row is `base x the sheet's clamped scale`.
-        height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.denseLineHeight, seatLayerPickerTypeScaleClamp('sheet')),
+        minHeight: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.cartCardMinHeight, seatLayerPickerTypeScaleClamp('sheet')),
         opacity: removing ? seatLayerPickerTokens.opacity.removing : 1,
         paddingEnd: 4,
-        paddingStart: member ? 26 : 9,
+        paddingStart: 9,
       }, styles.denseLineContainer]}
       testID={removing ? 'seatlayer-cart-row-removing' : 'seatlayer-cart-row'}
     >
       {held
         ? <View accessible={false} pointerEvents="none" style={{ backgroundColor: seatLayerPickerColorAlpha(theme.colors.accent, .72), bottom: 0, position: 'absolute', start: 0, top: 0, width: 3 }} />
         : null}
-      <Pressable
-        accessibilityRole={onToggle ? 'button' : undefined}
-        accessibilityLabel={onToggle ? identity : undefined}
-        accessibilityState={onToggle ? { expanded } : undefined}
-        disabled={!onToggle}
-        onPress={onToggle}
+      <View
+        accessible={false}
         style={{ alignItems: 'center', flex: 1, flexDirection: 'row', minHeight: seatLayerPickerTokens.size.minimumHitTarget }}
       >
-        <LineMark group={group !== undefined} held={held} open={expanded === true} color={categoryColor} theme={theme} />
+        <LineMark held={held} color={categoryColor} theme={theme} />
         <View style={{ width: 7 }} />
         <SeatLayerCartCellCrossFade token={identity} style={{ flex: 1 }}>
           <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{
             color: theme.colors.text,
             fontFamily: theme.fontFamily,
-            fontSize: seatLayerPickerTokens.type.denseLine.size,
+            fontSize: seatLayerPickerTokens.type.cartCardName.size,
             fontVariant: ['tabular-nums'],
-            fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseLine.weight),
+            fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardName.weight),
           }, styles.denseLineText]}>
             <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ fontWeight: seatLayerPickerBold(700) }}>{leading}</Text>
             {/* ONLY THE SEPARATOR IS MUTED. The row letter and the seat number
@@ -354,16 +258,16 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             ))}
           </Text>
         </SeatLayerCartCellCrossFade>
-      </Pressable>
+      </View>
       {quantityAmount
         ? (
           <SeatLayerCartCellCrossFade token={quantityAmount}>
             <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={[{
               color: theme.colors.mutedText,
               fontFamily: theme.fontFamily,
-              fontSize: seatLayerPickerTokens.type.denseMultiplier.size,
+              fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
               fontVariant: ['tabular-nums'],
-              fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.denseMultiplier.weight),
+              fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardPosition.weight),
               marginEnd: 6,
             }, styles.denseLineText]}>{quantityAmount}</Text>
           </SeatLayerCartCellCrossFade>
@@ -373,7 +277,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={[{
           color: theme.colors.text,
           fontFamily: theme.fontFamily,
-          fontSize: seatLayerPickerTokens.type.denseLine.size,
+          fontSize: seatLayerPickerTokens.type.cartCardAmount.size,
           fontVariant: ['tabular-nums'],
           fontWeight: seatLayerPickerBold(800),
         }, styles.denseLineText]}>{amount}</Text>
@@ -385,7 +289,7 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             accessibilityLabel={`${scope.strings.translate('removeSeat')} ${identity}`}
             accessibilityState={{ disabled: removing }}
             disabled={removing}
-            onPress={() => onRemove(line, group)}
+            onPress={() => onRemove(line)}
             testID="seatlayer-cart-remove"
             style={{
               alignItems: 'center',
@@ -397,9 +301,12 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
             <View style={[{
               alignItems: 'center',
               borderRadius: seatLayerPickerTokens.radius.button,
-              height: seatLayerPickerTokens.size.denseRemoveSize,
               justifyContent: 'center',
-              width: seatLayerPickerTokens.size.denseRemoveSize,
+              // MINIMUM SURFACE: the plate sized itself from `size.denseRemoveSize`,
+              // which went with the dense list. The pressable's hit target is what
+              // holds the × until the cart card authors its own control.
+              minHeight: seatLayerPickerTokens.size.minimumHitTarget,
+              minWidth: seatLayerPickerTokens.size.minimumHitTarget,
             }, styles.denseLineRemoveButton]}>
               <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 18 }, styles.denseLineRemoveButtonText]}>×</Text>
             </View>
@@ -408,12 +315,10 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
         : <View style={{ width: 8 }} />}
     </View>
   );
-  // A run's head stands for every seat under it, and a swipe that took six
-  // tickets away on one flick is a gesture nobody would trust.
   return (
     <SeatLayerCartSwipeToRemove
-      enabled={removable && group === undefined}
-      onRemove={() => onRemove(line, group)}
+      enabled={removable}
+      onRemove={() => onRemove(line)}
     >
       {row}
     </SeatLayerCartSwipeToRemove>
@@ -421,30 +326,15 @@ function DenseLine({ line, run, first, member, expanded, canRemove, marks, theme
 }
 
 /**
- * What stands at the head of a line: a run's fold control, a category colour,
- * or the lock of a seat the server has already set aside. A LOCK IS NOT A
- * COLOUR — it is the one state with consequences, so it survives greyscale.
+ * What stands at the head of a line: a category colour, or the lock of a seat
+ * the server has already set aside. A LOCK IS NOT A COLOUR — it is the one
+ * state with consequences, so it survives greyscale.
  */
-function LineMark({ group, held, open, color, theme }: Readonly<{
-  group: boolean;
+function LineMark({ held, color, theme }: Readonly<{
   held: boolean;
-  open: boolean;
   color: string;
   theme: Theme;
 }>): React.ReactElement {
-  if (group) {
-    return (
-      <View accessible={false} style={{ width: seatLayerPickerTokens.size.denseRunToggleWidth }}>
-        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{
-          color: theme.colors.mutedText,
-          fontFamily: theme.fontFamily,
-          fontSize: 13,
-          textAlign: 'center',
-          transform: [{ rotate: open ? '90deg' : '0deg' }],
-        }}>›</Text>
-      </View>
-    );
-  }
   if (held) {
     return (
       <View accessible={false} testID="seatlayer-cart-held-lock" style={{

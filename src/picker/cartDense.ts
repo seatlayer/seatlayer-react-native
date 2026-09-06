@@ -1,5 +1,5 @@
 /**
- * Pure cart shaping for a dense native picker list.
+ * Pure cart shaping for the native picker's cart list.
  *
  * This module intentionally does not decode snapshots or format money. Its
  * inputs are the cart and selection shapes after the bridge has validated
@@ -7,7 +7,6 @@
  */
 
 import { normalizeSeatLayerPickerRowLabel } from './format';
-import { seatLayerPickerTokens } from './tokens.g';
 
 export interface SeatLayerCartLineLike {
   readonly lineKey?: string | null;
@@ -51,7 +50,6 @@ export interface TicketIdentity {
 /**
  * Render values supplied by the native picker surface after it has applied
  * category lookup, row normalization, and locale-specific money formatting.
- * These are deliberately the values used as the dense run key.
  */
 export interface DenseTicketDisplayEnrichment {
   readonly section?: string | null;
@@ -87,15 +85,6 @@ export interface DenseTicketLine<T extends SeatLayerCartLineLike = SeatLayerCart
   readonly quantity: number;
   readonly total: number | null;
   readonly held: boolean;
-  readonly groupable: boolean;
-}
-
-export interface DenseTicketRun<T extends SeatLayerCartLineLike = SeatLayerCartLineLike> {
-  readonly members: readonly DenseTicketLine<T>[];
-  readonly seatsLabel: string;
-  readonly total: number | null;
-  readonly quantity: number;
-  readonly isGroup: boolean;
 }
 
 export interface CartTotalsProjection {
@@ -104,12 +93,6 @@ export interface CartTotalsProjection {
   /** Null prevents a UI from presenting a cross-currency sum as one amount. */
   readonly currency: string | null;
   readonly hasMixedCurrencies: boolean;
-}
-
-export interface VisibleRunProjection<T extends SeatLayerCartLineLike = SeatLayerCartLineLike> {
-  readonly visible: readonly DenseTicketRun<T>[];
-  readonly hiddenCount: number;
-  readonly canToggle: boolean;
 }
 
 export interface ConfirmedCartProjection<T extends SeatLayerCartLineLike = SeatLayerCartLineLike> {
@@ -187,24 +170,7 @@ export function resolveDenseTicketLine<T extends SeatLayerCartLineLike>(
     quantity,
     total,
     held: options.held === true,
-    // The runtime treats its object type as an open enum: only GA is known to
-    // carry a quantity control by contract. Booth and future objects preserve
-    // their type and retain the same dense-list rule.
-    groupable: ticketIsGroupable(item, selected),
   };
-}
-
-/** Whether a ticket can safely fold into a neighbouring dense run. */
-export function ticketIsGroupable(
-  item: SeatLayerCartLineLike,
-  selection: SeatLayerSelectedSeatLike | null = null,
-): boolean {
-  const quantity = validQuantity(item.quantity);
-  const tierOptionCount = selection?.tierOptionCount ?? selection?.tiers?.length;
-  return item.objectType !== 'ga'
-    && quantity <= 1
-    && (tierOptionCount == null || tierOptionCount <= 1)
-    && ticketIdentityOf(item).removalLabel !== null;
 }
 
 export function resolveDenseTicketLines<T extends SeatLayerCartLineLike>(
@@ -216,51 +182,6 @@ export function resolveDenseTicketLines<T extends SeatLayerCartLineLike>(
     held: options.held,
     display: options.displayForItem?.(item),
   }));
-}
-
-/** Formats a truthful compact seat list; it never fills gaps with a range. */
-export function formatSeatRunLabel(labels: readonly string[]): string {
-  if (labels.length === 0) return '';
-  if (labels.length === 1) return labels[0] ?? '';
-
-  const numbered = labels.map(seatNumber);
-  if (numbered.every((value): value is number => value !== null)) {
-    const sorted = [...numbered].sort((left, right) => left - right);
-    const consecutive = sorted.every(
-      (value, index) => index === 0 || value === (sorted[index - 1] ?? value) + 1,
-    );
-    if (consecutive) return `${sorted[0]}–${sorted[sorted.length - 1]}`;
-    return compactLabel(sorted.map(String));
-  }
-  return compactLabel(labels);
-}
-
-/** Fold only neighbouring lines whose buyer-facing run key matches. */
-export function groupDenseTicketLines<T extends SeatLayerCartLineLike>(
-  lines: readonly DenseTicketLine<T>[],
-): readonly DenseTicketRun<T>[] {
-  const groups: DenseTicketLine<T>[][] = [];
-  for (const line of lines) {
-    const last = groups[groups.length - 1];
-    if (last !== undefined && canJoinDenseTicketLines(last[0]!, line)) {
-      last.push(line);
-    } else {
-      groups.push([line]);
-    }
-  }
-  return groups.map((members) => makeRun(members));
-}
-
-/** The expanded order mirrors the compact numeric label, otherwise pick order. */
-export function runMembersInSeatOrder<T extends SeatLayerCartLineLike>(
-  run: DenseTicketRun<T>,
-): readonly DenseTicketLine<T>[] {
-  const numbered = run.members.map((member) => seatNumber(member.seatLabel));
-  if (!numbered.every((value): value is number => value !== null)) return run.members;
-  return run.members
-    .map((member, index) => ({ member, index, number: numbered[index]! }))
-    .sort((left, right) => left.number - right.number || left.index - right.index)
-    .map(({ member }) => member);
 }
 
 export function projectCartTotals(items: readonly SeatLayerCartLineLike[]): CartTotalsProjection {
@@ -305,28 +226,6 @@ export function projectConfirmedCart<T extends SeatLayerCartLineLike>(
   }));
 }
 
-/**
- * Overflow (spec §3.10.2): the list does not start folding until there are
- * `collapseFrom` runs; only then does everything past `visibleLimit` go behind
- * the `+N more` row. Five runs under a four-run window still print in full.
- */
-export function projectVisibleRuns<T extends SeatLayerCartLineLike>(
-  runs: readonly DenseTicketRun<T>[],
-  visibleLimit: number,
-  expanded: boolean,
-  collapseFrom: number = seatLayerPickerTokens.size.denseCollapseFrom,
-): VisibleRunProjection<T> {
-  const limit = Number.isFinite(visibleLimit) ? Math.max(0, Math.floor(visibleLimit)) : 0;
-  const threshold = Number.isFinite(collapseFrom) ? Math.max(0, Math.floor(collapseFrom)) : 0;
-  const collapsible = runs.length >= threshold && runs.length > limit;
-  const hiddenCount = expanded || !collapsible ? 0 : Math.max(0, runs.length - limit);
-  return {
-    visible: hiddenCount === 0 ? runs : runs.slice(0, limit),
-    hiddenCount,
-    canToggle: collapsible,
-  };
-}
-
 function selectionBehind(
   item: SeatLayerCartLineLike,
   selection: readonly SeatLayerSelectedSeatLike[],
@@ -346,42 +245,6 @@ function uniqueMatch<T>(values: readonly T[], predicate: (value: T) => boolean):
     match = value;
   }
   return match;
-}
-
-function canJoinDenseTicketLines<T extends SeatLayerCartLineLike>(
-  left: DenseTicketLine<T>,
-  right: DenseTicketLine<T>,
-): boolean {
-  return left.groupable
-    && right.groupable
-    && left.held === right.held
-    && left.section === right.section
-    && left.rowLabel === right.rowLabel
-    && left.categoryLabel === right.categoryLabel
-    && left.amountText === right.amountText;
-}
-
-function makeRun<T extends SeatLayerCartLineLike>(members: readonly DenseTicketLine<T>[]): DenseTicketRun<T> {
-  const total = members.every((member) => member.total !== null)
-    ? members.reduce((sum, member) => sum + member.total!, 0)
-    : null;
-  return {
-    members,
-    seatsLabel: formatSeatRunLabel(members.map((member) => member.seatLabel)),
-    total,
-    quantity: members.reduce((sum, member) => sum + member.quantity, 0),
-    isGroup: members.length > 1,
-  };
-}
-
-function compactLabel(labels: readonly string[]): string {
-  const shown = labels.slice(0, 3).join(', ');
-  return labels.length > 3 ? `${shown} +${labels.length - 3}` : shown;
-}
-
-function seatNumber(label: string): number | null {
-  const trimmed = label.trim();
-  return /^[0-9]{1,4}$/.test(trimmed) ? Number(trimmed) : null;
 }
 
 function nonBlank(value: string | null | undefined): string | null {

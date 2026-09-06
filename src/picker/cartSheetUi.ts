@@ -1,11 +1,9 @@
 import type { SeatLayerPickerCartLine, SeatLayerPickerSnapshot } from './models';
 import {
-  groupDenseTicketLines,
   projectCartTotals,
   projectConfirmedCart,
-  projectVisibleRuns,
   resolveDenseTicketLines,
-  type DenseTicketRun,
+  type DenseTicketLine,
   type ConfirmedCartProjection,
 } from './cartDense';
 import { seatLayerPickerTokens } from './tokens.g';
@@ -14,7 +12,7 @@ import { seatLayerPickerTokens } from './tokens.g';
 export interface SeatLayerCartSheetProjection {
   readonly confirmed: ConfirmedCartProjection<SeatLayerPickerCartLine>;
   readonly totals: ReturnType<typeof projectCartTotals>;
-  readonly runs: readonly DenseTicketRun<SeatLayerPickerCartLine>[];
+  readonly lines: readonly DenseTicketLine<SeatLayerPickerCartLine>[];
 }
 
 export function projectSeatLayerCartSheet(
@@ -25,16 +23,16 @@ export function projectSeatLayerCartSheet(
   return Object.freeze({
     confirmed,
     totals: projectCartTotals(confirmed.items),
-    runs: projectSeatLayerCartRuns(snapshot, confirmed.items),
+    lines: projectSeatLayerCartLines(snapshot, confirmed.items),
   });
 }
 
-/** Re-groups the currently renderable authoritative lines after an immediate local removal. */
-export function projectSeatLayerCartRuns(
+/** Re-resolves the currently renderable authoritative lines after an immediate local removal. */
+export function projectSeatLayerCartLines(
   snapshot: SeatLayerPickerSnapshot | undefined,
   items: readonly SeatLayerPickerCartLine[],
-): readonly DenseTicketRun<SeatLayerPickerCartLine>[] {
-  const lines = resolveDenseTicketLines(items, snapshot?.selection ?? [], {
+): readonly DenseTicketLine<SeatLayerPickerCartLine>[] {
+  return resolveDenseTicketLines(items, snapshot?.selection ?? [], {
     held: snapshot?.hold.owner === 'host',
     displayForItem: (item) => ({
       section: item.sectionLabel,
@@ -43,18 +41,6 @@ export function projectSeatLayerCartRuns(
       categoryLabel: snapshot?.categories.find((category) => category.key === item.categoryKey)?.label ?? item.categoryKey,
     }),
   });
-  return groupDenseTicketLines(lines);
-}
-
-export function visibleSeatLayerCartRuns(
-  projection: SeatLayerCartSheetProjection,
-  expanded: boolean,
-) {
-  return projectVisibleRuns(
-    projection.runs,
-    seatLayerPickerTokens.size.denseVisibleLines,
-    expanded,
-  );
 }
 
 /** The cheapest ticket the chart still sells, for the empty bar's `From` line. */
