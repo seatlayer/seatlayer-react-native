@@ -458,6 +458,7 @@ export {
   SeatLayerPicker3DNavigationModeButton,
   SeatLayerPickerColorblindButton,
   SeatLayerPickerOverviewButton,
+  SeatLayerPickerShowWholeVenueButton,
   SeatLayerPickerViewModeButton,
   SeatLayerPickerViewModeControl,
   SeatLayerPickerZoomInButton,

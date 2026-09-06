@@ -175,7 +175,10 @@ describe('picker chrome pure plans', () => {
     expect(canOfferSeatLayerAllFloors('stack', true)).toBe(false);
     expect(isSeatLayerPickerFloorSelectionEnabled(true, false)).toBe(false);
     expect(isSeatLayerPickerFloorSelectionEnabled(false, false)).toBe(true);
-    expect(planSeatLayerMapBottomControls(true, false, true, 44)).toEqual({ height: 44, zoomOffset: 0 });
+    // §3.5: one bottom-right column — a target per member, the token gap between.
+    expect(planSeatLayerMapBottomControls(1, 44)).toEqual({ height: 44 });
+    expect(planSeatLayerMapBottomControls(3, 44)).toEqual({ height: 144 });
+    expect(planSeatLayerMapBottomControls(0, 44)).toEqual({ height: 0 });
     expect(priceLegendEdges({ contentWidth: 300, layoutWidth: 100, offsetX: 0 }, true, 'reversed')).toEqual({ leading: true, trailing: false });
     expect(priceLegendFadeSteps(true, false)).toEqual([1, 0.5, 0.12]);
     expect(priceLegendFadeSteps(false, false)).toEqual([0.12, 0.5, 1]);

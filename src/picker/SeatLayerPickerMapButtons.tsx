@@ -4,6 +4,7 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { focusedPickerSection, usePickerSingleFlight } from './pickerNavigation';
 import {
+  seatLayerPickerMapCanStepOut,
   SeatLayerMapControlButtonView,
   SeatLayerPickerBackIcon,
   SeatLayerPickerFocusCornersIcon,
@@ -33,7 +34,7 @@ export interface SeatLayerPickerViewModeControlProps extends Omit<SeatLayerPicke
   readonly onLayout?: (width: number) => void;
 }
 
-type MapAction = 'overview' | 'zoomIn' | 'zoomOut' | 'fit' | 'toggleView' | 'navigation' | 'colorblind';
+type MapAction = 'overview' | 'wholeVenue' | 'zoomIn' | 'zoomOut' | 'fit' | 'toggleView' | 'navigation' | 'colorblind';
 
 function supports(
   scope: SeatLayerPickerScopeValue,
@@ -55,6 +56,12 @@ function actionAvailable(scope: SeatLayerPickerScopeValue, action: MapAction): b
     return map.buyerView === 'map' && focusedPickerSection(snapshot) !== undefined &&
       supports(scope, undefined, 'picker.overview');
   }
+  // The whole-venue disc is not the back-to-overview control: it is the last
+  // rung of the ladder on its own, reached from any depth, so it never waits
+  // for a framed section.
+  if (action === 'wholeVenue') {
+    return map.buyerView === 'map' && supports(scope, undefined, 'picker.overview');
+  }
   if (action === 'zoomIn') return map.buyerView === 'map' && supports(scope, 'zoom', 'picker.zoomIn');
   if (action === 'zoomOut') return map.buyerView === 'map' && supports(scope, 'zoom', 'picker.zoomOut');
   if (action === 'fit') return map.buyerView === 'map' && supports(scope, 'zoom', 'picker.zoomToFit');
@@ -74,9 +81,9 @@ async function dispatchMapAction(scope: SeatLayerPickerScopeValue, action: MapAc
   const live = controller.getSnapshot();
   const current = { ...scope, snapshot: live } as SeatLayerPickerScopeValue;
   if (controller !== scope.controller || !actionAvailable(current, action) || !live) return;
-  if (action === 'overview') await controller.overview();
+  if (action === 'overview' || action === 'wholeVenue') await controller.overview();
   else if (action === 'zoomIn' && live.map.canZoomIn !== false) await controller.zoomIn();
-  else if (action === 'zoomOut' && live.map.canZoomOut) await controller.zoomOut();
+  else if (action === 'zoomOut' && seatLayerPickerMapCanStepOut(live.map)) await controller.zoomOut();
   else if (action === 'fit') await controller.zoomToFit();
   else if (action === 'toggleView') {
     await controller.setBuyerView(live.map.buyerView === 'venue3d' ? 'map' : 'venue3d');
@@ -91,6 +98,11 @@ function actionLabel(scope: SeatLayerPickerScopeValue, action: MapAction, overri
   if (typeof override === 'string' && override.trim()) return override.trim();
   const snapshot = scope.snapshot;
   if (action === 'overview') return scope.strings.translate('backToVenue');
+  // The one name for "put the whole thing on screen", shared with the
+  // immersive scene's Fit chip. `strings.fitVenue` survives as the label of the
+  // retired zoom-to-fit component, and takes the same runtime key, so a host
+  // that mounts it itself is not left with a word the picker no longer uses.
+  if (action === 'wholeVenue') return scope.strings.translate('fitWholeVenue');
   if (action === 'zoomIn') return scope.strings.translate('zoomIn');
   if (action === 'zoomOut') return scope.strings.translate('zoomOut');
   if (action === 'fit') return scope.strings.translate('fitVenue');
@@ -105,7 +117,7 @@ function actionIcon(scope: SeatLayerPickerScopeValue, action: MapAction, color: 
   if (action === 'overview') return <SeatLayerPickerBackIcon color={color} />;
   if (action === 'zoomIn') return <SeatLayerPickerPlusIcon color={color} />;
   if (action === 'zoomOut') return <SeatLayerPickerMinusIcon color={color} />;
-  if (action === 'fit') return <SeatLayerPickerFocusCornersIcon color={color} />;
+  if (action === 'fit' || action === 'wholeVenue') return <SeatLayerPickerFocusCornersIcon color={color} />;
   if (action === 'colorblind') return <EyeIcon color={color} />;
   if (action === 'navigation') {
     return scope.snapshot?.map.view3DNavigationMode === 'pan'
@@ -141,8 +153,11 @@ function StandaloneButton({
   );
   if (!actionAvailable(scope, action)) return null;
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
+  // Absent is never "no": only a reading the engine actually reported dims a
+  // disc, and the whole-venue control is never dimmed at all.
   const stateDisabled = action === 'zoomIn' && scope.snapshot?.map.canZoomIn === false ||
-    action === 'zoomOut' && scope.snapshot?.map.canZoomOut === false;
+    action === 'zoomOut' && scope.snapshot !== undefined &&
+      !seatLayerPickerMapCanStepOut(scope.snapshot.map);
   const active = action === 'colorblind' && scope.snapshot?.map.colorblindSafe === true ||
     action === 'toggleView' && scope.snapshot?.map.buyerView === 'venue3d' ||
     action === 'navigation';
@@ -208,9 +223,33 @@ export function SeatLayerPickerOverviewButton(props: SeatLayerPickerMapControlBu
 export function SeatLayerPickerZoomInButton(props: SeatLayerPickerMapControlButtonProps): React.ReactElement | null {
   return <StandaloneButton {...props} action="zoomIn" />;
 }
+/**
+ * The `\u2212` disc. It is drawn by the WIDE composition and by a host's own;
+ * the phone column has no `\u2212` between `+` and the whole-venue disc (owner,
+ * 2026-09-06) — pinch steps the camera out, and the disc below goes home.
+ *
+ * Live only once the buyer is in among the seats and the ladder still has a
+ * rung: at a section's own frame the only step back is the whole venue, and
+ * that is the other control. Two discs for one move read as a puzzle.
+ */
 export function SeatLayerPickerZoomOutButton(props: SeatLayerPickerMapControlButtonProps): React.ReactElement | null {
   return <StandaloneButton {...props} action="zoomOut" />;
 }
+/**
+ * §3.5 — the phone's whole-venue disc, for a composition of a host's own.
+ *
+ * It sends `picker.overview` rather than `picker.zoomToFit`, so a framed
+ * section is released with the same press that fits the chart and the two
+ * back-out controls can never disagree about where the whole venue is.
+ */
+export function SeatLayerPickerShowWholeVenueButton(props: SeatLayerPickerMapControlButtonProps): React.ReactElement | null {
+  return <StandaloneButton {...props} action="wholeVenue" />;
+}
+/**
+ * NOT drawn by the wide rail any more (2026-09-06). Two ways to frame the same
+ * flat venue on one composition is one too many, and the one that went is the
+ * one a pinch already does. Still public for a host that wants it back.
+ */
 export function SeatLayerPickerZoomToFitButton(props: SeatLayerPickerMapControlButtonProps): React.ReactElement | null {
   return <StandaloneButton {...props} action="fit" />;
 }

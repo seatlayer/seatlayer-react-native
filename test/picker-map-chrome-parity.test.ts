@@ -8,9 +8,13 @@ vi.mock('react-native', () => ({
   Pressable: 'Pressable', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value, hairlineWidth: 1 },
 }));
+let accessAvailable = false;
 vi.mock('../src/picker/accessibility', () => ({
-  canRenderSeatLayerPickerAccessibilityFilters: () => false,
+  canRenderSeatLayerPickerAccessibilityFilters: () => accessAvailable,
   SeatLayerPickerAccessibilityFilters: 'AccessibilityFilters',
+}));
+vi.mock('../src/picker/SeatLayerPickerAccessibleStepper', () => ({
+  SeatLayerPickerAccessibleStepper: 'AccessibleStepper',
 }));
 
 let scope: Record<string, any>;
@@ -18,6 +22,9 @@ vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: 
 
 import {
   SeatLayerMapControls,
+  seatLayerPickerMapCanStepBack,
+  seatLayerPickerMapCanStepOut,
+  seatLayerPickerMapZoomInRetired,
   seatLayerPickerMapControlsEdgeInset,
   seatLayerPickerMapControlsDiscBed,
   seatLayerPickerMapControlsRailTop,
@@ -39,6 +46,7 @@ const layout = {
 };
 
 function setup(themeMode: 'light' | 'dark' = 'light', map: object = {}) {
+  accessAvailable = false;
   const commands = {
     setBuyerView: vi.fn(async () => undefined),
     zoomIn: vi.fn(async () => undefined),
@@ -93,7 +101,7 @@ describe('3.5 map corner controls', () => {
   it('gives a disc its own ground, never the panel plate it is drawn beside', async () => {
     setup('light');
     const light = await render();
-    const disc = light.root.findByProps({ accessibilityLabel: 'zoomOut' });
+    const disc = light.root.findByProps({ accessibilityLabel: 'fitWholeVenue' });
     const paint = disc.findAllByType('View' as never)[0]!;
     expect(paint.props.style[0]).toMatchObject({
       backgroundColor: seatLayerPickerTokens.color.light.chrome,
@@ -158,21 +166,143 @@ describe('3.5 map corner controls', () => {
     }));
   });
 
-  it('never draws fit-to-screen on the phone', async () => {
+  it('never draws fit-to-screen, on either composition', async () => {
+    // Two ways to frame the same flat venue on one composition is one too
+    // many, and the one that went is the one a pinch already does. The phone
+    // says `fitWholeVenue`; the immersive scene's Fit chip says the same word.
     setup();
-    const renderer = await render({ showZoomToFitControl: true, showZoomControls: true });
-    expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitVenue' })).toHaveLength(0);
+    const phone = await render({ showZoomToFitControl: true, showZoomControls: true });
+    expect(phone.root.findAllByProps({ accessibilityLabel: 'fitVenue' })).toHaveLength(0);
+    expect(phone.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' })).toHaveLength(1);
+    setup();
+    const wide = await render({ compact: false, showZoomControls: true });
+    expect(wide.root.findAllByProps({ accessibilityLabel: 'fitVenue' })).toHaveLength(0);
+    expect(wide.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' })).toHaveLength(0);
   });
 
-  it('keeps fit and the zoom pair on wide', async () => {
+  it('keeps the zoom pair on wide, and only there', async () => {
     setup();
     const renderer = await render({ compact: false, showZoomControls: true });
-    expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitVenue' }).length)
-      .toBeGreaterThan(0);
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'zoomIn' }).length)
       .toBeGreaterThan(0);
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'zoomOut' }).length)
       .toBeGreaterThan(0);
+  });
+
+  it('dims a disc in place: its ground stays, the ink and ring step back, the shadow goes', async () => {
+    setup('light', { focusedSectionId: undefined, atVenueFit: true });
+    const renderer = await render({ compact: false, showZoomControls: true });
+    const back = renderer.root.findByProps({ accessibilityLabel: 'zoomOut' });
+    expect(back.props.accessibilityState.disabled).toBe(true);
+    const paint = back.findAllByType('View' as never)[0]!.props.style[0];
+    // The GROUND is untouched — a wash over the whole disc read as a grey blot
+    // on the light map and vanished on the dark one.
+    expect(paint.backgroundColor).toBe(seatLayerPickerTokens.color.light.chrome);
+    expect(paint.shadowOpacity).toBe(0);
+    expect(paint.elevation).toBe(0);
+    expect(paint.borderColor).not.toBe(seatLayerPickerTokens.color.light.chromeLine);
+    const ink = back.findAllByType('View' as never)[1]!.props.style;
+    expect(ink.opacity).toBe(seatLayerPickerTokens.opacity.mapControlDisabled);
+    // Never a press-time wash: the disc says it cannot be pressed by itself.
+    expect(back.props.style({ pressed: false }).opacity).toBe(1);
+  });
+
+  it('draws no \u2212 on the phone, and keeps the whole-venue disc live at the fit pose', async () => {
+    // Owner, 2026-09-06: a \u2212 that only sometimes had a step to take read as a
+    // control that sometimes worked. Pinch steps out; the disc below goes home.
+    // Reference frames 01 (\u267f / + / framed dot) and 02 (\u267f / framed dot).
+    setup('light', { atVenueFit: true, canZoomOut: false, focusedSectionId: undefined });
+    const phone = await render({ showZoomControls: true, showZoomToFitControl: true });
+    expect(phone.root.findAllByProps({ accessibilityLabel: 'zoomOut' })).toHaveLength(0);
+    // ALWAYS live, never dimmed. The camera facts in a snapshot are only as
+    // fresh as the last state change and a pinch changes none, so dimming this
+    // one on a stale "already home" reading strands the buyer with nothing to
+    // press. At the venue already the press is a harmless no-op.
+    const home = phone.root.findByProps({ accessibilityLabel: 'fitWholeVenue' });
+    expect(home.props.accessibilityState.disabled).toBe(false);
+    expect(home.props.disabled).toBe(false);
+  });
+
+  it('lights \u2212 only among the seats, and only while the ladder has a rung', () => {
+    // The wide disc alone. At a section's own frame the only step back is the
+    // whole venue, which is a different control: two discs for one move read as
+    // a puzzle.
+    expect(seatLayerPickerMapCanStepOut({ rung: 'seats', canZoomOut: true })).toBe(true);
+    expect(seatLayerPickerMapCanStepOut({ rung: 'sections', canZoomOut: true })).toBe(false);
+    expect(seatLayerPickerMapCanStepOut({ rung: 'seats', atVenueFit: true, canZoomOut: true }))
+      .toBe(false);
+    // A framed section still has a rung, so the seats rung is what decides.
+    expect(seatLayerPickerMapCanStepOut({
+      rung: 'seats', focusedSectionId: 's', atVenueFit: true, canZoomOut: false,
+    })).toBe(true);
+    expect(seatLayerPickerMapCanStepOut({ rung: 'seats', canZoomOut: false })).toBe(false);
+  });
+
+  it('holds \u2212 dark on the wide rail while a section is merely framed', async () => {
+    setup('light', { rung: 'sections', canZoomOut: true });
+    const wide = await render({ compact: false, showZoomControls: true });
+    expect(wide.root.findByProps({ accessibilityLabel: 'zoomOut' })
+      .props.accessibilityState.disabled).toBe(true);
+    setup('light', { rung: 'seats', canZoomOut: true });
+    const seats = await render({ compact: false, showZoomControls: true });
+    expect(seats.root.findByProps({ accessibilityLabel: 'zoomOut' })
+      .props.accessibilityState.disabled).toBe(false);
+  });
+
+  it('reads the fit pose, and never reads an absent one', () => {
+    // §3.5 / §4.9. A framed section always has a rung left; otherwise the fit
+    // pose decides; where the runtime does not report it, `canZoomOut` is the
+    // older, coarser fallback. ABSENT must never be read as `false`.
+    expect(seatLayerPickerMapCanStepBack({ focusedSectionId: 's', atVenueFit: true, canZoomOut: false }))
+      .toBe(true);
+    expect(seatLayerPickerMapCanStepBack({ atVenueFit: true, canZoomOut: true })).toBe(false);
+    expect(seatLayerPickerMapCanStepBack({ atVenueFit: false, canZoomOut: false })).toBe(true);
+    expect(seatLayerPickerMapCanStepBack({ canZoomOut: false })).toBe(false);
+    expect(seatLayerPickerMapCanStepBack({ canZoomOut: true })).toBe(true);
+    expect(seatLayerPickerMapZoomInRetired({ canZoomOut: true })).toBe(false);
+    expect(seatLayerPickerMapZoomInRetired({ rung: 'seats', canZoomOut: true })).toBe(true);
+    expect(seatLayerPickerMapZoomInRetired({ canZoomIn: false, canZoomOut: true })).toBe(true);
+  });
+
+  it('heads the control column with the accessibility disc, on both compositions', async () => {
+    // Owner call 2026-09-06. It stood alone in the map's bottom-left corner —
+    // one control facing a stack of them, in the corner the floor rail owns.
+    // Who can sit where is an earlier question than how close the camera is.
+    for (const compact of [true, false]) {
+      setup();
+      accessAvailable = true;
+      const renderer = await render({ compact, showZoomControls: true, showAccessibilityControl: true });
+      const column = renderer.root.findByType('AccessibilityFilters' as never);
+      // The SAME disc on both compositions: it floats on the map either way,
+      // so the wide side does not get a labelled button of its own.
+      expect(column.props.compact).toBe(true);
+      const order = renderer.root.findAll(
+        (node) => (node.type as unknown) === 'AccessibilityFilters' ||
+          node.props?.accessibilityLabel === 'zoomIn',
+        { deep: true },
+      );
+      expect(order[0]!.type as unknown).toBe('AccessibilityFilters');
+      // The stepper rides BESIDE it, on its inner side, at `accessStepGap`.
+      const row = renderer.root.findByType('AccessibleStepper' as never).parent!;
+      expect(row.props.style).toMatchObject({
+        flexDirection: 'row',
+        gap: seatLayerPickerTokens.size.accessStepGap,
+      });
+    }
+  });
+
+  it('takes the disc column off the map while a seat card asks', async () => {
+    // Reference frame 19: \u267f, `+` and the framed dot are ABSENT, not merely
+    // faded (0.8.0 faded them). The Dart carries this as an AnimatedOpacity to
+    // ZERO under an IgnorePointer rather than an unmount, so the column keeps
+    // its blocked-region rectangle and comes back without a relayout; the
+    // buyer's reading of "gone" is the same either way.
+    setup();
+    const asking = await render({ cardAsking: true, showZoomControls: true });
+    const root = asking.root.findAllByType('View' as never)[0]!;
+    expect(root.props.pointerEvents).toBe('none');
+    const style = root.props.style[root.props.style.length - 1];
+    expect(style.opacity).toBe(0);
   });
 });
 

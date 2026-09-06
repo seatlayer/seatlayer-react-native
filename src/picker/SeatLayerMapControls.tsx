@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, type ReactNode } from 'react';
-import { Pressable, Text, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
   canRenderSeatLayerPickerAccessibilityFilters,
@@ -11,10 +11,31 @@ import { blendSeatLayerPickerColor, focusedPickerSection, usePickerSingleFlight 
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
+import { SeatLayerPickerAccessibleStepper } from './SeatLayerPickerAccessibleStepper';
 import { SeatLayerPickerBlockedRegion } from './blockedRegionsContext';
 import { seatLayerPickerMapChromeGround } from './mapChromeTheme';
+import {
+  SeatLayerPickerBackIcon,
+  SeatLayerPickerFocusCornersIcon,
+  SeatLayerPickerMinusIcon,
+  SeatLayerPickerPlusIcon,
+} from './mapControlIcons';
+import {
+  seatLayerPickerViewModeTrackInset,
+  SeatLayerPickerViewModeControlView,
+} from './mapViewModeControl';
 import { seatLayerPickerTokens } from './tokens.g';
-import { seatLayerPickerBold } from './boldText';
+
+export {
+  SeatLayerPickerBackIcon,
+  SeatLayerPickerFocusCornersIcon,
+  SeatLayerPickerMinusIcon,
+  SeatLayerPickerPlusIcon,
+} from './mapControlIcons';
+export {
+  seatLayerPickerViewModeTrackInset,
+  SeatLayerPickerViewModeControlView,
+} from './mapViewModeControl';
 
 export interface SeatLayerMapControlsProps {
   readonly compact?: boolean;
@@ -38,6 +59,19 @@ export interface SeatLayerMapControlsProps {
   readonly showOverviewControl?: boolean;
   readonly showAccessibilityControl?: boolean;
   readonly includeViewModeControl?: boolean;
+  /**
+   * §3.5, 0.9.1: the disc column steps out of the way of a seat card. A column
+   * of controls poking out beside the sheet asking about a seat reads as
+   * clutter, and none of them may be pressed while it asks. The card owner
+   * (Lane A) reports the asking state; the column only fades on it.
+   */
+  readonly cardAsking?: boolean;
+  /**
+   * The control drawn at the HEAD of the map's control column. Undefined draws
+   * the picker's own accessibility disc, so a host that replaces the filter
+   * control still has it placed here rather than rebuilding the column.
+   */
+  readonly accessibilityControl?: ReactNode;
   /** Hosts may supply localized zoom labels when generated copy is unavailable. */
   readonly zoomInLabel?: string;
   readonly zoomOutLabel?: string;
@@ -46,22 +80,6 @@ export interface SeatLayerMapControlsProps {
   readonly onViewModeLayout?: (width: number) => void;
 }
 
-const segmentPaintHeight = seatLayerPickerTokens.size.viewModeButtonHeight;
-/** Air between the two halves, so the bed reads between them and not only around. */
-const segmentGap = 2;
-/**
- * The bed the two halves stand ON, all round (`picker_map_controls.dart`:
- * `padding: EdgeInsets.all(3)`). Without it the lit half is butted against the
- * track's own hairline, which then prints dark over the accent, and the whole
- * control comes out six points narrow.
- */
-const segmentBed = 3;
-/**
- * The track's own hairline, which the reference counts as part of the track
- * (`Container`, not `DecoratedBox` — its own comment says so), so the bed the
- * halves stand on is measured INSIDE it.
- */
-const trackLine = 1;
 /** §3.5 anchor regions: `size.mapAnchorGap` between members of one region. */
 const controlGap = seatLayerPickerTokens.size.mapAnchorGap;
 /** The zoom column is a column, not an anchor region; it carries its own gap. */
@@ -76,11 +94,6 @@ export const seatLayerPickerMapControlsEdgeInset = seatLayerPickerTokens.size.ma
  */
 export const seatLayerPickerMapControlsRailTop = 8;
 /**
- * The air the Map/3D control carries above its own track so that its press
- * target clears the touch floor. The anchor takes it back, or the track lands
- * a bed's depth below the line the test chip opposite it stands on.
- */
-/**
  * The air a corner disc carries around itself so its press target clears the
  * touch floor. The anchor takes it back: the region's inset is measured to the
  * DISC, and counting the reach as well set the disc a bed in from its corner.
@@ -88,23 +101,64 @@ export const seatLayerPickerMapControlsRailTop = 8;
 export const seatLayerPickerMapControlsDiscBed =
   (seatLayerPickerTokens.size.minimumHitTarget -
     seatLayerPickerTokens.size.mapControlSize) / 2;
-export const seatLayerPickerViewModeTrackInset =
-  (seatLayerPickerTokens.size.minimumHitTarget -
-    seatLayerPickerTokens.size.viewModeControlHeight) / 2;
 
-type BottomControlPlan = Readonly<{ height: number; zoomOffset: number }>;
+type BottomControlPlan = Readonly<{ height: number }>;
 
+/**
+ * The bottom-right column's own height: one target per member, the token gap
+ * between them. Every member is laid out at the touch target rather than at
+ * the disc, so the reach is the same for the head of the column and its foot.
+ */
 export function planSeatLayerMapBottomControls(
-  fit: boolean,
-  zoomPair: boolean,
-  accessibility: boolean,
+  members: number,
   target: number,
 ): BottomControlPlan {
-  if (zoomPair) {
-    const zoomOffset = fit ? target + controlGap : 0;
-    return Object.freeze({ height: zoomOffset + target * 2 + controlGap, zoomOffset });
-  }
-  return Object.freeze({ height: fit || accessibility ? target : 0, zoomOffset: 0 });
+  const count = Number.isFinite(members) ? Math.max(0, Math.trunc(members)) : 0;
+  if (count === 0) return Object.freeze({ height: 0 });
+  return Object.freeze({ height: count * target + (count - 1) * zoomColumnGap });
+}
+
+type MapCameraReading = Readonly<{
+  focusedSectionId?: string;
+  rung?: string;
+  atVenueFit?: boolean;
+  canZoomIn?: boolean;
+  canZoomOut: boolean;
+}>;
+
+/**
+ * §3.5 "the reading behind both back-out discs is one reading". A framed
+ * section always has a rung left — leaving it is a step even at the fit pose,
+ * card and dim included. Otherwise `map.atVenueFit` decides: the fit pose is
+ * the one camera with nothing left to offer. Where the runtime does not report
+ * it the field is ABSENT, never `false`, and `map.canZoomOut` is the older,
+ * coarser fallback (§4.9) — an absent reading is never read as a pose.
+ */
+export function seatLayerPickerMapCanStepBack(map: MapCameraReading): boolean {
+  if (map.focusedSectionId !== undefined) return true;
+  if (map.atVenueFit !== undefined) return !map.atVenueFit;
+  return map.canZoomOut;
+}
+
+/**
+ * §3.5 `\u2212`, which exists on the WIDE composition and in a host's own
+ * composition only. Live once the buyer is in among the seats and the ladder
+ * still has a rung: at a section's own frame the only step back is the whole
+ * venue, and that is a different control (owner, 2026-09-06). Two discs for
+ * one move read as a puzzle.
+ */
+export function seatLayerPickerMapCanStepOut(map: MapCameraReading): boolean {
+  return map.rung === 'seats' && seatLayerPickerMapCanStepBack(map);
+}
+
+/**
+ * §3.5, web 0.84.0: `+` RETIRES rather than dims once the buyer is among the
+ * seats or at the zoom ceiling — a disc that does nothing is the broken-map
+ * reading. `canZoomIn` is present-only, so only an explicit `false` retires it;
+ * an absent reading means the engine cannot say, which is not a ceiling.
+ */
+export function seatLayerPickerMapZoomInRetired(map: MapCameraReading): boolean {
+  return map.rung === 'seats' || map.canZoomIn === false;
 }
 
 function inset(value: unknown, fallback: number): number {
@@ -122,7 +176,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
     [props.slots, scope.styles],
   );
   const requestedAction = useRef<Readonly<{
-    kind: 'overview' | 'zoomIn' | 'zoomOut' | 'fit' | 'map' | 'venue3d';
+    kind: 'overview' | 'wholeVenue' | 'zoomIn' | 'zoomOut' | 'fit' | 'map' | 'venue3d';
     sessionId: number;
   }> | undefined>(undefined);
   const [actionBusy, runAction] = usePickerSingleFlight(
@@ -145,6 +199,17 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       if (action === 'overview') {
         if (currentView !== 'map' || focusedPickerSection(latest) === undefined) return undefined;
         await execute('picker.overview', [], () => controller.overview());
+      } else if (action === 'wholeVenue') {
+        // ALWAYS LIVE, and always `picker.overview` rather than
+        // `picker.zoomToFit`: it has to land on exactly the camera the ladder's
+        // last rung lands on — a framed section released, its card closed, its
+        // dim cleared — so the two can never disagree about where the whole
+        // venue is. The camera facts in a snapshot are only as fresh as the
+        // last state change and a pinch changes none, so gating this disc on
+        // one strands a buyer on a stale reading; at the venue already the
+        // press is a harmless no-op.
+        if (currentView !== 'map') return undefined;
+        await execute('picker.overview', [], () => controller.overview());
       } else if (action === 'fit') {
         if (currentView !== 'map') return undefined;
         await execute('picker.zoomToFit', ['zoom'], () => controller.zoomToFit());
@@ -153,7 +218,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
         if (currentView !== 'map' || latest.map.canZoomIn === false) return undefined;
         await execute('picker.zoomIn', ['zoom'], () => controller.zoomIn());
       } else if (action === 'zoomOut') {
-        if (currentView !== 'map' || !latest.map.canZoomOut) return undefined;
+        if (currentView !== 'map' || !seatLayerPickerMapCanStepOut(latest.map)) return undefined;
         await execute('picker.zoomOut', ['zoom'], () => controller.zoomOut());
       } else {
         if (!latest.capabilities.includes('venue3d') || currentView === action) return undefined;
@@ -182,33 +247,43 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
     ? props.zoomInLabel.trim() : scope.strings.translate('zoomIn');
   const zoomOutLabel = typeof props.zoomOutLabel === 'string' && props.zoomOutLabel.trim()
     ? props.zoomOutLabel.trim() : scope.strings.translate('zoomOut');
+  // The wide rail keeps `+` and `-`; the phone's column carries `+` alone,
+  // because pinch already steps the camera out and the disc below goes home.
   const zoomPairAvailable = snapshot !== undefined && buyerView === 'map' && !compact &&
     props.showZoomControls === true &&
     supports('picker.zoomIn', ['zoom']) && supports('picker.zoomOut', ['zoom']);
-  // §3.5, owner call 2026-09-05. Narrow carries ONE slot in the bottom-right
-  // and it carries two directions: `+` at the whole venue, `-` the moment a
-  // section is framed or seats are the visible layer. A dimmed `-` answered the
-  // wrong question, and the corner must not grow and shrink under the thumb.
-  const stepDirection: 'in' | 'out' = snapshot?.map.canZoomOut === true ? 'out' : 'in';
-  const stepCommand = stepDirection === 'out' ? 'picker.zoomOut' : 'picker.zoomIn';
-  const stepDiscAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
-    props.showStepOutControl !== false && supports(stepCommand, ['zoom']);
-  const stepOutAvailable = stepDiscAvailable;
-  // Fit-to-screen is not drawn on the phone: both back the camera out, one a
-  // step at a time and one all at once, and nothing on either round button said
-  // which was which. Wide keeps `+`, `-` and fit as they were.
-  const fitAvailable = snapshot !== undefined && buyerView === 'map' && !compact &&
-    props.showZoomToFitControl !== false && supports('picker.zoomToFit', ['zoom']);
+  // §3.5 phone column. `+` steps in and the framed dot puts the whole venue on
+  // screen from any depth; there is no `-` between them (owner, 2026-09-06): a
+  // `-` that only sometimes had a step to take read as a control that
+  // sometimes worked.
+  const zoomInSlotAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
+    props.showStepOutControl !== false && supports('picker.zoomIn', ['zoom']);
+  // A retired `+` KEEPS ITS SLOT (web 0.84.1): the column is anchored at its
+  // foot, so a disc that left the tree moved the accessibility disc that heads
+  // it under the thumb already reaching for that disc.
+  const zoomInRetired = snapshot !== undefined &&
+    seatLayerPickerMapZoomInRetired(snapshot.map);
+  // The phone's whole-venue disc. The wide layout draws NO fit control of its
+  // own any more (2026-09-06): two ways to frame the same flat venue on one
+  // composition is one too many, and the one that went is the one a pinch
+  // already does. `SeatLayerPickerZoomToFitButton` stays public for a host.
+  const wholeVenueAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
+    props.showZoomToFitControl !== false && supports('picker.overview');
+  const fitAvailable = false;
   const showOverview = props.showOverviewControl ?? !compact;
   const overviewAvailable = snapshot !== undefined && buyerView === 'map' &&
     showOverview && focusedPickerSection(snapshot) !== undefined &&
     supports('picker.overview');
   const accessAvailable = buyerView === 'map' &&
     props.showAccessibilityControl !== false &&
-    canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot);
-  const ownsVisibleControl = viewAvailable || fitAvailable || stepOutAvailable || zoomPairAvailable ||
-    overviewAvailable || accessAvailable;
-  const bottomPlan = planSeatLayerMapBottomControls(fitAvailable || stepOutAvailable, zoomPairAvailable, accessAvailable, target);
+    (props.accessibilityControl !== undefined ||
+      canRenderSeatLayerPickerAccessibilityFilters(scope.controller, snapshot));
+  const ownsVisibleControl = viewAvailable || wholeVenueAvailable || zoomInSlotAvailable ||
+    zoomPairAvailable || overviewAvailable || accessAvailable;
+  const bottomPlan = planSeatLayerMapBottomControls(
+    (accessAvailable ? 1 : 0) + (zoomInSlotAvailable ? 1 : 0) + (wholeVenueAvailable ? 1 : 0),
+    target,
+  );
   const insetLease = useMemo(
     () => props.reserveInset ? scope.claimViewportInsetBand('mapControls') : undefined,
     [props.reserveInset, scope.claimViewportInsetBand, scope.sessionId],
@@ -221,26 +296,28 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   );
   if (snapshot === undefined || buyerView === undefined || !ownsVisibleControl) return null;
   const disabled = scope.isBusy || actionBusy;
-  const accessibilityControl = accessAvailable
-    ? <SeatLayerPickerAccessibilityFilters
-        compact={compact}
+  // THE SAME DISC ON BOTH COMPOSITIONS (§3.5): it floats on the map either
+  // way, so the wide side does not get a labelled button of its own. `compact`
+  // is the disc form here, not the layout.
+  const accessibilityControl = !accessAvailable
+    ? null
+    : props.accessibilityControl ?? <SeatLayerPickerAccessibilityFilters
+        compact
         modalBottomInset={bottomInset + edgeInset}
         modalHorizontalInset={edgeInset}
         modalTopInset={edgeInset}
         slots={props.slots}
-      />
-    : null;
+      />;
   return (
     <SeatLayerMapControlsView
       {...props}
       slots={styles}
       accessibilityControl={accessibilityControl}
       bottomInset={bottomInset}
-      zoomBottomOffset={bottomPlan.zoomOffset}
       canFit={fitAvailable}
       canOverview={overviewAvailable}
       canZoomIn={zoomPairAvailable && snapshot.map.canZoomIn !== false}
-      canZoomOut={zoomPairAvailable && snapshot.map.canZoomOut}
+      canZoomOut={zoomPairAvailable && seatLayerPickerMapCanStepOut(snapshot.map)}
       compact={compact}
       disabled={disabled}
       edgeInset={edgeInset}
@@ -252,14 +329,10 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       }}
       onZoomIn={() => { requestedAction.current = Object.freeze({ kind: 'zoomIn', sessionId: scope.sessionId }); runAction(); }}
       onZoomOut={() => { requestedAction.current = Object.freeze({ kind: 'zoomOut', sessionId: scope.sessionId }); runAction(); }}
-      onStep={() => {
-        requestedAction.current = Object.freeze({
-          kind: stepDirection === 'out' ? 'zoomOut' : 'zoomIn',
-          sessionId: scope.sessionId,
-        });
+      onWholeVenue={() => {
+        requestedAction.current = Object.freeze({ kind: 'wholeVenue', sessionId: scope.sessionId });
         runAction();
       }}
-      stepDirection={stepDirection}
       zoomInLabel={zoomInLabel}
       zoomOutLabel={zoomOutLabel}
       buyerView={buyerView}
@@ -270,7 +343,10 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       venue3DAvailable={viewAvailable}
       onViewModeLayout={props.onViewModeLayout}
       zoomPairAvailable={zoomPairAvailable}
-      stepOutAvailable={stepOutAvailable}
+      zoomInSlotAvailable={zoomInSlotAvailable}
+      zoomInRetired={zoomInRetired}
+      wholeVenueAvailable={wholeVenueAvailable}
+      accessibleStepper={accessAvailable ? <SeatLayerPickerAccessibleStepper /> : null}
       zoomInBusy={actionBusy}
       zoomOutBusy={actionBusy}
       fitBusy={actionBusy}
@@ -279,6 +355,15 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   );
 }
 
+/**
+ * §3.5 — the map's floating controls, in their anchor regions.
+ *
+ * ONE COLUMN, BOTTOM-RIGHT, ON BOTH COMPOSITIONS (owner, 2026-09-06). The
+ * accessibility disc HEADS it and the zoom discs follow: who can sit where is
+ * an earlier question than how close the camera is, and the disc used to stand
+ * alone in the corner the floor rail already owns, which read as something the
+ * layout had forgotten.
+ */
 function SeatLayerMapControlsView({
   compact,
   style,
@@ -286,7 +371,6 @@ function SeatLayerMapControlsView({
   target,
   edgeInset,
   bottomInset = 0,
-  zoomBottomOffset,
   zoomInLabel,
   zoomOutLabel,
   buyerView,
@@ -296,27 +380,29 @@ function SeatLayerMapControlsView({
   canFit,
   canOverview,
   zoomPairAvailable,
-  stepOutAvailable,
+  zoomInSlotAvailable,
+  zoomInRetired,
+  wholeVenueAvailable,
   venue3DAvailable,
   zoomInBusy,
   zoomOutBusy,
   fitBusy,
   overviewBusy,
   viewBusy,
+  cardAsking = false,
   theme,
   strings,
   onOverview,
   onZoomIn,
   onZoomOut,
-  onStep,
-  stepDirection,
+  onWholeVenue,
   onFit,
   onView,
   onViewModeLayout,
   accessibilityControl,
+  accessibleStepper,
 }: SeatLayerMapControlsProps & {
   readonly edgeInset: number;
-  readonly zoomBottomOffset: number;
   readonly target: number;
   readonly buyerView: 'map' | 'venue3d' | undefined;
   readonly disabled: boolean;
@@ -325,7 +411,9 @@ function SeatLayerMapControlsView({
   readonly canFit: boolean;
   readonly canOverview: boolean;
   readonly zoomPairAvailable: boolean;
-  readonly stepOutAvailable: boolean;
+  readonly zoomInSlotAvailable: boolean;
+  readonly zoomInRetired: boolean;
+  readonly wholeVenueAvailable: boolean;
   readonly venue3DAvailable: boolean;
   readonly onViewModeLayout?: (width: number) => void;
   readonly zoomInBusy: boolean;
@@ -338,11 +426,11 @@ function SeatLayerMapControlsView({
   readonly onOverview: () => void;
   readonly onZoomIn: () => void;
   readonly onZoomOut: () => void;
-  readonly onStep: () => void;
-  readonly stepDirection: 'in' | 'out';
+  readonly onWholeVenue: () => void;
   readonly onFit: () => void;
   readonly onView: (view: 'map' | 'venue3d') => void;
   readonly accessibilityControl: ReactNode;
+  readonly accessibleStepper?: ReactNode;
 }): React.ReactElement {
   const bottom = edgeInset + bottomInset;
   const discBed = seatLayerPickerMapControlsDiscBed;
@@ -379,14 +467,18 @@ function SeatLayerMapControlsView({
     onZoomOut,
     <SeatLayerPickerMinusIcon color={theme.colors.text} />,
   );
-  // One slot, two directions. Never dimmed, never moved, never withdrawn.
-  const stepDisc = control(
-    stepDirection === 'out' ? usableZoomOutLabel : usableZoomInLabel,
-    stepOutAvailable && !zoomOutBusy && !zoomInBusy,
-    onStep,
-    stepDirection === 'out'
-      ? <SeatLayerPickerMinusIcon color={theme.colors.text} />
-      : <SeatLayerPickerPlusIcon color={theme.colors.text} />,
+  const phoneZoomIn = !usableZoomInLabel ? null : control(
+    usableZoomInLabel,
+    !zoomInRetired && !zoomInBusy,
+    onZoomIn,
+    <SeatLayerPickerPlusIcon color={theme.colors.text} />,
+  );
+  // The last rung of the ladder on its own, from any depth. ALWAYS live.
+  const wholeVenue = control(
+    strings.translate('fitWholeVenue'),
+    !fitBusy,
+    onWholeVenue,
+    <SeatLayerPickerFocusCornersIcon color={theme.colors.text} />,
   );
   const fit = control(
     strings.translate('fitVenue'),
@@ -406,6 +498,20 @@ function SeatLayerMapControlsView({
       onLayout={onViewModeLayout}
     />
   ) : null;
+  // The stepper rides BESIDE the accessibility disc rather than above it
+  // (§3.4.1): they are one subject, and it sits on the disc's inner side so
+  // the column's own right edge stays the discs'.
+  const head = accessibilityControl === null ? null : (
+    <View style={{
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: seatLayerPickerTokens.size.accessStepGap,
+      justifyContent: 'flex-end',
+    }}>
+      {accessibleStepper}
+      {accessibilityControl}
+    </View>
+  );
   if (!compact) {
     return (
       <SeatLayerPickerBlockedRegion
@@ -415,24 +521,60 @@ function SeatLayerMapControlsView({
           sanitizeSeatLayerPickerStyle(style),
         ]}
       >
+        {head}
         {onMap && canOverview ? overview : null}
         {onMap && zoomPairAvailable ? (
           <View style={{ gap: zoomColumnGap }}>{zoomIn}{zoomOut}</View>
         ) : null}
         {onMap && canFit ? fit : null}
         {view}
-        {accessibilityControl}
       </SeatLayerPickerBlockedRegion>
     );
   }
+  // Every member of the column is laid out at the touch target, so the head of
+  // the column and its foot have the same reach and the token gap is measured
+  // between the DISCS. The anchor takes the reach back on both axes: the
+  // region's inset is measured to the disc, not to the target around it.
+  const member = (child: ReactNode, first: boolean, hidden = false) => (
+    <View
+      pointerEvents={hidden ? 'none' : 'box-none'}
+      style={{
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        marginTop: first ? 0 : zoomColumnGap - discBed * 2,
+        minHeight: target,
+        opacity: hidden ? 0 : 1,
+      }}
+    >
+      {child}
+    </View>
+  );
+  const columnMembers: ReactNode[] = [];
+  if (onMap && head !== null) columnMembers.push(member(head, columnMembers.length === 0));
+  if (onMap && zoomInSlotAvailable) {
+    columnMembers.push(member(phoneZoomIn, columnMembers.length === 0, zoomInRetired));
+  }
+  if (onMap && wholeVenueAvailable) {
+    columnMembers.push(member(wholeVenue, columnMembers.length === 0));
+  }
   return (
     <View
-      pointerEvents="box-none"
+      pointerEvents={cardAsking ? 'none' : 'box-none'}
       style={[
         { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
         slots?.mapControlsContainer,
         sanitizeSeatLayerPickerStyle(style),
-        { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
+        {
+          bottom: 0,
+          left: 0,
+          // §3.5, 0.9.1: the discs step out of the way of a seat card. None of
+          // them may be pressed while it asks, so the fade and the pointer
+          // guard are one decision.
+          opacity: cardAsking ? 0 : 1,
+          position: 'absolute',
+          right: 0,
+          top: 0,
+        },
       ]}
     >
       {view ? (
@@ -440,14 +582,18 @@ function SeatLayerMapControlsView({
           {view}
         </SeatLayerPickerBlockedRegion>
       ) : null}
-      {onMap && accessibilityControl ? (
-        <SeatLayerPickerBlockedRegion style={{ bottom, position: 'absolute', start: edgeInset }}>
-          {accessibilityControl}
-        </SeatLayerPickerBlockedRegion>
-      ) : null}
-      {onMap && stepOutAvailable ? (
-        <SeatLayerPickerBlockedRegion style={{ bottom: bottom - discBed, end: edgeInset - discBed, position: 'absolute' }}>
-          {stepDisc}
+      {columnMembers.length > 0 ? (
+        <SeatLayerPickerBlockedRegion
+          style={{
+            alignItems: 'flex-end',
+            bottom: bottom - discBed,
+            end: edgeInset - discBed,
+            position: 'absolute',
+          }}
+        >
+          {columnMembers.map((entry, index) => (
+            <React.Fragment key={index}>{entry}</React.Fragment>
+          ))}
         </SeatLayerPickerBlockedRegion>
       ) : null}
       {onMap && canOverview ? (
@@ -458,6 +604,7 @@ function SeatLayerMapControlsView({
     </View>
   );
 }
+
 
 export function SeatLayerMapControlButtonView({
   label,
@@ -485,6 +632,14 @@ export function SeatLayerMapControlButtonView({
 }): React.ReactElement {
   const size = theme.layout.mapControlSize;
   const chrome = seatLayerPickerMapChromeGround(theme);
+  // §3.5 "a disabled disc has to look disabled". These controls dim in place
+  // rather than disappearing, which only works as an answer — "you are already
+  // looking at everything" — if the buyer can see that it is one. The disc
+  // KEEPS ITS GROUND in both themes; only the glyph and the ring step back, at
+  // `opacity.mapControlDisabled`, and the shadow goes: it is no longer lifted
+  // off the map, because it is no longer a thing to press. A wash over the
+  // whole disc read as a grey blot on the light map and vanished on the dark.
+  const dim = seatLayerPickerTokens.opacity.mapControlDisabled;
   return (
     <Pressable
       accessibilityLabel={label}
@@ -499,7 +654,7 @@ export function SeatLayerMapControlButtonView({
         alignItems: 'center',
         height: target,
         justifyContent: 'center',
-        opacity: enabled ? (pressed ? 0.72 : 1) : 0.4,
+        opacity: enabled && pressed ? 0.72 : 1,
         width: target,
       })}
     >
@@ -510,268 +665,37 @@ export function SeatLayerMapControlButtonView({
             backgroundColor: active
               ? blendSeatLayerPickerColor(theme.colors.accent, chrome.ground, .13, chrome.ground)
               : chrome.ground,
-            borderColor: chrome.line,
+            borderColor: enabled
+              ? chrome.line
+              : blendSeatLayerPickerColor(chrome.line, chrome.ground, dim, chrome.line),
             // A DISC. The corner controls are round: at the button radius the
             // back-out control read as a tile dropped on the venue beside the
             // round accessibility control opposite it.
             borderRadius: seatLayerPickerTokens.radius.pill,
             borderWidth: 1,
-            elevation: 3,
             height: size,
             justifyContent: 'center',
-            shadowColor: theme.colors.text,
-            shadowOffset: { height: 3, width: 0 },
-            shadowOpacity: 0.15,
-            shadowRadius: 4,
             width: size,
+            // The shadow goes with the press, not with the ground.
+            ...(enabled
+              ? {
+                elevation: 3,
+                shadowColor: theme.colors.text,
+                shadowOffset: { height: 3, width: 0 },
+                shadowOpacity: 0.15,
+                shadowRadius: 4,
+              }
+              : { elevation: 0, shadowOpacity: 0 }),
           },
           slots?.mapControlButton,
           sanitizeSeatLayerPickerStyle(style),
           { height: size, width: size },
         ]}
       >
-        {children}
+        <View style={{ alignItems: 'center', justifyContent: 'center', opacity: enabled ? 1 : dim }}>
+          {children}
+        </View>
       </View>
     </Pressable>
-  );
-}
-
-export function SeatLayerPickerViewModeControlView({
-  buyerView,
-  disabled,
-  style,
-  theme,
-  slots,
-  strings,
-  target,
-  onPress,
-  onLayout,
-}: {
-  readonly buyerView: 'map' | 'venue3d' | undefined;
-  readonly disabled: boolean;
-  readonly style?: StyleProp<ViewStyle>;
-  readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
-  readonly slots: SeatLayerMapControlsProps['slots'];
-  readonly strings: ReturnType<typeof useSeatLayerPickerScope>['strings'];
-  readonly target: number;
-  readonly onPress: (view: 'map' | 'venue3d') => void;
-  readonly onLayout?: (width: number) => void;
-}): React.ReactElement {
-  // A track with the two halves INSIDE it. The bed is what tells a buyer the
-  // pair is one control: painted edge to edge, the lit half reads as a block
-  // butted against a button rather than as the thumb of a switch.
-  const trackInset = seatLayerPickerViewModeTrackInset;
-  const paintInset = (target - segmentPaintHeight) / 2;
-  const chrome = seatLayerPickerMapChromeGround(theme);
-  const segment = (
-    label: string,
-    spoken: string,
-    selected: boolean,
-    view: 'map' | 'venue3d',
-  ) => (
-    <Pressable
-      key={view}
-      accessibilityLabel={spoken}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || selected, selected }}
-      disabled={disabled || selected}
-      onPress={() => onPress(view)}
-      style={({ pressed }) => ({
-        alignItems: 'center',
-        height: target,
-        justifyContent: 'center',
-        minWidth: theme.layout.viewModeButtonMinWidth,
-        opacity: disabled ? 0.45 : pressed && !selected ? 0.72 : 1,
-        paddingHorizontal: 8,
-      })}
-    >
-      <View
-        pointerEvents="none"
-        style={[
-          {
-            backgroundColor: selected ? theme.colors.accent : 'transparent',
-            borderRadius: seatLayerPickerTokens.radius.pill,
-            bottom: paintInset,
-            left: 0,
-            position: 'absolute',
-            right: 0,
-            top: paintInset,
-          },
-          slots?.mapControlButton,
-        ]}
-      />
-      <Text
-        style={[
-          {
-            color: selected ? theme.colors.onAccent : theme.colors.mutedText,
-            fontFamily: theme.fontFamily,
-            fontSize: theme.layout.viewModeLabelFontSize,
-            fontWeight: seatLayerPickerBold(800),
-            // Four hundredths of the label's own size, as the reference sets it.
-            letterSpacing: theme.layout.viewModeLabelFontSize * .04,
-          },
-          slots?.mapControlLabel,
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-  const mapSelected = buyerView === 'map';
-  const venueSelected = buyerView === 'venue3d';
-  return (
-    <View onLayout={(event: LayoutChangeEvent) => {
-      const width = event.nativeEvent.layout.width;
-      if (!Number.isFinite(width) || width < 0) return;
-      try { onLayout?.(width); } catch { /* Host observation remains isolated. */ }
-    }} style={[
-      { height: target, paddingHorizontal: segmentBed + trackLine, position: 'relative' },
-      sanitizeSeatLayerPickerStyle(style),
-      { height: target, paddingHorizontal: segmentBed + trackLine, position: 'relative' },
-    ]}>
-      <View
-        pointerEvents="none"
-        style={{
-          backgroundColor: chrome.ground,
-          borderRadius: seatLayerPickerTokens.radius.pill,
-          bottom: trackInset,
-          elevation: 3,
-          left: 0,
-          position: 'absolute',
-          right: 0,
-          shadowColor: theme.colors.text,
-          shadowOffset: { height: 3, width: 0 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          top: trackInset,
-        }}
-      />
-      <View
-        accessibilityRole="tablist"
-        accessibilityLabel={strings.translate('venueView')}
-        style={{ columnGap: segmentGap, flexDirection: 'row', height: target }}
-      >
-        {segment(
-          strings.translate('mapView'), strings.translate('flat2dMap'), mapSelected, 'map',
-        )}
-        {segment(
-          strings.translate('venue3D'),
-          strings.translate('interactive3dVenueView'),
-          venueSelected,
-          'venue3d',
-        )}
-      </View>
-      <View
-        pointerEvents="none"
-        style={{
-          borderColor: chrome.line,
-          borderRadius: seatLayerPickerTokens.radius.pill,
-          borderWidth: 1,
-          bottom: trackInset,
-          left: 0,
-          position: 'absolute',
-          right: 0,
-          top: trackInset,
-        }}
-      />
-    </View>
-  );
-}
-
-/**
- * The zoom glyphs, measured off the reference frame rather than drawn to a
- * round number: `Icons.add_rounded` / `Icons.remove_rounded` at twenty points
- * (`picker_map_controls.dart`) print an arm 11.33 pt long and 1.33 pt thick,
- * where these were fourteen by two — a fifth too long and half again as heavy.
- */
-const zoomGlyphArm = 11 + 1 / 3;
-const zoomGlyphStroke = 4 / 3;
-
-export function SeatLayerPickerPlusIcon({ color }: { readonly color: string }): React.ReactElement {
-  return (
-    <View style={{ backgroundColor: color, borderRadius: zoomGlyphStroke / 2, height: zoomGlyphStroke, width: zoomGlyphArm }}>
-      <View
-        style={{
-          backgroundColor: color,
-          borderRadius: zoomGlyphStroke / 2,
-          height: zoomGlyphArm,
-          left: (zoomGlyphArm - zoomGlyphStroke) / 2,
-          position: 'absolute',
-          top: (zoomGlyphStroke - zoomGlyphArm) / 2,
-          width: zoomGlyphStroke,
-        }}
-      />
-    </View>
-  );
-}
-
-export function SeatLayerPickerMinusIcon({ color }: { readonly color: string }): React.ReactElement {
-  return <View style={{ backgroundColor: color, borderRadius: zoomGlyphStroke / 2, height: zoomGlyphStroke, width: zoomGlyphArm }} />;
-}
-
-export function SeatLayerPickerBackIcon({ color }: { readonly color: string }): React.ReactElement {
-  return (
-    <View style={{ height: 16, width: 18 }}>
-      <View
-        style={{
-          backgroundColor: color,
-          height: 2,
-          left: 2,
-          position: 'absolute',
-          top: 7,
-          width: 15,
-        }}
-      />
-      <View
-        style={{
-          borderColor: color,
-          borderLeftWidth: 2,
-          borderTopWidth: 2,
-          height: 8,
-          left: 1,
-          position: 'absolute',
-          top: 4,
-          transform: [{ rotate: '-45deg' }],
-          width: 8,
-        }}
-      />
-    </View>
-  );
-}
-
-export function SeatLayerPickerFocusCornersIcon({ color }: { readonly color: string }): React.ReactElement {
-  const corner = (position: ViewStyle, rotate: string) => (
-    <View
-      key={rotate}
-      style={[
-        {
-          borderColor: color,
-          borderLeftWidth: 2,
-          borderTopWidth: 2,
-          height: 7,
-          position: 'absolute',
-          transform: [{ rotate }],
-          width: 7,
-        },
-        position,
-      ]}
-    />
-  );
-  return (
-    <View style={{ height: 16, width: 16 }}>
-      {corner({ left: 0, top: 0 }, '0deg')}
-      {corner({ right: 0, top: 0 }, '90deg')}
-      {corner({ bottom: 0, right: 0 }, '180deg')}
-      {corner({ bottom: 0, left: 0 }, '270deg')}
-      <View style={{
-        backgroundColor: color,
-        borderRadius: 2,
-        height: 4,
-        left: 6,
-        position: 'absolute',
-        top: 6,
-        width: 4,
-      }} />
-    </View>
   );
 }
