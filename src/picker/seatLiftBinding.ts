@@ -17,6 +17,15 @@ export interface SeatLayerPickerSeatLiftBindingInput {
   /** The band the card covers, measured from the map's foot; 0 with no card. */
   readonly sheet: number;
   readonly revision: number;
+  /**
+   * The pan standing over the snapshot the chrome is reading (§3.8.2).
+   *
+   * Anything drawn against `selection[].screenPoint` — the spotlight hole —
+   * adds it, or it lands a whole lift band below the seat. Reported rather
+   * than returned because the lift moves from an async command reply, not
+   * from a render.
+   */
+  readonly onAnchorDy?: (dy: number) => void;
 }
 
 /**
@@ -42,6 +51,12 @@ export function useSeatLayerPickerSeatLiftBinding(
   );
   const liftRef = useRef(lift);
   liftRef.current = lift;
+  const anchorRef = useRef(input.onAnchorDy);
+  anchorRef.current = input.onAnchorDy;
+  useEffect(() => {
+    lift.setAnchorListener((dy) => anchorRef.current?.(dy));
+    return () => { lift.setAnchorListener(undefined); };
+  }, [lift]);
   useEffect(() => () => { liftRef.current.forget(); }, [lift]);
   useLayoutEffect(() => {
     if (!pans) return;
