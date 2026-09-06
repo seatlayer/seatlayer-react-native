@@ -4,13 +4,13 @@ import {
   findNodeHandle, useWindowDimensions, type StyleProp, type ViewStyle,
 } from 'react-native';
 
-import type { SelectedSeat } from '../types';
 import { chartSeatLayerPickerColor } from './chartColor';
 import { blendSeatLayerPickerColor, parseSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
 import {
-  ConfirmAnswerMark, ConfirmCategoryBand, ConfirmCubeGlyph, ConfirmIdentityGrid, ConfirmNotices,
-  ConfirmPhotoStrip, useSeatLayerPickerSeatPhoto, type ConfirmCardTheme,
+  ConfirmAnswerMark, ConfirmCategoryBand, ConfirmCubeGlyph, ConfirmIdentityGrid,
+  ConfirmPhotoStrip, ConfirmSeatNotes, useSeatLayerPickerSeatPhoto, type ConfirmCardTheme,
 } from './confirmCardParts';
+import { seatLayerPickerSeatNotePalette, seatLayerPickerSeatNotes } from './seatNotes';
 import {
   seatLayerPickerConfirmCancelShare, seatLayerPickerConfirmCardSentence,
   seatLayerPickerConfirmIdentityCells,
@@ -215,13 +215,15 @@ function Card({ model, props, viewportWidth }: Readonly<{
       : scope.strings.translate(seat.objectType === 'seat' || seat.objectType === undefined ? 'addSeat' : 'select');
   const cancelLabel = scope.strings.translate('cancel');
   const squareOnRow = !hasPhoto && venue3D !== undefined;
-  const limited = limitedNotice(seat, scope);
-  const premiumNote = seat.commercial?.premium === true ? scope.strings.translate('premiumSeat') : undefined;
+  // §3.8.9 — every attribute the seat carries, from the one row model, in the
+  // one fixed order. Never the card's own subset.
+  const notes = seatLayerPickerSeatNotes(seat, scope.strings);
+  const notePalette = seatLayerPickerSeatNotePalette(scope.resolvedTheme.colors, scope.resolvedTheme.themeMode);
   // Whether anything stands between the band and the two answers. The
   // reference gives the action row 8 points of headroom over a bare card
-  // and 10 over a body, so the gap under a notice is not tighter than the
-  // gap between the notices themselves.
-  const bodyContent = candidate !== undefined || limited !== undefined || premiumNote !== undefined;
+  // and 10 over a body, so the gap under a body is not tighter than the
+  // gap inside it.
+  const bodyContent = candidate !== undefined || notes.length > 0;
 
   return <Animated.View
     accessibilityViewIsModal
@@ -271,8 +273,15 @@ function Card({ model, props, viewportWidth }: Readonly<{
         sightline={sightline}
         theme={theme}
       /> : null}
-      {candidate ? <SeatLayerPickerSeatTierSelector candidate={candidate} value={tierId} onValueChange={setTierId} slots={props.slots} /> : null}
-      <ConfirmNotices limited={limited} premium={premiumNote} theme={theme} />
+      {/* §3.8.3 item 6 — the note bands sit directly under the category band
+          and ABOVE the tier chooser: below it they read as a footnote to the
+          price list instead of as facts about the seat. */}
+      <ConfirmSeatNotes fontFamily={theme.fontFamily} palette={notePalette} rows={notes} />
+      {/* The bands reach both edges, so the CARD's body owns no padding of
+          its own and the tier chooser carries the gutter itself. */}
+      {candidate ? <View style={[nativeStyles.tiers, notes.length === 0 ? nativeStyles.tiersUnderBand : null]}>
+        <SeatLayerPickerSeatTierSelector candidate={candidate} value={tierId} onValueChange={setTierId} slots={props.slots} />
+      </View> : null}
       <View style={[nativeStyles.actions, { flexDirection: rtl ? 'row-reverse' : 'row' }, bodyContent ? nativeStyles.actionsUnderBody : null]}>
         {squareOnRow ? <Pressable
           accessibilityRole="button"
@@ -377,13 +386,6 @@ function cardTheme(scope: SeatLayerPickerConfirmationModel['scope']): ConfirmCar
   });
 }
 
-function limitedNotice(seat: SelectedSeat, scope: SeatLayerPickerConfirmationModel['scope']): string | undefined {
-  // Restricted wins over obstructed.
-  if (seat.commercial?.restrictedView === true) return scope.strings.translate('restrictedView');
-  if (seat.commercial?.obstructedView === true) return scope.strings.translate('obstructedView');
-  return undefined;
-}
-
 function sectionId(
   scope: { snapshot?: { sections: readonly { id: string; label: string; displayLabel?: string }[] } },
   seat: { sectionLabel?: string },
@@ -431,6 +433,8 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   // OWN inset, not the gutter it keeps from the screen's edges.
   actions: { gap: 8, paddingBottom: 10, paddingHorizontal: 10, paddingTop: 8 },
   actionsUnderBody: { paddingTop: 10 },
+  tiers: { paddingHorizontal: 10, paddingTop: 10 },
+  tiersUnderBand: { paddingTop: 8 },
   action: { justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
   primary: { flexGrow: 1, flexShrink: 1, justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
   actionPaint: {
