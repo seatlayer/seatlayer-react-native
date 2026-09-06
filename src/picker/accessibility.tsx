@@ -42,6 +42,9 @@ type Draft = Readonly<
 >;
 
 const nativeChromeCapability = "native-chrome-contract-v1";
+
+/** What a row with nothing free reads in its count column: a figure, never a sentence. */
+const zeroCount = "0";
 const size = seatLayerPickerTokens.size;
 
 function supportsSnapshotAccessibilityOperation(
@@ -278,9 +281,16 @@ export function SeatLayerPickerAccessibilityFilters(
     ? needs.map((need) => {
       const on = active.includes(need.key);
       const counted = usesReportedNeeds && typeof need.count === "number";
+      // A NUMBER, INCLUDING AT ZERO (§3.5, Flutter 0.9.0). The row used to
+      // say "Not available" when the last space went, which was a sentence
+      // where every other row carries a figure: it needed a chip to hold it
+      // and made the sold-out row the loudest line on the sheet. The dimmed
+      // switch beside it is what says the provision cannot be had, and the
+      // count stays part of the row's spoken name. `notAvailable` is now the
+      // legend's and the seat card's word alone.
       const countLabel = counted
         ? (need.count === 0
-          ? scope.strings.translate("notAvailable")
+          ? zeroCount
           : scope.strings.translate("accessFreeCount", { count: need.count }))
         : undefined;
       return Object.freeze({
@@ -296,11 +306,16 @@ export function SeatLayerPickerAccessibilityFilters(
         count: need.count,
         on,
         // A count that is NOT counted shows no number and is never disabled.
-        disabled: disabled || (counted && need.count === 0 && !on),
+        // A provision the venue HAS but has sold out of stays on the sheet and
+        // goes dark; one it never had is absent.
+        disabled: disabled || (counted && need.count === 0),
         countLabel,
         jumpable: supportsJump && counted && (need.count ?? 0) > 0,
         jumpLabel: scope.strings.translate("accessJumpFirstSection"),
-        glyph: "access" as const,
+        // The same drawing the seat itself carries, by the runtime's own key.
+        iconKey: need.key,
+        reserveCountSlot: true,
+        hairline: true,
       });
     })
     : [];
@@ -312,7 +327,11 @@ export function SeatLayerPickerAccessibilityFilters(
       on: scope.snapshot?.map.hideLimitedView ?? false,
       disabled,
       jumpable: false,
-      glyph: "contrast" as const,
+      // The switch that hides limited-view seats wears the mark those seats
+      // carry, so the row and the thing it acts on are one idea.
+      iconKey: "restrictedView",
+      reserveCountSlot: false,
+      hairline: colorblindAvailable,
     }));
   }
   if (colorblindAvailable) {
@@ -322,7 +341,12 @@ export function SeatLayerPickerAccessibilityFilters(
       on: scope.snapshot?.map.colorblindSafe ?? false,
       disabled,
       jumpable: false,
-      glyph: "contrast" as const,
+      // NOT an eye and not a seat mark: this row recolours the map, it does
+      // not choose seats. A contrast disc is the one shape on this sheet that
+      // is about the palette.
+      iconKey: "contrast",
+      reserveCountSlot: false,
+      hairline: false,
     }));
   }
 
@@ -423,6 +447,8 @@ export function SeatLayerPickerAccessibilityFilters(
         visible={open}
         title={scope.strings.translate("accessibilityTitle")}
         closeLabel={scope.strings.translate("close")}
+        viewGroupTitle={scope.strings.translate("viewGroupTitle")}
+        screenHeight={viewport.height}
         theme={theme}
         slots={slots}
         safeAreaInsets={safeInsets}
