@@ -235,7 +235,7 @@ export function SeatLayerPickerAdaptiveLayout({
   );
   const venueMode = snapshot?.map.buyerView === 'venue3d';
   const immersiveInspectionVisible = panoramaUp || venueMode;
-  const phoneDockVisible = !wide && !venueMode && !panoramaUp && plan.options.chrome.dock && nativeChrome &&
+  const phoneDockVisible = !wide && !venueMode && !panoramaUp && plan.options.chrome.showDockBar && nativeChrome &&
     snapshot?.map.rung === 'seats' && focusedSection !== undefined;
   const phoneControls = !wide && !panoramaUp && plan.options.chrome.mapControls
     ? Object.freeze({

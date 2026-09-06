@@ -32,18 +32,24 @@ describe('ready-made picker options and part builders', () => {
     expect(phone.chrome).toEqual({
       header: true, priceLegend: true, floorSelector: true, floorStrip: true, mapControls: true,
       overview: false, zoom: false, colorblind: false, fit: true, map3D: true,
-      accessibility: true, cartSheet: true, dock: false, confirmCard: true,
+      accessibility: true, cartSheet: true, showDockBar: false, dock: false, confirmCard: true,
       showExtendHoldPrompt: false,
       venue3D: true, seatViewChrome: true, holdPill: true, systemBars: true,
     });
     expect(wide.resolvedLayout).toBe('wide');
-    // §3.6/§3.13.8: no dock and no extend prompt on a phone; both auto-on wide.
+    // §3.6: the dock bar is now off by default on EVERY width, so unlike the
+    // extend prompt it does not come back on wide.
     expect(wide.chrome).toMatchObject({
       header: true, overview: true, zoom: true, colorblind: true,
-      dock: true, showExtendHoldPrompt: true,
+      showDockBar: false, dock: false, showExtendHoldPrompt: true,
     });
+    expect(resolveSeatLayerPickerChromeOptions({ showDockBar: true }, 'phone'))
+      .toMatchObject({ showDockBar: true, dock: true });
+    // The deprecated alias still answers, and the new name wins over it.
     expect(resolveSeatLayerPickerChromeOptions({ dock: true }, 'phone'))
-      .toMatchObject({ dock: true });
+      .toMatchObject({ showDockBar: true, dock: true });
+    expect(resolveSeatLayerPickerChromeOptions({ showDockBar: false, dock: true }, 'wide'))
+      .toMatchObject({ showDockBar: false, dock: false });
     expect(resolveSeatLayerPickerChromeOptions({ overview: null, zoom: true }, 'phone'))
       .toMatchObject({ overview: false, zoom: true });
   });

@@ -177,7 +177,7 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
     await act(async () => {
       tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, {
-        onCheckout: checkout, onSectionFocused, options: { chrome: { dock: true } },
+        onCheckout: checkout, onSectionFocused, options: { chrome: { showDockBar: true } },
       }));
     });
     const sheet = tree.root.findByType('cart-sheet' as any);

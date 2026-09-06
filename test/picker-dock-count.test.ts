@@ -89,12 +89,12 @@ describe('§3.6 matching spaces (· ♿ N)', () => {
   });
 });
 
-describe('§3.6 there is no phone form', () => {
-  it('mounts no dock on a phone unless the host asks for one', () => {
-    expect(resolveSeatLayerPickerChromeOptions({}, 'phone').dock).toBe(false);
-    expect(resolveSeatLayerPickerChromeOptions({}, 'wide').dock).toBe(true);
-    expect(resolveSeatLayerPickerChromeOptions({ dock: true }, 'phone').dock).toBe(true);
-    expect(resolveSeatLayerPickerChromeOptions({ dock: false }, 'wide').dock).toBe(false);
+describe('§3.6 the dock bar is opt-in on every width', () => {
+  it('mounts no dock on any width unless the host asks for one', () => {
+    expect(resolveSeatLayerPickerChromeOptions({}, 'phone').showDockBar).toBe(false);
+    expect(resolveSeatLayerPickerChromeOptions({}, 'wide').showDockBar).toBe(false);
+    expect(resolveSeatLayerPickerChromeOptions({ showDockBar: true }, 'phone').showDockBar).toBe(true);
+    expect(resolveSeatLayerPickerChromeOptions({ showDockBar: true }, 'wide').showDockBar).toBe(true);
   });
 });
 

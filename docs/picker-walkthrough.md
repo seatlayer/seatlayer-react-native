@@ -67,11 +67,12 @@ The chart itself owns pan and pinch. Around it:
   accessibility filter is on and the runtime offers the tour.
 - **The floor rail** where the venue has floors, as chips on their own rail.
 
-There is no section dock on a phone: the pinch and the one corner control are
-the way back out to the venue. The wide layout keeps the dock, which names the
-section the buyer is in, steps to its neighbours, and says how many of the
-seats left there match the buyer's accessibility filter. A host can ask for the
-dock on a phone with `chrome.dock`.
+There is no section dock by default on any width: the pinch and the one corner
+control are the way back out to the venue. A host that wants it sets
+`chrome.showDockBar`, and gets a bar that names the section the buyer is in,
+steps to its neighbours, and says how many of the seats left there match the
+buyer's accessibility filter. The older `chrome.dock` is a deprecated alias for
+the same switch.
 
 Every control drawn over the map reports its own rectangle to the runtime, so a
 tap on a control is not also a tap on the seat underneath it, and a rectangle

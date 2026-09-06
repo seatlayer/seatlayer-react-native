@@ -32,9 +32,20 @@ export interface SeatLayerPickerChromeOptions {
   readonly accessibility?: boolean;
   readonly cartSheet?: boolean;
   /**
-   * Auto: wide only. There is no phone form of the section dock (§3.6, owner
-   * call 2026-09-04) — the pinch and the single `−` control walk a buyer back
-   * to the venue — but a host that asks for it explicitly gets it.
+   * Whether the rung-2 section dock bar renders. **Default false on EVERY
+   * width** (§3.6, owner call 2026-09-06): pinch-out past the melt point and
+   * the single stepped `−` control already walk a buyer back to the venue, so
+   * the prev/next arrows only bought a two-tap version of a gesture the finger
+   * does better, and the per-section "N seats left" is gone from the phone.
+   *
+   * A host that wants the bar sets this to `true` on any width; it also stays
+   * mountable standalone as `SeatLayerDockBar`.
+   */
+  readonly showDockBar?: boolean | null;
+  /**
+   * @deprecated Use `showDockBar`. Retained as an alias so an existing host
+   * keeps compiling; it no longer resolves wide-on, because the bar is now off
+   * by default on every width. `showDockBar` wins when both are set.
    */
   readonly dock?: boolean | null;
   /**
@@ -114,6 +125,8 @@ export interface SeatLayerPickerResolvedChromeOptions {
   readonly map3D: boolean;
   readonly accessibility: boolean;
   readonly cartSheet: boolean;
+  readonly showDockBar: boolean;
+  /** @deprecated Reads `showDockBar`; both names resolve to the same answer. */
   readonly dock: boolean;
   readonly showExtendHoldPrompt: boolean;
   readonly confirmCard: boolean;
@@ -179,6 +192,13 @@ function booleanOr(value: unknown, fallback: boolean): boolean {
 
 function autoBoolean(value: unknown, phone: boolean): boolean {
   return typeof value === 'boolean' ? value : !phone;
+}
+
+/** `showDockBar`, then the deprecated `dock` alias, then off. */
+function dockBar(input: unknown): boolean {
+  const preferred = ownData(input, 'showDockBar');
+  if (typeof preferred === 'boolean') return preferred;
+  return booleanOr(ownData(input, 'dock'), false);
 }
 
 function validDuration(value: unknown): number | undefined {
@@ -272,7 +292,10 @@ export function resolveSeatLayerPickerChromeOptions(
     map3D: booleanOr(ownData(input, 'map3D'), true),
     accessibility: booleanOr(ownData(input, 'accessibility'), true),
     cartSheet: booleanOr(ownData(input, 'cartSheet'), true),
-    dock: autoBoolean(ownData(input, 'dock'), phone),
+    // The bar is opt-in on every width now, so neither name is layout-aware.
+    // `showDockBar` wins; the deprecated `dock` still answers for an older host.
+    showDockBar: dockBar(input),
+    dock: dockBar(input),
     showExtendHoldPrompt: autoBoolean(ownData(input, 'showExtendHoldPrompt'), phone),
     confirmCard: booleanOr(ownData(input, 'confirmCard'), true),
     venue3D: booleanOr(ownData(input, 'venue3D'), true),
