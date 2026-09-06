@@ -205,21 +205,22 @@ function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Rea
 /**
  * The generated short name for one access provision, in the buyer's language.
  *
- * These live in the locale table under `accessNeeds.<key>` — the extractor
- * takes all thirty-seven from the runtime's own `picker.accessShort.*` (§3.5),
- * so the sheet's rows, the seat card and the runtime agree word for word. They
- * are read HERE rather than through `translate`, because English deliberately
- * has no locale dictionary and would otherwise fall through to the older,
- * longer names in the token table. Those stay the last resort, for a provision
- * key the generated set has no entry for.
+ * These live in the locale table under `accessNeeds.<key>`: the extractor
+ * takes the other thirty-six from the runtime's own `picker.accessShort.*`
+ * (§3.5), so a French sheet, a French seat card and the runtime agree word for
+ * word. Nothing read them, and a French picker printed English on every row.
+ *
+ * They are read HERE rather than through `translate`, which answers a missing
+ * template with the key itself. **English deliberately has no locale
+ * dictionary** — its names are the short ones in `design/tokens.json`, which
+ * is what the reference draws — so it keeps falling through to the table
+ * below, and so does a key the generated set has no entry for.
  */
 function generatedAccessNeedLabel(
   locale: SeatLayerPickerLocale | null | undefined,
   need: string,
 ): string | undefined {
-  const key = `accessNeeds.${need}`;
-  const english = seatLayerPickerLocaleStrings.en as Readonly<Record<string, string>> | undefined;
-  const value = localeDictionary(locale)?.[key] ?? english?.[key];
+  const value = localeDictionary(locale)?.[`accessNeeds.${need}`];
   return typeof value === 'string' && value ? value : undefined;
 }
 

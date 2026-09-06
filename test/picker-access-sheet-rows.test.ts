@@ -294,18 +294,23 @@ describe('every row wears the drawing that row is about (§3.5)', () => {
 });
 
 describe('the row names come from the generated short set (§3.5)', () => {
-  it('names a provision in the buyer language, English included', async () => {
+  it('names a provision in the buyer language, English from the tokens', async () => {
     const { createSeatLayerPickerStringResolver } = await import('../src/picker/locale');
-    // The extractor takes all thirty-seven from the runtime's own
-    // `picker.accessShort.*`, so the sheet, the seat card and the runtime say
-    // the same words. English has no locale dictionary of its own, so it used
-    // to fall through to the longer names in the token table.
-    expect(createSeatLayerPickerStringResolver({ locale: 'en' }).accessNeed('wheelchair'))
-      .toBe('Wheelchair space');
-    expect(createSeatLayerPickerStringResolver({}).accessNeed('semi-ambulatory'))
-      .toBe('Limited mobility');
+    const { seatLayerPickerLocaleStrings } = await import('../src/picker/strings.g');
+    // The extractor takes the other thirty-six from the runtime's own
+    // `picker.accessShort.*`, so a French sheet, a French seat card and the
+    // runtime say the same words. Nothing read them, and a French picker
+    // printed English on every row.
     expect(createSeatLayerPickerStringResolver({ locale: 'fr' }).accessNeed('wheelchair'))
       .toBe('Emplacement fauteuil roulant');
+    expect(createSeatLayerPickerStringResolver({ locale: 'de' }).accessNeed('semi-ambulatory'))
+      .toBe(seatLayerPickerLocaleStrings.de['accessNeeds.semi-ambulatory']);
+    // English keeps the short names in the token table, which is what the
+    // reference draws: it deliberately has no locale dictionary of its own.
+    expect(createSeatLayerPickerStringResolver({ locale: 'en' }).accessNeed('wheelchair'))
+      .toBe(english.accessWheelchair);
+    expect(createSeatLayerPickerStringResolver({}).accessNeed('semi-ambulatory'))
+      .toBe(english.accessSemiAmbulatory);
     // A host override still wins, and an unknown key is still its own name.
     expect(createSeatLayerPickerStringResolver({
       overrides: { accessNeeds: { wheelchair: 'Wheelchair bays' } },

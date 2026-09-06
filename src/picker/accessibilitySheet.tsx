@@ -320,11 +320,13 @@ function AccessRow(props: Readonly<{
                       onPress={() => props.onJump(row)}
                       style={styles.jumpTarget}
                     >
+                      {/* A QUIET GROUND, not the accent: the figure is a fact
+                          first and a button second, and twelve pink pills
+                          down a sheet were the loudest thing on it. */}
                       <View
                         accessible={false}
                         style={[styles.jumpChip, {
-                          backgroundColor: seatLayerPickerColorAlpha(theme.colors.accent, .12),
-                          borderColor: theme.colors.divider,
+                          backgroundColor: seatLayerPickerColorAlpha(theme.colors.text, .06),
                         }]}
                       >
                         <Text
@@ -517,7 +519,6 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     height: size.accessStepHeight,
     paddingHorizontal: size.accessStepPaddingX,
     borderRadius: radius.pill,
-    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
