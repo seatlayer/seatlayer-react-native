@@ -28,6 +28,19 @@ export interface SeatLayerPickerColorTokens {
   divider: string;
   error: string;
   warning: string;
+  /**
+   * The three roles a seat's own notes paint in (§3.8.9).
+   *
+   * `warning` is the ground a restricted or obstructed view is washed in and
+   * `warnText` is the ink ON that wash — a pair, because the wash is a tint of
+   * the ground rather than the role colour itself, and reading the ink off
+   * `warning` shipped a 1.8:1 amber. `premium` and `premiumText` are the same
+   * pair for a premium seat. Host-overridable like every other role; the
+   * defaults are the mode's own.
+   */
+  warnText: string;
+  premium: string;
+  premiumText: string;
   accent: string;
   onAccent: string;
   mapBackground: string;
@@ -152,6 +165,7 @@ export interface SeatLayerPickerThemeData {
 
 const colorKeys: ReadonlyArray<keyof SeatLayerPickerColorTokens> = [
   'background', 'surface', 'text', 'mutedText', 'divider', 'error', 'warning',
+  'warnText', 'premium', 'premiumText',
   'accent', 'onAccent', 'mapBackground', 'mapRowLabel', 'mapText', 'mapSelection',
 ];
 const mapThemeKeys: ReadonlyArray<keyof SeatLayerPickerMapTheme> = [

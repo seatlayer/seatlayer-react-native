@@ -158,3 +158,25 @@ function contrast(foreground: string, background: string): number {
   const second = luminance(background);
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
+
+describe('the note roles are THEME roles', () => {
+  it('lets a host brand all four, and falls back to the mode for each', () => {
+    const light = seatLayerPickerTokens.color.light;
+    // A branded picker with two amber schemes in one card is what reading
+    // these off the tokens regardless produced.
+    const branded = seatLayerPickerSeatNotePalette({
+      ...light, warning: '#123456', warnText: '#654321',
+      premium: '#abcdef', premiumText: '#fedcba',
+    }, 'light');
+    expect(branded).toMatchObject({
+      warning: '#123456', warnText: '#654321',
+      premium: '#abcdef', premiumText: '#fedcba',
+    });
+    // Each falls back on its own: a host branding the ground alone still gets
+    // an ink that reads on the mode's wash.
+    const partial = seatLayerPickerSeatNotePalette({ ...light, warning: '#123456' }, 'light');
+    expect(partial.warning).toBe('#123456');
+    expect(partial.warnText).toBe(light.warnText);
+    expect(partial.premium).toBe(light.premium);
+  });
+});

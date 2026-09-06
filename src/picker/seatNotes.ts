@@ -205,7 +205,10 @@ export interface SeatLayerPickerSeatNotePalette {
  * and 8.03:1 — and a host colour would be measured against nothing.
  */
 export function seatLayerPickerSeatNotePalette(
-  colors: Readonly<{ surface: string; text: string; mutedText?: string; divider: string; warning?: string }>,
+  colors: Readonly<{
+    surface: string; text: string; mutedText?: string; divider: string;
+    warning?: string; warnText?: string; premium?: string; premiumText?: string;
+  }>,
   themeMode: 'light' | 'dark' | (string & {}) | undefined,
 ): SeatLayerPickerSeatNotePalette {
   // A host theme that never resolved a mode still has to paint: light is what
@@ -213,15 +216,18 @@ export function seatLayerPickerSeatNotePalette(
   const tone = themeMode === 'dark'
     ? seatLayerPickerTokens.color.dark
     : seatLayerPickerTokens.color.light;
+  // All four note roles are THEME roles, so a host that brands the picker
+  // brands its seat notes with it. Reading them off the tokens regardless left
+  // a branded picker with two amber schemes in one card.
   return Object.freeze({
     surface: colors.surface,
     text: colors.text,
     mutedText: colors.mutedText ?? colors.text,
     divider: colors.divider,
     warning: colors.warning ?? tone.warning,
-    warnText: tone.warnText,
-    premium: tone.premium,
-    premiumText: tone.premiumText,
+    warnText: colors.warnText ?? tone.warnText,
+    premium: colors.premium ?? tone.premium,
+    premiumText: colors.premiumText ?? tone.premiumText,
   });
 }
 
