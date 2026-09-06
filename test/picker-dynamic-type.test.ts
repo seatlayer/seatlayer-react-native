@@ -132,7 +132,8 @@ describe('§4.10 every surface declares its ceiling', () => {
   const surfaces: ReadonlyArray<readonly [string, keyof typeof seatLayerPickerTokens.type.scaleClamp]> = [
     ['SeatLayerPriceLegend.tsx', 'rail'],
     ['SeatLayerDockBar.tsx', 'dock'],
-    ['cartPeekHead.tsx', 'peek'],
+    ['cartCard.tsx', 'sheet'],
+    ['sheetFoot.tsx', 'sheet'],
     ['SeatLayerCartList.tsx', 'sheet'],
     ['SeatLayerCartSheet.tsx', 'sheet'],
     ['SeatLayerBestSeatsForm.tsx', 'sheet'],

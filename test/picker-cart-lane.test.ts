@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { seatLayerCheckoutCtaState, splitSeatLayerFromPrice } from '../src/picker/checkoutCta';
+import { seatLayerCheckoutCtaState } from '../src/picker/checkoutCta';
 import {
   seatLayerCartSwipeCommitFraction,
   seatLayerCartSwipeCommits,
@@ -14,13 +14,19 @@ import {
   seatLayerHoldPillDrawn,
 } from '../src/picker/holdCountdownAnnounce';
 import {
-  seatLayerSheetDetentAt,
+  seatLayerSheetAnswer,
   seatLayerSheetDetents,
+  seatLayerSheetDragThreshold,
   seatLayerSheetFlingVelocity,
+  seatLayerSheetHeightOf,
+  seatLayerSheetOffered,
+  seatLayerSheetOffersFull,
   seatLayerSheetRubberBanded,
   seatLayerSheetSettle,
   seatLayerSheetSpring,
 } from '../src/picker/sheetDrag';
+import { seatLayerCartSeatsLine, seatLayerCartSheetCeilings } from '../src/picker/cartSheetUi';
+import { seatLayerPickerSeatNotes, seatLayerPickerSeatNoteSpoken } from '../src/picker/seatNotes';
 import { SeatLayerToastQueue, seatLayerToastActionHitBox, seatLayerToastCardLift, seatLayerToastDwellMs } from '../src/picker/toastQueue';
 import { seatLayerHeaderInitial } from '../src/picker/headerIdentity';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
@@ -141,9 +147,16 @@ describe('§3.10.3 checkout call to action', () => {
     expect(seatLayerCheckoutCtaState({
       ...base, snapshot: snapshot(), generalAdmissionPending: true, creatingHold: true,
     }).label).toBe('confirmYourTickets');
-    // The footer states the reason; the pill behind the card does not.
-    expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), seatCardOpen: true }))
-      .toMatchObject({ label: 'confirmOrCancelSeat', statesReason: true, peekStatesReason: false });
+    // A SEAT CARD KEEPS THE BUTTON'S OWN LABEL AND HOLDS IT DOWN (0.9.0): the
+    // card is the question, so the foot goes on stating the buyer's cart
+    // underneath it rather than answering a question already on screen.
+    expect(seatLayerCheckoutCtaState({
+      ...base, snapshot: snapshot(), seatCardOpen: true, ticketCount: 2,
+    })).toMatchObject({ label: 'holdAndCheckout', enabled: false, statesReason: false });
+    // Not even the finder is pressable while the card is asking.
+    expect(seatLayerCheckoutCtaState({
+      ...base, snapshot: snapshot(), seatCardOpen: true, ticketCount: 0, canOfferFind: true,
+    })).toMatchObject({ enabled: false, findsBestSeats: false });
     // 3. and 4. Work the buyer already asked for, in that order.
     expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), creatingHold: true, handoffInFlight: true }))
       .toMatchObject({ label: 'securingSeats', busy: true });
@@ -178,104 +191,107 @@ describe('§3.10.3 checkout call to action', () => {
   });
 });
 
-describe('§3.9 every line the peek can say', () => {
+describe('§3.10.3 the empty cart has a door, not a dead button', () => {
   const base = { strings, label: 'holdAndCheckout', canCheckout: true, seatCardOpen: false } as const;
 
-  it('follows the collapsed bar\'s own table, where work in flight outranks closed sales', () => {
+  it('offers the finder on an empty cart, and only where a form could open', () => {
     expect(seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot({ event: { salesClosed: true } }), ticketCount: 3, creatingHold: true,
-    }).peekLine).toMatchObject({ sentence: 'securingSeats', pillLabel: null });
+      ...base, snapshot: snapshot(), ticketCount: 0, canOfferFind: true,
+    })).toMatchObject({ label: 'findBestSeatsCta', enabled: true, findsBestSeats: true });
+    // A door into an empty room is worse than none: a hold already exists, so
+    // the finder would be refused.
     expect(seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot(), ticketCount: 3, handoffInFlight: true, totalText: '€285',
-    }).peekLine.sentence).toBe('peekSecured.other(count=3,total=€285)');
-    expect(seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot(), ticketCount: 3, handoffInFlight: true, totalText: '€285', showPrices: false,
-    }).peekLine.sentence).toBe('seatsSecuredOpeningCheckout');
-    // Idle with tickets: the summary and the pill, and the TOTAL ONLY ONCE.
-    expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), ticketCount: 3, totalText: '€285' }).peekLine)
-      .toMatchObject({
-        summary: 'ticketCount.other(count=3)', pillLabel: 'continueWord', total: '€285', sentence: null,
-      });
-    expect(seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot({ event: { salesClosed: true } }), ticketCount: 0,
-    }).peekLine).toMatchObject({ sentence: 'salesClosedPill', offerFind: false });
-    expect(seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot(), ticketCount: 0, fromPriceText: '€25', canOfferFind: true,
-    }).peekLine).toMatchObject({ summary: 'fromPrice(price=€25)', fromAmount: '€25', offerFind: true });
-    expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), ticketCount: 0 }).peekLine)
-      .toMatchObject({ summary: 'pickYourSeats', fromAmount: null });
+      ...base, snapshot: snapshot({ hold: { active: true } }), ticketCount: 0, canOfferFind: true,
+    }).findsBestSeats).toBe(false);
+    // A width that shows the map beside the panel passes no door at all.
+    expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), ticketCount: 0 }))
+      .toMatchObject({ label: 'selectSeats', enabled: false, findsBestSeats: false });
   });
 
-  it('never puts a clock on the Continue pill, whatever the hold is doing', () => {
-    const line = seatLayerCheckoutCtaState({
-      ...base, snapshot: snapshot({ hold: { active: true } }), ticketCount: 2, totalText: '€50',
-    }).peekLine;
-    // The header's hold pill is the picker's ONE clock (owner call 2026-09-05).
-    expect(line.holdActive).toBe(true);
-    expect(Object.keys(line)).not.toContain('clockText');
-    expect(line.pillLabel).toBe('continueWord');
+  it('has no From line and no second summary left to say it on', () => {
+    const resolved = seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), ticketCount: 0 });
+    // §3.9: `fromAmount`/`fromPriceText` and every path that carried them are
+    // gone, and so is the peek line they were printed on.
+    expect(Object.keys(resolved).sort())
+      .toEqual(['busy', 'enabled', 'findsBestSeats', 'label', 'statesReason']);
+  });
+});
+
+describe('§3.9 the collapsed sheet says what it holds', () => {
+  it('lists the seats under the count in the runtime\'s own labels', () => {
+    expect(seatLayerCartSeatsLine([{ label: 'A-12' }, { label: 'A-13' }]))
+      .toBe('A \u00b7 12,  A \u00b7 13');
+    expect(seatLayerCartSeatsLine([{ label: '  ' }, { label: 'GA' }])).toBe('GA');
+    expect(seatLayerCartSeatsLine([])).toBe('');
   });
 
-  it('lifts only the amount inside the locale\'s own From sentence', () => {
-    expect(splitSeatLayerFromPrice('From €25', '€25'))
-      .toEqual({ before: 'From ', amount: '€25', after: '' });
-    expect(splitSeatLayerFromPrice('25 €-tól', '25 €'))
-      .toEqual({ before: '', amount: '25 €', after: '-tól' });
-    // Where the amount cannot be found the whole line stays at caption weight
-    // rather than being guessed at.
-    expect(splitSeatLayerFromPrice('Desde 25 euros', '€25'))
-      .toEqual({ before: 'Desde 25 euros', amount: null, after: '' });
-    expect(splitSeatLayerFromPrice('Pick your seats', null))
-      .toEqual({ before: 'Pick your seats', amount: null, after: '' });
+  it('caps the cart on its own fraction, measuring the chrome rather than guessing it', () => {
+    const filled = seatLayerCartSheetCeilings(800, 200, true);
+    expect(filled.body).toBe(Math.min(
+      800 * seatLayerPickerTokens.size.sheetMaxHeightFraction,
+      seatLayerPickerTokens.size.sheetMaxHeight,
+    ) - 200);
+    const empty = seatLayerCartSheetCeilings(800, 200, false);
+    expect(empty.body).toBe(Math.min(
+      800 * seatLayerPickerTokens.size.emptyTrayMaxHeightFraction,
+      seatLayerPickerTokens.size.emptyTrayMaxHeight,
+    ) - 200);
+    expect(filled.full).toBe(800 * seatLayerPickerTokens.size.sheetFullHeightFraction - 200);
+    // A foot taller than the ceiling leaves the cart nothing, never a negative.
+    expect(seatLayerCartSheetCeilings(800, 10_000, true).body).toBe(0);
+  });
+
+  it('draws three whole cards and a sliver of the fourth behind the handle', () => {
+    // The cap is generated, never transcribed: the tray padding, three cards,
+    // the gap after each of them, and five points of the fourth showing.
+    const { cartPeekMaxHeight, cartCardMinHeight, cartCardGap, cartTrayPadTop } =
+      seatLayerPickerTokens.size;
+    expect(cartPeekMaxHeight)
+      .toBe(cartTrayPadTop + (3 * cartCardMinHeight) + (3 * cartCardGap) + 5);
   });
 });
 
 // --------------------------------------------------------- §3.10.1 the sheet
 
 describe('§3.10.1 sheet detents and physics', () => {
-  const input = {
-    viewportHeight: 800, peekHeight: 58, contentHeight: 300, bottomInset: 34, hasTickets: true,
-  };
+  // BODY heights, not sheet heights: peek is zero by construction, because the
+  // collapsed sheet already draws the handle, the foot and the safe inset.
+  const detents = seatLayerSheetDetents({ content: 300, full: 460 });
 
-  it('derives the peek from the head it holds, plus the lift and the safe inset', () => {
-    // THE BAR IS EXACTLY ITS HEAD: a clip taken from a different number cuts
-    // the bottom off the head's own 44 pt buttons.
-    expect(seatLayerSheetDetents(input).peek).toBe(58 + seatLayerPickerTokens.size.peekClockLift + 34);
-  });
-
-  it('caps a filled sheet and an empty tray on their own fractions', () => {
-    const filled = seatLayerSheetDetents({ ...input, contentHeight: 10_000 });
-    expect(filled.content).toBe(Math.min(
-      800 * seatLayerPickerTokens.size.sheetMaxHeightFraction,
-      seatLayerPickerTokens.size.sheetMaxHeight,
-    ) + 34);
-    const empty = seatLayerSheetDetents({ ...input, contentHeight: 10_000, hasTickets: false });
-    expect(empty.content).toBe(Math.min(
-      800 * seatLayerPickerTokens.size.emptyTrayMaxHeightFraction,
-      seatLayerPickerTokens.size.emptyTrayMaxHeight,
-    ) + 34);
-    expect(filled.full).toBe(800 * seatLayerPickerTokens.size.sheetFullHeightFraction);
+  it('makes peek zero and offers full only where the content overflows', () => {
+    expect(seatLayerSheetHeightOf(detents, 'peek')).toBe(0);
+    expect(seatLayerSheetHeightOf(detents, 'content')).toBe(300);
+    expect(seatLayerSheetHeightOf(detents, 'full')).toBe(460);
+    expect(seatLayerSheetOffered(detents)).toEqual(['peek', 'content', 'full']);
+    const fits = seatLayerSheetDetents({ content: 300, full: 120 });
+    // `full` is clamped up to `content`: a sheet whose content fits under the
+    // ceiling has nothing to open further onto.
+    expect(fits.full).toBe(300);
+    expect(seatLayerSheetOffersFull(fits)).toBe(false);
+    expect(seatLayerSheetOffered(fits)).toEqual(['peek', 'content']);
   });
 
   it('rubber-bands over-drag rather than refusing it', () => {
-    const detents = seatLayerSheetDetents(input);
-    expect(seatLayerSheetRubberBanded(detents.full + 100, detents))
-      .toBeCloseTo(detents.full + 100 * seatLayerPickerTokens.motion.physics.rubberBand);
-    expect(seatLayerSheetRubberBanded(detents.peek - 100, detents))
-      .toBeCloseTo(detents.peek - 100 * seatLayerPickerTokens.motion.physics.rubberBand);
-    expect(seatLayerSheetRubberBanded(detents.content, detents)).toBe(detents.content);
+    expect(seatLayerSheetRubberBanded(560, 0, 460))
+      .toBeCloseTo(460 + 100 * seatLayerPickerTokens.motion.physics.rubberBand);
+    expect(seatLayerSheetRubberBanded(-100, 0, 460))
+      .toBeCloseTo(-100 * seatLayerPickerTokens.motion.physics.rubberBand);
+    expect(seatLayerSheetRubberBanded(300, 0, 460)).toBe(300);
   });
 
   it('lets a flick decide on its own, and otherwise settles on the nearest stop', () => {
-    const detents = seatLayerSheetDetents(input);
     expect(seatLayerSheetFlingVelocity).toBe(seatLayerPickerTokens.motion.physics.sheetFlingVelocity);
-    expect(seatLayerSheetSettle(detents.peek + 2, seatLayerSheetFlingVelocity, detents)).toBe(detents.content);
-    expect(seatLayerSheetSettle(detents.content - 2, -seatLayerSheetFlingVelocity, detents)).toBe(detents.peek);
-    expect(seatLayerSheetSettle(detents.peek + 2, 0, detents)).toBe(detents.peek);
-    expect(seatLayerSheetSettle(detents.content - 2, 0, detents)).toBe(detents.content);
-    expect(seatLayerSheetDetentAt(detents.peek, detents)).toBe('peek');
-    expect(seatLayerSheetDetentAt(detents.content, detents)).toBe('content');
-    expect(seatLayerSheetDetentAt(detents.full, detents)).toBe('full');
+    expect(seatLayerSheetSettle(detents, 2, seatLayerSheetFlingVelocity)).toBe('content');
+    expect(seatLayerSheetSettle(detents, 298, -seatLayerSheetFlingVelocity)).toBe('peek');
+    expect(seatLayerSheetSettle(detents, 2, 0)).toBe('peek');
+    expect(seatLayerSheetSettle(detents, 298, 0)).toBe('content');
+  });
+
+  it('answers a deliberate short drag the physics would have carried back', () => {
+    // The accessible floor under the springs.
+    expect(seatLayerSheetAnswer(detents, 'peek', 20, 0, 20)).toBe('content');
+    expect(seatLayerSheetAnswer(detents, 'peek', 5, 0, seatLayerSheetDragThreshold - 1)).toBe('peek');
+    expect(seatLayerSheetAnswer(detents, 'content', 290, 0, -seatLayerSheetDragThreshold)).toBe('peek');
   });
 
   it('springs rather than tweens, on the generated physics', () => {
@@ -284,6 +300,57 @@ describe('§3.10.1 sheet detents and physics', () => {
       stiffness: seatLayerPickerTokens.motion.physics.sheetSpringStiffness,
       damping: seatLayerPickerTokens.motion.physics.sheetSpringDamping,
     });
+  });
+});
+
+// -------------------------------------------------------- §3.8.9 seat notes
+
+describe('§3.8.9/§3.10.2 what the organizer said about the seat', () => {
+  const notes = (seat: Record<string, unknown>) =>
+    seatLayerPickerSeatNotes(seat as never, strings as never);
+
+  it('says what the seat PROVIDES first, then what a buyer should know before paying', () => {
+    expect(notes({
+      accessibility: ['step-free', 'companion'],
+      commercial: { restrictedView: true, obstructedView: true, premium: true },
+    }).map((row) => row.key)).toEqual([
+      'access:step-free', 'access:companion',
+      'mark:restrictedView', 'mark:obstructedView', 'mark:premium',
+    ]);
+  });
+
+  it('replaces the plain wheelchair accommodation with the provision it has', () => {
+    // "Empty wheelchair space" already says everything "Wheelchair space"
+    // would, and more precisely; listing both is one seat explained twice.
+    expect(notes({ accessibility: ['wheelchair'], wheelchairSpaceType: 'no-seat' })
+      .map((row) => row.key)).toEqual(['wheelchair:no-seat']);
+    expect(notes({ accessibility: ['wheelchair'], wheelchairSpaceType: 'seat-present' })
+      .map((row) => row.key)).toEqual(['wheelchair:seat-present']);
+    // With no provision the accommodation stands on its own.
+    expect(notes({ accessibility: ['wheelchair'] }).map((row) => row.key))
+      .toEqual(['access:wheelchair']);
+  });
+
+  it('keeps restricted and obstructed as SEPARATE rows', () => {
+    // Collapsing them told a buyer behind both a rail and a pillar about the
+    // rail and never about the pillar.
+    expect(notes({ commercial: { restrictedView: true, obstructedView: true } }))
+      .toHaveLength(2);
+  });
+
+  it('attaches the organizer sentence to the first selling mark, or gives it a row', () => {
+    const explained = notes({ commercial: { restrictedView: true, premium: true, note: ' Pillar ' } });
+    expect(explained[0]).toMatchObject({ key: 'mark:restrictedView', note: 'Pillar' });
+    expect(explained[1]!.note).toBeUndefined();
+    expect(seatLayerPickerSeatNoteSpoken(explained[0]!)).toBe('restrictedView: Pillar');
+    const alone = notes({ commercial: { note: 'Bring ID' } });
+    expect(alone).toEqual([{ key: 'note', iconKey: 'note', title: 'organizerNote', tone: 'note', note: 'Bring ID' }]);
+    expect(notes({ commercial: { note: '   ' } })).toEqual([]);
+  });
+
+  it('never prints a wire key this build\'s taxonomy does not know', () => {
+    expect(notes({ accessibility: ['some-new-need'] })).toEqual([]);
+    expect(notes(undefined as never)).toEqual([]);
   });
 });
 

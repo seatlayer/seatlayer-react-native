@@ -39,6 +39,7 @@ import { SeatLayerBestSeatsForm } from '../src/picker/SeatLayerBestSeatsForm';
 import { SeatLayerPickerToastLayer } from '../src/picker/SeatLayerPickerToast';
 import { SeatLayerToastQueue } from '../src/picker/toastQueue';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
+import { seatLayerSheetRestoreFraction } from '../src/picker/sheetDrag';
 
 async function render(element: React.ReactElement) {
   let renderer!: ReturnType<typeof create>;
@@ -71,10 +72,13 @@ function setupScope(over: Record<string, unknown> = {}) {
     hold: { active: false, owner: 'picker' }, maxSelection: 6, currency: 'EUR',
     selectionValidity: { isValid: true },
   };
-  const controller = {
+  const controller: Record<string, any> = {
     getSnapshot: () => snapshot,
     removeCartLine: async (...args: unknown[]) => { removed.push(args); },
     bestAvailable: async () => {},
+    supportsFrameSeat: false,
+    frameSeat: async () => ({ dy: 0 }),
+    openSeatView: async () => {},
     mapController: {
       isReady: true,
       supportsPickerCapability: () => true,
@@ -181,28 +185,63 @@ describe('§3.1 header renderer', () => {
   });
 });
 
-describe('§3.10.2 cart rows', () => {
+describe('§3.10.2 cart cards', () => {
   const line = (over: Record<string, unknown> = {}) => ({
     lineKey: 'one', label: 'A-1', objectId: 'one', quantity: 1, unitPrice: 25, currency: 'EUR',
     sectionLabel: '103', rowLabel: 'A', seatNumber: '9', ...over,
   });
 
-  it('draws one plate at the generated row height, with the section as the only ellipsis', async () => {
+  it('draws a bordered card at the generated height, with the name as the only ellipsis', async () => {
     const runtime = setupScope();
     runtime.snapshot.cartLines = [line()];
     const renderer = await render(React.createElement(SeatLayerCartList));
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-plate' }).props.style)
-      .toMatchObject({ borderRadius: seatLayerPickerTokens.radius.base * seatLayerPickerTokens.radius.smallRatio });
-    const row = renderer.root.findByProps({ testID: 'seatlayer-cart-row' });
-    expect((row.props.style as any[])[0]).toMatchObject({
-      minHeight: seatLayerPickerTokens.size.cartCardMinHeight, opacity: 1,
+    // THE PLATE IS GONE: one card per ticket, on its own surface, at the
+    // generated corner — not a bordered list inside a bordered sheet.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-plate' })).toHaveLength(0);
+    const card = renderer.root.findByProps({ testID: 'seatlayer-cart-card' });
+    expect((card.props.style as any[])[0]).toMatchObject({
+      backgroundColor: '#ffffff',
+      borderRadius: seatLayerPickerTokens.size.cartCardRadius,
+      minHeight: seatLayerPickerTokens.size.cartCardMinHeight,
+      opacity: 1,
     });
-    // The category name is not on the line; its colour is the dot and the name
-    // goes to the accessible label.
-    expect(row.props.accessibilityLabel).toContain('103 · A · 9');
+    const texts = card.findAllByType('Text' as never);
+    const name = texts.find((node) => node.props.children === '103')!;
+    expect(name.props.numberOfLines).toBe(1);
+    expect((name.props.style as any[])[0]).toMatchObject({
+      fontSize: seatLayerPickerTokens.type.cartCardName.size,
+    });
+    // Under it, the position at its own smaller size in the muted ink.
+    const position = texts.find((node) => node.props.children === 'A · 9')!;
+    expect((position.props.style as any[])[0]).toMatchObject({
+      color: '#5a5a63', fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
+    });
+    expect(card.props.accessibilityLabel).toContain('103 · A · 9');
   });
 
-  it('fades a pressed row to the generated opacity, makes its × inert, and restores it on failure', async () => {
+  it('says the seat\'s notes ONCE and in words, under a hairline inside the card', async () => {
+    const runtime = setupScope();
+    runtime.snapshot.cartLines = [line({ seatId: 'seat-1' })];
+    runtime.snapshot.selection = [{
+      id: 'seat-1', label: 'A-1', accessibility: ['wheelchair'], wheelchairSpaceType: 'no-seat',
+      commercial: { restrictedView: true, premium: true, note: 'Pillar at the aisle end' },
+    }];
+    const renderer = await render(React.createElement(SeatLayerCartList));
+    const notes = renderer.root.findByProps({ testID: 'seatlayer-cart-card-notes' });
+    const rows = notes.findAllByType('Text' as never)
+      .filter((node) => Array.isArray(node.props.style) === false && node.props.style?.fontSize);
+    // The provision replaces the plain wheelchair accommodation, restricted and
+    // premium are SEPARATE rows, and the organizer's sentence rides the first
+    // selling mark rather than standing on a line of its own.
+    expect(rows).toHaveLength(3);
+    expect(JSON.stringify(renderer.toJSON())).toContain('Pillar at the aisle end');
+    expect(rows[0]!.props.style.fontSize).toBe(seatLayerPickerTokens.type.cartNoteText.size);
+    // No glyphs here: the icon rows belong to the seat card (§3.8), and drawing
+    // both made the cart read as the same fact printed twice.
+    expect(notes.findAllByProps({ testID: 'seatlayer-seat-note-icon' })).toHaveLength(0);
+  });
+
+  it('fades a pressed card to the generated opacity, makes its × inert, and restores it on failure', async () => {
     const runtime = setupScope();
     runtime.snapshot.cartLines = [line()];
     let fail = false;
@@ -210,20 +249,20 @@ describe('§3.10.2 cart rows', () => {
     const renderer = await render(React.createElement(SeatLayerCartList));
     let resolve!: () => void;
     runtime.controller.removeCartLine = () => new Promise<void>((done) => { resolve = () => done(); });
-    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-remove' }).props.onPress(); });
-    const removing = renderer.root.findByProps({ testID: 'seatlayer-cart-row-removing' });
+    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card-remove' }).props.onPress(); });
+    const removing = renderer.root.findByProps({ testID: 'seatlayer-cart-card-removing' });
     expect((removing.props.style as any[])[0]).toMatchObject({
       opacity: seatLayerPickerTokens.opacity.removing,
     });
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-remove' }).props.accessibilityState)
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-card-remove' }).props.accessibilityState)
       .toMatchObject({ disabled: true });
-    // A reply that left the line standing brings the row back.
+    // A reply that left the line standing brings the card back.
     await act(async () => { resolve(); await Promise.resolve(); await Promise.resolve(); });
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-row-removing' })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-card-removing' })).toHaveLength(0);
     expect(fail).toBe(false);
   });
 
-  it('washes a held row and locks its mark, and keeps its remove control', async () => {
+  it('washes a held card and locks its mark, and keeps its remove control', async () => {
     const runtime = setupScope();
     runtime.snapshot.hold = { active: true, owner: 'host' };
     runtime.snapshot.cartLines = [line()];
@@ -235,15 +274,32 @@ describe('§3.10.2 cart rows', () => {
     expect(JSON.stringify(renderer.toJSON())).not.toContain('\u{1F512}');
     expect(lock.findAllByType('Text' as never)).toHaveLength(0);
     expect(lock.findAllByType('View' as never).length).toBeGreaterThanOrEqual(2);
+    // The dot it replaces is not drawn as well.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-card-dot' })).toHaveLength(0);
     // §3.13.13 — the × stays: pressing it is how a buyer whose hold the host
-    // owns is told the state, and how a held line releases one seat.
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-remove' }).length)
+    // owns is told the state, and how a held card releases one seat.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-card-remove' }).length)
       .toBeGreaterThan(0);
   });
 
-  it('draws one row per cart line', async () => {
-    // MINIMUM SURFACE: the folded runs and the `+N more` row went with the
-    // dense tokens; the cart cards of §3.10 replace them in the cart lane.
+  it('takes the map to the seat and steps the sheet down when a card is pressed', async () => {
+    const framed: unknown[][] = [];
+    const sheet: unknown[] = [];
+    const runtime = setupScope({ setPresentation: (event: unknown) => sheet.push(event) });
+    runtime.controller.supportsFrameSeat = true;
+    runtime.controller.frameSeat = async (...args: unknown[]) => { framed.push(args); };
+    runtime.snapshot.cartLines = [line({ seatId: 'seat-1' })];
+    runtime.snapshot.selection = [{ id: 'seat-1', label: 'A-1' }];
+    const renderer = await render(React.createElement(SeatLayerCartList));
+    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card' }).props.onPress(); });
+    expect(framed[0]![0]).toBe('seat-1');
+    expect(framed[0]![1]).toMatchObject({ fraction: seatLayerSheetRestoreFraction });
+    expect(sheet).toEqual([{ type: 'setSheet', sheet: 'collapsed' }]);
+  });
+
+  it('draws one card per cart line, with no run model left to fold them', async () => {
+    // The folded runs and the `+N more` row went with the dense tokens; the
+    // collapsed sheet caps the list and scrolls instead.
     const runtime = setupScope();
     runtime.snapshot.cartLines = Array.from({ length: 6 }, (_, index) => line({
       lineKey: `l-${index}`, label: `L-${index}`, objectId: `l-${index}`,
@@ -251,7 +307,7 @@ describe('§3.10.2 cart rows', () => {
     }));
     const renderer = await render(React.createElement(SeatLayerCartList));
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-more-row' })).toHaveLength(0);
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-row' })).toHaveLength(6);
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-card' })).toHaveLength(6);
   });
 });
 
@@ -276,6 +332,26 @@ describe('§3.11 best-seats form', () => {
         width: seatLayerPickerTokens.size.bestSeatsStepperWidth,
         height: seatLayerPickerTokens.size.minimumHitTarget,
       });
+  });
+
+  it('carries a one-line title and hides its sentence behind a ⓘ', async () => {
+    const runtime = setupScope();
+    runtime.snapshot.categories = [{ key: 'adult', label: 'Adult' }];
+    const renderer = await render(React.createElement(SeatLayerBestSeatsForm));
+    const title = renderer.root.findByProps({ testID: 'seatlayer-best-seats-title' });
+    // SHORT on purpose, and it shrinks by truncating: the long form wrapped
+    // onto a second line above a card whose whole point is that it is compact.
+    expect(title.props.children).toBe('findSeatsTogether');
+    expect(title.props.numberOfLines).toBe(1);
+    expect(title.props.ellipsizeMode).toBe('tail');
+    // The explanation rides an ⓘ right after the title, not under it.
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-best-seats-about-text' })).toHaveLength(0);
+    const about = renderer.root.findByProps({ testID: 'seatlayer-best-seats-about' });
+    expect(about.props.accessibilityLabel).toBe('aboutBestSeats');
+    expect(about.props.accessibilityState).toMatchObject({ expanded: false });
+    await act(async () => { about.props.onPress(); });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-best-seats-about-text' }).props.children)
+      .toBe('closestGroupChosenInstantly');
   });
 
   it('says findBestSeats at rest and findingBestSeats while it works', async () => {
