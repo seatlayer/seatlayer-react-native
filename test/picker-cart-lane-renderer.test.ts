@@ -216,6 +216,11 @@ describe('§3.10.2 cart cards', () => {
     expect((position.props.style as any[])[0]).toMatchObject({
       color: '#5a5a63', fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
     });
+    // The amount is the third of the three card types, and the heaviest.
+    const amount = texts.find((node) => node.props.children === '€25')!;
+    expect((amount.props.style as any[])[0]).toMatchObject({
+      fontSize: seatLayerPickerTokens.type.cartCardAmount.size,
+    });
     expect(card.props.accessibilityLabel).toContain('103 · A · 9');
   });
 

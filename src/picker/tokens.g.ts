@@ -1,8 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: 27751f1d250d9492c5f38bc93aa5ca1bb0db32ab4732cc20dff918ee5fda85a1
+// Canonical token input SHA-256: defb411c1dc94b1071a70bc92dfa7eff0c7ab443fc110dd86c1cfbd8f54182f4
 // Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = '27751f1d250d9492c5f38bc93aa5ca1bb0db32ab4732cc20dff918ee5fda85a1' as const;
+export const seatLayerPickerTokenSourceSha256 = 'defb411c1dc94b1071a70bc92dfa7eff0c7ab443fc110dd86c1cfbd8f54182f4' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -575,15 +575,15 @@ export const seatLayerPickerTokens = {
       "weight": 800
     },
     "cartCardAmount": {
-      "size": 13,
+      "size": 15,
       "weight": 800
     },
     "cartCardName": {
-      "size": 13,
+      "size": 15,
       "weight": 700
     },
     "cartCardPosition": {
-      "size": 11.5,
+      "size": 13,
       "weight": 600
     },
     "cartNoteText": {

@@ -109,9 +109,9 @@ PriceLegend band                           size.topRailHeight
 │  corner controls: accessibility ◦ zoom column           │
 │  toast (bottom centre) · extend prompt: opt-in only     │
 │  ConfirmCard / Venue3D chrome / status overlay          │
-│  (no DockBar — wide only; host opt-in on a phone)       │
+│  (no DockBar on any width by default — host opt-in)     │
 └─────────────────────────────────────────────────────────┘
-CartSheet (collapsed)     handle + capped cart + foot + safe inset
+CartSheet (collapsed)     handle + foot + safe inset
 ```
 
 The prices keep a band of their own between the header and the map: floated on
@@ -177,9 +177,11 @@ slots** none — the bands take the surface's own tone tokens · **Spec** §3.8.
 - **Inputs** a seat's `accessibility[]`, `wheelchairSpaceType` and
   `commercial` (`restrictedView`, `obstructedView`, `premium`, `note`).
 - **Model first.** `seatLayerSeatNoteRows` decides which rows a seat earns and
-  in what order — accommodations, the wheelchair provision, restricted,
-  obstructed, premium, the organizer's sentence — and every popup draws that
-  one list. Restricted and obstructed are SEPARATE rows; a wheelchair
+  in what order — accommodation types, the wheelchair provision, restricted
+  view, obstructed view, premium, the organizer's note — and every surface
+  draws that one list: the seat card as full-bleed bands under the category
+  band, the cart card as the same rows in words
+  (`seatLayerCartNoteLines`). Restricted and obstructed are SEPARATE rows; a wheelchair
   accommodation with a provision reported yields the provision row only; the
   organizer's sentence hangs under the first selling mark it explains, and is
   its own row when there is none.
@@ -219,40 +221,53 @@ substitutes an emoji or a platform icon. An unknown key draws nothing.
   mean rebuilding the column.
 - **States** phone corners / wide rail; the map-only controls stand down while
   the immersive scene is up.
-- **Anatomy** round controls `size.mapControlSize`, except the accessibility
-  control at `size.accessibilityControlSize` (`size.minimumHitTarget`). ONE
-  bottom-right column on both compositions — the ♿ control, then the zoom
-  discs — at `size.mapAnchorInset` from the map's edges. It lifts by
-  `size.dockBarHeight` only where a host opted into a dock; a default phone
-  mounts none. The accessible-section stepper sits beside the accessibility
+- **Anatomy** round controls `size.mapControlSize`, the accessibility control
+  `size.accessibilityControlSize`. ONE bottom-right column on both
+  compositions — the ♿ control, then the zoom discs, `size.zoomColumnGap`
+  apart — at `size.mapAnchorInset` from the map's edges. It lifts by
+  `size.dockBarHeight` only where a host opted into a dock; by default no
+  width mounts one. The accessible-section stepper sits beside the accessibility
   control, `size.accessStepGap` from it, on its inner side.
 - **The ♿ control heads the column** (2026-09-06). It stood alone in the
   bottom-left region, opposite the stack of discs, and the wide composition
   drew it a second time in its side panel. Who can sit where is an earlier
   question than how close the camera is, so it is the disc above `+`, once,
   on both widths.
-- **Phone zoom discs** three, `size.zoomColumnGap` apart, top to bottom:
-  `+` (`picker.zoomIn`), `−` (`picker.zoomOut`, the ladder section → venue) and
-  a framed dot, `strings.fitWholeVenue`, that shows the whole venue from any
-  depth via `picker.overview`. `−` and the framed dot dim from ONE reading,
-  `map.canStepBack`, so they are done at the same moment; `+` dims from
-  `map.canZoomIn`.
+- **Phone column** exactly three, `size.zoomColumnGap` apart, top to bottom:
+  the ♿ control, `+` (`picker.zoomIn`) and a framed dot,
+  `strings.fitWholeVenue`, that shows the whole venue from any depth via
+  `picker.overview`. **There is no `−` on the phone** (2026-09-06): its only
+  rung of its own was among the seats, everywhere else the one step back is the
+  whole venue, and two discs for one move read as a puzzle. Pinch steps out.
+  `SeatLayerPickerZoomOutButton` stays public for a host's own composition.
+- **`+` retires but keeps its slot** — inert once `map.rung` is `seats` or
+  `map.canZoomIn` is false, drawn with its space maintained, because the column
+  is anchored at its foot and a disc that left the tree pulled the ♿ disc down
+  under the thumb reaching for it.
+- **The whole-venue disc is never dimmed.** Snapshot camera facts go stale after
+  a pinch, which changes no state; dimming the escape hatch on a stale reading
+  stranded buyers. At the venue already the press is a harmless no-op.
 - **Disabled** discs **dim in place** rather than appearing and disappearing
-  under the thumb: `opacity.mapControlDisabled` over ink, ground and hairline
-  together, with the shadow dropped. A disc that cannot be pressed has to look
-  like one, and may only look like one where it is true — which is why the
-  reading is the runtime's fit pose and not a guess from what is on screen.
+  under the thumb: the glyph steps back to `color.*.mutedText` at 55 per cent,
+  the ring to the chrome hairline at 60 per cent, and the shadow is dropped.
+  The ground never changes and there is **no opacity wash** — one read as a grey
+  blot on the light map and vanished on the dark one.
+- **While a seat card is up on the phone** the whole column fades to opacity 0
+  over `motion.duration.crossfade` and goes inert. It fades rather than
+  unmounting, so nothing else on the map moves.
 - **Ground** `color.*.chrome` with a `color.*.chromeLine` hairline, from the
   **map chrome's** side, never the panel's `surface`/`divider` — those vanish
-  into a dark map at 1.14:1. Dark separates by the fill (2.96:1 against the
+  into a dark map at 1.14:1. Light `chrome` is `#d6dce6` with the darker edge;
+  dark `chrome` is `#556278` with the pale one. Dark separates by the fill (2.96:1 against the
   map), light by the edge (3.72:1 against the disc). Applies to every floating
   control, the accessibility disc and the Map/3D track included.
 - **Wide** `+` and `−` under the same ♿ disc, and no fit control of its own:
   `SeatLayerPickerZoomToFitButton` left the rail on 2026-09-06 and stays a
   public component for a host that mounts it itself. The immersive scene keeps
   its Fit chip, which says `strings.fitWholeVenue` like the phone's disc.
-- **Commands** `picker.zoomIn`, `picker.zoomOut`, `picker.overview` (the
-  phone's whole-venue disc), `picker.setAccessibilityFilters`,
+- **Commands** `picker.zoomIn`, `picker.overview` (the phone's whole-venue
+  disc), `picker.zoomOut` (the wide column's `−`),
+  `picker.setAccessibilityFilters`,
   `picker.setColorblindSafe`, `picker.setBuyerView`.
 - **Note** `SeatLayerPickerViewModeControl` (the Map/3D segmented control) is a
   member of this stack on wide layouts only; on a phone the top rail owns it.
@@ -262,18 +277,19 @@ substitutes an emoji or a platform icon. An unknown key draws nothing.
 **Name** `SeatLayerDockBar` · **Style slot** `dockBarStyle` · **Instance
 override** `style:`
 
-**No phone form.** The drop-in resolves this surface *wide only*, so a phone
-mounts nothing: pinch-out and the zoom-out stepper already walk a buyer back to
-the venue, the prev/next arrows bought a two-tap version of a gesture the finger
-does better, and the per-section "N seats left" is not shown on phones. The
-phone's way back is pinch-out past the melt point, or the stepped `−` in the
-bottom-right corner. A host that wants the bar on a phone sets `showDockBar`
-explicitly; the widget also mounts standalone. Everything below describes the
-bar where it IS drawn.
+**Off by default on every width.** `dockBarFor` resolves `showDockBar ?? false`,
+so no composition mounts a bar unless the host asks: the prev/next arrows bought
+a two-tap version of a gesture the finger does better, and the bar's height plus
+the home-indicator inset pushed every bottom-corner control up the screen. The
+phone's way back is pinch-out past the melt point, the back-to-overview control
+top-left, or the whole-venue disc at the foot of the map's column; the wide
+layout keeps `−` as well. A host that wants the bar sets `showDockBar: true`;
+the widget also mounts standalone. Everything below describes the bar where it
+IS drawn.
 
 - **Inputs** `sections[]` (with `accessibleFree`), `map.focusedSectionId`,
   `map.rung`, `map.accessibilityFilter`.
-- **States** not mounted on a phone unless the host asked; hidden at rung
+- **States** not mounted unless the host asked; hidden at rung
   `venue`; visible at rung `seats`; step controls
   disabled at the ends of `sections[]` (never wrapping around).
 - **Anatomy** edge-to-edge, `size.dockBarHeight` plus the bottom safe area,
@@ -373,8 +389,21 @@ override** `style:`
 - **Motion** the map dims to ink behind it (`SeatLayerPickerStyles.scrimColor`);
   the card springs up from the foot of the map with `motion.curve.spring` over
   `motion.duration.cardEnter`. `Add seat` invites once, breathes until touched,
-  and on the press sweeps, ticks and says `Added`. The seat counts on the press;
-  only the card's departure waits.
+  and then the add runs as ONE ordered chain: the **confirm sweep** fills the
+  button under a drawn tick over `motion.duration.pressSweep` and the label
+  turns to `Added`; a **chip in the category's colour carrying the seat label**
+  flies from the card to the foot over
+  `motion.durationOutsideBudget.confirmFlight` on `motion.curve.spring`; **on
+  landing** the controller's `cartLanding` ends; the footer's count and total
+  **swell 1 → 1.3 → 1** over `motion.duration.bump` with the ink lerping to the
+  accent; and only THEN does the map's lift pull back. A map moving under a
+  chip still in flight read as two motions fighting. Under reduced motion no
+  chip is created, so nothing waits on a landing.
+- **While the card is up** the sheet's handle disc is not drawn, the map's
+  control column fades to opacity 0 and goes inert, the footer's count and
+  total EXCLUDE the candidate (`confirmedCartLines`), and the footer's call to
+  action stays a **disabled button with the label it already had** — not a
+  sentence about the card.
 - **Callbacks** `onConfirm`, `onCancel`, `onViewFromSeat`, `onShow3D`,
   `onSeatConfidence` (the teaser is a button only where a host takes it).
 - **Commands** `picker.openSeatView`, `picker.showSeatIn3D`,
@@ -468,35 +497,50 @@ map; see `picker-spec.md` §3.13.7, "Divergence from the web picker".
   edge and a shadow of `0 -8 26 -20`. Radius `radius.sheet`; `elevation.sheet`
   is available through `sheetStyle` and is 0 by default, because the shadow is
   drawn.
-  - **Handle** a `size.sheetHandleWidth` × `size.sheetHandleHeight` pill at
-    `radius.pill`, straddling the sheet's own top edge —
-    `size.sheetHandleOverhang` above it, the rest inside — on a ground of the
-    hairline at 62 per cent of ITS OWN alpha over the sheet, with the same
-    hairline as a border. The chevron sits inside it and rotates over
+  - **Handle** a `size.sheetHandleWidth` × `size.sheetHandleHeight`
+    (44 × 44) **disc**, not a pill: filled with `color.*.background`, lifted by
+    its own shadow (black at 20 per cent, blur 10, offset 0 / 2), carrying a
+    16-point chevron in `color.*.mutedText`, straddling the sheet's own top
+    edge — `size.sheetHandleOverhang` (22) above it, `size.sheetHeadHeight`
+    (16) inside. **No hairline and no band under it.** The chevron points up
+    when collapsed and down when open, rotating over
     `motion.duration.chevron`. The whole band is the tap target and the
-    sheet's drag runs under it. It is the cart's ONE named toggle in both
-    states: `strings.expandCart` / `strings.collapseCart`, with the expanded
-    state and its own tap action.
-  - **Collapsed** the height of the block it draws — handle, cart, foot — plus
-    the safe inset. Never a fixed peek: a surface clipped to a different
-    height than the content it holds cuts the bottom off its own buttons.
-  - **Cart region** the CartList in `size.cartTrayPadX` gutters, capped at
-    `size.cartPeekMaxHeight` while collapsed and scrolling inside its own box;
-    opened, the cap lifts to the sheet's ceiling and the region also carries
-    the closed-sales statement and, on an empty cart, the best-seats form.
-  - **Foot** the lapse notice, the inline action error, the total line, the
-    BookButton and the attribution, in `size.footPadX` /
-    `size.footPadTop` / `size.footPadBottom`, under a hairline. Not restyled
-    on a phone at all — one block on both widths.
+    sheet's drag runs under it. **Not drawn while a confirm card is up.** It is
+    the cart's ONE named toggle in both states: `strings.expandCart` /
+    `strings.collapseCart`, with the expanded state and its own tap action.
+  - **Collapsed** the FOOTER BLOCK ONLY — head, foot, safe inset. No cards rest
+    in the collapsed sheet: a list that unrolled itself on every add read as a
+    panel the buyer had not opened. Never a fixed peek either: a surface
+    clipped to a different height than the content it holds cuts the bottom off
+    its own buttons.
+  - **Cart region** the CartList in `size.cartTrayPadX` gutters, **height zero
+    while collapsed**; opened, it shows up to `size.cartPeekMaxHeight` (189) —
+    three cards and a sliver of the fourth — scrolling inside its own box, and
+    also carries the closed-sales statement and, on an empty cart, the
+    best-seats form. The extras stay laid out offstage while shut, so the sheet
+    opens straight to its height.
+  - **Foot** the lapse notice, the hold-ending cue, the inline action error,
+    the total line, `size.footTotalGap` (8), the BookButton and the centred
+    attribution, in `size.footPadX` (16) / `size.footPadTop` (4) /
+    `size.footPadBottom` (2). A hairline above it **only when the sheet is open
+    with tickets** — collapsed, the panel's own top edge is the only edge
+    there is. Not restyled on a phone at all — one block on both widths. The
+    attribution is absent entirely on a white-labelled account.
   - **Total line** `strings.noSeatsSelected` on an empty cart, else
-    `strings.ticketCount` at `type.footTotalLabel` with the total at
-    `type.footTotalAmount` in tabular figures on the trailing edge. A live
-    region; the count swells once on `motion.duration.bump` when it changes.
+    `strings.ticketCount` at `type.footTotalLabel` (13 / w600) with the total
+    at `type.footTotalAmount` (17 / w700) in tabular figures on the trailing
+    edge. **Collapsed and non-empty it grows a second, muted line** naming the
+    seats — each line label with `-` replaced by ` · `, joined by a comma and
+    two spaces (`204 · Q · 7,  204 · U · 13`), 12 / w600 in
+    `color.*.mutedText`, one line, ellipsized, with an unfold glyph at 16 —
+    and **tapping that line opens the sheet**. A live region; the count and
+    total swell 1 → 1.3 → 1 over `motion.duration.bump` with the ink lerping to
+    the accent, fired **when the flying chip lands**, never on the press.
     There is no `From <min>` anywhere: it stated a price and offered nothing
     to do about it.
 - **Rules** the sheet never opens itself; any map tap while expanded collapses
-  it. With three tickets or fewer and no extras to show, opening changes the
-  chevron and nothing else — the collapsed sheet is already the whole block.
+  it, and so does a tap on a cart card. Count and total exclude a seat a
+  confirm card is still asking about.
 - **Motion** `motion.duration.sheet`; springs, not tweens (see
   `picker-spec.md` §3.9).
 - **Commands** `picker.checkout` from the foot's own button.
@@ -507,19 +551,26 @@ map; see `picker-spec.md` §3.13.7, "Divergence from the web picker".
 
 - **Inputs** `cart.lines[]` joined to `selection[]`.
 - **Anatomy** one card per ticket — the SAME card on every width — separated by
-  `size.cartCardGap`. Each is at least `size.cartCardMinHeight` on
-  `color.*.surface`, hairline border, `size.cartCardRadius`, padded
-  `12 / 9 / 6 / 9`: a category dot (9 pt, with a hairline so a pale category is
-  still findable), the name at `type.cartCardName` — the only part that
-  ellipsizes — the position and type under it at `type.cartCardPosition` in
-  `color.*.mutedText` with tabular figures, then the amount at
-  `type.cartCardAmount`, then the two actions. Both actions are a TIGHT
-  `size.minimumHitTarget` box: Material pads an icon button to 48 of its own
-  accord, and four points per card is what puts the fourth card past the
-  collapsed cap.
+  `size.cartCardGap` (6). Each is at least `size.cartCardMinHeight` (52) on
+  `color.*.surface`, hairline border, `size.cartCardRadius` (12), padded
+  `12 / 4 / 4 / 4` (leading / top / trailing / bottom; the trailing side is
+  tight because the action boxes carry their own touch floor): a category dot
+  (9 pt, with a hairline so a pale category is still findable), a 10 pt gap,
+  the name at 15 / w700 — the only part that ellipsizes — the position line
+  under it at 13 / w600 in `color.*.mutedText` with tabular figures, joining
+  row, seat and ticket type with ` · ` (`R · 6 · Lower Bowl`), then the amount
+  at 15 / w800 in `color.*.text`, then the two actions. Both actions are
+  18-point glyphs in `color.*.text` inside a TIGHT `size.minimumHitTarget`
+  box: Material pads an icon button to 48 of its own accord, and four points
+  per card is what puts the fourth card past the open cap.
 - **Actions** the eye opens the view from that seat — drawn only where the host
   allows it, the runtime advertises `seatView` and the seat carries an authored
-  photograph — then the ×.
+  photograph — then the ×. Cards may also be **swiped** toward the leading edge
+  to remove.
+- **Card tap** a press on the card's own face — not the × and not the eye —
+  sends `picker.frameSeat { seatId, fraction: 0.5 }`; the sheet **stays where
+  the buyer put it**, and the seat lands in the room the open sheet leaves. A
+  line with no selected seat behind it is not pressable.
 - **Notes** what the organizer said about the seat, said ONCE and in WORDS,
   under a hairline inside the card: accommodations, then the wheelchair
   provision (`strings.accessiblePhysicalSeat` /
@@ -530,11 +581,13 @@ map; see `picker-spec.md` §3.13.7, "Divergence from the web picker".
   No plate and no ground: the card is already a bordered ticket, and a tinted
   band inside one reads as a card inside a card. The icon rows belong to the
   seat card, not here.
-- **Held cards** a wash of the accent, a warmer border, and the dot becomes a
-  lock — a lock is not a colour.
+- **Held cards** a wash of the accent at 7 per cent over the surface, a border
+  blended 45 per cent toward the accent, and the dot becomes a lock — a lock is
+  not a colour. Held cards are never swipeable; the × stays.
 - **Rules** no folding and no `+N more`. Consecutive seats used to collapse
   into a run, which was a second rendering of one cart to keep in step; the
-  collapsed sheet caps and scrolls instead.
+  open sheet caps and scrolls instead. Long text truncates with an ellipsis —
+  there is no shorten-by-fact ladder (a known gap, spec §4.9).
 - **States** a card the buyer has asked to remove is drawn at
   `opacity.removing` with its × inert and its swipe disabled, from the press
   until the snapshot that drops it (or the failure that puts it back). Any cell
@@ -558,7 +611,9 @@ sheet merges `continueButtonStyle` over it) · **Instance override** `style:`
   above it.
 - **States** idle, busy (spinner), disabled with a reason, and — on a phone
   with an empty cart — an ENABLED `strings.findBestSeatsCta` that opens the
-  sheet on the best-seats form. Disabled is a designed state — a
+  sheet on the best-seats form (the form lives only in the open sheet). **While
+  a confirm card is up the button keeps the label it already had and is simply
+  disabled** — never a sentence about the card — and offers no finder. Disabled is a designed state — a
   surface-toned ground, muted ink, an inset hairline — not Material's own
   greys, which vanish on the dark scene sheet. The label ladder is in
   `picker-spec.md` §3.10.3.
@@ -621,7 +676,7 @@ specification. Names, slots and files:
 | Component | Slot | Spec |
 | --- | --- | --- |
 | `SeatLayerFloorStrip` | `floorStripStyle` | §3.7 |
-| `SeatLayerBestSeatsForm` | — | §3.11 — a one-line `✦ strings.findSeatsTogether` title above the decisions, truncating rather than wrapping |
+| `SeatLayerBestSeatsForm` | — | §3.11 — lives ONLY in the open sheet (the empty cart's way in is the footer's own full-width `strings.findBestSeatsCta`). A one-line `✦ strings.findSeatsTogether` title, truncating rather than wrapping, with an **ⓘ immediately after the title** that toggles a one-line `strings.closestGroupChosenInstantly` under it (animated size, muted 12 pt, named `strings.aboutBestSeats`). **No premium chip** — the snapshot carries no chart-level premium fact; see §4.9 |
 | `SeatLayerPickerToast` / `…ToastQueue` / `…ToastLayer` | — | §3.12 |
 | `SeatLayerPickerLoadingView` / `…ErrorView` / `…EmptyView` | — | §3.13.1–2 |
 | `SeatLayerPickerAccessPanel` | — | §3.13.3 |
@@ -630,7 +685,7 @@ specification. Names, slots and files:
 | `SeatLayerPickerExtendHoldPrompt` | one named `+5 min` step, once per hold, dismissable; **phone: off by default**, host opt-in via `SeatLayerPickerChromeOptions(showExtendHoldPrompt: true)`; wide keeps it | §3.13.8 |
 | `SeatLayerPickerBookedOverlay` | — | §3.13.10 |
 | `SeatLayerPickerGeneralAdmissionPrompt` / `…TablePrompt` | — | §3.13.11–12 |
-| `SeatLayerPickerAccessibilityFilters` | — | §3.5 — the head of the map's control column on both widths; switches apply on change, no apply step, the sheet stays open; opening it clears a pending seat card; the sheet is bounded to `size.accessSheetMaxHeightFraction` (floor `size.accessSheetMinHeight`) and scrolls inside it; every row is ONE line — short name, truncating, any sentence behind an ⓘ that opens under it — each wearing its own provision's glyph, the colour row a contrast disc, and a sold-out provision reads `0` |
+| `SeatLayerPickerAccessibilityFilters` | — | §3.5, §4.10 — the head of the map's control column on both widths; switches apply on change, no apply step, the sheet stays open; opening it clears a pending seat card; the sheet is bounded to `size.accessSheetMaxHeightFraction` (floor `size.accessSheetMinHeight`) and scrolls inside it. Rows are a FIXED 50 high, closed by a hairline of `color.*.divider` at 35 per cent, and read **icon cell (`size.accessRowIconCell`) · `size.accessRowGap` · label (flexible, ellipsized) · ⓘ in a 36 column where the row has a note · count in a 68 column · `size.accessRowSwitchGap` · drawn switch**. The whole line toggles. The count is `N free` on a quiet ground of `color.*.text` at 6 per cent, tappable to jump where the runtime supports it; a sold-out provision stays, named and disabled, reading `0`. The two map switches (hide limited view, colourblind-friendly) sit under a `strings.viewGroupTitle` heading |
 | `SeatLayerPickerAccessibleStepper` | — | §3.4.1 |
 | `SeatLayerSeatViewChrome` | `seatViewChromeStyle` | §3.15 |
 | `SeatLayerPickerAttribution` | — | §3.10.3 |
