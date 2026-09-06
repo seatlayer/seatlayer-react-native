@@ -359,6 +359,10 @@ export {
   type SeatLayerPickerSvgIconModules,
 } from './picker/seatIcons';
 export {
+  useSeatLayerPickerConfirmAddChoreography,
+  type SeatLayerPickerConfirmAddChoreography,
+} from './picker/confirmAddChoreography';
+export {
   seatLayerPickerConfirmAddInitial,
   seatLayerPickerConfirmAddReduce,
   seatLayerPickerConfirmSwellMs,
