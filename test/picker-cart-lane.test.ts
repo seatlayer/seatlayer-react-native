@@ -153,10 +153,13 @@ describe('§3.10.3 checkout call to action', () => {
     expect(seatLayerCheckoutCtaState({
       ...base, snapshot: snapshot(), seatCardOpen: true, ticketCount: 2,
     })).toMatchObject({ label: 'holdAndCheckout', enabled: false, statesReason: false });
-    // Not even the finder is pressable while the card is asking.
+    // Not even the finder is PRESSABLE while the card is asking — but the
+    // label the ladder would give with no card up is exactly what it keeps,
+    // so an empty cart under a card still reads `findBestSeatsCta` rather
+    // than falling through to the last rung's `selectSeats` (reference 19).
     expect(seatLayerCheckoutCtaState({
       ...base, snapshot: snapshot(), seatCardOpen: true, ticketCount: 0, canOfferFind: true,
-    })).toMatchObject({ enabled: false, findsBestSeats: false });
+    })).toMatchObject({ label: 'findBestSeatsCta', enabled: false, findsBestSeats: false });
     // 3. and 4. Work the buyer already asked for, in that order.
     expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), creatingHold: true, handoffInFlight: true }))
       .toMatchObject({ label: 'securingSeats', busy: true });

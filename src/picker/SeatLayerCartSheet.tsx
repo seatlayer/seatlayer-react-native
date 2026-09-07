@@ -239,9 +239,19 @@ export function useSeatLayerCheckoutCta(
   });
 }
 
-/** Whether the finder may be offered at all: the same gate the tray's card is under. */
+/**
+ * Whether the finder may be offered at all: the same gate the tray's card is
+ * under, MINUS the seat card.
+ *
+ * A card standing over the map does not take the finder off the ladder — rung
+ * 3 says the button "keeps the label the ladder would give it with no card up"
+ * and simply holds it down, and it is `seatLayerCheckoutCtaState` that
+ * withholds the press. Reading `pendingSeat` here as well made the label fall
+ * through to rung 11, so an empty cart with a card up said `Select seats`
+ * where the reference says a disabled `Find best seats`.
+ */
 function bestSeatsAllowed(scope: Scope, offered: boolean): boolean {
-  return offered && !scope.pendingSeat && !scope.readOnly && !scope.isBusy && scope.isReady &&
+  return offered && !scope.readOnly && !scope.isBusy && scope.isReady &&
     !scope.snapshot?.event.salesClosed && scope.snapshot?.hold.owner !== 'host' &&
     scope.snapshot?.hold.active !== true &&
     scope.snapshot?.selectionValidity?.isValid !== false &&
