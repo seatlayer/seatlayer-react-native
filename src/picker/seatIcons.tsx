@@ -17,13 +17,16 @@ import { Image, type ImageStyle, type StyleProp } from 'react-native';
  * an emoji arrives in a colour, weight and baseline the host font decides.
  * A key this build does not know draws nothing rather than a broken box.
  *
- * **What is RN-specific.** This package takes no drawing dependency: there is
- * no `react-native-svg` in its peers, and a bundler resolves a `require`
- * statically, so an app without the module could not build. The glyph is
- * therefore handed to `Image` as an SVG data URI, and a host that HAS a
- * vector renderer installs it through {@link setSeatLayerPickerSeatIconRenderer}
- * and gets it drawn natively. The path data — not the renderer — is the
- * contract a Swift or Compose port transcribes.
+ * **What is RN-specific.** This package takes no MANDATORY drawing dependency:
+ * `react-native-svg` is an optional peer, and a bundler resolves a `require`
+ * statically, so a guarded import here would put it in every consumer's build
+ * graph. With nothing installed the glyph is handed to `Image` as an SVG data
+ * URI — which iOS cannot decode, so the mark is simply absent there — and a
+ * host that HAS a vector renderer installs it through
+ * {@link installSeatLayerPickerSvgIcons} or
+ * {@link setSeatLayerPickerSeatIconRenderer} and gets it drawn natively. The
+ * path data — not the renderer — is the contract a Swift or Compose port
+ * transcribes.
  */
 
 /** The square every glyph below is authored in. */
@@ -216,7 +219,8 @@ let installedRenderer: SeatLayerPickerSeatIconRenderer | undefined;
  * A host with `react-native-svg` passes a component that reads
  * {@link seatLayerPickerSeatGlyphs} and draws the same paths natively. Without
  * one the glyph is an SVG data URI handed to `Image`, which is exactly as much
- * as this package can do with no drawing dependency of its own.
+ * as this package can do with no drawing dependency of its own — and iOS has
+ * no SVG decoder behind `Image`, so on iOS that fallback draws nothing.
  */
 export function setSeatLayerPickerSeatIconRenderer(
   renderer: SeatLayerPickerSeatIconRenderer | undefined,
@@ -279,7 +283,8 @@ export interface SeatLayerPickerSvgIconModules {
  * start-up with its own imports — the same shape as
  * {@link setSeatLayerPickerSpotlightBlur} — and every glyph in the picker is
  * drawn natively, so it scales without resampling and takes the row's ink
- * directly. A host without it changes nothing: the data-URI fallback stays.
+ * directly — and it is the only way to get the marks drawn on iOS at all. A
+ * host without it changes nothing else: the data-URI fallback stays.
  *
  * ```tsx
  * import Svg, { Circle, Path } from 'react-native-svg';

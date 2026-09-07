@@ -390,8 +390,14 @@ transparency.
 A seat can say what it is — an accessible physical seat, an empty wheelchair
 space, a restricted view, a premium seat — and each of those wears a drawing
 shared with every other SeatLayer SDK, so the same seat wears the same mark
-everywhere. Out of the box the picker hands each glyph to `Image` as an SVG
-data URI, which needs no dependency at all and looks correct.
+everywhere. With no drawing dependency the picker hands each glyph to `Image`
+as an SVG data URI.
+
+**On iOS that fallback draws nothing.** `Image` decodes a data URI through the
+platform's own image decoders, and none of them reads SVG, so the seat-note
+bands on the seat card and the rows of the accessibility sheet keep their words
+and lose the mark beside them. Nothing else changes — no gap, no broken box,
+no error — but if you want the marks on iOS, install the renderer below.
 
 `react-native-svg` is an **optional peer**. An app that already has it installs
 the built-in vector renderer once, at start-up, and every glyph is drawn
