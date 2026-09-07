@@ -569,15 +569,16 @@ function SeatLayerMapControlsView({
     >
       {/* §3.5, 0.9.1: while a card asks, the corner DISC COLUMN goes — a
           stack of controls poking out beside the sheet asking about a seat
-          reads as clutter. The top rail is a different decision: Map | 3D
-          stays DRAWN and steps back to `opacity.mapControlDisabled`, because
-          it says which view the map is in, and a control that disappears while
-          a card is up reads as a map that lost its 3D (reference frame 19).
-          Nothing here takes a press either way — the guard is on the parent. */}
+          reads as clutter. Map | 3D is NOT one of those discs: it belongs to
+          the top rail, is read with the prices rather than with the map's
+          corners, and it stays FULLY DRAWN while a card asks (reference
+          frames 03b and 19 both show it at full strength beside a card).
+          §3.8.1's "the anchors dim" is about the map's own anchors; dimming
+          the rail as well says the map lost its 3D. Nothing here takes a
+          press either way — the guard is on the parent. */}
       {view ? (
         <SeatLayerPickerBlockedRegion style={{
           end: edgeInset,
-          opacity: cardAsking ? seatLayerPickerTokens.opacity.mapControlDisabled : 1,
           position: 'absolute',
           top: seatLayerPickerMapControlsRailTop - seatLayerPickerViewModeTrackInset,
         }}>

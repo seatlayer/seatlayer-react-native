@@ -294,17 +294,20 @@ describe('3.5 map corner controls', () => {
   it('takes the disc column off the map while a seat card asks, and keeps the rail', async () => {
     // Reference frame 19: the corner column — accessibility, `+`, the framed
     // dot — is ABSENT, not merely faded (0.8.0 faded it). The TOP RAIL is the
-    // other decision in the same frame: Map | 3D is still drawn, stepped back
-    // to `opacity.mapControlDisabled`, because it says which view the map is
-    // in. Fading the whole surface took it with the column and read as a map
-    // that had lost its 3D while a card was up. Nothing takes a press either
-    // way; the pointer guard is on the surface.
+    // other decision in the same frame: Map | 3D is still drawn AT FULL
+    // STRENGTH, because it says which view the map is in and it is read with
+    // the prices rather than with the map's corners. Frames 03b and 19 both
+    // show it undimmed beside a card; a wash over it read as a map that had
+    // lost its 3D. Nothing takes a press either way; the pointer guard is on
+    // the surface.
     setup();
     const asking = await render({ cardAsking: true, showZoomControls: true, includeViewModeControl: true });
     const root = asking.root.findAllByType('View' as never)[0]!;
     expect(root.props.pointerEvents).toBe('none');
     const style = root.props.style[root.props.style.length - 1];
     expect(style.opacity).toBeUndefined();
+    // Nothing under the surface wears the disabled wash either.
+    expect(JSON.stringify(asking.toJSON() ?? '')).not.toContain('"opacity":0.42');
     // The column's own members are gone, while the surface that carries the
     // rail is still mounted and still at full opacity.
     const drawn = await render({ cardAsking: false, showZoomControls: true, includeViewModeControl: true });
