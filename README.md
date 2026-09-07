@@ -7,10 +7,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-types%20included-3178C6.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
-The official SeatLayer React Native SDK for adding an interactive seating chart
-and seat picker to iOS and Android ticketing apps. Render live seat
-availability, create temporary holds, find best-available seats, and hand
-secure booking to your trusted server through a typed TypeScript API.
+The official SeatLayer React Native and Expo SDK adds an interactive seating
+chart and seat picker to iOS and Android ticketing apps. It combines live
+availability, best-available selection, temporary holds, and typed TypeScript
+APIs with composable React Native buyer controls around SeatLayer's
+version-pinned shared venue renderer; your trusted server completes booking.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
@@ -56,7 +57,47 @@ Peer requirements are `react >= 18.2.0`, `react-native >= 0.72.0`, and
 package — `dist/index.d.ts` for ESM and `dist/index.d.cts` for CommonJS — so no
 `@types/*` package is needed.
 
-## Quick start
+## Quick start: ready-made seat picker
+
+Use `SeatLayerPicker` for the complete native buyer flow. Give it a definite
+height or a full-screen parent, and keep the configuration object stable so
+React rerenders do not reload the chart.
+
+```tsx
+import React, { useMemo } from 'react';
+import { SeatLayerPicker } from '@seatlayer/react-native';
+
+export function TicketPicker({
+  event,
+  startCheckout,
+}: {
+  readonly event: string;
+  readonly startCheckout: (holdId: string) => Promise<void>;
+}) {
+  const configuration = useMemo(
+    () => ({
+      event,
+      publicKey: 'pk_test_your_key',
+      currency: 'USD',
+      maxSelection: 8,
+    }),
+    [event],
+  );
+
+  return (
+    <SeatLayerPicker
+      configuration={configuration}
+      themeMode="auto"
+      onCheckout={(handoff) => startCheckout(handoff.holdId)}
+    />
+  );
+}
+```
+
+`onCheckout` receives the typed hold handoff. Send it only to your trusted
+backend for payment and idempotent booking.
+
+## Use the lower-level seating chart
 
 Give the map a definite height or a full-screen parent. Keep the configuration
 object stable so React rerenders do not reload the chart.
