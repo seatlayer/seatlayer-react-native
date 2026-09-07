@@ -221,7 +221,13 @@ describe('§3.10.2 cart cards', () => {
     expect((amount.props.style as any[])[0]).toMatchObject({
       fontSize: seatLayerPickerTokens.type.cartCardAmount.size,
     });
-    expect(card.props.accessibilityLabel).toContain('103 · A · 9');
+    // The FACE of the card is the one node: the name, the position and the
+    // amount in one sentence, with the eye and the ✕ left outside it as their
+    // own buttons.
+    const face = renderer.root.findByProps({ testID: 'seatlayer-cart-card-face' });
+    expect(face.props.accessible).toBe(true);
+    expect(face.props.accessibilityLabel).toContain('103 · A · 9');
+    expect(card.props.accessible).toBe(false);
   });
 
   it('says the seat\'s notes ONCE and in words, under a hairline inside the card', async () => {
@@ -296,13 +302,29 @@ describe('§3.10.2 cart cards', () => {
     runtime.snapshot.cartLines = [line({ seatId: 'seat-1' })];
     runtime.snapshot.selection = [{ id: 'seat-1', label: 'A-1' }];
     const renderer = await render(React.createElement(SeatLayerCartList));
-    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card' }).props.onPress(); });
+    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card-face' }).props.onPress(); });
     expect(framed[0]![0]).toBe('seat-1');
     expect(framed[0]![1]).toMatchObject({ fraction: seatLayerSheetRestoreFraction });
     // Owner call, both platforms: the sheet stays. A tap on a cart card asks
     // "where is this one?", and closing the list the buyer was reading through
     // to answer it made checking a second seat cost a re-open every time.
     expect(sheet).toEqual([]);
+  });
+
+  it("leaves the card's keys outside its one spoken node (§4.10)", async () => {
+    const runtime = setupScope();
+    runtime.controller.supportsFrameSeat = true;
+    runtime.controller.frameSeat = async () => undefined;
+    runtime.snapshot.cartLines = [line({ seatId: 'seat-1' })];
+    runtime.snapshot.selection = [{ id: 'seat-1', label: 'A-1' }];
+    const renderer = await render(React.createElement(SeatLayerCartList));
+    const face = renderer.root.findByProps({ testID: 'seatlayer-cart-card-face' });
+    // An accessible box around the whole ticket folds both keys into the
+    // sentence on iOS, and a buyer using VoiceOver can then see the ink and
+    // never reach it.
+    expect(face.findAllByProps({ testID: 'seatlayer-cart-card-remove' })).toHaveLength(0);
+    const card = renderer.root.findByProps({ testID: 'seatlayer-cart-card' });
+    expect(card.findAllByProps({ testID: 'seatlayer-cart-card-remove' })).toHaveLength(1);
   });
 
   it('draws one card per cart line, with no run model left to fold them', async () => {

@@ -413,7 +413,7 @@ describe('cart checkout renderer', () => {
     const renderer = await render(React.createElement(SeatLayerCartList));
     const output = JSON.stringify(renderer.toJSON());
     expect(output).toContain('$40');
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-card' }).props.accessibilityLabel)
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-card-face' }).props.accessibilityLabel)
       .toContain('$40');
   });
 

@@ -59,12 +59,15 @@ export function SeatLayerCartCard(props: SeatLayerCartCardProps): React.ReactEle
     ? seatLayerPickerColorAlpha(theme.colors.accent, .07)
     : theme.colors.surface;
   return (
-    <Pressable
-      accessible
-      accessibilityRole={props.onPress ? 'button' : 'text'}
-      accessibilityLabel={props.accessibilityLabel}
-      disabled={props.onPress === undefined}
-      onPress={props.onPress}
+    /* THE TICKET IS THE CONTAINER, NOT THE ELEMENT (§4.10). The card reads as
+       ONE node — place, position, amount and the organizer's notes in one
+       sentence — and the eye and the ✕ stay two buttons of their own. An
+       accessible box around the whole row would have folded both of them into
+       that sentence and left a buyer using VoiceOver with ink they can see and
+       no way to reach, so the name and the press live on the FACE of the card
+       and the two keys sit outside it. */
+    <View
+      accessible={false}
       testID={props.removing ? 'seatlayer-cart-card-removing' : 'seatlayer-cart-card'}
       style={[{
         alignItems: 'center',
@@ -89,57 +92,67 @@ export function SeatLayerCartCard(props: SeatLayerCartCardProps): React.ReactEle
         paddingTop: 4,
       }, slots.cartCardContainer]}
     >
-      <CardMark held={props.held} color={props.categoryColor} theme={theme} />
-      <View style={{ width: 10 }} />
-      <View accessible={false} style={{ flex: 1 }}>
-        <Text
-          accessible={false}
-          maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={[{
-            color: theme.colors.text,
-            fontFamily: theme.fontFamily,
-            fontSize: seatLayerPickerTokens.type.cartCardName.size,
-            fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardName.weight),
-          }, slots.cartCardText]}
-        >{props.name}</Text>
-        {props.position
-          ? (
-            <SeatLayerCartCellCrossFade token={props.position}>
-              <Text
-                accessible={false}
-                maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[{
-                  color: theme.colors.mutedText,
-                  fontFamily: theme.fontFamily,
-                  fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
-                  fontVariant: ['tabular-nums'],
-                  fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardPosition.weight),
-                }, slots.cartCardText]}
-              >{props.position}</Text>
-            </SeatLayerCartCellCrossFade>
-          )
-          : null}
-        {props.notes.length > 0 ? <SeatLayerCartCardNotes notes={props.notes} theme={theme} /> : null}
-      </View>
-      <View style={{ width: 8 }} />
-      <SeatLayerCartCellCrossFade token={props.amountText}>
-        <Text
-          accessible={false}
-          maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
-          numberOfLines={1}
-          style={[{
-            color: theme.colors.text,
-            fontFamily: theme.fontFamily,
-            fontSize: seatLayerPickerTokens.type.cartCardAmount.size,
-            fontVariant: ['tabular-nums'],
-            fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardAmount.weight),
-          }, slots.cartCardText]}
-        >{props.amountText}</Text>
-      </SeatLayerCartCellCrossFade>
+      <Pressable
+        accessible
+        accessibilityRole={props.onPress ? 'button' : 'text'}
+        accessibilityLabel={props.accessibilityLabel}
+        disabled={props.onPress === undefined}
+        onPress={props.onPress}
+        testID="seatlayer-cart-card-face"
+        style={{ alignItems: 'center', flex: 1, flexDirection: 'row' }}
+      >
+        <CardMark held={props.held} color={props.categoryColor} theme={theme} />
+        <View style={{ width: 10 }} />
+        <View accessible={false} style={{ flex: 1 }}>
+          <Text
+            accessible={false}
+            maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[{
+              color: theme.colors.text,
+              fontFamily: theme.fontFamily,
+              fontSize: seatLayerPickerTokens.type.cartCardName.size,
+              fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardName.weight),
+            }, slots.cartCardText]}
+          >{props.name}</Text>
+          {props.position
+            ? (
+              <SeatLayerCartCellCrossFade token={props.position}>
+                <Text
+                  accessible={false}
+                  maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[{
+                    color: theme.colors.mutedText,
+                    fontFamily: theme.fontFamily,
+                    fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
+                    fontVariant: ['tabular-nums'],
+                    fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardPosition.weight),
+                  }, slots.cartCardText]}
+                >{props.position}</Text>
+              </SeatLayerCartCellCrossFade>
+            )
+            : null}
+          {props.notes.length > 0 ? <SeatLayerCartCardNotes notes={props.notes} theme={theme} /> : null}
+        </View>
+        <View style={{ width: 8 }} />
+        <SeatLayerCartCellCrossFade token={props.amountText}>
+          <Text
+            accessible={false}
+            maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+            numberOfLines={1}
+            style={[{
+              color: theme.colors.text,
+              fontFamily: theme.fontFamily,
+              fontSize: seatLayerPickerTokens.type.cartCardAmount.size,
+              fontVariant: ['tabular-nums'],
+              fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.cartCardAmount.weight),
+            }, slots.cartCardText]}
+          >{props.amountText}</Text>
+        </SeatLayerCartCellCrossFade>
+      </Pressable>
       {/* A HORIZONTAL PAIR, NOT A BORDERED COLUMN, and both boxes are the full
           touch floor exactly — TIGHT, not a minimum: four points per card is
           what puts the fourth card past the collapsed cap. */}
@@ -173,7 +186,7 @@ export function SeatLayerCartCard(props: SeatLayerCartCardProps): React.ReactEle
           </CardAction>
         )
         : null}
-    </Pressable>
+    </View>
   );
 }
 
