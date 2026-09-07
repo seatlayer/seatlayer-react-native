@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   type GestureResponderEvent, I18nManager, Pressable, ScrollView,
   StyleSheet, Text, View,
@@ -235,6 +235,9 @@ const rowHeight = 50;
 const countColumn = 68;
 /** The ⓘ column. */
 const noteColumn = 36;
+/** The row's own names for its two extra answers, in the actions rotor. */
+const accessRowNoteAction = "seatlayer-access-note";
+const accessRowJumpAction = "seatlayer-access-jump";
 /** A row that cannot be turned on is dimmed rather than removed. */
 const disabledRowOpacity = .58;
 /** How faint the hairline under a row is drawn. */
@@ -249,13 +252,43 @@ function AccessRow(props: Readonly<{
 }>): React.ReactElement {
   const { row, theme } = props;
   const [noteOpen, setNoteOpen] = useState(false);
+  const jumpable = row.countLabel !== undefined && row.jumpable && !row.disabled;
+  /**
+   * The ⓘ and the count-as-jump, AS ACTIONS ON THE ROW.
+   *
+   * The whole row is the switch, so the row is one accessibility element — and
+   * a touch target nested inside one is not reachable on iOS at all: the ⓘ and
+   * the jump chip drawn inside the row would be a button a buyer using
+   * VoiceOver can see the ink of and never reach. Flutter says
+   * `explicitChildNodes` and keeps them as child nodes; React Native has no
+   * such switch, so the two are offered where the platform already puts a
+   * control's second and third answers — the actions rotor. The pointer keeps
+   * the drawn buttons; neither route is the only one.
+   */
+  const actions = useMemo(() => {
+    const list: { name: string; label: string }[] = [];
+    if (row.note !== undefined && row.note.length > 0) {
+      list.push({ name: accessRowNoteAction, label: row.note });
+    }
+    if (jumpable) {
+      list.push({ name: accessRowJumpAction, label: row.jumpLabel ?? row.countLabel ?? "" });
+    }
+    return list.length === 0 ? undefined : Object.freeze(list);
+  }, [jumpable, row.countLabel, row.jumpLabel, row.note]);
   return (
     <View style={styles.rowWrap}>
       <Pressable
+        accessibilityActions={actions}
         accessibilityRole="switch"
         accessibilityLabel={row.label}
         accessibilityState={{ checked: row.on, disabled: row.disabled }}
         disabled={row.disabled}
+        onAccessibilityAction={actions === undefined
+          ? undefined
+          : (event: { nativeEvent: { actionName: string } }) => {
+            if (event.nativeEvent.actionName === accessRowNoteAction) setNoteOpen((open) => !open);
+            if (event.nativeEvent.actionName === accessRowJumpAction && jumpable) props.onJump(row);
+          }}
         onPress={() => props.onToggle(row)}
         style={[
           styles.row,
@@ -317,7 +350,7 @@ function AccessRow(props: Readonly<{
             <View style={styles.countCell}>
               {row.countLabel === undefined
                 ? null
-                : row.jumpable && !row.disabled
+                : jumpable
                   ? (
                     <Pressable
                       accessibilityRole="button"

@@ -350,3 +350,45 @@ describe('the row names come from the generated short set (§3.5)', () => {
       .toBe('quiet-room');
   });
 });
+
+describe('the row is one element, so its extras are actions on it (§4.10)', () => {
+  it('offers the ⓘ as an action on the row, labelled with the sentence itself', async () => {
+    setup();
+    const renderer = await openSheet();
+    const wheelchair = row(renderer, 'wheelchair');
+    // The whole row is the switch, so the drawn ⓘ inside it is not reachable
+    // on iOS at all. The action rotor is where the platform keeps a control's
+    // second answer.
+    expect(wheelchair.props.accessibilityActions)
+      .toContainEqual({ name: 'seatlayer-access-note', label: english.companionSeatsNote });
+    const note = () => renderer.root.findAllByProps({ children: english.companionSeatsNote })
+      .filter((node: any) => node.type === 'Text');
+    expect(note()).toHaveLength(0);
+    await act(async () => {
+      wheelchair.props.onAccessibilityAction({ nativeEvent: { actionName: 'seatlayer-access-note' } });
+    });
+    expect(note()).not.toHaveLength(0);
+  });
+
+  it('offers the count-as-jump as a second action, and takes the flight', async () => {
+    const runtime = setup({ tour: true });
+    const renderer = await openSheet();
+    const wheelchair = row(renderer, 'wheelchair');
+    expect(wheelchair.props.accessibilityActions)
+      .toContainEqual({ name: 'seatlayer-access-jump', label: english.accessJumpFirstSection });
+    await act(async () => {
+      wheelchair.props.onAccessibilityAction({ nativeEvent: { actionName: 'seatlayer-access-jump' } });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(runtime.calls).toContainEqual(['filter', 'wheelchair']);
+  });
+
+  it('gives a row with neither extra no actions at all', async () => {
+    setup({ needs: [{ key: 'wheelchair', count: 4 }] });
+    const renderer = await openSheet();
+    expect(row(renderer, 'wheelchair').props.accessibilityActions).toBeUndefined();
+    expect(row(renderer, english.colorblindSafe).props.accessibilityActions).toBeUndefined();
+  });
+});
