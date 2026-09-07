@@ -537,6 +537,13 @@ function SeatLayerMapControlsView({
   // region's inset is measured to the disc, not to the target around it.
   const member = (child: ReactNode, first: boolean, hidden = false) => (
     <View
+      // A RETIRED DISC KEEPS ITS SLOT, NOT ITS VOICE (§3.5). The box stays so
+      // the column does not shuffle under a thumb already reaching for the
+      // disc that heads it — but a control drawn at nothing is a control that
+      // is not there, and assistive technology must be told so rather than
+      // offered an invisible, disabled button in the corner of the map.
+      accessibilityElementsHidden={hidden ? true : undefined}
+      importantForAccessibility={hidden ? 'no-hide-descendants' : undefined}
       pointerEvents={hidden ? 'none' : 'box-none'}
       style={{
         alignItems: 'flex-end',

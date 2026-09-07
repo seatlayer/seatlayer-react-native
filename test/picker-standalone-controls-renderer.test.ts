@@ -154,9 +154,21 @@ describe('standalone picker controls', () => {
       });
       expect(slot).toBeDefined();
       expect(slot?.props.pointerEvents).toBe('none');
-      // The other disc is a different question and is unaffected by it.
+      // AND IT IS SILENT. A slot drawn at nothing that still answered the
+      // rotor was an invisible disabled button in the corner of the map.
+      expect(slot?.props.accessibilityElementsHidden).toBe(true);
+      expect(slot?.props.importantForAccessibility).toBe('no-hide-descendants');
+      // The other disc is a different question and is unaffected by it: it
+      // keeps its slot AND its voice.
       expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' }))
         .toHaveLength(1);
+      const living = renderer.root.findAllByType('View' as never).find((node) => {
+        const style = node.props.style;
+        return typeof style === 'object' && style !== null && !Array.isArray(style) &&
+          (style as Record<string, unknown>).opacity === 1 &&
+          (style as Record<string, unknown>).minHeight === 44;
+      });
+      expect(living?.props.accessibilityElementsHidden).toBeUndefined();
       runtime.update({ map: { canZoomIn: true, rung: 'sections' } });
     }
   });
