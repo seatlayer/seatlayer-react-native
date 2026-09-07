@@ -34,6 +34,11 @@ import {
 import { canOfferSeatLayerAllFloors, isSeatLayerPickerFloorSelectionEnabled } from '../src/picker/SeatLayerFloorStrip';
 import { planSeatLayerMapBottomControls } from '../src/picker/SeatLayerMapControls';
 import {
+  seatLayerPickerContrastRatio,
+  seatLayerPickerTestChipContrastFloor,
+  seatLayerPickerTestChipWash,
+} from '../src/picker/testChipInk';
+import {
   priceLegendEdges,
   priceLegendFadeSteps,
   priceLegendVisualContentWidth,
@@ -126,7 +131,7 @@ describe('picker chrome pure plans', () => {
     cyclic.push({ color: '#123456' }, cyclic);
     expect(sanitizeSeatLayerPickerStyle(cyclic as never, true)).toEqual({ color: '#123456' });
     expect(resolveSeatLayerPickerLayout({ headerHeight: 4096 }).headerHeight).toBe(4096);
-    expect(resolveSeatLayerPickerLayout({ headerHeight: 4097 }).headerHeight).toBe(56);
+    expect(resolveSeatLayerPickerLayout({ headerHeight: 4097 }).headerHeight).toBe(38);
     expect(seatLayerPickerMinimumTargetStyle(1)).toEqual({
       alignItems: 'center', justifyContent: 'center', minWidth: 44,
     });
@@ -170,13 +175,17 @@ describe('picker chrome pure plans', () => {
     expect(canOfferSeatLayerAllFloors('stack', true)).toBe(false);
     expect(isSeatLayerPickerFloorSelectionEnabled(true, false)).toBe(false);
     expect(isSeatLayerPickerFloorSelectionEnabled(false, false)).toBe(true);
-    expect(planSeatLayerMapBottomControls(true, false, true, 44)).toEqual({ height: 44, zoomOffset: 0 });
+    // §3.5: one bottom-right column — a target per member, the token gap between.
+    expect(planSeatLayerMapBottomControls(1, 44)).toEqual({ height: 44 });
+    expect(planSeatLayerMapBottomControls(3, 44)).toEqual({ height: 144 });
+    expect(planSeatLayerMapBottomControls(0, 44)).toEqual({ height: 0 });
     expect(priceLegendEdges({ contentWidth: 300, layoutWidth: 100, offsetX: 0 }, true, 'reversed')).toEqual({ leading: true, trailing: false });
     expect(priceLegendFadeSteps(true, false)).toEqual([1, 0.5, 0.12]);
     expect(priceLegendFadeSteps(false, false)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(true, true)).toEqual([0.12, 0.5, 1]);
     expect(priceLegendFadeSteps(false, true)).toEqual([1, 0.5, 0.12]);
-    expect(priceLegendVisualContentWidth(122)).toBe(100);
+    // 3.2: the trailing breathing room is `size.legendRailEdgeFade`.
+    expect(priceLegendVisualContentWidth(122)).toBe(104);
     expect(priceLegendVisualContentWidth(18)).toBe(0);
     expect(priceLegendMeasurementSignature(
       [{ key: 'a|b', label: 'Front', priceMin: 20 }], 'USD', false, false, 'auto', 44, 11,
@@ -231,7 +240,7 @@ describe('picker chrome pure plans', () => {
         hold: { active: false }, sessionId: 1,
       }));
     });
-    expect(reportInset).toHaveBeenCalledWith(56);
+    expect(reportInset).toHaveBeenCalledWith(38);
     expect(heldFor).not.toHaveBeenCalled();
     act(() => renderer!.unmount());
     expect(removeInset).toHaveBeenCalledOnce();
@@ -295,7 +304,7 @@ describe('picker chrome pure plans', () => {
     expect(newRemove).toHaveBeenCalledOnce();
   });
 
-  it('renders fixed 44/40 header action geometry and one error announcement', () => {
+  it('renders fixed 46/44 header action geometry and one error announcement', () => {
     const theme = {
       themeMode: 'light', colors: {
         accent: '#111111', onAccent: '#ffffff', surface: '#ffffff', background: '#ffffff',
@@ -311,7 +320,9 @@ describe('picker chrome pure plans', () => {
       }));
     });
     const close = renderer.root.findAllByType('Pressable' as any)[0]!;
-    expect(close.props.style({ pressed: false })[0]).toMatchObject({ width: 44, height: 44 });
+    // Ring plus twenty points of reach, so the ring lands ten points from the
+    // trailing edge while the target still runs out to the corner.
+    expect(close.props.style({ pressed: false })[0]).toMatchObject({ width: 46, height: 44 });
     let error!: TestRenderer.ReactTestRenderer;
     act(() => {
       error = TestRenderer.create(React.createElement(SeatLayerPickerErrorStatus, {
@@ -335,12 +346,19 @@ describe('picker chrome pure plans', () => {
         testMode: true, theme, strings,
       }));
     });
+    // 3.4: the ink is resolved against the chip's own wash, not the surface,
+    // and must clear the small-text floor whatever the host theme.
     const warningText = indicator.root.findByType('Text' as any);
-    expect(warningText.props.style).toContainEqual(expect.objectContaining({ color: '#000000' }));
+    const ink = (warningText.props.style as ReadonlyArray<Record<string, string>>)
+      .find((entry) => typeof entry?.color === 'string')?.color;
+    const wash = seatLayerPickerTestChipWash('#f4b740', '#ffffff', 0.18);
+    expect(ink).toBeTypeOf('string');
+    expect(seatLayerPickerContrastRatio(ink!, wash))
+      .toBeGreaterThanOrEqual(seatLayerPickerTestChipContrastFloor);
     let attribution!: TestRenderer.ReactTestRenderer;
     act(() => {
       attribution = TestRenderer.create(React.createElement(SeatLayerPickerAttributionView, {
-        required: true, label: 'poweredBy', textColor: '#111111', markInk: '#ffffff',
+        required: true, label: 'poweredBy', textColor: '#111111',
         style: { opacity: 0, position: 'absolute' }, visible: false,
       }));
     });

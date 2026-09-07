@@ -10,7 +10,7 @@ import {
 
 describe('runtime metadata', () => {
   it('keeps the hosted version and immutable page in lockstep', () => {
-    expect(seatLayerHostedWebVersion).toBe('0.71.5');
+    expect(seatLayerHostedWebVersion).toBe('0.84.1');
     expect(seatLayerMobilePageUrl).toBe(
       `https://cdn.seatlayer.io/seatlayer-js@${seatLayerHostedWebVersion}/mobile.html`,
     );
@@ -51,7 +51,7 @@ describe('SeatLayerController', () => {
     expect(transport.frames[0]).toMatchObject({
       kind: 'init',
       payload: {
-        host: { platform: 'react-native', sdk: '0.3.4' },
+        host: { platform: 'react-native', sdk: '0.4.0' },
         config: { event: 'fixture-event-controller', currency: 'USD' },
       },
     });

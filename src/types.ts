@@ -1,6 +1,6 @@
 import type { JsonObject, JsonValue } from './json';
-export const seatLayerSdkVersion = '0.3.4';
-export const seatLayerHostedWebVersion = '0.71.5';
+export const seatLayerSdkVersion = '0.4.0';
+export const seatLayerHostedWebVersion = '0.84.1';
 /** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
 export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;
 export const seatLayerMobileOrigin = 'https://cdn.seatlayer.io';
@@ -179,6 +179,13 @@ export interface SelectedSeat {
   maxOccupancy?: number;
   accessibility?: string[];
   wheelchairSpaceType?: string | (string & {});
+  /**
+   * What the runtime says the seat's inventory state is.
+   *
+   * Present-only, and the chrome must treat an absent value as "available":
+   * a build that cannot answer is not a build reporting every seat as sold.
+   */
+  status?: string | (string & {});
 }
 
 export interface SelectionValidity {

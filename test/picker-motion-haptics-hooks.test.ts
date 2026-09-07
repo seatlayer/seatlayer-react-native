@@ -91,10 +91,10 @@ describe('picker scoped haptics', () => {
     expect(calls).toEqual([]);
     scope.snapshot = hapticSnapshot(1, 'A', true);
     await act(async () => { renderer!.update(React.createElement(SeatLayerPickerHaptics, { adapter })); await Promise.resolve(); });
-    expect(calls).toEqual(['selection', 'light', 'medium']);
+    expect(calls).toEqual(['selection', 'selection', 'medium']);
     for (const signal of signals) signal();
     await act(async () => { await Promise.resolve(); });
-    expect(calls).toEqual(['selection', 'light', 'medium', 'heavy']);
+    expect(calls).toEqual(['selection', 'selection', 'medium', 'heavy']);
     for (const signal of signals) signal();
     await act(async () => { await Promise.resolve(); });
     expect(calls).toHaveLength(4);

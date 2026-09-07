@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-native', () => ({
-  I18nManager: { isRTL: false }, Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
+  I18nManager: { isRTL: false }, Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
   useWindowDimensions: () => ({ width: 390, height: 800 }),
 }));
@@ -57,7 +57,7 @@ async function render(props: Record<string, unknown>) {
 }
 
 describe('accessibility prompt safe-area geometry', () => {
-  it('applies an offered seat type and opens the matching seat-detail view', async () => {
+  it('applies an offered seat type live and leaves the sheet open', async () => {
     const runtime = setup();
     const renderer = await render({});
     await act(async () => {
@@ -66,14 +66,13 @@ describe('accessibility prompt safe-area geometry', () => {
     });
     await act(async () => {
       renderer.root.findByProps({ accessibilityLabel: 'wheelchair' }).props.onPress();
-    });
-    await act(async () => {
-      renderer.root.findByProps({ accessibilityLabel: 'applyFilters' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(runtime.calls).toEqual([['wheelchair'], { rung: 'seats' }]);
-    expect(scope.presentation.prompt).toBeNull();
+    // The switch IS the action: one command out of the row's own handler, no
+    // apply step, and the sheet stays open for a buyer with more than one need.
+    expect(runtime.calls).toEqual([['wheelchair']]);
+    expect(scope.presentation.prompt).toMatchObject({ kind: 'accessibility' });
   });
 
   it('keeps the scrim edge-to-edge while forwarding asymmetric full insets through the scoped modal', async () => {
@@ -88,7 +87,10 @@ describe('accessibility prompt safe-area geometry', () => {
     expect(renderer.root.findByType('Modal' as any).props.visible).toBe(true);
     expect(renderer.root.findAll((node) => node.props.style?.position === 'absolute' && node.props.style?.top === 0 && node.props.style?.right === 0 && node.props.style?.bottom === 0 && node.props.style?.left === 0)).toHaveLength(1);
     const bounds = renderer.root.findByProps({ pointerEvents: 'box-none' });
-    expect(bounds.props.style[1]).toMatchObject({ paddingTop: 23, paddingRight: 35, paddingBottom: 39, paddingLeft: 19 });
+    // The sheet reaches the bottom and both edges: only the safe insets stand
+    // between it and the glass, and the bottom one is carried inside the sheet
+    // so its ground runs all the way down.
+    expect(bounds.props.style[1]).toEqual({ paddingTop: 23, paddingRight: 19, paddingLeft: 3 });
     await act(async () => { renderer.root.findAllByProps({ accessible: false }).find((node) => node.props.onPress && node.props.style?.position === 'absolute')!.props.onPress(); });
     expect(runtime.calls).toEqual([]);
     expect(scope.presentation.prompt).toBeNull();
@@ -101,13 +103,13 @@ describe('accessibility prompt safe-area geometry', () => {
       legacy.root.findByProps({ accessibilityLabel: 'accessibility' }).props.onPress();
       legacy.update(React.createElement(SeatLayerPickerAccessibilityFilters, { modalTopInset: 4, modalBottomInset: 6, modalHorizontalInset: 9 }));
     });
-    expect(legacy.root.findByProps({ pointerEvents: 'box-none' }).props.style[1]).toMatchObject({ paddingTop: 20, paddingRight: 25, paddingBottom: 22, paddingLeft: 25 });
+    expect(legacy.root.findByProps({ pointerEvents: 'box-none' }).props.style[1]).toEqual({ paddingTop: 20, paddingRight: 9, paddingLeft: 9 });
     const hostile = Object.create(null, { top: { enumerable: true, get: () => { throw new Error('inset'); } } });
     const hostileRenderer = await render({ safeAreaInsets: hostile });
     await act(async () => {
       hostileRenderer.root.findByProps({ accessibilityLabel: 'accessibility' }).props.onPress();
       hostileRenderer.update(React.createElement(SeatLayerPickerAccessibilityFilters, { safeAreaInsets: hostile }));
     });
-    expect(hostileRenderer.root.findByProps({ pointerEvents: 'box-none' }).props.style[1]).toMatchObject({ paddingTop: 16, paddingRight: 16, paddingBottom: 16, paddingLeft: 16 });
+    expect(hostileRenderer.root.findByProps({ pointerEvents: 'box-none' }).props.style[1]).toEqual({ paddingTop: 16, paddingRight: 0, paddingLeft: 0 });
   });
 });

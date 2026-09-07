@@ -15,20 +15,20 @@ describe('picker customization foundation', () => {
   it('maps generated size defaults and preserves them through partial layout overrides', () => {
     expect(seatLayerPickerDefaultLayout).toEqual(seatLayerPickerTokens.size);
     expect(seatLayerPickerDefaultLayout).toMatchObject({
-      headerHeight: 56,
+      headerHeight: 38,
       dockBarHeight: 52,
-      peekHeight: 44,
-      sheetMaxHeightFraction: 0.6,
-      denseLineHeight: 40,
-      confirmActionHeight: 40,
-      confirmCardMaxWidth: 360,
+      peekHeight: 58,
+      sheetMaxHeightFraction: 0.72,
+      cartCardMinHeight: 52,
+      confirmActionHeight: 44,
+      confirmCardMaxWidth: 310,
       minimumHitTarget: 44,
     });
     const layout = resolveSeatLayerPickerLayout({ headerHeight: 64, peekHeight: 56 });
     expect(layout.headerHeight).toBe(64);
     expect(layout.peekHeight).toBe(56);
     expect(layout.dockBarHeight).toBe(52);
-    expect(resolveSeatLayerPickerLayout({ headerHeight: undefined }).headerHeight).toBe(56);
+    expect(resolveSeatLayerPickerLayout({ headerHeight: undefined }).headerHeight).toBe(38);
     expect(resolveSeatLayerPickerLayout({ headerHeight: 0 }).headerHeight).toBe(0);
     expect(Object.isFrozen(layout)).toBe(true);
   });
@@ -38,14 +38,14 @@ describe('picker customization foundation', () => {
       headerHeight: Number.NaN,
       peekHeight: -1,
       sheetMaxHeightFraction: 2,
-      denseVisibleLines: 1.5,
+      cartCardMinHeight: -1,
       minimumHitTarget: 40,
       unexpected: 99,
     } as unknown as Record<string, number>);
-    expect(layout.headerHeight).toBe(56);
-    expect(layout.peekHeight).toBe(44);
-    expect(layout.sheetMaxHeightFraction).toBe(0.6);
-    expect(layout.denseVisibleLines).toBe(5);
+    expect(layout.headerHeight).toBe(38);
+    expect(layout.peekHeight).toBe(58);
+    expect(layout.sheetMaxHeightFraction).toBe(0.72);
+    expect(layout.cartCardMinHeight).toBe(52);
     expect(layout.minimumHitTarget).toBe(44);
     expect('unexpected' in layout).toBe(false);
     expect(resolveSeatLayerPickerLayout({ minimumHitTarget: 48 }).minimumHitTarget).toBe(48);
@@ -66,6 +66,6 @@ describe('picker customization foundation', () => {
   it('keeps the hit target in layout and the button radius in generated theme data', () => {
     expect(seatLayerPickerDefaultLayout.minimumHitTarget).toBe(44);
     expect('button' in seatLayerPickerDefaultLayout).toBe(false);
-    expect(seatLayerPickerTokens.radius.button).toBe(8);
+    expect(seatLayerPickerTokens.radius.button).toBe(9);
   });
 });

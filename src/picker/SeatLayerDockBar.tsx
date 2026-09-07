@@ -14,10 +14,14 @@ import {
 } from 'react-native';
 
 import { chartSeatLayerPickerColor } from './chartColor';
+import { seatLayerDockCountCopy, type SeatLayerDockCountCopy } from './dockCount';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
+import { seatLayerPickerTokens } from './tokens.g';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
 import { focusedPickerSection, seatsLeftInPickerSection, usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
+import { seatLayerPickerBold } from './boldText';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
@@ -41,11 +45,13 @@ const unknownWidths: MeasuredWidths = Object.freeze({
   shortCount: Number.NaN,
   overview: Number.NaN,
 });
-const dotSize = 10;
-const stepPaint = 30;
-const leadingWidth = 12 + dotSize + 8;
-const trailingWidth = 6;
-const overviewGap = 4;
+const size = seatLayerPickerTokens.size;
+const type = seatLayerPickerTokens.type;
+const dotSize = size.dockDotSize;
+const stepPaint = size.dockNavWidth;
+const leadingWidth = size.dockLeadingInset + dotSize + 8;
+const trailingWidth = size.dockTrailingInset;
+const overviewGap = size.dockNavGap * 2;
 const countSeparatorWidth = 16;
 
 export function resolveSeatLayerDockMotionDuration(reducedMotion: boolean, duration: number): number {
@@ -128,6 +134,7 @@ function MeasureText({
 }): React.ReactElement {
   return (
     <Text
+      maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
       accessible={false}
       importantForAccessibility="no-hide-descendants"
       onTextLayout={onMeasure}
@@ -138,7 +145,16 @@ function MeasureText({
   );
 }
 
-/** Scoped focused-section dock with data-only layout below the adapter. */
+/**
+ * Where the buyer is, and the two ways out, docked under the map. Rung 2 only,
+ * sliding away when the map climbs a level.
+ *
+ * THE DROP-IN MOUNTS NO DOCK ON ANY WIDTH (§3.6, owner call 2026-09-06): the
+ * pinch and the single stepped `-` control already walk a buyer back to the
+ * venue, and the bar's height plus the home-indicator inset pushed every
+ * bottom-corner control up the screen. A host that wants it sets
+ * `chrome.showDockBar`; this component stays mountable standalone regardless.
+ */
 export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const reducedMotion = useSeatLayerPickerReducedMotion();
@@ -209,8 +225,20 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
   );
   const visible = ownsDock && snapshot !== undefined && section !== undefined && snapshot.map.rung === 'seats';
   const [actualHeight, setActualHeight] = useState<number | undefined>(undefined);
-  const measurementCopy = section === undefined || snapshot === undefined ? '' :
-    `${section.displayLabel ?? section.label}:${seatsLeftInPickerSection(section, snapshot) ?? ''}`;
+  const countCopy: SeatLayerDockCountCopy | undefined =
+    section === undefined || snapshot === undefined
+      ? undefined
+      : seatLayerDockCountCopy({
+        sectionName: section.displayLabel ?? section.label,
+        seatsLeft: seatsLeftInPickerSection(section, snapshot),
+        section,
+        snapshot,
+        translate: (key, options) => scope.strings.translate(key, options),
+        locale: scope.strings.locale,
+      });
+  const measurementCopy = countCopy === undefined
+    ? ''
+    : `${countCopy.accessibleName}:${countCopy.long}:${countCopy.short}`;
   const measurementToken = useMemo(() => Object.freeze({
     session: scope.sessionId,
     section: section?.id,
@@ -222,7 +250,11 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
     setActualHeight(undefined);
   }, [measurementToken]);
   const bottomInset = props.reserveBottomInset === true ? safeInset(props.safeAreaBottomInset) : 0;
-  const bandHeight = actualHeight ?? theme.layout.dockBarHeight + bottomInset;
+  // §4.10 — the bar is `base × the dock's clamped scale`, and §2.3 wants the
+  // REPORTED band to be the height it actually draws: a section focused
+  // against a shorter number lands under a dock that grew.
+  const drawnDockHeight = seatLayerPickerScaledExtent(theme.layout.dockBarHeight, seatLayerPickerTypeScaleClamp('dock'));
+  const bandHeight = actualHeight ?? drawnDockHeight + bottomInset;
   const insetLease = useMemo(
     () => props.reserveBottomInset ? scope.claimViewportInsetBand('dock') : undefined,
     [props.reserveBottomInset, scope.claimViewportInsetBand, scope.sessionId],
@@ -241,6 +273,7 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
         slots={styles}
         sectionName={section.displayLabel ?? section.label}
         seatsLeft={seatsLeftInPickerSection(section, snapshot)}
+        countCopy={countCopy!}
         categoryColor={categoryColor}
         theme={theme}
         strings={scope.strings}
@@ -279,7 +312,7 @@ export function SeatLayerDockBar(props: SeatLayerDockBarProps): React.ReactEleme
       enterCurve={theme.motion.curve.easeEnter.cubicBezier}
       reducedMotion={reducedMotion}
       sessionId={scope.sessionId}
-      travelDistance={seatLayerDockTravelDistance(theme.layout.dockBarHeight, bottomInset)}
+      travelDistance={seatLayerDockTravelDistance(drawnDockHeight, bottomInset)}
       visible={visible}
     >
       {content}
@@ -420,9 +453,11 @@ function SeatLayerDockBarView({
   onPrevious,
   onNext,
   onOverview,
+  countCopy,
 }: SeatLayerDockBarProps & {
   readonly sectionName: string;
   readonly seatsLeft: number | undefined;
+  readonly countCopy: SeatLayerDockCountCopy;
   readonly categoryColor: string;
   readonly theme: ReturnType<typeof useSeatLayerPickerScope>['resolvedTheme'];
   readonly strings: ReturnType<typeof useSeatLayerPickerScope>['strings'];
@@ -445,20 +480,19 @@ function SeatLayerDockBarView({
     setWidths(unknownWidths);
   }, [measurementToken]);
   const leftToRight = !I18nManager.isRTL;
-  const longCount = seatsLeft === undefined
-    ? ''
-    : strings.translate('seatsLeft', { count: seatsLeft, values: { count: seatsLeft } });
+  const longCount = countCopy.long;
+  const shortCount = countCopy.short;
   const textStyle = {
     color: theme.colors.text,
     fontFamily: theme.fontFamily,
-    fontSize: 13,
-    fontWeight: '800' as const,
+    fontSize: size.dockNameFontSize,
+    fontWeight: seatLayerPickerBold(type.dockSection.weight),
   };
   const countStyle = {
     color: theme.colors.mutedText,
     fontFamily: theme.fontFamily,
-    fontSize: 13,
-    fontWeight: '600' as const,
+    fontSize: size.dockCountFontSize,
+    fontWeight: seatLayerPickerBold(type.dockCount.weight),
   };
   const plan = useMemo(
     () => planSeatLayerDock(width, widths, seatsLeft !== undefined, theme.layout.minimumHitTarget),
@@ -487,10 +521,17 @@ function SeatLayerDockBarView({
   const count = displayPlan.count === 'long'
     ? longCount
     : displayPlan.count === 'short'
-      ? String(seatsLeft)
+      ? shortCount
       : undefined;
+  // §4.10 — the drawn bar and the reported band are the same number.
+  const drawnDockHeight = seatLayerPickerScaledExtent(theme.layout.dockBarHeight, seatLayerPickerTypeScaleClamp('dock'));
   return (
     <View
+      accessible={false}
+      accessibilityRole="none"
+      // The full seats-left sentence stays in the bar's accessible name
+      // whatever the visible ladder chose (§3.6).
+      accessibilityLabel={countCopy.accessibleName}
       onLayout={onLayout}
       style={[
         {
@@ -500,7 +541,7 @@ function SeatLayerDockBarView({
           borderTopWidth: 1,
           elevation: theme.elevation.dockBar,
           flexDirection: leftToRight ? 'row' : 'row-reverse',
-          height: theme.layout.dockBarHeight + bottomInset,
+          height: drawnDockHeight + bottomInset,
           paddingBottom: bottomInset,
           shadowColor: theme.colors.text,
           shadowOffset: { height: 4, width: 0 },
@@ -510,8 +551,8 @@ function SeatLayerDockBarView({
         slots?.dockContainer,
         sanitizeSeatLayerPickerStyle(style),
         {
-          height: theme.layout.dockBarHeight + bottomInset,
-          minHeight: theme.layout.dockBarHeight + bottomInset,
+          height: drawnDockHeight + bottomInset,
+          minHeight: drawnDockHeight + bottomInset,
           paddingBottom: bottomInset,
         },
       ]}
@@ -527,7 +568,7 @@ function SeatLayerDockBarView({
         onMeasure={measure('longCount')}
       />
       <MeasureText
-        value={String(seatsLeft ?? '')}
+        value={shortCount}
         style={[countStyle, slots?.dockCountText]}
         onMeasure={measure('shortCount')}
       />
@@ -538,7 +579,7 @@ function SeatLayerDockBarView({
       />
       {(
         <>
-          <View style={{ width: 12 }} />
+          <View style={{ width: size.dockLeadingInset }} />
           <View
             style={{
               backgroundColor: categoryColor,
@@ -548,7 +589,16 @@ function SeatLayerDockBarView({
             }}
           />
           <View style={{ width: 8 }} />
+          {/* §4.10 — where the buyer is, said once, whenever it changes.
+              Stepping to the next section changes nothing else on screen that
+              a screen reader would notice, so the bar says where they have
+              arrived and how much room is left there. The COUNT is spoken even
+              at the widths that cannot draw it: what fits on a 320-point row
+              is not a fact about what the buyer needs to know. */}
           <View
+            accessible
+            accessibilityLabel={countCopy.accessibleName}
+            accessibilityLiveRegion="polite"
             style={{
               alignItems: 'center',
               flex: 1,
@@ -557,10 +607,17 @@ function SeatLayerDockBarView({
             }}
           >
             <Text
+              maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
               ellipsizeMode="tail"
               numberOfLines={displayPlan.lines}
               style={[
-                { ...textStyle, flexShrink: 1, fontSize: displayPlan.lines === 2 ? 12 : 13 },
+                {
+                  ...textStyle,
+                  flexShrink: 1,
+                  fontSize: displayPlan.lines === 2
+                    ? size.dockNameFontSize - 1
+                    : size.dockNameFontSize,
+                },
                 slots?.dockSectionText,
               ]}
             >
@@ -578,6 +635,7 @@ function SeatLayerDockBarView({
                   }}
                 />
                 <Text
+                  maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')}
                   numberOfLines={1}
                   style={[countStyle, slots?.dockCountText]}
                 >
@@ -613,7 +671,8 @@ function SeatLayerDockBarView({
             onPress={onOverview}
             width={overviewWidth}
             target={target}
-            radius={theme.radii.button}
+            radius={theme.radii.pill}
+            height={size.dockBackHeight}
           >
             <View
               style={{
@@ -623,7 +682,7 @@ function SeatLayerDockBarView({
             >
               <VenueOverviewIcon color={theme.colors.text} />
               <View style={{ width: 8 }} />
-              <Text numberOfLines={1} style={textStyle}>
+              <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')} numberOfLines={1} style={textStyle}>
                 {strings.translate('overview')}
               </Text>
             </View>
@@ -642,6 +701,7 @@ function DockButton({
   width,
   target,
   radius,
+  height,
   paintBox = false,
   children,
 }: {
@@ -651,6 +711,7 @@ function DockButton({
   readonly width?: number;
   readonly target: number;
   readonly radius: number;
+  readonly height?: number;
   readonly paintBox?: boolean;
   readonly children: React.ReactNode;
 }): React.ReactElement {
@@ -677,7 +738,7 @@ function DockButton({
           style={{
             alignItems: 'center',
             borderRadius: radius,
-            height: stepPaint,
+            height: height ?? size.dockNavHeight,
             justifyContent: 'center',
             overflow: 'hidden',
             width: stepPaint,
@@ -703,9 +764,9 @@ function Chevron({
         borderColor: color,
         borderLeftWidth: 2,
         borderTopWidth: 2,
-        height: 9,
+        height: size.dockNavIconSize / 2,
         transform: [{ rotate: pointsForward ? '135deg' : '-45deg' }],
-        width: 9,
+        width: size.dockNavIconSize / 2,
       }}
     />
   );

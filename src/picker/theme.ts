@@ -28,6 +28,19 @@ export interface SeatLayerPickerColorTokens {
   divider: string;
   error: string;
   warning: string;
+  /**
+   * The three roles a seat's own notes paint in (§3.8.9).
+   *
+   * `warning` is the ground a restricted or obstructed view is washed in and
+   * `warnText` is the ink ON that wash — a pair, because the wash is a tint of
+   * the ground rather than the role colour itself, and reading the ink off
+   * `warning` shipped a 1.8:1 amber. `premium` and `premiumText` are the same
+   * pair for a premium seat. Host-overridable like every other role; the
+   * defaults are the mode's own.
+   */
+  warnText: string;
+  premium: string;
+  premiumText: string;
   accent: string;
   onAccent: string;
   mapBackground: string;
@@ -152,6 +165,7 @@ export interface SeatLayerPickerThemeData {
 
 const colorKeys: ReadonlyArray<keyof SeatLayerPickerColorTokens> = [
   'background', 'surface', 'text', 'mutedText', 'divider', 'error', 'warning',
+  'warnText', 'premium', 'premiumText',
   'accent', 'onAccent', 'mapBackground', 'mapRowLabel', 'mapText', 'mapSelection',
 ];
 const mapThemeKeys: ReadonlyArray<keyof SeatLayerPickerMapTheme> = [
@@ -272,8 +286,11 @@ function roleDefaults(
   mapTheme: Readonly<SeatLayerPickerResolvedMapTheme>,
 ): SeatLayerPickerThemeRoles {
   return Object.freeze({
+    // The header sits on the picker's own GROUND: the price rail beneath it is
+    // the first surface, and a header painted in the rail's colour makes the
+    // two read as one plate with a line through it.
     header: freezeRole({
-      background: colors.surface,
+      background: colors.background,
       foreground: colors.text,
       border: colors.divider,
     }),
@@ -549,9 +566,14 @@ export function resolveSeatLayerPickerTheme(
     : authoredAccent === undefined
       ? base.onAccent
       : deriveSeatLayerPickerOnAccent(accent, base.onAccent);
+  // A mode owns the ground and never the brand. The ground roles resolve host,
+  // then the selected brand, then the resolved mode's preset, and only then the
+  // organizer — so a chart saved against a dark canvas cannot paint the picker's
+  // own chips and plates with its map colours. The brand roles (accent, its ink,
+  // radius, typeface) skip the preset entirely and are resolved above.
   const colors = Object.freeze({
-    ...base,
     ...organizerColorsLayer,
+    ...base,
     ...selectedColors,
     ...hostColors,
     accent,

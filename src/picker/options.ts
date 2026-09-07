@@ -31,7 +31,33 @@ export interface SeatLayerPickerChromeOptions {
   readonly map3D?: boolean;
   readonly accessibility?: boolean;
   readonly cartSheet?: boolean;
-  readonly dock?: boolean;
+  /**
+   * Whether the rung-2 section dock bar renders. **Default false on EVERY
+   * width** (§3.6, owner call 2026-09-06): pinch-out past the melt point and
+   * the single stepped `−` control already walk a buyer back to the venue, so
+   * the prev/next arrows only bought a two-tap version of a gesture the finger
+   * does better, and the per-section "N seats left" is gone from the phone.
+   *
+   * A host that wants the bar sets this to `true` on any width; it also stays
+   * mountable standalone as `SeatLayerDockBar`.
+   */
+  readonly showDockBar?: boolean | null;
+  /**
+   * @deprecated Use `showDockBar`. Retained as an alias so an existing host
+   * keeps compiling; it no longer resolves wide-on, because the bar is now off
+   * by default on every width. `showDockBar` wins when both are set.
+   */
+  readonly dock?: boolean | null;
+  /**
+   * Auto: off on the phone, on in the wide layout (§3.13.8). The phone gives
+   * the buyer ONE timer, the header's countdown; a card arriving over the map
+   * inside the last minute is a second decision at the worst moment.
+   *
+   * RESERVED. No prompt is drawn on any layout yet — the option is resolved
+   * and carried so a host that sets it does not have to change when the wide
+   * prompt lands, and so the phone's answer (never) is already written down.
+   */
+  readonly showExtendHoldPrompt?: boolean | null;
   readonly confirmCard?: boolean;
   readonly venue3D?: boolean;
   readonly seatViewChrome?: boolean;
@@ -54,7 +80,26 @@ export interface SeatLayerPickerBehaviorOptions {
   readonly persistColorblindPreference?: boolean;
   readonly refreshOnResume?: boolean;
   readonly announceHoldLapse?: boolean;
+  /**
+   * "You're all set" is the SDK's to tell by default (= web). A host with its
+   * own confirmation screen sets it false; the sale is still known through
+   * `onBooked`, only the telling is the host's (§3.13).
+   */
+  readonly showBookedOverlay?: boolean;
+  /**
+   * The event's name before the runtime reports one, so the header does not
+   * swap its title a second after opening (§4.7). It is never sent to the
+   * runtime: the runtime's own name wins the moment it arrives.
+   */
+  readonly eventName?: string;
   readonly haptics?: boolean;
+  /**
+   * The header's hold countdown (§3.1). It is drawn for as long as a live hold
+   * exists, whoever owns it — a host that draws its own clock sets this false
+   * so the buyer is not given two. Composes with `chrome.holdPill`: the pill is
+   * drawn only where BOTH are on.
+   */
+  readonly showHoldPill?: boolean;
 }
 
 /** Typed options for the ready-made layout; themes, styles, wording and configuration stay top-level. */
@@ -80,7 +125,10 @@ export interface SeatLayerPickerResolvedChromeOptions {
   readonly map3D: boolean;
   readonly accessibility: boolean;
   readonly cartSheet: boolean;
+  readonly showDockBar: boolean;
+  /** @deprecated Reads `showDockBar`; both names resolve to the same answer. */
   readonly dock: boolean;
+  readonly showExtendHoldPrompt: boolean;
   readonly confirmCard: boolean;
   readonly venue3D: boolean;
   readonly seatViewChrome: boolean;
@@ -104,7 +152,10 @@ export interface SeatLayerPickerResolvedOptions {
   readonly panelInitiallyCollapsed: boolean;
   readonly persistColorblindPreference: boolean;
   readonly refreshOnResume: boolean;
+  readonly showHoldPill: boolean;
   readonly announceHoldLapse: boolean;
+  readonly showBookedOverlay: boolean;
+  readonly eventName?: string;
   readonly haptics: boolean;
   readonly languages: readonly string[];
   readonly pricing?: SeatLayerPickerPricing;
@@ -143,6 +194,13 @@ function autoBoolean(value: unknown, phone: boolean): boolean {
   return typeof value === 'boolean' ? value : !phone;
 }
 
+/** `showDockBar`, then the deprecated `dock` alias, then off. */
+function dockBar(input: unknown): boolean {
+  const preferred = ownData(input, 'showDockBar');
+  if (typeof preferred === 'boolean') return preferred;
+  return booleanOr(ownData(input, 'dock'), false);
+}
+
 function validDuration(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
     ? value
@@ -153,6 +211,12 @@ function validSeatLimit(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
     ? value
     : undefined;
+}
+
+function validEventName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const name = value.trim();
+  return name && name.length <= 200 ? name : undefined;
 }
 
 function validInitialHold(value: unknown): string | undefined {
@@ -228,7 +292,11 @@ export function resolveSeatLayerPickerChromeOptions(
     map3D: booleanOr(ownData(input, 'map3D'), true),
     accessibility: booleanOr(ownData(input, 'accessibility'), true),
     cartSheet: booleanOr(ownData(input, 'cartSheet'), true),
-    dock: booleanOr(ownData(input, 'dock'), true),
+    // The bar is opt-in on every width now, so neither name is layout-aware.
+    // `showDockBar` wins; the deprecated `dock` still answers for an older host.
+    showDockBar: dockBar(input),
+    dock: dockBar(input),
+    showExtendHoldPrompt: autoBoolean(ownData(input, 'showExtendHoldPrompt'), phone),
     confirmCard: booleanOr(ownData(input, 'confirmCard'), true),
     venue3D: booleanOr(ownData(input, 'venue3D'), true),
     seatViewChrome: booleanOr(ownData(input, 'seatViewChrome'), true),
@@ -261,7 +329,10 @@ export function resolveSeatLayerPickerOptions(
     panelInitiallyCollapsed: booleanOr(ownData(input, 'panelInitiallyCollapsed'), true),
     persistColorblindPreference: booleanOr(ownData(input, 'persistColorblindPreference'), true),
     refreshOnResume: booleanOr(ownData(input, 'refreshOnResume'), true),
+    showHoldPill: booleanOr(ownData(input, 'showHoldPill'), true),
     announceHoldLapse: booleanOr(ownData(input, 'announceHoldLapse'), true),
+    showBookedOverlay: booleanOr(ownData(input, 'showBookedOverlay'), true),
+    eventName: validEventName(ownData(input, 'eventName')),
     haptics: booleanOr(ownData(input, 'haptics'), true),
     languages: safeOwnStrings(ownData(input, 'languages')),
     pricing: resolveSeatLayerPickerPricing(ownData(input, 'pricing')),

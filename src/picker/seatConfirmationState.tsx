@@ -9,6 +9,7 @@ import {
   type SeatLayerPickerDecisionScope,
 } from './decisionPrompts';
 import { seatLayerPickerSeatIdentity } from './pendingConfirmationState';
+import { seatLayerPickerMayAskAboutSeat } from './seatRetap';
 import { useSeatLayerPickerScope, type SeatLayerPickerScopeValue } from './SeatLayerPickerScope';
 
 export type SeatLayerPickerConfirmationAction = 'confirm' | 'cancel' | 'seatView' | 'venue3d';
@@ -176,7 +177,11 @@ function currentPending(scope: SeatLayerPickerScopeValue): SelectedSeat | undefi
   if (!pending) return undefined;
   const identity = seatLayerPickerSeatIdentity(pending);
   const seat = identity === null ? undefined : scope.snapshot?.selection.find((item) => seatLayerPickerSeatIdentity(item) === identity);
-  return seat?.objectType === 'table' && seat.bookingMode === 'variable' ? undefined : seat;
+  if (seat === undefined) return undefined;
+  // §3.8.10 — a sold seat, one not for sale, or one another buyer holds is
+  // inert: it raises no card, and therefore no notes either.
+  if (!seatLayerPickerMayAskAboutSeat(seat, scope.snapshot?.hold?.active === true)) return undefined;
+  return seat.objectType === 'table' && seat.bookingMode === 'variable' ? undefined : seat;
 }
 function pendingLease(scope: SeatLayerPickerScopeValue, seat: SelectedSeat): PendingLease {
   const controller = scope.controller;

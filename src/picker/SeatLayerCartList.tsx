@@ -1,24 +1,37 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Animated, Easing, I18nManager, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { I18nManager, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
-import { CartRemovalUndoCoordinator } from './cartRemovalUndoState';
+import { CartRemovalMarkCoordinator } from './cartRemovalUndoState';
+import { SeatLayerCartRowArrival, SeatLayerCartSwipeToRemove } from './cartRowMotion';
+import { SeatLayerCartCard, seatLayerCartCardSpokenLabel } from './cartCard';
 import { chartSeatLayerPickerColor } from './chartColor';
-import { resolveSeatLayerPickerMotion } from './motion';
-import { useSeatLayerPickerReducedMotion } from './reducedMotion';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
-import { captureSeatLayerCartActionLease, isSeatLayerCartActionCurrent, projectSeatLayerCartRuns, projectSeatLayerCartSheet, visibleSeatLayerCartRuns } from './cartSheetUi';
-import { runMembersInSeatOrder, type DenseTicketLine, type DenseTicketRun } from './cartDense';
-import type { SeatLayerPickerCartLine } from './models';
+import { seatLayerPickerSheetLayout } from './sheetLayout';
+import {
+  captureSeatLayerCartActionLease,
+  isSeatLayerCartActionCurrent,
+  projectSeatLayerCartLines,
+  projectSeatLayerCartSheet,
+} from './cartSheetUi';
+import { seatLayerSheetRestoreFraction } from './sheetDrag';
+import { seatLayerPickerSeatNotes, type SeatLayerPickerSeatNote } from './seatNotes';
+
+const emptySeatNotes: readonly SeatLayerPickerSeatNote[] = Object.freeze([]);
+import { type SeatLayerTicketLine } from './cartLines';
+import {
+  seatLayerPickerCartLineKeepsRemove, seatLayerPickerHoldOwnershipStore,
+} from './holdOwnership';
+import type { SeatLayerPickerCartLine, SeatLayerPickerSelectedSeat } from './models';
 
 export interface SeatLayerCartListProps {
   readonly style?: StyleProp<ViewStyle>;
-  readonly slots?: Pick<SeatLayerPickerStyles, 'denseLineContainer' | 'denseLineText' | 'denseLineRemoveButton' | 'denseLineRemoveButtonText'>;
+  readonly slots?: Pick<SeatLayerPickerStyles,
+    'cartCardContainer' | 'cartCardText' | 'cartCardActionButton' | 'cartCardActionButtonText'>;
   readonly onSeatRemoved?: (line: Readonly<SeatLayerPickerCartLine>) => unknown;
-  readonly onUndo?: (labels: readonly string[]) => unknown;
   readonly children?: ReactNode;
 }
 
@@ -29,184 +42,256 @@ function observe(callback: unknown, value: unknown): void {
   try { void Promise.resolve(callback(value)).catch(() => {}); } catch { /* Observers cannot affect a cart command. */ }
 }
 
-function timer() {
-  return { setTimeout: (callback: () => void, delay: number) => setTimeout(callback, delay), clearTimeout: (handle: unknown) => clearTimeout(handle as ReturnType<typeof setTimeout>) };
-}
-
-/** Dense, folded confirmed-cart list with native four-second undo. */
+/**
+ * The buyer's tickets, ONE CARD EACH — and the same card on every width
+ * (spec §3.10.2).
+ *
+ * The phone used to draw a second cart: a bordered plate of hairline-divided
+ * lines with consecutive seats folded into runs behind a `+N more`. It saved
+ * real pixels and it cost the sheet its coherence. The run model, the fold and
+ * the `+N more` are gone; the collapsed sheet caps the list at three cards and
+ * a sliver and scrolls instead.
+ *
+ * Nothing is said when a card goes: the press is answered by the card itself,
+ * which fades to `opacity.removing`, goes inert and stops being swipeable until
+ * the snapshot that no longer carries it arrives. A removal that FAILS restores
+ * the card and states itself through the inline action error.
+ */
 export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const current = useRef<Current>(scope);
-  const observers = useRef({ onSeatRemoved: props.onSeatRemoved, onUndo: props.onUndo });
+  const observers = useRef({ onSeatRemoved: props.onSeatRemoved });
   const [version, setVersion] = useState(0);
   const mounted = useRef(true);
-  const coordinator = useRef(new CartRemovalUndoCoordinator<SeatLayerPickerCartLine>(timer(), () => {
+  const marks = useRef(new CartRemovalMarkCoordinator<SeatLayerPickerCartLine>(() => {
     if (mounted.current) setVersion((value) => value + 1);
   }));
-  const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() => new Set());
-  const [showAll, setShowAll] = useState(false);
-  const flight = useRef<number | null>(null);
   const revision = useRef(-1);
-  useLayoutEffect(() => { current.current = scope; observers.current = { onSeatRemoved: props.onSeatRemoved, onUndo: props.onUndo }; }, [props.onSeatRemoved, props.onUndo, scope]);
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; coordinator.current.dispose(); }; }, []);
-  useLayoutEffect(() => { coordinator.current.reset(); flight.current = null; revision.current = -1; setOpenRuns(new Set()); setShowAll(false); setVersion((value) => value + 1); }, [scope.controller, scope.sessionId, scope.snapshot?.sessionId]);
+  const seen = useRef(new Set<string>());
+  useLayoutEffect(() => {
+    current.current = scope;
+    observers.current = { onSeatRemoved: props.onSeatRemoved };
+  }, [props.onSeatRemoved, scope]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; marks.current.dispose(); }; }, []);
+  useLayoutEffect(() => {
+    marks.current.reset();
+    revision.current = -1;
+    seen.current.clear();
+    setVersion((value) => value + 1);
+  }, [scope.controller, scope.sessionId, scope.snapshot?.sessionId]);
   useLayoutEffect(() => {
     const snapshot = scope.snapshot;
     if (!snapshot || snapshot.revision <= revision.current) return;
     revision.current = snapshot.revision;
-    const before = coordinator.current.state.active;
-    const after = coordinator.current.reconcile(snapshot.cartLines).active;
-    if (before !== after) setVersion((value) => value + 1);
+    // The mark is dropped by the first snapshot that no longer carries the line.
+    marks.current.reconcile(snapshot.cartLines);
   }, [scope.snapshot]);
 
   const projection = useMemo(
     () => projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat),
     [scope.snapshot, scope.pendingSeat, version],
   );
-  const renderableItems = coordinator.current.projectVisibleLines(projection.confirmed.items);
-  const renderProjection = { ...projection, runs: projectSeatLayerCartRuns(scope.snapshot, renderableItems) };
-  const visible = visibleSeatLayerCartRuns(renderProjection, showAll);
+  // A seat the card is still asking about is not in the cart yet: it is in the
+  // runtime's selection, and listing it before the buyer has said yes shows
+  // them a ticket they have not taken.
+  const lines = projectSeatLayerCartLines(scope.snapshot, projection.confirmed.items);
   const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
-  const visibleRuns = visible.visible;
-  if (!visibleRuns.length && coordinator.current.state.active === null) return null;
-  const canRemove = !scope.readOnly && !scope.isBusy && scope.snapshot?.hold.owner !== 'host' &&
+  // Arrivals are decided before the early return so a cart that empties and
+  // fills again stages its next set rather than landing it all at once.
+  const arrivals = lines.map((line) => line.identity.lineKey ?? line.identity.removalLabel ?? '')
+    .filter((key) => key.length > 0 && !seen.current.has(key));
+  seen.current = new Set(lines.map((line) =>
+    line.identity.lineKey ?? line.identity.removalLabel ?? ''));
+  if (!lines.length) return null;
+  // §3.13.13 — the card keeps its × while the host owns the hold. Removing it
+  // is refused by the runtime, and that refusal is what raises the notice: a
+  // control the buyer can press and be told about beats one that has gone.
+  const canRemove = !scope.readOnly && seatLayerPickerCartLineKeepsRemove(scope.snapshot) &&
     supportsSeatLayerPickerSurface(scope.controller, ['cart-line-remove-v1'], ['picker.removeCartLine']);
-  const remove = async (line: DenseTicketLine<SeatLayerPickerCartLine>) => {
+  // The same gate the confirm card's strip is under: the host has to allow it,
+  // the runtime has to advertise `seatView`, and — because a stand-in the
+  // runtime could draw for any seat is never offered — the seat has to carry an
+  // authored photograph.
+  const canLocate = scope.snapshot?.capabilities?.includes('seatView') === true &&
+    supportsSeatLayerPickerSurface(
+      scope.controller,
+      ['native-chrome-contract-v1', 'seat-view-v1'],
+      ['picker.openSeatView'],
+    );
+
+  /**
+   * Remove immediately. "Immediately" is the CARD, not the server: the runtime
+   * re-holds the rest of the cart before it answers, so the card is marked,
+   * faded and made inert in the same frame as the press.
+   */
+  const remove = async (line: SeatLayerTicketLine<SeatLayerPickerCartLine>) => {
     const before = current.current;
     const lease = captureSeatLayerCartActionLease(before.controller, before.sessionId);
     const live = lease?.controller.getSnapshot();
-    if (!lease || !live || flight.current !== null || before.readOnly || before.isBusy || live.hold.owner === 'host' ||
+    if (!lease || !live || before.readOnly ||
       !supportsSeatLayerPickerSurface(before.controller, ['cart-line-remove-v1'], ['picker.removeCartLine'])) return;
-    const liveProjection = projectSeatLayerCartSheet(live, before.pendingSeat);
-    if (!liveProjection.confirmed.items.some((item) => item.lineKey === line.item.lineKey && item.label === line.item.label)) return;
-    const started = coordinator.current.begin(line.item, before.sessionId);
-    if (!started.intent || !started.state.active) return;
-    const token = started.state.active.token;
-    flight.current = token;
-    setVersion((value) => value + 1);
+    const started = marks.current.beginMany([line.item], before.sessionId);
+    if (!started.intent || !started.mark) return;
+    const token = started.mark.token;
+    // Felt, not just seen: the gesture is confirmed under the finger rather
+    // than whenever the server finishes.
+    try { before.emitHaptic('ticketRemoved'); } catch { /* a cue is advisory */ }
+    // §3.10.2 — in flight, but not in the way: `removingCartLine` is the one
+    // action that does not block Continue.
+    before.setBusyAction('removingCartLine');
     try {
-      await before.controller.removeCartLine(started.intent.labels[0]!);
-      if (!mounted.current || !isSeatLayerCartActionCurrent(lease, current.current) || flight.current !== token) return;
-      coordinator.current.acknowledgeSuccess(token);
+      for (const label of started.intent.labels) {
+        // Inventory mutations are serialised by the controller, so a Continue
+        // pressed during a removal is sent after it.
+        await before.controller.removeCartLine(label);
+      }
+      if (!mounted.current || !isSeatLayerCartActionCurrent(lease, current.current)) return;
+      // A reply that left the line standing is not a removal; the card comes
+      // back rather than staying faded for good.
+      marks.current.release(token);
       observe(observers.current.onSeatRemoved, Object.freeze({ ...line.item }));
     } catch (error) {
-      if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current) && flight.current === token) {
-        coordinator.current.failRemoval(token);
+      if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current)) {
+        marks.current.release(token);
+        // A hold the host already owns is not a command failure; it is the
+        // "already in checkout" state, told once, in its own notice.
+        const raised = seatLayerPickerHoldOwnershipStore(before.controller)
+          .raise(error, before.controller.getCheckoutHandoff());
+        if (raised) return;
         try { current.current.reportError(error); } catch { /* scope reporting is advisory */ }
       }
     } finally {
-      if (flight.current === token) flight.current = null;
-      if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current)) setVersion((value) => value + 1);
+      if (isSeatLayerCartActionCurrent(lease, current.current)) current.current.setBusyAction(null);
     }
   };
-  const undo = async () => {
+
+  /**
+   * The map frames the seat at its resting place, and the SHEET STAYS OPEN.
+   *
+   * Owner call, carried on both platforms: stepping the sheet down as well
+   * answered a question the buyer had not asked. A tap on a cart card means
+   * "where is this one?", and closing the list they were reading through to
+   * answer it made checking a second seat cost a re-open every time. The card
+   * frames the seat under the sheet's own restore fraction, so the seat lands
+   * in the band of map that is still showing.
+   */
+  const showSeat = (seatId: string) => {
     const before = current.current;
-    const lease = captureSeatLayerCartActionLease(before.controller, before.sessionId);
-    const active = coordinator.current.state.active;
-    if (!lease || !active || active.phase !== 'undo-window' || flight.current !== null || before.readOnly || before.isBusy || lease.controller.getSnapshot()?.hold.owner === 'host' || !supportsSeatLayerPickerSurface(before.controller, ['picker-actions-v1'], ['picker.selectObjects'])) return;
-    const result = coordinator.current.undo(active.token, before.sessionId);
-    if (!result.intent) return;
-    flight.current = active.token;
-    setVersion((value) => value + 1);
-    try {
-      await before.controller.selectObjects([...result.intent.objects]);
-      if (!mounted.current || !isSeatLayerCartActionCurrent(lease, current.current) || flight.current !== active.token) return;
-      coordinator.current.completeUndo(active.token);
-      observe(observers.current.onUndo, Object.freeze([...result.intent.objects]));
-    } catch (error) {
-      if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current) && flight.current === active.token) {
-        coordinator.current.failUndo(active.token);
-        try { current.current.reportError(error); } catch { /* contained */ }
-      }
-    } finally {
-      if (flight.current === active.token) flight.current = null;
-      if (mounted.current && isSeatLayerCartActionCurrent(lease, current.current)) setVersion((value) => value + 1);
-    }
+    if (!before.controller.supportsFrameSeat) return;
+    void Promise.resolve(before.controller.frameSeat(seatId, { fraction: seatLayerSheetRestoreFraction }))
+      .catch(() => { /* framing is a courtesy, never an error the buyer owns */ });
   };
-  const undoActive = coordinator.current.state.active;
+
+  const locate = (seatId: string) => {
+    const before = current.current;
+    void Promise.resolve(before.controller.openSeatView(seatId)).catch((error) => {
+      try { current.current.reportError(error); } catch { /* advisory */ }
+    });
+  };
+
   return (
     <View style={[sanitizeSeatLayerPickerStyle(props.style), { direction: I18nManager.isRTL ? 'rtl' : 'ltr' }]}>
-      {visibleRuns.map((run, index) => { const runKey = JSON.stringify(run.members.map((member) => [member.identity.lineKey, member.identity.removalLabel, member.identity.objectId, member.identity.seatId])); return <ArrivalPop key={runKey} index={index}><Run run={run} open={openRuns.has(runKey)} canRemove={canRemove} theme={theme} styles={styles} onToggle={() => setOpenRuns((value) => { const next = new Set(value); next.has(runKey) ? next.delete(runKey) : next.add(runKey); return next; })} onRemove={remove} /></ArrivalPop>; })}
-      {visible.canToggle ? <Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })} onPress={() => setShowAll((value) => !value)} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '800' }, styles.denseLineText]}>{scope.strings.translate(showAll ? 'showLess' : 'moreCount', { values: { count: visible.hiddenCount }, count: visible.hiddenCount })}</Text></Pressable> : null}
-      {undoActive?.phase === 'undo-window' ? <View accessibilityLiveRegion="polite" style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flexDirection: 'row', alignItems: 'center' }}><Text style={[{ flex: 1, color: theme.colors.text, fontFamily: theme.fontFamily }, styles.denseLineText]}>{scope.strings.translate('seatRemoved')}</Text><Pressable accessibilityRole="button" accessibilityLabel={scope.strings.translate('undo')} onPress={() => { void undo(); }} style={[styles.denseLineRemoveButton, { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, alignItems: 'center', justifyContent: 'center' }]}><Text style={[{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontWeight: '700' }, styles.denseLineRemoveButtonText]}>{scope.strings.translate('undo')}</Text></Pressable></View> : null}
+      {lines.map((line, index) => {
+        const key = JSON.stringify([
+          line.identity.lineKey, line.identity.removalLabel, line.identity.objectId, line.identity.seatId,
+        ]);
+        const lineKey = line.identity.lineKey ?? line.identity.removalLabel ?? '';
+        return (
+          <View key={key} style={index === 0 ? undefined : { marginTop: seatLayerPickerSheetLayout(theme).cartCardGap }}>
+            <SeatLayerCartRowArrival index={arrivals.indexOf(lineKey)}>
+              <CartCardRow
+                canLocate={canLocate}
+                canRemove={canRemove}
+                line={line}
+                marks={marks.current}
+                onLocate={locate}
+                onRemove={remove}
+                onShowSeat={showSeat}
+                slots={styles}
+                theme={theme}
+              />
+            </SeatLayerCartRowArrival>
+          </View>
+        );
+      })}
       {props.children}
     </View>
   );
 }
 
-/** One newly mounted cart run settles in; a set arrives in a bounded sequence. */
-function ArrivalPop({ index, children }: Readonly<{ index: number; children: ReactNode }>): React.ReactElement {
-  const reducedMotion = useSeatLayerPickerReducedMotion();
-  const progress = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
-  useEffect(() => {
-    const pop = resolveSeatLayerPickerMotion('pop', reducedMotion, 'easeEnter');
-    const stagger = resolveSeatLayerPickerMotion('stagger', reducedMotion, 'easeEnter');
-    progress.stopAnimation();
-    if (pop.durationMs === 0 || stagger.skipped) {
-      progress.setValue(1);
-      return undefined;
-    }
-    progress.setValue(0);
-    const maximumDelay = Math.max(0, resolveSeatLayerPickerMotion('fly', false).durationMs - pop.durationMs);
-    const delay = Math.min(maximumDelay, Math.max(0, index) * stagger.durationMs);
-    const [x1, y1, x2, y2] = pop.curve.cubicBezier;
-    const animation = Animated.sequence([
-      Animated.delay(delay),
-      Animated.timing(progress, {
-        duration: pop.durationMs,
-        easing: Easing.bezier(x1, y1, x2, y2),
-        toValue: 1,
-        useNativeDriver: true,
-      }),
-    ]);
-    animation.start();
-    return () => animation.stop();
-  }, [index, progress, reducedMotion]);
-  return <Animated.View style={{
-    opacity: progress,
-    transform: [{ scale: progress.interpolate({ inputRange: [0, 1], outputRange: [.94, 1] }) }],
-  }}>{children}</Animated.View>;
-}
-
-function Run({ run, open, canRemove, theme, styles, onToggle, onRemove }: { readonly run: DenseTicketRun<SeatLayerPickerCartLine>; readonly open: boolean; readonly canRemove: boolean; readonly theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>; readonly styles: SeatLayerPickerStyles; readonly onToggle: () => void; readonly onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>) => void }): React.ReactElement {
-  const summary = <DenseLine key="summary" line={run.members[0]!} run={run} expanded={open} canRemove={canRemove} theme={theme} styles={styles} onToggle={run.isGroup ? onToggle : undefined} onRemove={onRemove} />;
-  return !run.isGroup || !open ? <View>{summary}</View> : <View>{summary}{runMembersInSeatOrder(run).map((line, index) => <DenseLine key={`${line.identity.lineKey ?? line.identity.removalLabel ?? index}`} line={line} canRemove={canRemove} theme={theme} styles={styles} onRemove={onRemove} />)}</View>;
-}
-
-function DenseLine({ line, run, expanded, canRemove, theme, styles, onToggle, onRemove }: { readonly line: DenseTicketLine<SeatLayerPickerCartLine>; readonly run?: DenseTicketRun<SeatLayerPickerCartLine>; readonly expanded?: boolean; readonly canRemove: boolean; readonly theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>; readonly styles: SeatLayerPickerStyles; readonly onToggle?: () => void; readonly onRemove: (line: DenseTicketLine<SeatLayerPickerCartLine>) => void }): React.ReactElement {
+function CartCardRow({ canLocate, canRemove, line, marks, onLocate, onRemove, onShowSeat, slots, theme }: Readonly<{
+  canLocate: boolean;
+  canRemove: boolean;
+  line: SeatLayerTicketLine<SeatLayerPickerCartLine>;
+  marks: CartRemovalMarkCoordinator<SeatLayerPickerCartLine>;
+  onLocate: (seatId: string) => void;
+  onRemove: (line: SeatLayerTicketLine<SeatLayerPickerCartLine>) => void;
+  onShowSeat: (seatId: string) => void;
+  slots: SeatLayerPickerStyles;
+  theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
+}>): React.ReactElement {
   const scope = useSeatLayerPickerScope();
-  const total = run?.total ?? line.total;
+  const seat = line.selection as Readonly<SeatLayerPickerSelectedSeat> | null;
+  const total = line.total;
   const amount = total === null || !line.currency ? '' : scope.formatMoney(total, line.currency);
-  const unit = line.unitPrice === null || !line.currency ? '' : scope.formatMoney(line.unitPrice, line.currency);
-  const seats = run?.seatsLabel ?? line.seatLabel;
-  const identityParts = [line.section, line.rowLabel, seats].filter(Boolean);
-  const identity = identityParts.join(' · ');
-  const quantity = run?.quantity ?? line.quantity;
-  const quantityAmount = quantity > 1 && unit ? `${quantity} × ${unit}` : '';
+  // Where the chart has no sections the ticket type names the card instead:
+  // `Row D · Seat 1` on its own names nothing a buyer can find in a venue.
+  const identityParts = [
+    line.section,
+    ...(line.rowLabel ? [line.rowLabel] : []),
+    ...(line.seatLabel && line.section ? [line.seatLabel] : []),
+  ].filter(Boolean);
+  // The type joins the grey line — and is read out — only when it is not
+  // already the name of the card.
+  const typeIsName = line.categoryLabel.toLowerCase() === line.section.toLowerCase();
+  const position = [...identityParts.slice(1), ...(typeIsName ? [] : [line.categoryLabel])]
+    .filter(Boolean).join(' · ');
   const category = scope.snapshot?.categories.find((item) => item.key === line.categoryKey);
   const categoryColor = chartSeatLayerPickerColor(category?.color, theme.colors.accent);
-  const identityLabel = [line.categoryLabel, identity].filter(Boolean).join(', ');
-  return <View accessibilityLabel={`${identityLabel}, ${[quantityAmount, amount].filter(Boolean).join(', ')}`} style={[{
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderColor: theme.colors.divider,
-    flexDirection: 'row',
-    height: seatLayerPickerTokens.size.denseLineHeight,
-    paddingStart: onToggle ? 0 : 22,
-  }, styles.denseLineContainer]}>
-    <Pressable accessibilityRole={onToggle ? 'button' : undefined} accessibilityLabel={onToggle ? identity : undefined} accessibilityState={onToggle ? { expanded } : undefined} disabled={!onToggle} onPress={onToggle} style={{ alignItems: 'center', flex: 1, flexDirection: 'row', minHeight: seatLayerPickerTokens.size.minimumHitTarget }}>
-      {onToggle ? <Text accessible={false} style={{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 24, lineHeight: 24, textAlign: 'center', transform: [{ rotate: expanded ? '90deg' : '0deg' }], width: 18 }}>›</Text> : <View accessible={false} style={{ backgroundColor: categoryColor, borderRadius: 4, height: 8, width: 8 }} />}
-      <Text numberOfLines={1} style={[{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '600', marginStart: 8 }, styles.denseLineText]}><Text style={{ fontWeight: '800' }}>{identityParts[0]}</Text>{identityParts.slice(1).map((part) => ` · ${part}`).join('')}</Text>
-    </Pressable>
-    {quantityAmount ? <><Text numberOfLines={1} style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 12, fontWeight: '700' }, styles.denseLineText]}>{quantityAmount}</Text><View style={{ width: 6 }} /></> : null}
-    <Text numberOfLines={1} style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.denseLineText]}>{amount}</Text>
-    {canRemove ? <Pressable accessibilityRole="button" accessibilityLabel={`${scope.strings.translate('removeSeat')} ${identity}`} onPress={() => onRemove(line)} style={{ alignItems: 'center', justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, minWidth: seatLayerPickerTokens.size.minimumHitTarget }}><View style={[{
-      alignItems: 'center',
-      borderRadius: seatLayerPickerTokens.radius.button,
-      height: 34,
-      justifyContent: 'center',
-      width: 34,
-    }, styles.denseLineRemoveButton]}><Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 18 }, styles.denseLineRemoveButtonText]}>×</Text></View></Pressable> : <View style={{ width: 8 }} />}
-  </View>;
+  // A line without its selected seat (a hold's line for a seat the buyer has
+  // since dropped) simply says no notes; the row model itself takes a seat.
+  const notes = seat === null ? emptySeatNotes : seatLayerPickerSeatNotes(seat, scope.strings);
+  const removing = marks.isRemoving(line.item);
+  const seatId = seat?.id;
+  const card = (
+    <SeatLayerCartCard
+      accessibilityLabel={seatLayerCartCardSpokenLabel({
+        amountText: amount,
+        ...(typeIsName ? {} : { categoryLabel: line.categoryLabel }),
+        identity: identityParts.join(' · '),
+        notes,
+      })}
+      amountText={amount}
+      categoryColor={categoryColor}
+      held={line.held}
+      name={line.section}
+      notes={notes}
+      onLocate={canLocate && seatId && seat?.seatViewThumb ? () => onLocate(seatId) : undefined}
+      onPress={seatId ? () => onShowSeat(seatId) : undefined}
+      onRemove={canRemove ? () => onRemove(line) : undefined}
+      position={position}
+      removeLabel={`${scope.strings.translate('removeSeat')} ${line.section} ${line.seatLabel}`}
+      removing={removing}
+      locateLabel={scope.strings.translate('viewFromHere')}
+      slots={{
+        cartCardActionButton: slots.cartCardActionButton,
+        cartCardActionButtonText: slots.cartCardActionButtonText,
+        cartCardContainer: slots.cartCardContainer,
+        cartCardText: slots.cartCardText,
+      }}
+      theme={theme}
+    />
+  );
+  // A held card is never swiped: those seats belong to a hold the host owns,
+  // and the card says so with a lock.
+  return (
+    <SeatLayerCartSwipeToRemove
+      enabled={canRemove && !line.held && !removing}
+      onRemove={() => onRemove(line)}
+      plateColor={theme.colors.error}
+      plateInk={theme.colors.onAccent}
+      radius={seatLayerPickerTokens.size.cartCardRadius}
+    >{card}</SeatLayerCartSwipeToRemove>
+  );
 }

@@ -47,6 +47,13 @@ export interface SeatLayerPickerCategory {
   readonly priceMin: number;
   readonly priceMax: number;
   readonly available: number;
+  /**
+   * Remaining seats in the category — the `N left` number, from
+   * `category-availability-v1`. PRESENT-ONLY, and that is why it exists beside
+   * `available`: `available` reports 0 for a count that has not landed yet, so
+   * absent here means NOT KNOWN and only `free: 0` means sold out.
+   */
+  readonly free?: number;
   readonly notForSale: boolean;
   readonly tiers: readonly CategoryTier[];
 }
@@ -69,6 +76,15 @@ export interface SeatLayerPickerSectionSummary {
   readonly seatsLeft?: number;
   readonly priceMin?: number;
   readonly priceMax?: number;
+  /**
+   * Free spaces in this section per access provision, from
+   * `section-access-counts-v1`. PRESENT-ONLY at every level: a provision
+   * appears only when it was counted and at least one is free, and the whole
+   * field is absent for a section holding none and before a renderer exists.
+   * Absent therefore means NOT COUNTED, never zero, and it describes the floor
+   * the map is currently on.
+   */
+  readonly accessibleFree?: Readonly<Record<string, number>>;
 }
 
 export interface SeatLayerPickerCartLine {
@@ -133,7 +149,22 @@ export interface SeatLayerPickerMapState {
   readonly focusedSection?: SeatLayerPickerSectionSummary;
   readonly colorblindSafe: boolean;
   readonly hideLimitedView: boolean;
-  readonly canZoomIn: boolean;
+  /**
+   * The camera is exactly at the whole-venue fit — the ONE state a "−" or
+   * "show whole venue" control may dim on. Runtime 0.84.0 and later.
+   *
+   * PRESENT-ONLY, never `false` as a stand-in: absent means the renderer
+   * cannot say, which is not the same answer as "no". A host that read
+   * `canZoomOut` alone re-created the dead "−" between the venue fit and the
+   * seats rung, so this is the field to dim on when it is there.
+   */
+  readonly atVenueFit?: boolean;
+  /**
+   * False only at the zoom ceiling. Runtime 0.84.0 and later, and
+   * PRESENT-ONLY for the same reason as `atVenueFit`: an older runtime says
+   * nothing here, and "nothing" must not read as "cannot zoom in".
+   */
+  readonly canZoomIn?: boolean;
   readonly canZoomOut: boolean;
   readonly categoryFilter: readonly string[];
   readonly accessibilityFilter: readonly string[];
@@ -142,6 +173,109 @@ export interface SeatLayerPickerMapState {
   readonly floorMode?: string;
   readonly floorLabelStyle?: string;
   readonly viewportInsets?: SeatLayerPickerViewportInsets;
+}
+
+/**
+ * Where a seat is in the map container's own CSS pixels, from
+ * `seat-screen-point-v1` — the same `worldToScreen` the web confirm card
+ * anchors to. Absent before a renderer is attached and for a seat the chart
+ * carries no geometry for, so a card must have a placement that does not need
+ * it.
+ */
+export interface SeatLayerPickerSeatScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * The organizer's real view-from-seat photograph, as the buyer-asset REFERENCE
+ * the host resolves over the authenticated transport — never a URL an image
+ * view could fetch on its own. `kind` is always `'real'`: with no uploaded
+ * photograph the whole field is absent rather than carrying a stand-in.
+ */
+export interface SeatLayerPickerSeatViewThumb {
+  readonly reference: string;
+  readonly kind: 'real';
+}
+
+/**
+ * The seat confidence passport's summary. It describes SUPPLIED evidence and
+ * its known limits; it is never a guarantee about the real view.
+ */
+export interface SeatLayerPickerSeatConfidence {
+  readonly headline: string;
+  readonly model: string;
+  readonly reality: string;
+  readonly coverage: string;
+  readonly provenance: string;
+  readonly freshness: string;
+  readonly limitations: readonly string[];
+  readonly modeledTarget?: string;
+}
+
+/**
+ * A selected seat plus everything the 0.80.3 contract lets a shell's own card
+ * say about it. Every addition is present-only.
+ */
+export interface SeatLayerPickerSelectedSeat extends SelectedSeat {
+  /** `seat-screen-point-v1`. */
+  readonly screenPoint?: SeatLayerPickerSeatScreenPoint;
+  /** `seat-view-thumbnail-v1`. */
+  readonly seatViewThumb?: SeatLayerPickerSeatViewThumb;
+  /**
+   * `seat-view-thumbnail-v1`. Distance from the seat to the stage. Absent on a
+   * chart with no stage shape — a bare focal point never justifies the claim.
+   */
+  readonly sightlineMetres?: number;
+  /** `seat-view-thumbnail-v1`. Present only for a seat carrying evidence. */
+  readonly seatViewConfidence?: SeatLayerPickerSeatConfidence;
+}
+
+/**
+ * A rectangle of the map surface the shell's own chrome covers, in the map's
+ * CSS pixels — the same frame as the viewport insets. The runtime swallows
+ * every pointer sequence that starts inside one, in the capture phase, so a
+ * tap on a native disc cannot also reach the map beneath it.
+ */
+export interface SeatLayerPickerBlockedRegion {
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
+/** `picker.frameSeat` options. */
+export interface SeatLayerPickerFrameSeatOptions {
+  /** Where in the clear band the seat comes to rest, 0..1. Runtime default 0.48. */
+  readonly fraction?: number;
+  /** Defaults to true; reduced motion snaps regardless. */
+  readonly animate?: boolean;
+  /**
+   * The renderer's camera-gesture count read when the card opened. Passing it
+   * back makes a later re-frame answer `dy: 0` once the buyer has moved the
+   * map themselves, so the picker never argues with the finger.
+   */
+  readonly gestures?: number;
+}
+
+/**
+ * What `picker.frameSeat` did. `dy: 0` is the ordinary answer for a seat
+ * already in place, an unknown seat, insets that leave no band, an engine with
+ * no pan primitive, and a stale gesture count — never an error.
+ */
+export interface SeatLayerPickerFrameSeatResult {
+  readonly dy: number;
+  readonly gestures: number;
+}
+
+/** One stop on the accessible-section tour, or `null` when nothing matches. */
+export interface SeatLayerPickerAccessibleSectionStep {
+  readonly id: string;
+  readonly label: string;
+  readonly free: number;
+  /** 0-based position in the tour. */
+  readonly index: number;
+  readonly total: number;
 }
 
 /** The protocol-2 state contract. It deliberately has no host-only chrome node. */
@@ -157,7 +291,7 @@ export interface SeatLayerPickerSnapshot {
   readonly generalAdmissionAreas: readonly Readonly<GAArea>[];
   readonly bestAvailableZones: readonly SeatLayerPickerZone[];
   readonly map: SeatLayerPickerMapState;
-  readonly selection: readonly Readonly<SelectedSeat>[];
+  readonly selection: readonly Readonly<SeatLayerPickerSelectedSeat>[];
   readonly selectionValidity?: Readonly<SelectionValidity>;
   readonly maxSelection: number;
   readonly ticketCount: number;

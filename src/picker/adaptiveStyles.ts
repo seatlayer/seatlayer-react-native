@@ -1,6 +1,7 @@
 import { StyleSheet, type ViewStyle } from 'react-native';
 
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 const absoluteFillObject = (StyleSheet as typeof StyleSheet & Readonly<{
   absoluteFillObject?: ViewStyle;
@@ -13,19 +14,22 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   wide: { flex: 1, flexDirection: 'row' },
   map: { flex: 1, overflow: 'hidden', position: 'relative' },
   chartOwner: { flex: 1 },
-  rail: { borderStartWidth: StyleSheet.hairlineWidth },
+  rail: { borderStartWidth: seatLayerPickerLineWidth },
   phoneOverlays: absoluteFillObject,
-  legendRail: { position: 'absolute', top: 0, left: 0, right: seatLayerPickerTokens.size.minimumHitTarget },
+  legendBand: {
+    borderBottomWidth: seatLayerPickerLineWidth,
+    height: seatLayerPickerTokens.size.topRailHeight,
+    justifyContent: 'center',
+  },
   controlsOverlay: absoluteFillObject,
   floorRail: { position: 'absolute', left: 0, right: 0 },
-  testRail: { position: 'absolute', left: 10 },
-  accessRail: { position: 'absolute', left: 10 },
-  floorSelectorRail: { position: 'absolute', left: 10 },
+  testRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset },
+  floorSelectorRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset },
   dockRail: { position: 'absolute', bottom: 0, left: 0, right: 0 },
   wideMapOverlays: absoluteFillObject,
-  wideTestRail: { position: 'absolute', top: 12, left: 12 },
-  wideControlsRail: { position: 'absolute', top: 12, right: 12 },
-  wideFloorSelectorRail: { position: 'absolute', left: 12, bottom: 12 },
+  wideTestRail: { position: 'absolute', top: seatLayerPickerTokens.size.mapAnchorInset, left: seatLayerPickerTokens.size.mapAnchorInset },
+  wideControlsRail: { position: 'absolute', top: seatLayerPickerTokens.size.mapAnchorInset, right: seatLayerPickerTokens.size.mapAnchorInset },
+  wideFloorSelectorRail: { position: 'absolute', left: seatLayerPickerTokens.size.mapAnchorInset, bottom: seatLayerPickerTokens.size.mapAnchorInset },
   wideFloors: { paddingTop: 8 },
   wideAssist: { gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 0 },
   wideCart: { flex: 1 },

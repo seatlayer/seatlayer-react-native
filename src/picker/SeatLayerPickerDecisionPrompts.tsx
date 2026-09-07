@@ -41,6 +41,8 @@ import {
   type SeatLayerPickerTableRemovalOperation,
 } from './decisionPrompts';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type PromptKind = Extract<SeatLayerPickerDecisionKind, 'ga' | 'table'>;
 type PromptSlots = Pick<SeatLayerPickerStyles,
@@ -442,14 +444,14 @@ export function SeatLayerPickerSeatTierSelector(props: SeatLayerPickerSeatTierSe
   </View>;
 }
 
-const stylesNative = StyleSheet.create({
+const stylesNative = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill },
   modalLayer: { flex: 1, justifyContent: 'flex-end' },
-  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: StyleSheet.hairlineWidth },
+  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: seatLayerPickerLineWidth },
   title: { fontSize: 17, fontWeight: '900' }, subtitle: { marginTop: 3, fontSize: 14 },
   quantity: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, marginTop: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   quantityValue: { minWidth: 70, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }, quantityText: { fontSize: 24, fontWeight: '700' },
   hit: { flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, buttonPaint: { height: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', alignItems: 'center', borderWidth: 1, paddingHorizontal: 10 }, buttonText: { fontSize: 14, fontWeight: '800' },
   tierScroll: { maxHeight: seatLayerPickerTokens.size.confirmActionHeight * 5 }, tierScrollContent: { paddingBottom: seatLayerPickerTokens.size.confirmCardGutter }, tiers: { marginTop: 14, gap: 8 }, tierHit: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, tierPaint: { minHeight: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 }, tierName: { fontSize: 14, fontWeight: '800' }, tierPrice: { fontSize: 13, fontWeight: '800' }, guidance: { marginTop: 2, fontSize: 11 },
   actions: { flexDirection: 'row', gap: 10, marginTop: 14 }, error: { marginTop: 10, fontSize: 13 }, inline: { gap: 8 },
-});
+}));

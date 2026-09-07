@@ -20,6 +20,18 @@ metadata or release manifests.
   narrative proof documents.
 - Run `pnpm check:public-hygiene` before committing or pushing.
 
+## The picker's design source is copied, not authored
+
+`design/tokens.json`, `design/locale_strings.json`, `design/components.md` and
+`design/picker-spec.md` are copied verbatim from the picker's reference design
+source and are never hand-edited here — change them at the source and copy them
+across. `design/source-lock.json` pins the SHA-256 of the two machine-read
+inputs, and `src/picker/tokens.g.ts` and `src/picker/strings.g.ts` are
+generated from them (`pnpm picker:design`, checked by `pnpm
+picker:design:check`). Never transcribe a token value into a component: read it
+through `tokens.g.ts`, so the number the specification states is the number the
+picker draws. See `design/README.md`.
+
 Before changing the bridge, read:
 
 - `docs/bridge.md`

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false }));
+const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn() }));
 
 vi.mock('react-native', () => ({
   View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width }),
@@ -18,12 +18,13 @@ vi.mock('../src/picker/SeatLayerPriceLegend', () => ({ SeatLayerPriceLegend: 'le
 vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerFloorStrip: 'floors' }));
 vi.mock('../src/picker/SeatLayerPickerFloorSelector', () => ({ SeatLayerPickerFloorSelector: 'floor-selector' }));
 vi.mock('../src/picker/SeatLayerPickerSectionNavigator', () => ({ SeatLayerPickerSectionNavigator: 'section-navigator' }));
-vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10 }));
+vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10, seatLayerPickerMapControlsRailTop: 8 }));
 vi.mock('../src/picker/accessibility', () => ({
   SeatLayerPickerAccessibilityFilters: 'accessibility',
   canRenderSeatLayerPickerAccessibilityFilters: () => state.accessibility,
 }));
 vi.mock('../src/picker/SeatLayerConfirmCard', () => ({ SeatLayerConfirmCard: 'confirm' }));
+vi.mock('../src/picker/SpotlightGlass', () => ({ SpotlightGlass: 'spotlight' }));
 vi.mock('../src/picker/SeatLayerPickerSeatConfirmation', () => ({ SeatLayerPickerSeatConfirmation: 'wide-confirm' }));
 vi.mock('../src/picker/SeatLayerPickerPromptTransition', () => ({
   SeatLayerPickerPromptTransition: ({ prompt }: { prompt: React.ReactNode }) => React.createElement('prompt-transition', { prompt }, prompt),
@@ -44,6 +45,18 @@ vi.mock('../src/picker/attribution', () => ({ SeatLayerPickerAttribution: 'attri
 vi.mock('../src/picker/systemStatusBar', () => ({ SeatLayerPickerSystemStatusBar: 'system-bars' }));
 vi.mock('../src/picker/scopeBackHandler', () => ({ SeatLayerPickerScopeBackHandler: 'back-handler' }));
 vi.mock('../src/picker/SeatLayerDockBar', () => ({ SeatLayerDockBar: 'dock' }));
+vi.mock('../src/picker/SeatLayerPickerStateOverlays', () => ({
+  SeatLayerPickerSoldOutOverlay: 'sold-out', SeatLayerPickerBookedOverlay: 'booked',
+}));
+vi.mock('../src/picker/SeatLayerPickerAccessPanel', () => ({
+  SeatLayerPickerAccessPanel: 'access-panel', SeatLayerPickerSalesClosedStatement: 'sales-closed',
+}));
+vi.mock('../src/picker/SeatLayerPickerAccessibleStepper', () => ({ SeatLayerPickerAccessibleStepper: 'access-stepper' }));
+vi.mock('../src/picker/SeatLayerHoldOwnershipNotice', () => ({ SeatLayerHoldOwnershipNotice: 'hold-ownership' }));
+vi.mock('../src/picker/SeatLayerPickerToast', () => ({
+  SeatLayerPickerToastLayer: 'toast-layer',
+  useSeatLayerPickerToastQueue: () => ({ queue: { current: null }, show: state.showToast }),
+}));
 
 import { SeatLayerPickerAdaptiveLayout } from '../src/picker/SeatLayerPickerAdaptiveLayout';
 import {
@@ -117,8 +130,12 @@ describe('adaptive picker composition', () => {
     expect(seatLayerPickerAdaptiveInteractionBlocked(false, undefined, false)).toBe(true);
     expect(seatLayerPickerAdaptiveInteractionBlocked(true, new Error('fatal'), false)).toBe(true);
     expect(seatLayerPickerAdaptiveInteractionBlocked(true, undefined, true)).toBe(true);
+    // The dock's band is its own; every floating corner region is a MAX over
+    // the others, because they sit beside one another and not on top.
     expect(planSeatLayerPickerPhoneBands({ topHeight: 108, dockHeight: 52, controlBottomHeight: 54, floorSelectorBottomHeight: 54, accessibilityBottomHeight: 54, venueBottomHeight: 88 }))
-      .toEqual({ top: 108, bottom: 168 });
+      .toEqual({ top: 108, bottom: 140 });
+    expect(planSeatLayerPickerPhoneBands({ topHeight: 0, dockHeight: 0, controlBottomHeight: 54, floorSelectorBottomHeight: 54, accessibilityBottomHeight: 54, venueBottomHeight: 0 }))
+      .toEqual({ top: 0, bottom: 54 });
     expect(planSeatLayerPickerPhoneBands({ topHeight: 0, dockHeight: 0, controlBottomHeight: 0, floorSelectorBottomHeight: 0, accessibilityBottomHeight: 0, venueBottomHeight: 0 }))
       .toEqual({ top: 0, bottom: 0 });
     expect(seatLayerPickerAdaptiveUnlockDelay(false)).toBe(180);
@@ -150,6 +167,28 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('mounts no section dock on a WIDE layout either, unless the host asks (§3.6)', async () => {
+    // The bar is opt-in on every width now (owner call 2026-09-06): it used to
+    // be auto-resolved wide-on, so a wide picker got a bar nobody asked for.
+    state.width = 920;
+    state.scope = scope({
+      presentation: { prompt: null, sheet: 'collapsed', mapRung: 'seats' },
+      snapshot: {
+        categories: [], capabilities: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map', rung: 'seats', focusedSectionId: 's1' },
+        sections: [{ id: 's1', label: 'One' }],
+      },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout }));
+    });
+    await act(async () => { measure(tree, 920); });
+    expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-wide' })).toBeTruthy();
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    await act(async () => { tree.unmount(); });
+  });
+
   it('keeps one chart instance across a theme rebuild, uses the phone band, and collapses a pending sheet', async () => {
     state.width = 320;
     state.chartMounts = 0;
@@ -161,11 +200,17 @@ describe('adaptive picker composition', () => {
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, onSectionFocused })); });
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-phone' })).toBeTruthy();
+    // §3.6: there is no phone form of the section dock unless a host asks.
+    expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
+    await act(async () => {
+      tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, {
+        onCheckout: checkout, onSectionFocused, options: { chrome: { showDockBar: true } },
+      }));
+    });
     const sheet = tree.root.findByType('cart-sheet' as any);
     expect(sheet.props.expanded).toBe(true);
     expect(sheet.props.onCheckout).toBe(checkout);
     expect(sheet.props.holdLapse).toBeTruthy();
-    expect(sheet.props.checkoutBar.props.compact).toBe(false);
     expect(tree.root.findByType('dock' as any).props.onSectionChanged).toBe(onSectionFocused);
     await act(async () => { sheet.props.onExpandedChanged(false); });
     expect(state.scope.lease.set).toHaveBeenLastCalledWith({ top: 0, bottom: 106 });
@@ -207,7 +252,6 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findByType('section-navigator' as any).props.onSectionFocused).toBe(onSectionFocused);
     const checkoutBar = tree.root.findByType('checkout' as any);
     expect(checkoutBar.props.onCheckout).toBe(checkout);
-    expect(checkoutBar.props.compact).toBe(false);
     expect(state.scope.lease.remove).toHaveBeenCalledTimes(1);
     expect(state.scope.reportError.mock.calls.length).toBeGreaterThanOrEqual(2);
     await act(async () => { tree.unmount(); });
@@ -226,11 +270,13 @@ describe('adaptive picker composition', () => {
         options: { layout: 'wide' },
       }));
     });
-    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(1);
-    expect(tree.root.findByType('accessibility' as any).parent?.props.style).toMatchObject({
-      gap: 8,
-      paddingHorizontal: 16,
-    });
+    // 0.9.1: the disc HEADS the map's control column on both compositions, so
+    // it reaches the column as `accessibilityControl` rather than standing in
+    // the wide rail's assist block. Drawing it in both put two ways to reach
+    // one filter on the same screen.
+    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
+    expect(tree.root.findByType('controls' as any).props.showAccessibilityControl).toBe(true);
+    expect(tree.root.findByType('controls' as any).props.accessibilityControl).toBeTruthy();
     await act(async () => { tree.unmount(); });
     state.accessibility = false;
   });
@@ -280,7 +326,9 @@ describe('adaptive picker composition', () => {
     expect(first.lease.set).toHaveBeenLastCalledWith({ top: 82, bottom: 0 });
     expect(tree.root.findByType('venue' as any).props).toMatchObject({ topInset: 10, bottomInset: 10, reserveInset: true });
     expect(tree.root.findAllByType('dock' as any)).toHaveLength(0);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(62);
+    // §3.4/§3.5: the chip sits under the scene's back pill, by the pill's own
+    // height and the map anchor gap — not under a rail that is no longer there.
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(56);
     expect(first.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
     state.scope = scope({ sessionId: 2 });
     await act(async () => { tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
@@ -398,6 +446,60 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('orders the add choreography: chip in the air, then the swell, then the map', async () => {
+    // §3.8.4/§3.9 — pressing Add used to do three things at once, so the seat
+    // slid out from under the chip while it was still flying and the count had
+    // already moved by the time the chip arrived to announce it. The layout is
+    // the one place the order is kept, because three surfaces read it.
+    const seat = Object.freeze({ id: 'A-1', label: 'A 1' });
+    state.width = 320;
+    const current = scope({
+      pendingSeat: seat,
+      snapshot: {
+        sessionId: 'runtime', revision: 1, capabilities: [], categories: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map' }, selection: [{ ...seat, objectType: 'seat' }],
+      },
+    });
+    state.scope = current;
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout,
+    })); });
+    const confirm = tree.root.findByType('confirm' as any);
+    // The card reports where the chip leaves from; without an origin there is
+    // no flight to wait for and the press is the whole choreography.
+    await act(async () => { confirm.props.onConfirmOrigin({ x: 40, y: 400 }); });
+    await act(async () => { confirm.props.onAction({ action: 'confirm', seat }); });
+    // The cart holds its count still while the chip is in the air: a total that
+    // jumped on the press made the flight land on a number already changed.
+    expect(tree.root.findByType('cart-sheet' as any)).toBeTruthy();
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('reports the pan the lift made to the surface drawn against the seat', async () => {
+    // §3.8.2 — `picker.frameSeat` is camera only and publishes no snapshot, so
+    // `selection[].screenPoint` is where the seat sat BEFORE the lift. The
+    // spotlight hole adds the pan or it lands a whole lift band below it.
+    const seat = Object.freeze({ id: 'A-1', label: 'A 1', screenPoint: { x: 10, y: 20 } });
+    state.width = 320;
+    state.scope = scope({
+      pendingSeat: seat,
+      snapshot: {
+        sessionId: 'runtime', revision: 1, capabilities: [], categories: [], event: { mode: 'live' },
+        map: { floors: [], buyerView: 'map' }, selection: [{ ...seat, objectType: 'seat' }],
+      },
+    });
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+      onCheckout: checkout,
+    })); });
+    const glass = tree.root.findByType('spotlight' as any);
+    expect(glass.props.screenPoint).toEqual({ x: 10, y: 20 });
+    // Nothing has panned yet, so the hole is exactly on the reported point.
+    expect(glass.props.anchorDy).toBe(0);
+    await act(async () => { tree.unmount(); });
+  });
+
   it('retires a null compact builder without blocking the map or collapsing its cart', async () => {
     const current = scope({
       pendingSeat: { id: 'A-1' }, presentation: { prompt: null, sheet: 'expanded' },
@@ -446,11 +548,18 @@ describe('adaptive picker composition', () => {
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
     const floor = tree.root.findByType('floor-selector' as any);
-    const access = tree.root.findByType('accessibility' as any);
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
-    const accessStyle = access.parent?.props.style[1] as { bottom: number };
-    expect(floorStyle.bottom).toBeGreaterThan(accessStyle.bottom);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 168 });
+    // 0.9.1: the accessibility disc has moved into the map's control column, so
+    // the bottom-left corner is the floor selector's alone and it sits at the
+    // plain edge inset rather than stacked above a disc that is no longer there.
+    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
+    expect(floorStyle.bottom).toBe(10);
+    // The dock's 52 px is gone from the phone band: no dock, no lift (§3.6).
+    // The price rail is a band above the map (§3.2), so only the TEST chip
+    // stands over the map's top edge — on the band's own line, not the corner's.
+    // The bottom band is a MAX over the corner regions, not a sum: they sit
+    // beside one another now rather than one above the other.
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 34, bottom: 54 });
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -516,6 +625,7 @@ describe('adaptive picker composition', () => {
   it('does not invoke unavailable chrome builders merely because a replacement slot exists', async () => {
     const inaccessible = vi.fn();
     const unavailable = vi.fn();
+    const control = vi.fn();
     const seatView = Object.freeze({ title: 'A seat' });
     state.accessibility = true;
     state.scope = scope({
@@ -536,11 +646,16 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       onCheckout: checkout, builders: {
         accessibilityFilters: inaccessible, floorSelector: unavailable, floorStrip: unavailable,
-        mapControls: unavailable, seatViewChrome: unavailable,
+        mapControls: control, seatViewChrome: unavailable,
       },
     })); });
     expect(unavailable).not.toHaveBeenCalled();
-    expect(inaccessible).toHaveBeenCalledTimes(1);
+    expect(inaccessible).toHaveBeenCalled();
+    // 0.9.1: the accessibility disc heads the map's control column, and it is
+    // not a camera control — so the column is drawn for its sake even on a
+    // runtime that answers no zoom, fit or overview command. Gating it on the
+    // camera's eligibility took the filter off that buyer's map entirely.
+    expect(control).toHaveBeenCalled();
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
   });
@@ -788,7 +903,9 @@ describe('adaptive picker composition', () => {
     const cart = tree.root.findByType('cart-sheet' as any);
     expect(cart.props.safeAreaInsets).toBe(forwarded);
     expect(cart.props.bestSeats.props.safeAreaInsets).toBe(forwarded);
-    expect(tree.root.findByType('accessibility' as any).props.safeAreaInsets).toBe(forwarded);
+    // The map's column is off in this composition, so the disc it heads is off
+    // with it; the floor selector below still takes the same forwarded insets.
+    expect(tree.root.findAllByType('controls' as any)).toHaveLength(0);
     expect(tree.root.findByType('floor-selector' as any).props.safeAreaInsets).toBe(forwarded);
     state.accessibility = false;
     await act(async () => { tree.unmount(); });
@@ -821,17 +938,18 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('withholds a localized price rail until its same-row view control is measured', async () => {
+  it('draws the price rail as a band that never waits on the map controls', async () => {
     state.scope = scope({
       snapshot: { categories: [{ notForSale: false }], capabilities: ['venue3d'], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' } },
     });
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
     const controls = tree.root.findByType('controls' as any);
-    expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
-    await act(async () => { controls.props.onViewModeLayout(280); });
+    // §3.2: a band between the header and the map cannot collide with the
+    // Map / 3D control, so it is drawn on the first frame.
     const legend = tree.root.findByType('legend' as any);
-    expect(legend.parent?.props.style[1]).toMatchObject({ right: 298, top: 8 });
+    expect(legend.parent?.props.testID).toBe('seatlayer-price-band');
+    expect(legend.parent?.props.style[0].height).toBe(44);
     expect(controls).toBeTruthy();
     await act(async () => { tree.unmount(); });
   });
@@ -851,11 +969,13 @@ describe('adaptive picker composition', () => {
     })); });
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 44, top: 8 });
+    // The band is out of the map's top-left corner entirely, so the TEST chip
+    // owns it alone, on the map's own top line.
+    expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
     expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 54 });
     await act(async () => { tree.unmount(); });
   });
 
@@ -873,15 +993,15 @@ describe('adaptive picker composition', () => {
       onCheckout: checkout, options: { chrome: { overview: true } },
     })); });
     const controls = tree.root.findByType('controls' as any);
-    expect(tree.root.findAllByType('legend' as any)).toHaveLength(0);
+    expect(tree.root.findAllByType('legend' as any)).toHaveLength(1);
     await act(async () => { controls.props.onViewModeLayout(280); });
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
-    expect(tree.root.findByType('legend' as any).parent?.props.style[1]).toMatchObject({ left: 90, right: 298, top: 8 });
+    expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
     expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
     expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 116 });
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 54 });
     await act(async () => { tree.unmount(); });
   });
 
@@ -915,6 +1035,9 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       onCheckout: checkout, safeAreaInsets: input, options: { chrome: { mapControls: false } },
     })); });
+    // The disc is drawn BY the control column, so a host that turns the column
+    // off leases no band for it either.
+    expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
     const outer = tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' });
     expect(outer.props.style[1]).toMatchObject({ paddingBottom: 0, paddingEnd: 6, paddingStart: 6, paddingTop: 12 });
     expect(tree.root.findByType('cart-sheet' as any).props.reserveBottomInset).toBe(true);

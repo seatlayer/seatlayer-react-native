@@ -83,7 +83,7 @@ describe('wide section and floor navigation', () => {
     expect(renderer.toJSON()).toBeNull();
   });
 
-  it('focuses an exact section once with selected, long-label and 44/40/8 geometry', async () => {
+  it('focuses an exact section once with selected, long-label and 44/40/9 geometry', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerSectionNavigator, { onSectionFocused: (id) => { runtime.callbacks.push(id); } })); });
     const balcony = renderer.root.findByProps({ accessibilityLabel: 'A long authored balcony section label' });
@@ -93,7 +93,7 @@ describe('wide section and floor navigation', () => {
     expect(runtime.focus).toEqual(['balcony']); runtime.resolveFocus();
     await act(async () => { await Promise.resolve(); });
     expect(runtime.callbacks).toEqual(['balcony']);
-    expect(balcony.findByType('View' as any).props.style.at(-1).borderRadius).toBe(8);
+    expect(balcony.findByType('View' as any).props.style.at(-1).borderRadius).toBe(9);
     (I18nManager as { isRTL: boolean }).isRTL = true;
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerSectionNavigator)); });
     expect(renderer.root.findByType('ScrollView' as any).props.contentContainerStyle[1].flexDirection).toBe('row-reverse');

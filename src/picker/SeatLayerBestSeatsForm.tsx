@@ -17,7 +17,6 @@ import {
 
 import { SeatLayerPickerBottomSheetFrame } from './SeatLayerPickerBottomSheetFrame';
 import { SeatLayerPickerPromptModal } from './promptModal';
-import { blendSeatLayerPickerColor } from './colors';
 import type { SeatLayerPickerSafeAreaInsetInput } from './safeAreaInsets';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import {
@@ -32,7 +31,12 @@ import {
   sanitizeSeatLayerPickerStyle,
   type SeatLayerPickerStyles,
 } from './styles';
+import { seatLayerPickerScaledExtent, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerFontWeight } from './fontWeight';
+import { blendSeatLayerPickerColor } from './pickerNavigation';
+import { seatLayerPickerColorAlpha } from './mapChromeTheme';
+import { seatLayerPickerBold } from './boldText';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type ChoiceKind = 'category' | 'zone';
@@ -95,6 +99,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
   const [zoneId, setZoneId] = useState<string | undefined>();
   const [choice, setChoice] = useState<ChoiceState | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   useLayoutEffect(() => {
     scopeRef.current = scope;
@@ -208,9 +213,14 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
   const selector = (label: string, value: string, kind: ChoiceKind) => (
     <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={!allowed}
       accessibilityState={{ disabled: !allowed }} onPress={() => openChoice(kind)}
-      style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flex: 1, justifyContent: 'center' }}>
-      <View style={[{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.base - 4, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.selectorHeight, paddingHorizontal: 10 }, styles.bestSeatsSelector]}>
-        <Text numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '700' }}>{value}</Text>
+      testID={`seatlayer-best-seats-${kind}`}
+      // The select is DRAWN at its own 34 and reaches the platform's 44 through
+      // slop: given a 44 box each of the two selects grew the track by ten, and
+      // the reference's form came out fourteen points short of this one.
+      hitSlop={selectReach}
+      style={{ minHeight: seatLayerPickerTokens.size.bestSeatsSelectHeight, alignSelf: 'stretch', justifyContent: 'center' }}>
+      <View style={[{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.bestSeatsSelectHeight, paddingEnd: 10, paddingStart: 9 }, styles.bestSeatsSelector]}>
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
         <View accessible={false} style={{ borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 }} />
       </View>
     </Pressable>
@@ -224,7 +234,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
             if (choice?.kind === 'category') setCategoryKey(entry.id); else setZoneId(entry.id);
             closeChoice();
           }} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}>
-          <Text style={{ color: theme.colors.text, fontFamily: theme.fontFamily }}>{entry.label}</Text>
+          <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{ color: theme.colors.text, fontFamily: theme.fontFamily }}>{entry.label}</Text>
         </Pressable>
       ))}</ScrollView>
     </View>
@@ -241,12 +251,101 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
     </SeatLayerPickerBottomSheetFrame>
   );
   return (
-    <View style={[{ gap: 8 }, styles.bestSeatsContainer, sanitizeSeatLayerPickerStyle(props.style)]}>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {selector(scope.strings.translate('ticketType'), categoryText, 'category')}
-        {selector(scope.strings.translate('venueZone'), zoneText, 'zone')}
+    // ONE CARD, ONE TRACK. The reference draws the three rows on a plate of
+    // their own — eight points of padding, an eleven-point corner, a border
+    // walked a third of the way from the divider to the accent and a wash of
+    // the accent over the surface. Without it the rows read as three loose
+    // controls dropped on the sheet. React Native has no gradient of its own,
+    // so the reference's .05 → .11 diagonal is drawn at its own mean.
+    <View style={[{
+      backgroundColor: blendSeatLayerPickerColor(theme.colors.accent, theme.colors.surface, trackWash, theme.colors.surface),
+      borderColor: blendSeatLayerPickerColor(
+        theme.colors.accent,
+        // The divider AS SEEN, not as stated: it is a translucent ink, and
+        // blending the accent over its raw channels ignored its own alpha and
+        // painted the track's edge near-black (#5D2D40 against the
+        // reference's #D79DA9).
+        blendSeatLayerPickerColor(theme.colors.divider, theme.colors.surface, 1, theme.colors.divider),
+        trackEdge,
+        theme.colors.divider,
+      ),
+      borderRadius: trackRadius,
+      borderWidth: 1,
+      gap: trackRowGap,
+      padding: 8,
+    }, styles.bestSeatsContainer, sanitizeSeatLayerPickerStyle(props.style)]}>
+      {/* ONE TITLE LINE, AND IT CANNOT WRAP. The card says what it is before
+          the buyer reads the controls, which matters most while the action
+          below is busy saying "Finding the best seats…" instead of what it
+          does. The words are the only part of the line that may shrink, and
+          they shrink by truncating: a title that wrapped to two lines was the
+          whole cost this card was trying not to pay. */}
+      <View style={{ alignItems: 'center', flexDirection: 'row' }}>
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessible={false} style={{ color: theme.colors.accent, fontFamily: theme.fontFamily, fontSize: 14 }}>✦</Text>
+        <View style={{ width: 6 }} />
+        <Text
+          maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          testID="seatlayer-best-seats-title"
+          style={{
+            color: theme.colors.text,
+            flexShrink: 1,
+            fontFamily: theme.fontFamily,
+            fontSize: titleSize,
+            fontWeight: seatLayerPickerBold(800),
+          }}
+        >{scope.strings.translate('findSeatsTogether')}</Text>
+        {/* The one-line explanation rides behind a ⓘ right after the title,
+            not under it as a paragraph. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={scope.strings.translate('aboutBestSeats')}
+          accessibilityState={{ expanded: aboutOpen }}
+          onPress={() => setAboutOpen((open) => !open)}
+          testID="seatlayer-best-seats-about"
+          hitSlop={aboutReach}
+          style={{ alignItems: 'center', justifyContent: 'center', padding: 6 }}
+        >
+          <View accessible={false} style={{
+            alignItems: 'center',
+            backgroundColor: aboutOpen ? theme.colors.accent : 'transparent',
+            borderColor: aboutOpen ? theme.colors.accent : theme.colors.mutedText,
+            borderRadius: aboutGlyphSize / 2,
+            borderWidth: 1.2,
+            height: aboutGlyphSize,
+            justifyContent: 'center',
+            width: aboutGlyphSize,
+          }}>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{
+              color: aboutOpen ? theme.colors.onAccent : theme.colors.mutedText,
+              fontFamily: theme.fontFamily,
+              fontSize: 9.5,
+              fontWeight: seatLayerPickerBold(800),
+            }}>i</Text>
+          </View>
+        </Pressable>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+      {aboutOpen
+        ? (
+          <Text
+            maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
+            testID="seatlayer-best-seats-about-text"
+            style={{
+              color: theme.colors.mutedText,
+              fontFamily: theme.fontFamily,
+              fontSize: 12,
+              marginTop: -2,
+            }}
+          >{scope.strings.translate('closestGroupChosenInstantly')}</Text>
+        )
+        : null}
+      {/* One decision per row. Where there is exactly one category the select
+          is omitted and takes no row; the zone row exists only where the venue
+          has zones (spec §3.11). */}
+      {categories.length > 1 ? selector(scope.strings.translate('ticketType'), categoryText, 'category') : null}
+      {zones.length > 0 ? selector(scope.strings.translate('venueZone'), zoneText, 'zone') : null}
+      <View style={{ flexDirection: 'row', gap: trackRowGap, alignItems: 'center' }}>
         <BestSeatsStepper
           allowed={allowed}
           count={count}
@@ -256,10 +355,12 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
           scope={scope}
           theme={theme}
         />
-        <Pressable accessibilityRole="button" disabled={!allowed} accessibilityState={{ disabled: !allowed, busy: submitting }} onPress={() => { void submit(); }} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flex: 1, justifyContent: 'center' }}>
-          <View style={[{ alignItems: 'center', backgroundColor: allowed ? theme.colors.accent : theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.button, flexDirection: 'row', gap: 6, height: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', paddingHorizontal: 8 }, styles.bestSeatsButton]}>
-            <Text accessible={false} style={{ color: allowed ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 15 }}>✦</Text>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed ? theme.colors.onAccent : theme.colors.mutedText, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: 13, fontWeight: '800' }, styles.bestSeatsButtonText]}>{scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
+        <Pressable accessibilityRole="button" disabled={!allowed} accessibilityState={{ disabled: !allowed, busy: submitting }} onPress={() => { void submit(); }} testID="seatlayer-best-seats-action" style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, flex: 1, justifyContent: 'center' }}>
+          {/* Busy keeps the accent at slight transparency rather than going
+              grey; disabled uses the checkout button's designed language. */}
+          <View style={[{ alignItems: 'center', backgroundColor: allowed || submitting ? theme.colors.accent : theme.colors.surface, borderColor: allowed || submitting ? 'transparent' : theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: allowed || submitting ? 0 : 1, flexDirection: 'row', gap: 6, height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.minimumHitTarget, seatLayerPickerTypeScaleClamp('sheet')), justifyContent: 'center', opacity: submitting ? .72 : 1, paddingHorizontal: 10 }, styles.bestSeatsButton]}>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessible={false} style={{ color: allowed || submitting ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily, fontSize: 13 }}>✦</Text>
+            <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{ color: allowed || submitting ? theme.colors.onAccent : theme.colors.mutedText, flexShrink: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsGo.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsGo.weight) }, styles.bestSeatsButtonText]}>{submitting ? scope.strings.translate('findingBestSeats') : scope.strings.translate('findBestSeats', { count, values: { count } })}</Text>
           </View>
         </Pressable>
       </View>
@@ -279,13 +380,49 @@ function BestSeatsStepper({ allowed, count, maximum, onDecrease, onIncrease, sco
 }>): React.ReactElement {
   const decreaseDisabled = !allowed || count <= 1;
   const increaseDisabled = !allowed || count >= maximum;
-  return <View style={{ alignItems: 'center', backgroundColor: blendSeatLayerPickerColor(theme.colors.text, theme.colors.surface, .03, theme.colors.surface), borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.base - 4, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.selectorHeight }}>
+  return <View testID="seatlayer-best-seats-stepper" style={{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerScaledExtent(seatLayerPickerTokens.size.minimumHitTarget, seatLayerPickerTypeScaleClamp('sheet')), justifyContent: 'space-between', padding: 2, width: seatLayerPickerTokens.size.bestSeatsStepperWidth }}>
     <StepperButton label={scope.strings.translate('fewerTickets')} disabled={decreaseDisabled} onPress={onDecrease} theme={theme}>−</StepperButton>
-    <Text accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: '800', textAlign: 'center', width: 24 }}>{count}</Text>
+    <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} accessibilityLabel={scope.strings.translate('ticketCount', { count, values: { count } })} accessibilityLiveRegion="polite" style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontVariant: ['tabular-nums'], fontWeight: seatLayerPickerBold(800), textAlign: 'center' }}>{count}</Text>
     <StepperButton label={scope.strings.translate('moreTickets')} disabled={increaseDisabled} onPress={onIncrease} theme={theme}>+</StepperButton>
   </View>;
 }
 
+/**
+ * One end of the stepper: a FILLED square key, not a bare glyph. The reference
+ * draws a 34 pt square at a seven-point corner, washed in the divider at just
+ * over a third, and sets the glyph at fourteen — a thumb finds the key without
+ * looking, and the pair reads as a control rather than as two characters.
+ */
 function StepperButton({ label, disabled, onPress, children, theme }: Readonly<{ label: string; disabled: boolean; onPress: () => void; children: string; theme: ReturnType<typeof resolveSeatLayerPickerMapChromeTheme> }>): React.ReactElement {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} accessibilityState={{ disabled }} onPress={onPress} style={{ alignItems: 'center', justifyContent: 'center', minHeight: seatLayerPickerTokens.size.minimumHitTarget, width: seatLayerPickerTokens.size.minimumHitTarget }}><Text style={{ color: disabled ? theme.colors.mutedText : theme.colors.text, fontFamily: theme.fontFamily, fontSize: 18 }}>{children}</Text></Pressable>;
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} disabled={disabled} accessibilityState={{ disabled }} onPress={onPress} hitSlop={stepKeyReach} style={{ alignItems: 'center', justifyContent: 'center', minHeight: stepKeySize, width: stepKeySize }}>
+    <View pointerEvents="none" style={{ alignItems: 'center', backgroundColor: seatLayerPickerColorAlpha(theme.colors.divider, stepKeyWash), borderRadius: stepKeyRadius, height: stepKeySize, justifyContent: 'center', position: 'absolute', width: stepKeySize }} />
+    <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{ color: disabled ? seatLayerPickerColorAlpha(theme.colors.mutedText, .4) : theme.colors.text, fontFamily: theme.fontFamily, fontSize: 14, fontWeight: seatLayerPickerBold(800) }}>{children}</Text>
+  </Pressable>;
 }
+
+/** The reach a select takes around its own 34 points of paint. */
+const selectReach = (seatLayerPickerTokens.size.minimumHitTarget
+  - seatLayerPickerTokens.size.bestSeatsSelectHeight) / 2;
+/** Edge of the drawn key at each end of the stepper. */
+const stepKeySize = 34;
+/**
+ * The reach around it. The key is DRAWN at 34 because the reference draws it
+ * there and the stepper's own 112 is measured to it; the touch it answers is
+ * still the platform's 44, taken as slop outside the paint rather than as a
+ * wider box that would walk both keys off the reference's geometry.
+ */
+const stepKeyReach = (seatLayerPickerTokens.size.minimumHitTarget - stepKeySize) / 2;
+/** Its corner, and how much of the divider it is washed in. */
+const stepKeyRadius = 7;
+const stepKeyWash = .35;
+/** The form's own plate: corner, wash over the surface, and its border's walk. */
+const trackRadius = 11;
+const trackWash = .08;
+const trackEdge = .34;
+/** Six between every row of the track, and between the stepper and its action. */
+const trackRowGap = 6;
+/** The title's own size; SHORT on purpose, and the only shrinking part. */
+const titleSize = 12.5;
+/** The ⓘ beside it: a small disc, reaching the platform's floor through slop. */
+const aboutGlyphSize = 15;
+const aboutReach = (seatLayerPickerTokens.size.minimumHitTarget - aboutGlyphSize - 12) / 2;

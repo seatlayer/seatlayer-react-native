@@ -9,6 +9,18 @@ export const seatLayerPickerEnglishStrings = {
   ...seatLayerPickerTokens.strings,
   'findBestSeats.one': seatLayerPickerTokens.strings.findBestSeatsOne,
   'findBestSeats.other': seatLayerPickerTokens.strings.findBestSeatsOther,
+  'holdLapsedAllTaken.one': seatLayerPickerTokens.strings.holdLapsedAllTakenOne,
+  'holdLapsedAllTaken.other': seatLayerPickerTokens.strings.holdLapsedAllTakenOther,
+  'holdLapsedSomeTaken.one': seatLayerPickerTokens.strings.holdLapsedSomeTakenOne,
+  'holdLapsedSomeTaken.other': seatLayerPickerTokens.strings.holdLapsedSomeTakenOther,
+  'holdLapsedStillFree.one': seatLayerPickerTokens.strings.holdLapsedStillFreeOne,
+  'holdLapsedStillFree.other': seatLayerPickerTokens.strings.holdLapsedStillFreeOther,
+  'holdMinutesLeft.one': seatLayerPickerTokens.strings.holdMinutesLeftOne,
+  'holdMinutesLeft.other': seatLayerPickerTokens.strings.holdMinutesLeftOther,
+  'holdSecondsLeft.one': seatLayerPickerTokens.strings.holdSecondsLeftOne,
+  'holdSecondsLeft.other': seatLayerPickerTokens.strings.holdSecondsLeftOther,
+  'removeTickets.one': seatLayerPickerTokens.strings.removeTicketsOne,
+  'removeTickets.other': seatLayerPickerTokens.strings.removeTicketsOther,
   'reselectSeats.one': seatLayerPickerTokens.strings.reselectSeatsOne,
   'reselectSeats.other': seatLayerPickerTokens.strings.reselectSeatsOther,
   'seatsFree.one': seatLayerPickerTokens.strings.seatsFreeOne,
@@ -168,14 +180,48 @@ function normalizedLocaleCandidates(locale: SeatLayerPickerLocale | null | undef
   return [...new Set(candidates)];
 }
 
+/**
+ * English is the wording the picker's own design data carries, not a row in the
+ * translation table. The two disagree on seven entries — the table is the
+ * runtime's web copy, and the tokens are the ones the spec quotes ("Test mode",
+ * "Accessibility and view") — so an English buyer must read the tokens, the way
+ * the reference implementation's default strings do.
+ */
+function isEnglish(candidate: string): boolean {
+  return candidate === 'en' || candidate.toLowerCase().startsWith('en-');
+}
+
 function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Readonly<Record<string, string>> | undefined {
   for (const candidate of normalizedLocaleCandidates(locale)) {
+    if (isEnglish(candidate)) return undefined;
     const exact = seatLayerPickerLocaleStrings[candidate as SeatLayerPickerGeneratedLocale];
     if (exact) return exact;
     const matchingLocale = Object.keys(seatLayerPickerLocaleStrings).find((known) => known.toLowerCase() === candidate.toLowerCase());
     if (matchingLocale) return seatLayerPickerLocaleStrings[matchingLocale as SeatLayerPickerGeneratedLocale];
   }
   return undefined;
+}
+
+/**
+ * The generated short name for one access provision, in the buyer's language.
+ *
+ * These live in the locale table under `accessNeeds.<key>`: the extractor
+ * takes the other thirty-six from the runtime's own `picker.accessShort.*`
+ * (§3.5), so a French sheet, a French seat card and the runtime agree word for
+ * word. Nothing read them, and a French picker printed English on every row.
+ *
+ * They are read HERE rather than through `translate`, which answers a missing
+ * template with the key itself. **English deliberately has no locale
+ * dictionary** — its names are the short ones in `design/tokens.json`, which
+ * is what the reference draws — so it keeps falling through to the table
+ * below, and so does a key the generated set has no entry for.
+ */
+function generatedAccessNeedLabel(
+  locale: SeatLayerPickerLocale | null | undefined,
+  need: string,
+): string | undefined {
+  const value = localeDictionary(locale)?.[`accessNeeds.${need}`];
+  return typeof value === 'string' && value ? value : undefined;
 }
 
 function pluralCategory(locale: SeatLayerPickerLocale | null | undefined, count: number): string {
@@ -324,6 +370,7 @@ export function createSeatLayerPickerStringResolver(
       const safeNeed = safeKey(need);
       const values = resolvedValues({ need: safeNeed }, count);
       const label = resolveOverride(overrides.accessNeeds, [safeNeed], contextFor(safeNeed, locale, count, values))
+        ?? generatedAccessNeedLabel(locale, safeNeed)
         ?? seatLayerPickerEnglishAccessNeeds[safeNeed as SeatLayerPickerKnownAccessNeed]
         ?? safeNeed;
       return count === undefined || !Number.isFinite(count)

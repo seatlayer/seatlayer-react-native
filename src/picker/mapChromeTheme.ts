@@ -81,3 +81,22 @@ export function seatLayerPickerColorAlpha(
 ): string {
   return colorAlpha(color, opacity);
 }
+
+/**
+ * §3.5 "Ground — a disc's own, never the panel's." A floating control takes
+ * `color.*.chrome` with a `color.*.chromeLine` hairline, resolved from the map
+ * chrome's side rather than the picker panel's, so the controls darken with the
+ * immersive scene. The panel's `surface`/`divider` are the colours of a plate
+ * the map is drawn *beside*; over the venue a translucent dark surface on a
+ * dark map measured 1.14:1. The two sides carry the boundary in different
+ * halves — dark in the fill, light in the edge — which is why this is two
+ * tokens rather than a stronger opacity.
+ */
+export function seatLayerPickerMapChromeGround(
+  theme: SeatLayerPickerThemeData,
+): Readonly<{ ground: string; line: string }> {
+  const side = theme.themeMode === "dark"
+    ? seatLayerPickerTokens.color.dark
+    : seatLayerPickerTokens.color.light;
+  return Object.freeze({ ground: side.chrome, line: side.chromeLine });
+}

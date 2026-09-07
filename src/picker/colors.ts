@@ -42,6 +42,16 @@ function opacity(value: unknown): number {
     : 1;
 }
 
+/**
+ * `color` AT `value`, not `color` scaled BY it.
+ *
+ * The reference's own `pickerAlpha` is `color.withAlpha(...)`: it STATES the
+ * alpha. Scaling it instead only agrees where the token is already opaque —
+ * and the picker's `divider` is not. Measured against the reference frame, the
+ * best-seats stepper's key is the divider stated at .35 and samples #A8ACB5
+ * there; scaled, the same line painted #EAEBF0, which is the divider at four
+ * hundredths and reads as nothing at all.
+ */
 export function seatLayerPickerColorAlpha(color: unknown, value: number): string {
   const parsed = parseSeatLayerPickerColor(color);
   // A host string such as a named CSS colour is safe at full opacity, but
@@ -52,7 +62,7 @@ export function seatLayerPickerColorAlpha(color: unknown, value: number): string
       ? color.trim()
       : 'rgba(0, 0, 0, 0)';
   }
-  return `rgba(${parsed.red}, ${parsed.green}, ${parsed.blue}, ${parsed.alpha * opacity(value)})`;
+  return `rgba(${parsed.red}, ${parsed.green}, ${parsed.blue}, ${opacity(value)})`;
 }
 
 export function pickerColor(color: unknown, fallback: string, value = 1): string {

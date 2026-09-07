@@ -13,6 +13,7 @@ import {
   normalizeSeatLayerPickerSafeAreaInsets,
   type SeatLayerPickerSafeAreaInsetInput,
 } from './safeAreaInsets';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerPickerBottomSheetFrameProps {
   readonly children: ReactNode;
@@ -70,5 +71,5 @@ const styles = StyleSheet.create({
   root: { flex: 1 },
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   safeBounds: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { alignSelf: 'stretch', borderWidth: StyleSheet.hairlineWidth, flexShrink: 1, overflow: 'hidden' },
+  sheet: { alignSelf: 'stretch', borderWidth: seatLayerPickerLineWidth, flexShrink: 1, overflow: 'hidden' },
 });

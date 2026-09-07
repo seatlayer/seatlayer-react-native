@@ -29,3 +29,31 @@ export function negotiateProtocol(
   }
   return agreed;
 }
+
+/**
+ * The native-chrome contract additions the hosted runtime advertises from
+ * 0.80.3. Each capability announces additive, present-only snapshot fields; a
+ * runtime that does not list one simply never reports them, which is a feature
+ * this host does not offer rather than a failure.
+ */
+export const seatLayerSeatScreenPointCapability = 'seat-screen-point-v1';
+export const seatLayerCategoryAvailabilityCapability = 'category-availability-v1';
+export const seatLayerAccessibilityFocusCapability = 'accessibility-focus-v1';
+export const seatLayerSectionAccessCountsCapability = 'section-access-counts-v1';
+export const seatLayerSeatViewThumbnailCapability = 'seat-view-thumbnail-v1';
+
+/**
+ * Commands that change nothing a snapshot reports, so the contract gives them
+ * no capability string: presence in the hello command table is the whole
+ * contract. Never gate these on a capability.
+ */
+export const seatLayerSetSelectionFocusCommand = 'picker.setSelectionFocus';
+export const seatLayerSetBlockedRegionsCommand = 'picker.setBlockedRegions';
+export const seatLayerFrameSeatCommand = 'picker.frameSeat';
+
+/** Camera commands announced by `accessibility-focus-v1`. */
+export const seatLayerFocusAccessibilityFilterCommand = 'picker.focusAccessibilityFilter';
+export const seatLayerFocusNextAccessibleSectionCommand = 'picker.focusNextAccessibleSection';
+
+/** A seat already in the selection tapped again — the runtime's Remove ask. */
+export const seatLayerSeatRetapEvent = 'seat.retap';

@@ -56,11 +56,7 @@ describe('picker public API', () => {
       'SeatLayerRecovery',
       'seatLayerAvailabilityRefreshCapability',
       'resolveSeatLayerPickerMotion',
-      'groupTicketLines',
-      'runSeatsLabel',
-      'ticketIsGroupable',
       'SeatLayerTicketLine',
-      'SeatLayerTicketRun',
     ] as const;
 
     for (const name of required) expect(source).toMatch(new RegExp(`\\b${name}\\b`));

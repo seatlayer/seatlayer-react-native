@@ -28,6 +28,8 @@ import {
   supportsSeatLayerPickerWideNavigation,
   type SeatLayerPickerWideNavigationLease,
 } from './wideNavigation';
+import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerPickerSectionNavigatorProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -161,10 +163,10 @@ function SectionNavigatorCurrent({
   );
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { width: '100%', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
   scroll: { alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 2 },
   target: { justifyContent: 'center' },
-  paint: { height: 40, maxWidth: 180, paddingHorizontal: 12, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center' },
+  paint: { height: 40, maxWidth: 180, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   label: { fontSize: 12, lineHeight: 16, fontWeight: '800' },
-});
+}));

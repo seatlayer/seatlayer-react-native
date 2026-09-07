@@ -94,11 +94,16 @@ export function planSeatLayerPickerPhoneBands(input: SeatLayerPickerPhoneBandInp
     top: height(input.topHeight),
     bottom: height(input.dockHeight) + Math.max(
       height(input.venueBottomHeight),
-      (() => {
-        const lower = Math.max(height(input.controlBottomHeight), height(input.accessibilityBottomHeight));
-        const floor = height(input.floorSelectorBottomHeight);
-        return floor > 0 && lower > 0 ? lower + seatLayerPickerPhoneRailGap + floor : Math.max(lower, floor);
-      })(),
+      // 0.9.1: the accessibility disc heads the map's control column, so it
+      // shares the right-hand corner with the zoom controls rather than
+      // stacking above the floor selector on the left. Two opposite corners
+      // are a MAX, not a sum: adding them leased the runtime a band twice the
+      // chrome's real height and framed every section too far up the map.
+      Math.max(
+        height(input.controlBottomHeight),
+        height(input.accessibilityBottomHeight),
+        height(input.floorSelectorBottomHeight),
+      ),
     ),
   });
 }

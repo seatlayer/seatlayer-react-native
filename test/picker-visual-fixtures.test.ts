@@ -6,11 +6,15 @@ vi.mock('react-native', () => ({
   ActivityIndicator: 'ActivityIndicator', Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', StatusBar: 'StatusBar', Text: 'Text', View: 'View',
   Animated: {
     View: 'AnimatedView',
-    Value: class { constructor(readonly value: number) {} interpolate() { return this.value; } setValue() {} stopAnimation() {} },
+    Text: 'AnimatedText',
+    Value: class { constructor(readonly value: number) {} interpolate() { return this.value; } setValue() {} stopAnimation(done?: (value: number) => void) { done?.(this.value); } addListener() { return 1; } removeListener() {} },
     delay: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
     sequence: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
+    loop: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
+    spring: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
     timing: () => ({ start: (done?: () => void) => done?.(), stop: () => undefined }),
   },
+  PanResponder: { create: (config: Record<string, unknown>) => ({ panHandlers: {}, config }) },
   I18nManager: { isRTL: false },
   Easing: { bezier: () => undefined },
   BackHandler: { addEventListener: () => ({ remove: () => undefined }) },
@@ -68,11 +72,11 @@ describe('deterministic native picker visual fixtures', () => {
     expect(tree.root.findAllByType(NeutralMapSurface)).toHaveLength(1);
     expect(tree.root.findAllByProps({ testID: 'seatlayer-visual-fixture-map' })).toHaveLength(1);
 
-    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Seat map' });
+    const mapSegment = tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' });
     expect(mapSegment.props.style({ pressed: false })).toMatchObject({
       height: 44,
-      minWidth: 46,
-      paddingHorizontal: 10,
+      minWidth: 38,
+      paddingHorizontal: 8,
     });
     expect(mapSegment.props.style({ pressed: false })).not.toHaveProperty('width');
     expect(mapSegment.props.style({ pressed: false })).not.toHaveProperty('maxWidth');
@@ -110,7 +114,11 @@ describe('deterministic native picker visual fixtures', () => {
       expect(tree.root.findAllByType(NeutralMapSurface)).toHaveLength(1);
       tree.unmount();
     }
-  });
+  // Every scenario, each through the complete production composition. Under
+  // the parallel suite this contends for the scheduler rather than doing more
+  // work, so it gets a budget that fails on a real regression instead of on a
+  // busy machine — it runs in about a quarter of this on its own.
+  }, 30_000);
 
   it('exposes the production widget that owns each specialist fixture state', async () => {
     const confirmation = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'confirmation' }));
@@ -143,7 +151,7 @@ describe('deterministic native picker visual fixtures', () => {
       expect.objectContaining({ width: seatLayerVisualFixtureWideWidth, height: seatLayerVisualFixtureWideHeight }),
     ]));
     expect(wide.root.findByType(SeatLayerPickerAdaptiveLayout).props.options.layout).toBe('wide');
-  });
+  }, 30_000);
 
   it('carries a chosen Child tier from the native confirmation into cart and checkout handoff', async () => {
     const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'light', scenario: 'seat-tier' }));
@@ -155,12 +163,18 @@ describe('deterministic native picker visual fixtures', () => {
       .toMatchObject({ checked: true, disabled: false });
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Select' }).props.onPress();
+      // §3.8.3: a seat's primary answer reads `Add seat`; `Select` is for a
+      // booth, a table or a general-admission unit.
+      tree.root.findByProps({ testID: 'seatLayerConfirmPrimary' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(tree.root.findAllByType(SeatLayerConfirmCard)).toHaveLength(0);
-    const checkout = tree.root.findByProps({ accessibilityLabel: 'Continue · €60' });
+    // §3.9: there is no second Continue on a collapsed bar any more — the
+    // foot's own button is the one door, and the total is on the line above it.
+    const checkout = tree.root.findByProps({ testID: 'seatlayer-cart-checkout' });
+    expect(checkout.props.accessibilityLabel).toBe('Hold seats & checkout');
+    expect(tree.root.findByProps({ testID: 'seatlayer-cart-foot-total' }).props.children).toBe('€60');
 
     await act(async () => {
       checkout.props.onPress();
@@ -189,21 +203,29 @@ describe('deterministic native picker visual fixtures', () => {
 
     expect(tree.root.findAllByType(SeatLayerPickerAccessibilityFilters)).toHaveLength(1);
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Accessibility and colour options' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Accessibility and view filters' }).props.onPress();
     });
     expect(tree.root.findByProps({ accessibilityLabel: 'Wheelchair' }).props.accessibilityState)
       .toMatchObject({ checked: false, disabled: true });
     expect(tree.root.findAllByProps({ accessibilityLabel: 'Hearing support' })).toHaveLength(0);
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Step-free · 12' }).props.onPress();
-      tree.root.findByProps({ accessibilityLabel: 'Companion · 4' }).props.onPress();
-      tree.root.findByProps({ accessibilityLabel: 'Hide limited-view seats' }).props.onPress();
-      tree.root.findByProps({ accessibilityLabel: 'Colourblind-friendly colours' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Step-free' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
     });
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Apply filters' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Companion' }).props.onPress();
       await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Hide limited-view seats' }).props.onPress();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      tree.root.findByProps({ accessibilityLabel: 'Colourblind-friendly colours' }).props.onPress();
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -259,10 +281,10 @@ describe('deterministic native picker visual fixtures', () => {
     const overviewChrome = tree.root.findByType(SeatLayerVenue3DChrome);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'View from here' })).toHaveLength(0);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Back to venue' })).toHaveLength(0);
-    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Seat map' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' }).props.onPress();
       await Promise.resolve();
     });
     const mapEvidence = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
@@ -270,13 +292,13 @@ describe('deterministic native picker visual fixtures', () => {
     expect(mapEvidence).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: '3D' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Interactive 3D venue view' }).props.onPress();
       await Promise.resolve();
     });
     const returned3D = tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel;
     expect(returned3D).toContain('venue3d · overview');
     expect(returned3D).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
     expect(tree.root.findByType(SeatLayerVenue3DChrome)
-      .findAllByProps({ accessibilityLabel: 'Fit to screen' })).toHaveLength(1);
+      .findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
   });
 });

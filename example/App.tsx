@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import {
   SeatLayerPicker,
+  type BuyerAccessTokenProvider,
   type SeatLayerConfiguration,
   type SeatLayerPickerCheckoutHandoff,
 } from '@seatlayer/react-native';
@@ -17,6 +18,34 @@ import {
 
 const event = process.env.EXPO_PUBLIC_SEATLAYER_EVENT?.trim() ?? '';
 const publicKey = process.env.EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY?.trim() ?? '';
+
+/**
+ * Optional. A private event needs a buyer access token, and only your own
+ * server may mint one — it holds the secret key. Point this at an endpoint of
+ * yours that returns `{ "token": "...", "expiresAt": 1234567890000 }`; leave it
+ * unset for a public event.
+ */
+const buyerTokenUrl = process.env.EXPO_PUBLIC_SEATLAYER_BUYER_TOKEN_URL?.trim() ?? '';
+
+const buyerAccessTokenProvider: BuyerAccessTokenProvider = async () => {
+  const response = await fetch(buyerTokenUrl, {
+    headers: { accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Buyer token endpoint answered ${response.status}.`);
+  }
+  const body = (await response.json()) as {
+    token?: unknown;
+    expiresAt?: unknown;
+  };
+  if (typeof body.token !== 'string' || !body.token) {
+    throw new Error('Buyer token endpoint returned no token.');
+  }
+  return {
+    token: body.token,
+    ...(typeof body.expiresAt === 'number' ? { expiresAt: body.expiresAt } : {}),
+  };
+};
 
 export default function App(): React.ReactElement {
   return (
@@ -36,6 +65,7 @@ function SeatLayerExample(): React.ReactElement {
       currency: 'USD',
       maxSelection: 8,
       hostInfo: { app: 'SeatLayer React Native example' },
+      ...(buyerTokenUrl ? { buyerAccessTokenProvider } : {}),
     }),
     [],
   );
@@ -66,10 +96,15 @@ function SeatLayerExample(): React.ReactElement {
           <Text selectable style={styles.code}>
             EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY=pk_test_your_key
           </Text>
+          <Text selectable style={styles.code}>
+            EXPO_PUBLIC_SEATLAYER_BUYER_TOKEN_URL=https://your-server.example/seatlayer/buyer-token
+          </Text>
         </View>
         <Text style={styles.note}>
           Publishable keys are safe for public startup. Keep SeatLayer secret
-          keys and final booking on your trusted server.
+          keys and final booking on your trusted server. The buyer-token URL is
+          optional: set it only for a private event, and point it at your own
+          server, never at a key embedded in the app.
         </Text>
       </View>
     );

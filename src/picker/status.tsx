@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -9,6 +9,12 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import {
+  reduceSeatLayerPickerReveal, seatLayerPickerAwaitingFraming,
+  seatLayerPickerInitialRevealState, seatLayerPickerRevealed,
+  seatLayerPickerRevealGraceMs,
+} from "./chartBoot";
+import { SeatLayerPickerLoadingSurface } from "./loadingSurface";
 import type { SeatLayerPickerStringResolver } from "./locale";
 import {
   resolveSeatLayerPickerMapChromeTheme,
@@ -29,6 +35,8 @@ export {
   type SeatLayerPickerTestModeIndicatorProps,
   type SeatLayerPickerTestModeIndicatorViewProps,
 } from "./testModeIndicator";
+import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type StatusSlots = Pick<
   SeatLayerPickerStyles,
@@ -87,40 +95,53 @@ export function SeatLayerPickerLoadingStatus({
   style,
   themeStyles,
 }: StatusViewProps): React.ReactElement {
-  const slots = resolveSeatLayerPickerStyles(themeStyles, componentSlots);
-  const safeStyle = sanitizeSeatLayerPickerStyle(style);
+  // §4.7: the wait is the venue taking shape, not a spinner on a blank page.
   return (
-    <View
-      accessibilityRole="progressbar"
-      accessibilityLabel={strings.translate("loading")}
-      style={[styles.root, slots.statusContainer, safeStyle]}
-    >
-      <ActivityIndicator color={theme.colors.accent} size="large" />
-      <Text
-        style={[styles.text, {
-          color: theme.colors.text,
-          fontFamily: theme.fontFamily,
-        }, slots.statusText]}
-      >
-        {strings.translate("loading")}
-      </Text>
-    </View>
+    <SeatLayerPickerLoadingSurface
+      slots={componentSlots}
+      strings={strings}
+      style={style}
+      theme={theme}
+      themeStyles={themeStyles}
+    />
   );
 }
+
+export interface SeatLayerPickerLoadingViewProps extends SeatLayerPickerStatusProps {
+  /**
+   * §4.7 reveal-after-framing: true from the first viewport-inset report that
+   * lands after the runtime is ready. Presentation only — the picker is fully
+   * callable while it is false, and a 700 ms backstop reveals the map anyway
+   * for a runtime that never answers.
+   */
+  readonly framed?: boolean;
+}
+
 export function SeatLayerPickerLoadingView(
-  props: SeatLayerPickerStatusProps,
+  props: SeatLayerPickerLoadingViewProps,
 ): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
-  // A runtime may publish its first snapshot before the chart has accepted it.
-  // Readiness, rather than data arrival, owns the loading surface.
-  if (scope.isReady) return null;
+  const [reveal, dispatch] = useReducer(
+    reduceSeatLayerPickerReveal, seatLayerPickerInitialRevealState,
+  );
+  const framed = props.framed ?? false;
+  useEffect(() => { dispatch('reset'); }, [scope.controller, scope.sessionId]);
+  useEffect(() => { if (scope.isReady) dispatch('ready'); }, [scope.isReady]);
+  useEffect(() => { if (framed) dispatch('insetsReported'); }, [framed]);
+  useEffect(() => {
+    if (!seatLayerPickerAwaitingFraming(reveal)) return undefined;
+    const handle = setTimeout(() => dispatch('graceLapsed'), seatLayerPickerRevealGraceMs);
+    return () => clearTimeout(handle);
+  }, [reveal]);
+  if (scope.isReady && seatLayerPickerRevealed(reveal)) return null;
   const theme = resolveSeatLayerPickerMapChromeTheme(
     scope.resolvedTheme,
     scope.snapshot,
   );
   return (
     <SeatLayerPickerLoadingStatus
-      {...props}
+      slots={props.slots}
+      style={props.style}
       theme={theme}
       themeStyles={scope.styles}
       strings={scope.strings}
@@ -329,7 +350,7 @@ export function SeatLayerPickerErrorView(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "center",
     justifyContent: "center",
@@ -393,9 +414,9 @@ const styles = StyleSheet.create({
   retry: {
     minWidth: 128,
     minHeight: 44,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   retryText: { fontSize: 15, fontWeight: "800" },
-});
+}));

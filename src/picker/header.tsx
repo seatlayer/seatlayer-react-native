@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  Animated,
+  Easing,
   Image,
   type ImageSourcePropType,
   type LayoutChangeEvent,
@@ -11,10 +13,19 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { seatLayerHeaderInitial } from "./headerIdentity";
+import {
+  seatLayerHoldAnnouncementFor,
+  seatLayerHoldClockText,
+  seatLayerHoldExpiring,
+  seatLayerHoldPillDrawn,
+} from "./holdCountdownAnnounce";
 import {
   resolveSeatLayerPickerMapChromeTheme,
   seatLayerPickerColorAlpha,
 } from "./mapChromeTheme";
+import { resolveSeatLayerPickerMotion } from "./motion";
+import { useSeatLayerPickerReducedMotion } from "./reducedMotion";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { supportsSeatLayerPickerNativeChrome } from "./surfaces";
 import {
@@ -25,6 +36,8 @@ import {
 } from "./styles";
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBold, seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 type HeaderSlots = Pick<
   SeatLayerPickerStyles,
@@ -46,7 +59,16 @@ export interface SeatLayerPickerHeaderProps {
   readonly showEventDetails?: boolean;
   readonly showHoldPill?: boolean;
   readonly options?: Readonly<
-    { hideEventDetails?: boolean; showHoldPill?: boolean }
+    {
+      hideEventDetails?: boolean;
+      showHoldPill?: boolean;
+      /**
+       * §4.7: a host may name the event before the runtime does, so the header
+       * does not swap its title a second after opening. It is a placeholder
+       * only — the runtime's own `event.name` wins the moment it lands.
+       */
+      eventName?: string;
+    }
   >;
   readonly style?: StyleProp<ViewStyle>;
   readonly slots?: HeaderSlots;
@@ -60,13 +82,21 @@ export interface SeatLayerPickerHeaderViewProps
   extends SeatLayerPickerHeaderProps {
   readonly title: string;
   readonly venue?: string;
+  readonly brandName?: string;
   readonly logoSource?: ImageSourcePropType | string;
   readonly theme: SeatLayerPickerThemeData;
   readonly themeStyles?: SeatLayerPickerThemeStyles;
-  readonly hold?: Readonly<{ active: boolean; expiresAt?: number }>;
+  readonly hold?: Readonly<{ active: boolean; expiresAt?: number; owner?: string }>;
   readonly holdLapsed?: boolean;
+  readonly salesClosed?: boolean;
   readonly closeLabel: string;
+  readonly salesClosedLabel?: string;
   readonly heldFor: (clock: string) => string;
+  /** The throttled sentence a screen reader hears; §4.10. */
+  readonly announceHold?: (
+    key: "holdMinutesLeft" | "holdSecondsLeft",
+    count: number,
+  ) => string;
   readonly reportInset: (height: number) => void;
   readonly removeInset: () => void;
   readonly reportError: (error: unknown) => void;
@@ -94,9 +124,11 @@ function readClock(clock: () => number): number {
   return value;
 }
 
-function FallbackMark({ background, foreground, size, style }: {
+function LetterMark({ background, foreground, fontFamily, letter, size, style }: {
   readonly background: string;
   readonly foreground: string;
+  readonly fontFamily?: string;
+  readonly letter: string;
   readonly size: number;
   readonly style?: StyleProp<ViewStyle>;
 }): React.ReactElement {
@@ -106,12 +138,21 @@ function FallbackMark({ background, foreground, size, style }: {
       style={[styles.mark, {
         width: size,
         height: size,
-        borderRadius: size < 30 ? 6 : 10,
+        borderRadius: seatLayerPickerTokens.radius.headerLogo,
         backgroundColor: background,
       }, style]}
     >
-      <View style={[styles.markBack, { backgroundColor: foreground }]} />
-      <View style={[styles.markBase, { backgroundColor: foreground }]} />
+      <Text
+        allowFontScaling={false}
+        style={{
+          color: foreground,
+          fontFamily,
+          fontSize: Math.round(size * .55),
+          fontWeight: seatLayerPickerBold(800),
+        }}
+      >
+        {letter}
+      </Text>
     </View>
   );
 }
@@ -141,7 +182,6 @@ export function SeatLayerPickerHeaderView(
 ): React.ReactElement {
   const {
     clock = Date.now,
-    compact = false,
     hold,
     holdLapsed = false,
     logoSource,
@@ -157,6 +197,7 @@ export function SeatLayerPickerHeaderView(
     themeStyles,
     topInset,
   } = props;
+  const reducedMotion = useSeatLayerPickerReducedMotion();
   const asyncFailure = useRef<unknown>(undefined);
   const failureReported = useRef(false);
   const latestReportError = useRef(reportError);
@@ -195,11 +236,12 @@ export function SeatLayerPickerHeaderView(
     asyncFailure.current = error;
     setFailureVersion((value) => value + 1);
   }, []);
-  const expiry = hold?.active === true && typeof hold.expiresAt === "number" &&
-      Number.isFinite(hold.expiresAt)
-    ? hold.expiresAt
-    : undefined;
-  const showHold = props.holdCountdown === undefined && expiry !== undefined && !holdLapsed && showHoldPill &&
+  // The pill is the picker's one clock and is drawn for as long as the hold
+  // lives (owner call, 2026-09-05); a hold handed to the host is the host's to
+  // display (§4.8).
+  const pillOwned = seatLayerHoldPillDrawn(hold, holdLapsed);
+  const expiry = pillOwned ? hold!.expiresAt! : undefined;
+  const showHold = props.holdCountdown === undefined && pillOwned && showHoldPill &&
     options?.showHoldPill !== false;
   const slots = resolveSeatLayerPickerStyles(themeStyles, props.slots);
   const safeStyle = sanitizeSeatLayerPickerStyle(style);
@@ -210,13 +252,14 @@ export function SeatLayerPickerHeaderView(
       captureAsyncFailure(error, sessionId);
     }
     if (!showHold) return undefined;
+    // Twice a second so a second never appears to skip (§3.13.6).
     const timer = setInterval(() => {
       try {
         setNow(readClock(clock));
       } catch (error) {
         captureAsyncFailure(error, sessionId);
       }
-    }, 1_000);
+    }, 500);
     return () => clearInterval(timer);
   }, [captureAsyncFailure, clock, expiry, sessionId, showHold]);
   useEffect(() => {
@@ -229,14 +272,12 @@ export function SeatLayerPickerHeaderView(
   const remaining = expiry === undefined
     ? 0
     : Math.max(0, Math.floor((expiry - now) / 1_000));
-  const clockText = `${
-    String(Math.floor(remaining / 60) % 60).padStart(2, "0")
-  }:${String(remaining % 60).padStart(2, "0")}`;
+  const clockText = seatLayerHoldClockText(remaining);
+  const expiring = showHold && seatLayerHoldExpiring(remaining);
   const captureRenderFailure = (error: unknown): void => {
     renderFailure ??= error;
   };
   let heldFor = clockText;
-  let spoken = clockText;
   if (showHold) {
     try {
       const value = props.heldFor(clockText);
@@ -245,17 +286,29 @@ export function SeatLayerPickerHeaderView(
     } catch (error) {
       captureRenderFailure(error);
     }
-    spoken = heldFor;
+  }
+  // The countdown is throttled: on the minute, then every second of the last
+  // minute. Unchanged text is not re-announced, so the throttle IS the policy.
+  const spoken = useMemo(() => {
+    if (!showHold) return undefined;
+    const announcement = seatLayerHoldAnnouncementFor(remaining);
+    if (announcement === null) return undefined;
+    if (props.announceHold) {
+      try {
+        const value = props.announceHold(announcement.key, announcement.count);
+        if (typeof value === "string" && value.trim()) return value;
+      } catch { /* the pill still draws its clock */ }
+    }
     if (props.holdRemainingLabel) {
       try {
         const value = props.holdRemainingLabel(remaining);
-        if (typeof value === "string" && value.trim()) spoken = value;
-        else captureRenderFailure(new TypeError("Invalid hold formatter result"));
-      } catch (error) {
-        captureRenderFailure(error);
-      }
+        if (typeof value === "string" && value.trim()) return value;
+      } catch { /* the pill still draws its clock */ }
     }
-  }
+    return undefined;
+  }, [props.announceHold, props.holdRemainingLabel, remaining, showHold]);
+  const spokenRef = useRef<string | undefined>(undefined);
+  if (spoken !== undefined) spokenRef.current = spoken;
   const close = useCallback(() => {
     const session = sessionId;
     if (!onClose || currentSession.current !== session || closeFlight.current !== undefined) return;
@@ -297,12 +350,15 @@ export function SeatLayerPickerHeaderView(
     try { removeInset(); } catch (error) { safelyReport(latestReportError.current, error); }
   }, [removeInset]);
   const showDetails = showEventDetails && options?.hideEventDetails !== true;
+  const logoSize = seatLayerPickerTokens.size.headerLogoSize;
   const logo = failedLogo || !logoSource
     ? (
-      <FallbackMark
+      <LetterMark
         background={theme.colors.accent}
         foreground={theme.colors.onAccent}
-        size={compact ? seatLayerPickerTokens.size.headerLogoSize : 36}
+        fontFamily={theme.fontFamily}
+        letter={seatLayerHeaderInitial(props.brandName, props.title)}
+        size={logoSize}
         style={slots.headerFallbackMark}
       />
     )
@@ -316,19 +372,28 @@ export function SeatLayerPickerHeaderView(
             setFailedLogo(true);
           }
         }}
-        resizeMode="contain"
+        // The mark is a filled square carrying the organizer's logo.
+        resizeMode="cover"
         style={[{
-          width: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
-          height: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
-          borderRadius: compact ? 6 : 10,
-        }, slots.headerLogo, {
-          width: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
-          height: compact ? seatLayerPickerTokens.size.headerLogoSize : 36,
-        }]}
+          width: logoSize,
+          height: logoSize,
+          borderRadius: seatLayerPickerTokens.radius.headerLogo,
+          backgroundColor: theme.colors.accent,
+        }, slots.headerLogo, { width: logoSize, height: logoSize }]}
       />
     );
+  const headerHeight = seatLayerPickerTokens.size.headerHeight + boundedInset(topInset);
+  // The picker's own ground, through the header's own style slot: a ground and
+  // the ink on it must be resolved as a PAIR, or a host that darkened
+  // `color.*.background` for the map leaves the event name unreadable.
+  const ground = {
+    background: theme.roles?.header?.background ?? theme.colors.background,
+    foreground: theme.roles?.header?.foreground ?? theme.colors.text,
+    border: theme.roles?.header?.border ?? theme.colors.divider,
+  };
   return (
     <View
+      accessibilityRole="header"
       onLayout={(event: LayoutChangeEvent) => {
         if (!mounted.current || currentSession.current !== sessionId) return;
         try {
@@ -340,44 +405,30 @@ export function SeatLayerPickerHeaderView(
       style={[
         styles.root,
         {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: ground.background,
           paddingTop: boundedInset(topInset),
         },
         slots.headerContainer,
         safeStyle,
-        {
-          height: seatLayerPickerTokens.size.headerHeight + boundedInset(topInset),
-          minHeight: seatLayerPickerTokens.size.headerHeight + boundedInset(topInset),
-        },
+        { height: headerHeight, minHeight: headerHeight },
       ]}
     >
-      <View style={[styles.row, compact ? styles.compactRow : undefined]}>
+      <View style={styles.row}>
         {logo}
         {showDetails
           ? (
             <View style={styles.titleWrap}>
               <Text
+                accessibilityRole="header"
                 numberOfLines={1}
-                style={[compact ? styles.compactTitle : styles.title, {
-                  color: theme.colors.text,
+                ellipsizeMode="tail"
+                style={[styles.title, {
+                  color: ground.foreground,
                   fontFamily: theme.fontFamily,
                 }, slots.headerTitle]}
               >
                 {props.title}
               </Text>
-              {!compact && props.venue
-                ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.venue, {
-                      color: theme.colors.mutedText,
-                      fontFamily: theme.fontFamily,
-                    }]}
-                  >
-                    {props.venue}
-                  </Text>
-                )
-                : null}
             </View>
           )
           : <View style={styles.titleWrap} />}
@@ -386,27 +437,23 @@ export function SeatLayerPickerHeaderView(
           : showHold ? (
             <View
               accessible
-              accessibilityLabel={spoken}
-              style={[styles.hold, {
-                backgroundColor: seatLayerPickerColorAlpha(
-                  theme.colors.accent,
-                  .12,
-                ),
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={spokenRef.current ?? heldFor}
+              testID="seatlayer-header-hold-pill"
+              style={[styles.pill, {
+                backgroundColor: expiring
+                  ? theme.colors.accent
+                  : seatLayerPickerColorAlpha(theme.colors.accent, .12),
               }, slots.holdPillContainer]}
             >
-              <View
-                accessible={false}
-                style={[styles.timer, { borderColor: theme.colors.accent }]}
-              >
-                <View
-                  style={[styles.timerHand, {
-                    backgroundColor: theme.colors.accent,
-                  }]}
-                />
-              </View>
+              <HoldDot
+                color={expiring ? theme.colors.onAccent : theme.colors.accent}
+                pulsing={expiring && !reducedMotion}
+              />
               <Text
-                style={[styles.holdText, {
-                  color: theme.colors.text,
+                allowFontScaling={false}
+                style={[styles.pillText, {
+                  color: expiring ? theme.colors.onAccent : theme.colors.accent,
                   fontFamily: theme.fontFamily,
                 }, slots.holdPillText]}
               >
@@ -414,6 +461,41 @@ export function SeatLayerPickerHeaderView(
               </Text>
             </View>
           ) : null}
+        {props.salesClosed === true && props.salesClosedLabel
+          ? (
+            <View
+              accessible
+              testID="seatlayer-header-sales-closed-pill"
+              style={[styles.pill, {
+                backgroundColor: seatLayerPickerColorAlpha(ground.foreground, .08),
+              }]}
+              accessibilityLabel={props.salesClosedLabel}
+            >
+              <Text
+                accessible={false}
+                allowFontScaling={false}
+                style={[styles.pillText, {
+                  color: ground.foreground,
+                  fontFamily: theme.fontFamily,
+                  marginEnd: 4,
+                }]}
+              >
+                {"\u{1F512}"}
+              </Text>
+              <Text
+                accessible={false}
+                allowFontScaling={false}
+                numberOfLines={1}
+                style={[styles.pillText, {
+                  color: ground.foreground,
+                  fontFamily: theme.fontFamily,
+                }]}
+              >
+                {props.salesClosedLabel}
+              </Text>
+            </View>
+          )
+          : null}
         {onClose
           ? (
             <Pressable
@@ -425,6 +507,7 @@ export function SeatLayerPickerHeaderView(
               }}
               disabled={closing && closeFlight.current === sessionId}
               onPress={close}
+              testID="seatlayer-header-close"
               style={(
                 { pressed },
               ) => [styles.closeHit, pressed ? styles.closePressed : undefined]}
@@ -433,24 +516,53 @@ export function SeatLayerPickerHeaderView(
                 style={[
                   styles.closePaint,
                   {
-                    borderColor: theme.colors.divider,
-                    backgroundColor: theme.colors.surface,
-                    borderRadius: seatLayerPickerTokens.radius.button,
+                    borderColor: ground.border,
+                    backgroundColor: "transparent",
                   },
                   slots.headerAction,
                   {
-                    width: 40,
-                    height: 40,
+                    width: seatLayerPickerTokens.size.headerCloseSize,
+                    height: seatLayerPickerTokens.size.headerCloseSize,
+                    borderRadius: seatLayerPickerTokens.radius.pill,
                   },
                 ]}
               >
-                <ClosePaint color={theme.colors.text} />
+                <ClosePaint color={theme.colors.mutedText} />
               </View>
             </Pressable>
           )
           : null}
       </View>
     </View>
+  );
+}
+
+/** The expiring dot's slow infinite breath; skipped under reduced motion. */
+function HoldDot({ color, pulsing }: {
+  readonly color: string;
+  readonly pulsing: boolean;
+}): React.ReactElement {
+  const breath = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    breath.stopAnimation();
+    if (!pulsing) {
+      breath.setValue(1);
+      return undefined;
+    }
+    const duration = seatLayerPickerTokens.motion.durationOutsideBudget.inviteBreathe;
+    const [x1, y1, x2, y2] = resolveSeatLayerPickerMotion("enter", false).curve.cubicBezier;
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(breath, { duration: duration / 2, easing: Easing.bezier(x1, y1, x2, y2), toValue: .35, useNativeDriver: true }),
+      Animated.timing(breath, { duration: duration / 2, easing: Easing.bezier(x1, y1, x2, y2), toValue: 1, useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [breath, pulsing]);
+  return (
+    <Animated.View
+      accessible={false}
+      style={[styles.dot, { backgroundColor: color, opacity: breath }]}
+    />
   );
 }
 
@@ -472,6 +584,9 @@ export function SeatLayerPickerHeader(
   return (
     <SeatLayerPickerHeaderView
       {...props}
+      announceHold={(key, count) =>
+        scope.strings.translate(key, { count, values: { count } })}
+      brandName={scope.snapshot?.branding.brandName}
       closeLabel={scope.strings.translate("close")}
       heldFor={(clock) =>
         scope.strings.translate("heldFor", { values: { clock } })}
@@ -481,94 +596,88 @@ export function SeatLayerPickerHeader(
       removeInset={removeInset}
       reportError={scope.reportError}
       reportInset={reportInset}
+      salesClosed={scope.snapshot?.event.salesClosed === true}
+      salesClosedLabel={scope.strings.translate("salesClosedPill")}
       sessionId={scope.sessionId}
       theme={mapTheme}
       themeStyles={scope.styles}
-      title={scope.snapshot?.event.name ??
+      title={scope.snapshot?.event.name ?? props.options?.eventName?.trim() ??
         scope.strings.translate("chooseSeats")}
       venue={scope.snapshot?.event.venue}
     />
   );
 }
 
-const styles = StyleSheet.create({
+/**
+ * The cross the ring holds, measured corner to corner rather than by the em box
+ * a glyph would sit in: two strokes rotated 45 degrees span their own length
+ * times root two, so a 12 pt stroke draws a cross half again as wide as the
+ * reference's, which measures six points across.
+ */
+const closeGlyphSpan = 6;
+
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     minHeight: seatLayerPickerTokens.size.headerHeight,
     justifyContent: "flex-end",
   },
   row: {
-    minHeight: seatLayerPickerTokens.size.headerHeight,
+    height: seatLayerPickerTokens.size.headerHeight,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingLeft: 16,
-    paddingRight: 4,
-  },
-  compactRow: {
-    height: seatLayerPickerTokens.size.headerHeight,
-    gap: 10,
+    gap: 8,
     paddingLeft: 12,
+    // No trailing pad on a phone: the close control carries its own reach, so
+    // its ring ends ten points from the edge while the target it answers to
+    // runs out to the corner.
+    paddingRight: 0,
   },
-  mark: {
-    width: 28,
-    height: 28,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingBottom: 5,
-  },
-  markBack: {
-    width: 12,
-    height: 9,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 4,
-  },
-  markBase: { width: 17, height: 4, borderRadius: 2, marginTop: 2 },
+  mark: { alignItems: "center", justifyContent: "center" },
   titleWrap: { flex: 1, minWidth: 0 },
-  title: { fontSize: 16, fontWeight: "800" },
-  compactTitle: { fontSize: 14, fontWeight: "800" },
-  venue: { marginTop: 1, fontSize: 12 },
-  hold: {
-    height: 30,
+  title: {
+    fontSize: seatLayerPickerTokens.size.headerNameFontSize,
+    // Seven hundred, as the reference's compact header sets it
+    // (`picker_header.dart` › `_EventTitle`); eight hundred printed the name
+    // two points wide of the reference frame.
+    fontWeight: "700",
+  },
+  pill: {
+    height: seatLayerPickerTokens.size.headerCloseSize,
+    minHeight: seatLayerPickerTokens.size.headerCloseSize,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: seatLayerPickerTokens.radius.pill,
     justifyContent: "center",
     paddingHorizontal: 9,
   },
-  timer: {
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    marginEnd: 5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  timerHand: { width: 1.5, height: 5, borderRadius: 1 },
-  holdText: {
+  dot: { width: 6, height: 6, borderRadius: 3, marginEnd: 5 },
+  pillText: {
     fontSize: seatLayerPickerTokens.type.pill.size,
     fontWeight: "800",
     fontVariant: ["tabular-nums"],
   },
   closeHit: {
-    width: seatLayerPickerTokens.size.minimumHitTarget,
+    width: seatLayerPickerTokens.size.headerCloseSize + 20,
     height: seatLayerPickerTokens.size.minimumHitTarget,
     alignItems: "center",
     justifyContent: "center",
   },
   closePressed: { opacity: .72 },
   closePaint: {
-    width: 40,
-    height: 40,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     alignItems: "center",
     justifyContent: "center",
   },
   closeIcon: {
-    width: 18,
-    height: 18,
+    width: closeGlyphSpan,
+    height: closeGlyphSpan,
     alignItems: "center",
     justifyContent: "center",
   },
-  closeStroke: { position: "absolute", width: 18, height: 2, borderRadius: 1 },
-});
+  closeStroke: {
+    position: "absolute",
+    width: closeGlyphSpan * Math.SQRT2,
+    height: 1.5,
+    borderRadius: 1,
+  },
+}));

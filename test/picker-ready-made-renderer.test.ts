@@ -4,7 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-vi.mock('react-native', () => ({ View: 'View' }));
+vi.mock('react-native', () => ({
+  View: 'View',
+  // The picker root reads the platform's Bold Text setting (§4.10); a mock
+  // without it takes the whole composition down.
+  AccessibilityInfo: {
+    isBoldTextEnabled: () => Promise.resolve(false),
+    addEventListener: () => ({ remove: () => undefined }),
+  },
+}));
 
 let scope: any;
 const scopeProps: any[] = [];

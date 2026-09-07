@@ -76,6 +76,11 @@ describe('picker profile and action guards', () => {
       'availability-refresh-v1',
       'access-needs-v1',
       'hold-selection-v1',
+      'seat-screen-point-v1',
+      'category-availability-v1',
+      'seat-view-thumbnail-v1',
+      'accessibility-focus-v1',
+      'section-access-counts-v1',
     ]);
     const reduced = pickerBridgeProfile({
       config: { enable3D: false, enableSeatView: false },

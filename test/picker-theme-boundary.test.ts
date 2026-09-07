@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { resolveSeatLayerPickerLayout } from '../src/picker/layout';
+import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 import {
   deriveSeatLayerPickerOnAccent,
   resolveSeatLayerPickerTheme,
@@ -111,18 +112,33 @@ describe('picker theme runtime boundary', () => {
       theme: { colors: { accent: 'transparent' } },
       organizerBranding: { accent: '#102030' },
     }).colors.accent).toBe('#102030');
+    // A mode owns the ground and never the brand: an unusable host ground falls
+    // back to the resolved mode's preset, not to the organizer's canvas.
     expect(resolveSeatLayerPickerTheme({
       theme: { colors: { text: 'invalid' } },
       organizerBranding: { text: '#203040' },
-    }).colors.text).toBe('#203040');
+    }).colors.text).toBe(seatLayerPickerTokens.color.light.text);
     expect(resolveSeatLayerPickerTheme({
       theme: { colors: { text: 'named-colour' } },
       organizerBranding: { text: '#203040' },
-    }).colors.text).toBe('#203040');
+    }).colors.text).toBe(seatLayerPickerTokens.color.light.text);
     expect(resolveSeatLayerPickerTheme({
       theme: { colors: { surface: 'named-colour' } },
       organizerBranding: { surface: '#203040' },
-    }).colors.surface).toBe('#203040');
+    }).colors.surface).toBe(seatLayerPickerTokens.color.light.surface);
+    // The header is the picker's own ground; the rail below is the first
+    // surface, so the two are never the same colour by default.
+    const roles = resolveSeatLayerPickerTheme({}).roles;
+    expect(roles.header.background).toBe(seatLayerPickerTokens.color.light.background);
+    expect(roles.sheet.background).toBe(seatLayerPickerTokens.color.light.surface);
+
+    // The same organizer payload still carries the brand roles through.
+    expect(resolveSeatLayerPickerTheme({
+      organizerBranding: { accent: '#102030', background: '#0B0D12' },
+    }).colors.accent).toBe('#102030');
+    expect(resolveSeatLayerPickerTheme({
+      organizerBranding: { accent: '#102030', background: '#0B0D12' },
+    }).colors.background).toBe(seatLayerPickerTokens.color.light.background);
     expect(resolveSeatLayerPickerTheme({
       theme: { colors: { accent: 'rgba(10, 20, 30, 0.5)' } },
     }).colors.accent).toBe('rgba(10, 20, 30, 0.5)');
@@ -168,11 +184,11 @@ describe('picker layout runtime boundary', () => {
       },
     });
 
-    expect(resolveSeatLayerPickerLayout(inherited).headerHeight).toBe(56);
+    expect(resolveSeatLayerPickerLayout(inherited).headerHeight).toBe(38);
     expect(() => resolveSeatLayerPickerLayout(throwingProxy)).not.toThrow();
-    expect(resolveSeatLayerPickerLayout({ headerHeight: 64, denseVisibleLines: 3 })).toMatchObject({
+    expect(resolveSeatLayerPickerLayout({ headerHeight: 64, cartCardMinHeight: 60 })).toMatchObject({
       headerHeight: 64,
-      denseVisibleLines: 3,
+      cartCardMinHeight: 60,
     });
   });
 

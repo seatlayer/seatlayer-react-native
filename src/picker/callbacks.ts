@@ -27,6 +27,13 @@ export interface SeatLayerPickerCallbacks {
     handoff: SeatLayerPickerCheckoutHandoff | undefined,
   ) => void | Promise<void>;
   readonly onHoldExpired?: () => void | Promise<void>;
+  /**
+   * The handed-off hold settled to booked — the sale landed. It fires once,
+   * never on the hand-off itself: a buyer on the way to pay has not paid
+   * (§3.13). A host drawing its own confirmation screen listens here and sets
+   * `showBookedOverlay: false`.
+   */
+  readonly onBooked?: (handoff: SeatLayerPickerCheckoutHandoff) => void | Promise<void>;
   readonly onAccessExpired?: (event: BuyerAccessExpiredEvent) => void | Promise<void>;
   readonly onAccessUnavailable?: (event: BuyerAccessUnavailableEvent) => void | Promise<void>;
   readonly onSelectedObjectUnavailable?: (event: SelectedObjectUnavailableEvent) => void | Promise<void>;
@@ -37,5 +44,11 @@ export interface SeatLayerPickerCallbacks {
   readonly onSeatSelected?: (seat: SelectedSeat) => void | Promise<void>;
   readonly onSeatRemoved?: (label: string) => void | Promise<void>;
   readonly onSeatViewOpened?: (seat: SelectedSeat) => void | Promise<void>;
+  /**
+   * Opens the seat's confidence passport. Supplying it turns the 3D card's
+   * confidence teaser (§3.8.7) into a chip; without it the teaser stays the
+   * static row, because a chip beside a dead target would say nothing.
+   */
+  readonly onSeatConfidence?: (seat: SelectedSeat) => void | Promise<void>;
   readonly onContinue?: (handoff: SeatLayerPickerCheckoutHandoff) => void | Promise<void>;
 }

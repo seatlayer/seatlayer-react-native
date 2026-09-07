@@ -22,11 +22,16 @@ version-pinned shared venue renderer; your trusted server completes booking.
 [SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
 [SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
-![Seat map picker running in a React Native app: accessibility filters, section navigation, seat confirmation, panorama, 3D venue view, cart and checkout handoff](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
+![Seat map picker running in a React Native app: venue overview, zoom into a section, a seat card naming what the seat is, the seat added to the cart, and a cart card that takes the map back to its seat](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
 
-> **Production SDK:** Pin the documented `0.3.4` release and validate your
-> event, checkout handoff, lifecycle, and supported physical devices before
-> rollout.
+[Walk through the picker screen by screen](docs/picker-walkthrough.md) —
+what the buyer sees from the venue overview to the checkout handoff, and which
+parts a host can turn off, restyle, or replace.
+
+> **Production SDK:** Pin the release you validated, and check your event,
+> checkout handoff, lifecycle, and supported physical devices before rollout.
+> Each release pins one immutable hosted runtime; this one loads
+> `seatlayer-js@0.84.1` from `https://cdn.seatlayer.io`.
 
 ## Install
 
@@ -258,8 +263,49 @@ The customization layers have distinct ownership:
 - `styles` provides 62 typed, aesthetic-only slots. Colour, type, borders,
   radii, shadows, and opacity may change; SDK-owned placement, safe areas,
   viewport insets, and 44-point minimum targets remain intact.
-- `builders` replaces any of 25 complete parts and receives the live scope plus
+- `builders` replaces any of 28 complete parts and receives the live scope plus
   `defaultChild`. Use a builder when structure or placement must change.
+
+An app that wants the picker set in its own typeface passes
+`themeOptions.theme.fontFamily` and loads the face itself — with `expo-font`,
+`react-native.config.js` asset linking, or whatever the app already uses — and
+every line the picker draws then takes that family. Without it the picker draws
+the platform's own face, which is the right default: React Native has no
+inherited text style, so a picker that guessed at the surrounding typography
+would be guessing. Pass the family name the platform registers the face under,
+and load every weight the app expects to see; a weight that is not loaded is
+resolved to the nearest one that is.
+
+Behaviour options worth knowing:
+
+- `eventName` names the event in the header before the runtime reports one, so
+  the title does not swap a second after the picker opens. It is never sent to
+  the runtime; the runtime's own name wins the moment it arrives.
+- `showBookedOverlay` (default `true`) draws the picker's own "You're all set"
+  screen when the handed-off hold settles to booked. A host with its own
+  confirmation screen sets it `false` and listens to `onBooked` instead, so the
+  buyer is told once.
+- `showHoldPill` (default `true`) draws the header's hold countdown for as long
+  as a live hold exists, whoever owns it. A host drawing its own clock sets it
+  `false`. It composes with `chrome.holdPill`: the pill appears only where both
+  are on.
+- `chrome.dock` and `chrome.showExtendHoldPrompt` resolve off on a phone and on
+  in the wide layout unless set explicitly. `showExtendHoldPrompt` is reserved:
+  no prompt is drawn on any layout yet, and the option is resolved and carried
+  so a host that sets it does not have to change when the wide prompt lands.
+
+Callbacks are optional observations, never a place the SDK waits:
+`onReady` · `onChartLoad` · `onSelectionChanged` · `onSelectionValidityChanged` ·
+`onHoldChanged` · `onHoldExpired` · `onBooked` · `onAccessExpired` ·
+`onAccessUnavailable` · `onSelectedObjectUnavailable` · `onClosed` · `onError` ·
+`onThemeResolved` · `onSectionFocused` · `onSeatSelected` · `onSeatRemoved` ·
+`onSeatViewOpened` · `onSeatConfidence` · `onContinue`
+
+`onBooked` fires once, when the handed-off hold settles to booked — never on the
+handoff itself, because a buyer on the way to pay has not paid.
+`onSeatConfidence` opens the seat's confidence passport; supplying it turns the
+3D card's confidence teaser into a chip, and without it the teaser stays a
+static information row, because a chip beside a dead target would say nothing.
 
 `options.pricing.formatter` formats every native amount: confirmation, ticket
 rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
@@ -324,6 +370,96 @@ and panorama chrome. Custom ticket trays can reuse the exported
 `ticketIsGroupable` utilities instead of reimplementing the pick-order and
 folding rules.
 
+## Picker controller
+
+`SeatLayerPickerController` carries the picker's own commands alongside the
+venue-map ones. Reach it as `controller` from `useSeatLayerPicker()` inside a
+`SeatLayerPickerScope`. The chrome-facing members:
+
+| Member | What it does |
+| --- | --- |
+| `setSelectionFocus(seatId \| null)` | Names the seat a host-drawn card is asking about, so the runtime paints it as the candidate. `null` clears the paint. |
+| `setBlockedRegions(regions \| null)` | Reports where native chrome lies over the map, in the map's own pixels, so the runtime swallows a touch that starts inside one. |
+| `frameSeat(seatId, options)` | Pans — never zooms — so a seat rests in the band the reported insets leave clear. Answers `dy: 0` for a seat already in place, an unknown seat, insets that leave no band, or a stale gesture count. |
+| `focusAccessibilityFilter()` | Flies to the matches of the filter already on, leaving the filter alone. |
+| `focusNextAccessibleSection(types?)` | Steps to the next section holding a free matching space, in chart order, wrapping. `null` — nothing matches — is an answer; `undefined` means the runtime does not offer the tour. |
+| `subscribeSeatRetap(listener)` | A seat already in the selection tapped again. Subscribing never replays an earlier event. |
+| `subscribeBooked(listener)` | Fires once per sale, with the handoff that became it. |
+| `getCheckoutHandoff()` / `getBookedHandoff()` | The handoff this picker made, and the one whose hold settled to booked. |
+| `releaseHandoffAndChangeSeats()` | Gives a handed-off hold back so the seats go on sale again and the buyer picks afresh. Answers `false` where there is no handoff or the runtime does not offer the reject. |
+| `releasePickerOwnedHold()` | Releases a picker-owned hold after earlier queued mutations have settled. |
+| `refreshAvailability()` / `holdSelection({ ttlMs })` | Re-reads live availability; holds the current selection. |
+
+Each command is gated on what the loaded runtime advertises, and the matching
+getter says so before you call: `supportsSelectionFocus`,
+`supportsBlockedRegions`, `supportsFrameSeat`, `supportsAccessibilityFocus`,
+`supportsAccessibleSectionTour`, `supportsHandoffReject`,
+`supportsAvailabilityRefresh`, `supportsHoldSelection`. A command the runtime
+does not offer resolves with nothing rather than rejecting: a capability the
+runtime does not advertise is a feature this host does not offer, never a
+failure.
+
+`SeatLayerPickerBlockedRegionSurface`, `SeatLayerPickerBlockedRegion` and
+`useSeatLayerPickerBlockedRegionCover` measure and report those rectangles for
+you when you compose your own chrome, including the 600 ms a rectangle keeps
+guarding after its control has gone.
+
+## Optional blur behind the seat card
+
+While the seat card is up, the map goes behind a veil with a feathered hole
+around the tapped seat, so the buyer can still see the seat they are being
+asked about. React Native has no blur of its own, and a native blur module
+cannot be a hard dependency — a bundler resolves `require` statically, so an
+app without the module could not build.
+
+An app that already has one installs it once, at start-up:
+
+```tsx
+import { BlurView } from '@react-native-community/blur';
+import { setSeatLayerPickerSpotlightBlur } from '@seatlayer/react-native';
+
+setSeatLayerPickerSpotlightBlur(BlurView);
+```
+
+Without it the glass is the plain veil, which is a correct state and not a
+degraded one. Pass `undefined` to remove it again. The picker drops the blur
+and deepens the veil by itself when the buyer has asked for reduced
+transparency.
+
+## Optional vector seat glyphs
+
+A seat can say what it is — an accessible physical seat, an empty wheelchair
+space, a restricted view, a premium seat — and each of those wears a drawing
+shared with every other SeatLayer SDK, so the same seat wears the same mark
+everywhere. With no drawing dependency the picker hands each glyph to `Image`
+as an SVG data URI.
+
+**On iOS that fallback draws nothing.** `Image` decodes a data URI through the
+platform's own image decoders, and none of them reads SVG, so the seat-note
+bands on the seat card and the rows of the accessibility sheet keep their words
+and lose the mark beside them. Nothing else changes — no gap, no broken box,
+no error — but if you want the marks on iOS, install the renderer below.
+
+`react-native-svg` is an **optional peer**. An app that already has it installs
+the built-in vector renderer once, at start-up, and every glyph is drawn
+natively instead — scaling without resampling and taking each row's ink
+directly:
+
+```tsx
+import Svg, { Circle, Path } from 'react-native-svg';
+import { installSeatLayerPickerSvgIcons } from '@seatlayer/react-native';
+
+installSeatLayerPickerSvgIcons({ Svg, Path, Circle });
+```
+
+You pass your own imports rather than the SDK requiring the module, for the
+same reason as the blur above: a bundler resolves `require` statically, so a
+guarded import here would put `react-native-svg` in every consumer's build
+graph whether they wanted it or not. `Circle` is optional — without it the
+circles in a glyph are drawn as paths. Pass `undefined` to go back to the data
+URI, and `setSeatLayerPickerSeatIconRenderer` to draw them some other way
+entirely.
+
 ## Run the example app
 
 ```bash
@@ -359,8 +495,12 @@ before connecting payment and booking.
 `SeatLayerView` is a React component that renders the SeatLayer venue map.
 It loads the immutable, version-pinned SeatLayer runtime and its lazy assets
 from the canonical CDN origin, which gives iOS and Android one canonical HTTPS
-origin for origin-bound buyer sessions. Register `https://cdn.seatlayer.io` on
-the publishable key used for public startup. For private inventory, omit
+origin for origin-bound buyer sessions. This release pins
+`seatlayer-js@0.84.1`, so views load
+`https://cdn.seatlayer.io/seatlayer-js@0.84.1/mobile.html`; the pinned version
+is also exported as `seatLayerHostedWebVersion`. Register
+`https://cdn.seatlayer.io` on the publishable key used for public startup.
+For private inventory, omit
 `publicKey` and use `buyerAccessTokenProvider`; buyer access tokens stay in
 memory and are never placed in a page URL, a React key, or an event payload.
 
@@ -374,6 +514,13 @@ TypeScript controller whose contract matches the Web, iOS, and Flutter SDKs:
 - forward-compatible unknown events and unknown payload fields.
 
 See [the bridge contract](docs/bridge.md) for the wire-level details.
+
+A host may warm the runtime page before the picker is opened, with
+`SeatLayerRuntimePrewarm`. On React Native this warms the *transport* — DNS,
+TLS, the CDN edge and the HTTP cache entry for the runtime document and, where
+named, its bundles — rather than a live page, because a page belongs to the
+component that rendered it. The warm entry lives on a short TTL and is dropped
+under memory pressure, and a picker that finds nothing warm simply starts cold.
 
 ## Commands
 
@@ -424,6 +571,79 @@ event does not crash an older app.
 - Change `reloadKey` to deliberately rebuild the renderer and bridge.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
+
+## Accessibility
+
+The ready-made picker declares its own reading order, type-size ceilings, live
+regions and focus handling. Two of those need something from the host app.
+
+### iOS reading order needs a native feature flag
+
+The picker walks a screen reader through the seat map in buyer order — event,
+prices, map, then the tray — rather than in the order the views happen to be
+painted. It declares that with React Native's own
+`experimental_accessibilityOrder`, naming the `nativeID` of each surface at the
+composition root.
+
+**On iOS that prop is only honoured when the app turns the native feature flag
+on.** Without it, nothing breaks and nothing is announced twice — VoiceOver
+simply falls back to the paint order, in which the cart tray is reached before
+the map. On Android the order is honoured without a flag.
+
+Turn it on once, early in the app's native start-up, before the first React
+Native view is created — in `AppDelegate`:
+
+```objc
+// AppDelegate.mm, above [super application:didFinishLaunchingWithOptions:]
+#import <React/RCTConstants.h>
+
+RCTSetAccessibilityElementOrderEnabled(YES);
+```
+
+or, in a Swift `AppDelegate`:
+
+```swift
+RCTSetAccessibilityElementOrderEnabled(true)
+```
+
+Expo apps reach the same file through a config plugin or a prebuild; a managed
+project that cannot run native code does not get the declared order, and the
+picker stays usable on the fallback.
+
+Check your React Native version's release notes for the flag's exact name — it
+has been an experimental API, and the SDK deliberately spreads the prop rather
+than typing it, so a runtime that does not know it simply ignores it.
+
+### Bold text and text size
+
+`Bold Text` and the platform's text-size setting are answered by the picker
+itself, with no host wiring: every weight the picker states moves up one step
+(200, clamped at 900) while `Bold Text` is on, and each surface caps how far
+its type may grow so a sheet cannot push its own buttons off screen. The
+card's answer scales down before it truncates, and the boxes grow with the
+type they hold.
+
+### Everything else is already wired
+
+No host code is needed for the rest, and all of it follows the platform's own
+settings:
+
+- the map is one named region with a hint naming the controls around it;
+- the seat card is a dialog, with custom actions, that hides the page beneath
+  it, and focus returns to the map when the card — or a toast's action — is
+  done with it;
+- a change that is news is a live region and nothing else is: where the buyer
+  has arrived and how much room is left there, and the hold's countdown;
+- reduced motion has its own routing for both settle springs, and reduced
+  transparency turns the seat card's spotlight into a deeper flat veil;
+- haptic cues run behind one switch, `options.haptics`, and a platform that
+  refuses one is not an error the buyer sees;
+- the accessibility sheet applies each switch as it is flipped, with no Apply
+  step, and closes an unanswered seat card as it opens so one decision surface
+  holds the screen at a time. Where the runtime advertises
+  `accessibility-focus-v1`, a provision's free count is a button that turns it
+  on, applies the filter and frames the first section holding a matching space,
+  and a stepper beside the accessibility control walks the rest.
 
 ## Frequently asked questions
 

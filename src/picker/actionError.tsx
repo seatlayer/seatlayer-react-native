@@ -15,6 +15,8 @@ import {
   type SeatLayerPickerStyles,
 } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
+import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerPickerActionErrorProps {
   /** An exact command error may override the current scoped command error. */
@@ -99,17 +101,17 @@ export function SeatLayerPickerActionError(
   );
 }
 
-const styles = StyleSheet.create({
+const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: seatLayerPickerLineWidth,
     paddingHorizontal: 10,
   },
   text: { flex: 1, fontSize: 13, lineHeight: 18 },
   hit: { minWidth: 44, minHeight: 44, justifyContent: "center" },
   paint: { height: 40, paddingHorizontal: 8, justifyContent: "center" },
   actionText: { fontSize: 13, fontWeight: "800" },
-});
+}));

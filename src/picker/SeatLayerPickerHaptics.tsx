@@ -7,6 +7,7 @@ import {
   signalSeatLayerPickerHoldExpired,
   type SeatLayerPickerHapticPolicyState,
 } from './haptics';
+import { seatLayerPickerHapticChannel } from './hapticChannel';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 
 export interface SeatLayerPickerHapticsProps {
@@ -45,9 +46,13 @@ export function useSeatLayerPickerHaptics(adapter: SeatLayerPickerHapticAdapter 
       const result = signalSeatLayerPickerHoldExpired(policy.current);
       policy.current = result.state; play(result.cues);
     });
+    const cued = seatLayerPickerHapticChannel(scope.controller).subscribe((cue) => {
+      play([cue]);
+    });
     return () => {
       active.current = false; generation.current += 1;
       if (player.current === currentPlayer) player.current = undefined;
+      try { cued(); } catch { /* Channel cleanup cannot affect picker. */ }
       try { expired(); } catch { /* Native listener cleanup cannot affect picker. */ }
     };
   }, [adapter, scope.controller, scope.sessionId]);

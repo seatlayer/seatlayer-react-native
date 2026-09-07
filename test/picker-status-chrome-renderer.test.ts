@@ -51,7 +51,7 @@ function setup(): { readonly errors: unknown[]; readonly clear: () => number } {
     },
     strings: {
       translate: (key: string) => ({
-        loading: "Loading", errorMessage: "Buyer-safe error", retry: "Retry", testMode: "TEST MODE",
+        loading: "Loading", errorMessage: "Buyer-safe error", retry: "Retry", testMode: "Test mode", testModeLong: "Test mode · books nothing",
         poweredBy: "Powered by SeatLayer", close: "Close",
       } as Record<string, string>)[key] ?? key,
     },
@@ -103,9 +103,15 @@ describe("picker status chrome", () => {
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerLoadingView)); });
     scope = { ...scope, snapshot: snapshot() };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
-    expect(renderer.root.findByType("ActivityIndicator" as any).props.size).toBe("large");
+    // §4.7: the wait is the venue taking shape, not a spinner.
+    expect(renderer.root.findByProps({ accessibilityRole: "progressbar" })).toBeTruthy();
     scope = { ...scope, isReady: true };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerLoadingView)); });
+    // Ready is not enough: the map is revealed once the runtime has framed it.
+    expect(renderer.toJSON()).not.toBeNull();
+    await act(async () => {
+      renderer.update(React.createElement(SeatLayerPickerLoadingView, { framed: true }));
+    });
     expect(renderer.toJSON()).toBeNull();
   });
 
@@ -127,7 +133,7 @@ describe("picker status chrome", () => {
     expect(close.props.style.minHeight).toBe(44);
     const paint = close.findByType("View" as any);
     expect(paint.props.style).toEqual(expect.arrayContaining([
-      expect.objectContaining({ borderRadius: 8 }),
+      expect.objectContaining({ borderRadius: 9 }),
       expect.objectContaining({ borderRadius: 3 }),
     ]));
     expect(paint.props.style.at(-1).borderRadius).toBe(3);
@@ -191,7 +197,7 @@ describe("picker status chrome", () => {
     });
     const attribution = renderer.root.findByProps({ accessibilityLabel: "Powered by SeatLayer" });
     expect(attribution).toBeTruthy();
-    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.64 }));
+    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.72 }));
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTestModeIndicator, { compact: true })); });
     expect(renderer.toJSON()).toBeNull();
     scope.controller.mapController.supportsPickerCapability = (value: string) => value === "native-chrome-contract-v1";
@@ -200,9 +206,14 @@ describe("picker status chrome", () => {
     expect(renderer.toJSON()).toBeNull();
     scope = { ...scope, snapshot: snapshot("test", true) };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerTestModeIndicator)); });
-    expect(renderer.root.findByProps({ accessibilityLabel: "TEST MODE" }).props.style[2]).toEqual(
-      expect.objectContaining({ backgroundColor: "#ffaa00" }),
-    );
+    // 3.4: the chip is painted on the warning WASH over the surface, not on the
+    // raw warning colour, and the accessible name is the long form.
+    const chip = renderer.root.findByProps({ accessibilityLabel: "Test mode · books nothing" });
+    expect(chip.props.accessibilityHint).toBe("testModeExplained");
+    expect(chip.props.style[2]).toEqual(expect.objectContaining({
+      backgroundColor: expect.stringMatching(/^rgb\(/),
+      borderColor: expect.stringMatching(/^rgba\(255, 170, 0, 0\.5\)$/),
+    }));
     scope = { ...scope, resolvedTheme: { ...scope.resolvedTheme, themeMode: "dark" } };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerTestModeIndicator, { spokenLabel: "A very long localised test-mode label", compact: false })); });
     expect(renderer.root.findByProps({ accessibilityLabel: "A very long localised test-mode label" }).props.style[2]).toEqual(

@@ -19,6 +19,8 @@ import {
   type SeatLayerPickerStyles,
 } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineWidth } from './lineWidth';
 
 export interface SeatLayerFloorStripProps {
   readonly compact?: boolean;
@@ -27,6 +29,12 @@ export interface SeatLayerFloorStripProps {
   /** Optional: only a mounted visible strip claims a top viewport band. */
   readonly reserveInset?: boolean;
   readonly onFloorChanged?: (floorId: string) => void | Promise<void>;
+  /**
+   * The info glyph that closes the track (§3.7). It is drawn only where a host
+   * gives it something to do: a control with no action is a dead end, and the
+   * spec does not name a runtime command behind it.
+   */
+  readonly onFloorInfo?: () => void;
 }
 
 type Lease = Readonly<{
@@ -53,7 +61,8 @@ export function SeatLayerFloorStrip(props: SeatLayerFloorStripProps): React.Reac
   const scope = useSeatLayerPickerScope();
   const snapshot = scope.snapshot;
   const floors = snapshot?.map.floors ?? [];
-  if (!snapshot || floors.length < 2) return null;
+  // Drawn only on a multi-floor venue, and never in the immersive scene.
+  if (!snapshot || floors.length < 2 || snapshot.map.buyerView === 'venue3d') return null;
   return <FloorStripCurrent key={`${scope.sessionId}:${snapshot.sessionId}`} scope={scope} snapshotSession={snapshot.sessionId} floors={floors} props={props} />;
 }
 
@@ -120,7 +129,9 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
     });
   };
   const target = seatLayerPickerTokens.size.minimumHitTarget;
-  const paint = props.compact === false ? 36 : 30;
+  const paint = props.compact === false
+    ? seatLayerPickerTokens.size.floorChipHeight + 8
+    : seatLayerPickerTokens.size.floorChipHeight;
   const actionBusy = scope.isBusy || busy;
   const disabled = actionBusy || !supportsSetFloor;
   const rtl = I18nManager.isRTL;
@@ -132,12 +143,35 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
       { minHeight: target, height: target },
     ]}
   >
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[nativeStyles.scroll, { flexDirection: rtl ? 'row-reverse' : 'row', paddingHorizontal: props.compact === false ? 12 : 10 }]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[nativeStyles.scroll, { flexDirection: rtl ? 'row-reverse' : 'row', paddingHorizontal: seatLayerPickerTokens.size.floorRailPadding }]}>
       {offersAll ? <FloorChip label={scope.strings.translate('allFloors')} selected={selectedAll} disabled={!isSeatLayerPickerFloorSelectionEnabled(selectedAll, disabled)} busy={actionBusy} compact={props.compact !== false} paint={paint} target={target} scope={scope} styles={styles} onPress={() => start(seatLayerAllFloors)} /> : null}
       {floors.map((floor) => {
         const selected = !selectedAll && scope.snapshot?.map.activeFloorId === floor.id;
         return <FloorChip key={floor.id} label={floor.name} selected={selected} disabled={!isSeatLayerPickerFloorSelectionEnabled(selected, disabled)} busy={actionBusy} compact={props.compact !== false} paint={paint} target={target} scope={scope} styles={styles} onPress={() => start(floor.id)} />;
       })}
+      {props.onFloorInfo === undefined ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={scope.strings.translate('allFloors')}
+          onPress={props.onFloorInfo}
+          style={nativeStyles.target}
+        >
+          <View
+            accessible={false}
+            style={[nativeStyles.info, {
+              borderColor: scope.resolvedTheme.colors.divider,
+              borderRadius: scope.resolvedTheme.radii.pill,
+            }]}
+          >
+            <Text
+              allowFontScaling={false}
+              style={[nativeStyles.infoGlyph, { color: scope.resolvedTheme.colors.mutedText }]}
+            >
+              i
+            </Text>
+          </View>
+        </Pressable>
+      )}
     </ScrollView>
   </View>;
 }
@@ -166,7 +200,7 @@ function FloorChip({ label, selected, disabled, busy, compact, paint, target, sc
       styles.floorChip,
       { height: paint },
     ]}>
-      <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.label, { color: selected ? scope.resolvedTheme.colors.onAccent : scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily, fontSize: compact ? seatLayerPickerTokens.size.legendChipFontSize : 12 }, styles.floorChipText]}>{label}</Text>
+      <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.label, { color: selected ? scope.resolvedTheme.colors.onAccent : scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily, fontSize: seatLayerPickerTokens.size.floorChipFontSize }, styles.floorChipText]}>{label}</Text>
     </View>
   </Pressable>;
 }
@@ -208,10 +242,23 @@ function report(scope: SeatLayerPickerScopeValue, error: unknown): void {
   try { scope.reportError(error); } catch { /* Host reporting is observational. */ }
 }
 
-const nativeStyles = StyleSheet.create({
+const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { justifyContent: 'center', width: '100%' },
-  scroll: { alignItems: 'center', gap: 6 },
+  scroll: { alignItems: 'center', gap: seatLayerPickerTokens.size.floorRailGap },
   target: { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' },
-  paint: { borderWidth: 1, justifyContent: 'center', maxWidth: 160, paddingHorizontal: 10 },
-  label: { fontSize: seatLayerPickerTokens.size.legendChipFontSize, fontWeight: '800' },
-});
+  paint: {
+    borderWidth: 1,
+    justifyContent: 'center',
+    maxWidth: 160,
+    paddingHorizontal: seatLayerPickerTokens.size.floorChipPaddingX,
+  },
+  label: { fontSize: seatLayerPickerTokens.size.floorChipFontSize, fontWeight: '800' },
+  info: {
+    width: seatLayerPickerTokens.size.floorInfoSize,
+    height: seatLayerPickerTokens.size.floorInfoSize,
+    borderWidth: seatLayerPickerLineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoGlyph: { fontSize: 13, fontWeight: '800' },
+}));
