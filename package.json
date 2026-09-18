@@ -1,7 +1,7 @@
 {
   "name": "@seatlayer/react-native",
   "version": "0.4.0",
-  "description": "Official React Native SDK for interactive SeatLayer reserved-seating maps on iOS and Android.",
+  "description": "Official React Native seat map SDK for SeatLayer: interactive seating charts, live availability, seat selection and holds on iOS and Android.",
   "license": "MIT",
   "homepage": "https://docs.seatlayer.io/buyer-sdk/react-native/",
   "repository": {
@@ -73,6 +73,10 @@
     "vitest": "4.1.10"
   },
   "keywords": [
+    "seating-chart",
+    "seat-picker",
+    "seat-selection",
+    "event-ticketing",
     "react-native",
     "expo",
     "ios",
