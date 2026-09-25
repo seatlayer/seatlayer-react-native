@@ -33,7 +33,7 @@ export interface SeatLayerPickerChromeOptions {
   readonly cartSheet?: boolean;
   /**
    * Whether the rung-2 section dock bar renders. **Default false on EVERY
-   * width** (§3.6, owner call 2026-09-06): pinch-out past the melt point and
+   * width** (§3.6): pinch-out past the melt point and
    * the single stepped `−` control already walk a buyer back to the venue, so
    * the prev/next arrows only bought a two-tap version of a gesture the finger
    * does better, and the per-section "N seats left" is gone from the phone.

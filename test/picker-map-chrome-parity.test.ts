@@ -265,7 +265,7 @@ describe('3.5 map corner controls', () => {
   });
 
   it('heads the control column with the accessibility disc, on both compositions', async () => {
-    // Owner call 2026-09-06. It stood alone in the map's bottom-left corner —
+    // It used to stand alone in the map's bottom-left corner:
     // one control facing a stack of them, in the corner the floor rail owns.
     // Who can sit where is an earlier question than how close the camera is.
     for (const compact of [true, false]) {

@@ -237,7 +237,7 @@ export function SeatLayerPickerHeaderView(
     setFailureVersion((value) => value + 1);
   }, []);
   // The pill is the picker's one clock and is drawn for as long as the hold
-  // lives (owner call, 2026-09-05); a hold handed to the host is the host's to
+  // lives; a hold handed to the host is the host's to
   // display (§4.8).
   const pillOwned = seatLayerHoldPillDrawn(hold, holdLapsed);
   const expiry = pillOwned ? hold!.expiresAt! : undefined;

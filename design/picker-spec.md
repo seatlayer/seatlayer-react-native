@@ -235,8 +235,8 @@ gate them, and the reference file.
 
 ### 3.1 Header
 
-The header's hold pill is drawn for as long as a hold is live (owner call,
-2026-09-05): it is the picker's ONE clock. There is no hold clock anywhere on
+The header's hold pill is drawn for as long as a hold is live: it is the
+picker's ONE clock. There is no hold clock anywhere on
 the cart sheet, in either state, and no "display buffer" on it — the pill shows
 the full server hold. This deliberately departs from the web's
 `data-peek-clock` rule, under which the pill stepped aside while a peek bar
@@ -265,13 +265,13 @@ is the identity.
 `size.minimumHitTarget` centred on it. Copy `strings.close`.
 
 **Hold pill.** Drawn for as long as a live hold exists, whoever owns it
-(owner call 2026-09-05: the clock is always in the header; a host that draws
+(the clock is always in the header; a host that draws
 its own clock turns it off with the `showHoldPill` option). A true pill (`radius.pill`), a
 dot and `m:ss` in `type.pill`, tabular figures, with a `size.minimumHitTarget`
 reach. Resting look is the accent mixed lightly into the surface with accent-
 toned ink; while expiring it inverts to the full accent with `color.*.onAccent`
 and its dot pulses. Copy `strings.heldFor`. It is never hidden while the hold
-lives — the countdown is said once, here (owner call, 2026-09-05).
+lives: the countdown is said once, here.
 
 **Sales-closed pill.** Same pill geometry, deliberately neutral — the text
 colour on a lightly text-tinted surface, never the accent. Copy
@@ -482,7 +482,7 @@ inset `size.mapAnchorInset` from the map's edges, with `size.mapAnchorGap`
 between members. Regions do not receive presses; their children do. Nothing
 free-floats.
 
-**One column, bottom-right, on both compositions** (owner call, 2026-09-06).
+**One column, bottom-right, on both compositions.**
 The ♿ filter disc heads it; the zoom discs follow. It used to stand alone in
 the bottom-left region — one control facing a stack of them, in the corner the
 floor rail already owns — and read as something the layout had forgotten. Who
@@ -502,7 +502,7 @@ Every disc is `size.mapControlSize` across, the ♿ disc
 `size.zoomColumnGap`; the head disc's stepper rides beside it at
 `size.accessStepGap` (§3.4.1).
 
-**There is no `−` disc on the phone** (owner call, 2026-09-06). It only ever
+**There is no `−` disc on the phone.** It only ever
 had a rung of its own while the buyer was already among the seats: at a
 section's own frame the one step back is the whole venue, and that is the disc
 below it. Two discs for one move reads as a puzzle, and a disc that only
@@ -1625,8 +1625,7 @@ Full entry: `components.md` › HoverCard.
 **Name** `SeatLayerCartSheet` · **slots** `sheetStyle`, `continueButtonStyle`
 · **file** `lib/src/picker/picker_cart_sheet.dart`
 
-**THE COLLAPSED SHEET IS THE FOOTER BLOCK, AND NOTHING ELSE** (owner call
-2026-09-06): the total line, the call to action and the by-line, in one set of
+**THE COLLAPSED SHEET IS THE FOOTER BLOCK, AND NOTHING ELSE**: the total line, the call to action and the by-line, in one set of
 rules shared with the wide panel. **The cards wait behind the handle.** A list
 that unrolled itself every time a seat was added read as a panel the buyer had
 not opened, so the collapsed cart region has height zero (`_collapsedCart = 0`)
@@ -1764,8 +1763,8 @@ seat (§3.10.2) leaves the sheet where the buyer put it.
 **Name** `SeatLayerCartList` / `SeatLayerCartCard` ·
 **file** `lib/src/picker/picker_cart_list.dart`
 
-ONE CARD PER TICKET, AND THE SAME CARD ON EVERY WIDTH (owner call 2026-09-06:
-"cards should be the same design as desktop"). The phone used to draw a second
+ONE CARD PER TICKET, AND THE SAME CARD ON EVERY WIDTH: the phone draws the same
+card design as desktop. The phone used to draw a second
 cart — a bordered plate of `44` pt hairline-divided lines, with consecutive
 seats folded into runs behind a `+N more`. It saved real pixels and it cost the
 sheet its coherence: a bordered list on its own surface between a band of
@@ -2358,7 +2357,7 @@ stepper, a range caption `strings.chooseMinMaxGuests`, and the action pair
 `strings.fewerGuests` / `strings.moreGuests`. Accessible name for the whole
 sheet: `strings.chooseTableGuests`. Capability `table-quantity-v1`.
 
-#### 3.13.13 Seats already in checkout (N1, owner decision 2026-09-05: option B)
+#### 3.13.13 Seats already in checkout
 
 The hold belongs to the host from the moment it is handed off, and the runtime
 refuses to grow or shrink it from the picker: `hold_owned_by_host` (a cart
@@ -2728,7 +2727,7 @@ from the wrong one.
 
 ## 5. Capability index
 
-| Capability | What it unlocks |
+| Capability | What it enables |
 | --- | --- |
 | `native-chrome-contract-v1` | the runtime suppresses its own buyer chrome; native owns header, rail, dock, tray, prompts |
 | `viewport-insets-v1` | native reports the bands its chrome covers, so framing lands inside them |
@@ -2757,7 +2756,7 @@ snapshot reports; their presence in the `hello` **command table** is the whole
 contract, and a runtime answering `unsupported_command` for one of them anyway
 leaves nothing on screen for the buyer to read (runtime 0.80.2+):
 
-| Command | What it unlocks |
+| Command | What it enables |
 | --- | --- |
 | `picker.setSelectionFocus { seatId \| null }` | the seat a card is asking about is painted as the candidate — thick double ring, halo, neighbours paled (§3.8.2) |
 | `picker.setBlockedRegions { rects }` | the runtime's own tap guard under native chrome over the map (§2.4) |

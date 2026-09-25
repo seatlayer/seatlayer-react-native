@@ -169,7 +169,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
   /**
    * The map frames the seat at its resting place, and the SHEET STAYS OPEN.
    *
-   * Owner call, carried on both platforms: stepping the sheet down as well
+   * The same on both platforms: stepping the sheet down as well
    * answered a question the buyer had not asked. A tap on a cart card means
    * "where is this one?", and closing the list they were reading through to
    * answer it made checking a second seat cost a re-open every time. The card

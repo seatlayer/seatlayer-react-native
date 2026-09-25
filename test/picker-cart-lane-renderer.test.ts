@@ -111,7 +111,7 @@ const headerProps = {
 describe('§3.1 header renderer', () => {
   it('sits on the picker ground at its generated height with a letter mark and a 26 pt close ring', async () => {
     const renderer = await render(React.createElement(SeatLayerPickerHeaderView, {
-      ...headerProps, brandName: 'Paiteq Live', onClose: () => {},
+      ...headerProps, brandName: 'Riverside Hall', onClose: () => {},
     }));
     const root = renderer.root.findByProps({ accessibilityRole: 'header' });
     const flattened = (root.props.style as unknown[]).filter(Boolean) as Record<string, unknown>[];
@@ -125,7 +125,7 @@ describe('§3.1 header renderer', () => {
     // The venue-and-date meta line is NOT drawn on a phone.
     const output = JSON.stringify(renderer.toJSON());
     expect(output).toContain('Arena night');
-    expect(output).toContain('"P"');
+    expect(output).toContain('"R"');
     const ring = renderer.root.findByProps({ testID: 'seatlayer-header-close' })
       .findAll((node) => Array.isArray(node.props.style) && node.props.style.some((style: any) =>
         style && style.width === seatLayerPickerTokens.size.headerCloseSize &&
@@ -152,7 +152,7 @@ describe('§3.1 header renderer', () => {
     expect(JSON.stringify(picker.toJSON())).toContain('10:05');
     expect(pill.props.accessibilityLiveRegion).toBe('polite');
     // The reference draws the clock on a hold handed to the host too: the
-    // buyer's time is running either way (§3.1, owner call 2026-09-05).
+    // buyer's time is running either way (§3.1).
     const host = await render(props('host'));
     expect(host.root.findAllByProps({ testID: 'seatlayer-header-hold-pill' })).toHaveLength(1);
     expect(JSON.stringify(host.toJSON())).toContain('10:05');
@@ -305,7 +305,7 @@ describe('§3.10.2 cart cards', () => {
     await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-card-face' }).props.onPress(); });
     expect(framed[0]![0]).toBe('seat-1');
     expect(framed[0]![1]).toMatchObject({ fraction: seatLayerSheetRestoreFraction });
-    // Owner call, both platforms: the sheet stays. A tap on a cart card asks
+    // Both platforms: the sheet stays. A tap on a cart card asks
     // "where is this one?", and closing the list the buyer was reading through
     // to answer it made checking a second seat cost a re-open every time.
     expect(sheet).toEqual([]);

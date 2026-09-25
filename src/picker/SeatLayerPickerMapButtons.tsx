@@ -225,8 +225,8 @@ export function SeatLayerPickerZoomInButton(props: SeatLayerPickerMapControlButt
 }
 /**
  * The `\u2212` disc. It is drawn by the WIDE composition and by a host's own;
- * the phone column has no `\u2212` between `+` and the whole-venue disc (owner,
- * 2026-09-06) — pinch steps the camera out, and the disc below goes home.
+ * the phone column has no `\u2212` between `+` and the whole-venue disc:
+ * pinch steps the camera out, and the disc below goes home.
  *
  * Live only once the buyer is in among the seats and the ladder still has a
  * rung: at a section's own frame the only step back is the whole venue, and

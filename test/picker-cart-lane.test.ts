@@ -82,7 +82,7 @@ describe('§3.1 header', () => {
   });
 
   it('takes the brand mark from the organizer letter, falling back to the event name', () => {
-    expect(seatLayerHeaderInitial('Paiteq Live', 'Some event')).toBe('P');
+    expect(seatLayerHeaderInitial('Riverside Hall', 'Some event')).toBe('R');
     expect(seatLayerHeaderInitial(undefined, 'arena night')).toBe('A');
     expect(seatLayerHeaderInitial('   ', undefined)).toBe('');
     // A grapheme, not a UTF-16 unit: an emoji brand still yields one mark.
@@ -91,7 +91,7 @@ describe('§3.1 header', () => {
 
   it('draws the hold pill for as long as the hold lives, whoever owns it', () => {
     expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1, owner: 'picker' })).toBe(true);
-    // §3.1/§4.8, owner call 2026-09-05: the buyer's time runs on a host-owned
+    // §3.1/§4.8: the buyer's time runs on a host-owned
     // hold too, and the header is the one place the picker states it. What
     // ownership still governs is what the controls may DO with the hold.
     expect(seatLayerHoldPillDrawn({ active: true, expiresAt: 1, owner: 'host' })).toBe(true);
