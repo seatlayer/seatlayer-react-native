@@ -7,13 +7,13 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-types%20included-3178C6.svg)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
-SeatLayer is interactive seating chart software built for stadium scale. Platforms embed the white-label seat picker with their own checkout; organizers sell seated events on their own website with their own payment gateway.
-
-The official SeatLayer React Native and Expo SDK adds an interactive seating
-chart and seat picker to iOS and Android ticketing apps. It combines live
+The official SeatLayer React Native seat map SDK adds an interactive seating
+chart and seat picker to React Native and Expo ticketing apps on iOS and Android. It combines live
 availability, best-available selection, temporary holds, and typed TypeScript
 APIs with composable React Native buyer controls around SeatLayer's
 version-pinned shared venue renderer; your trusted server completes booking.
+SeatLayer is seating chart and reserved-seat ticketing software built for
+venues up to stadium scale.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
@@ -64,7 +64,7 @@ ships no custom native module of its own, so there is nothing else to link.
 
 Peer requirements are `react >= 18.2.0`, `react-native >= 0.72.0`, and
 `react-native-webview >= 13.0.0`. TypeScript declarations are published with the
-package — `dist/index.d.ts` for ESM and `dist/index.d.cts` for CommonJS — so no
+package (`dist/index.d.ts` for ESM and `dist/index.d.cts` for CommonJS), so no
 `@types/*` package is needed.
 
 ## Quick start: ready-made seat picker
@@ -277,8 +277,8 @@ The customization layers have distinct ownership:
   `defaultChild`. Use a builder when structure or placement must change.
 
 An app that wants the picker set in its own typeface passes
-`themeOptions.theme.fontFamily` and loads the face itself — with `expo-font`,
-`react-native.config.js` asset linking, or whatever the app already uses — and
+`themeOptions.theme.fontFamily` and loads the face itself (with `expo-font`,
+`react-native.config.js` asset linking, or whatever the app already uses), and
 every line the picker draws then takes that family. Without it the picker draws
 the platform's own face, which is the right default: React Native has no
 inherited text style, so a picker that guessed at the surrounding typography
@@ -311,7 +311,7 @@ Callbacks are optional observations, never a place the SDK waits:
 `onThemeResolved` · `onSectionFocused` · `onSeatSelected` · `onSeatRemoved` ·
 `onSeatViewOpened` · `onSeatConfidence` · `onContinue`
 
-`onBooked` fires once, when the handed-off hold settles to booked — never on the
+`onBooked` fires once, when the handed-off hold settles to booked, never on the
 handoff itself, because a buyer on the way to pay has not paid.
 `onSeatConfidence` opens the seat's confidence passport; supplying it turns the
 3D card's confidence teaser into a chip, and without it the teaser stays a
@@ -390,9 +390,9 @@ venue-map ones. Reach it as `controller` from `useSeatLayerPicker()` inside a
 | --- | --- |
 | `setSelectionFocus(seatId \| null)` | Names the seat a host-drawn card is asking about, so the runtime paints it as the candidate. `null` clears the paint. |
 | `setBlockedRegions(regions \| null)` | Reports where native chrome lies over the map, in the map's own pixels, so the runtime swallows a touch that starts inside one. |
-| `frameSeat(seatId, options)` | Pans — never zooms — so a seat rests in the band the reported insets leave clear. Answers `dy: 0` for a seat already in place, an unknown seat, insets that leave no band, or a stale gesture count. |
+| `frameSeat(seatId, options)` | Pans (never zooms) so a seat rests in the band the reported insets leave clear. Answers `dy: 0` for a seat already in place, an unknown seat, insets that leave no band, or a stale gesture count. |
 | `focusAccessibilityFilter()` | Flies to the matches of the filter already on, leaving the filter alone. |
-| `focusNextAccessibleSection(types?)` | Steps to the next section holding a free matching space, in chart order, wrapping. `null` — nothing matches — is an answer; `undefined` means the runtime does not offer the tour. |
+| `focusNextAccessibleSection(types?)` | Steps to the next section holding a free matching space, in chart order, wrapping. `null` (nothing matches) is an answer; `undefined` means the runtime does not offer the tour. |
 | `subscribeSeatRetap(listener)` | A seat already in the selection tapped again. Subscribing never replays an earlier event. |
 | `subscribeBooked(listener)` | Fires once per sale, with the handoff that became it. |
 | `getCheckoutHandoff()` / `getBookedHandoff()` | The handoff this picker made, and the one whose hold settled to booked. |
@@ -419,7 +419,7 @@ guarding after its control has gone.
 While the seat card is up, the map goes behind a veil with a feathered hole
 around the tapped seat, so the buyer can still see the seat they are being
 asked about. React Native has no blur of its own, and a native blur module
-cannot be a hard dependency — a bundler resolves `require` statically, so an
+cannot be a hard dependency: a bundler resolves `require` statically, so an
 app without the module could not build.
 
 An app that already has one installs it once, at start-up:
@@ -438,8 +438,8 @@ transparency.
 
 ## Optional vector seat glyphs
 
-A seat can say what it is — an accessible physical seat, an empty wheelchair
-space, a restricted view, a premium seat — and each of those wears a drawing
+A seat can say what it is (an accessible physical seat, an empty wheelchair
+space, a restricted view, a premium seat), and each of those wears a drawing
 shared with every other SeatLayer SDK, so the same seat wears the same mark
 everywhere. With no drawing dependency the picker hands each glyph to `Image`
 as an SVG data URI.
@@ -447,12 +447,12 @@ as an SVG data URI.
 **On iOS that fallback draws nothing.** `Image` decodes a data URI through the
 platform's own image decoders, and none of them reads SVG, so the seat-note
 bands on the seat card and the rows of the accessibility sheet keep their words
-and lose the mark beside them. Nothing else changes — no gap, no broken box,
-no error — but if you want the marks on iOS, install the renderer below.
+and lose the mark beside them. Nothing else changes (no gap, no broken box,
+no error), but if you want the marks on iOS, install the renderer below.
 
 `react-native-svg` is an **optional peer**. An app that already has it installs
 the built-in vector renderer once, at start-up, and every glyph is drawn
-natively instead — scaling without resampling and taking each row's ink
+natively instead, scaling without resampling and taking each row's ink
 directly:
 
 ```tsx
@@ -465,7 +465,7 @@ installSeatLayerPickerSvgIcons({ Svg, Path, Circle });
 You pass your own imports rather than the SDK requiring the module, for the
 same reason as the blur above: a bundler resolves `require` statically, so a
 guarded import here would put `react-native-svg` in every consumer's build
-graph whether they wanted it or not. `Circle` is optional — without it the
+graph whether they wanted it or not. `Circle` is optional; without it the
 circles in a glyph are drawn as paths. Pass `undefined` to go back to the data
 URI, and `setSeatLayerPickerSeatIconRenderer` to draw them some other way
 entirely.
@@ -526,9 +526,9 @@ TypeScript controller whose contract matches the Web, iOS, and Flutter SDKs:
 See [the bridge contract](docs/bridge.md) for the wire-level details.
 
 A host may warm the runtime page before the picker is opened, with
-`SeatLayerRuntimePrewarm`. On React Native this warms the *transport* — DNS,
+`SeatLayerRuntimePrewarm`. On React Native this warms the *transport* (DNS,
 TLS, the CDN edge and the HTTP cache entry for the runtime document and, where
-named, its bundles — rather than a live page, because a page belongs to the
+named, its bundles) rather than a live page, because a page belongs to the
 component that rendered it. The warm entry lives on a short TTL and is dropped
 under memory pressure, and a picker that finds nothing warm simply starts cold.
 
@@ -589,19 +589,19 @@ regions and focus handling. Two of those need something from the host app.
 
 ### iOS reading order needs a native feature flag
 
-The picker walks a screen reader through the seat map in buyer order — event,
-prices, map, then the tray — rather than in the order the views happen to be
+The picker walks a screen reader through the seat map in buyer order (event,
+prices, map, then the tray) rather than in the order the views happen to be
 painted. It declares that with React Native's own
 `experimental_accessibilityOrder`, naming the `nativeID` of each surface at the
 composition root.
 
 **On iOS that prop is only honoured when the app turns the native feature flag
-on.** Without it, nothing breaks and nothing is announced twice — VoiceOver
+on.** Without it, nothing breaks and nothing is announced twice: VoiceOver
 simply falls back to the paint order, in which the cart tray is reached before
 the map. On Android the order is honoured without a flag.
 
 Turn it on once, early in the app's native start-up, before the first React
-Native view is created — in `AppDelegate`:
+Native view is created, in `AppDelegate`:
 
 ```objc
 // AppDelegate.mm, above [super application:didFinishLaunchingWithOptions:]
@@ -620,7 +620,7 @@ Expo apps reach the same file through a config plugin or a prebuild; a managed
 project that cannot run native code does not get the declared order, and the
 picker stays usable on the fallback.
 
-Check your React Native version's release notes for the flag's exact name — it
+Check your React Native version's release notes for the flag's exact name: it
 has been an experimental API, and the SDK deliberately spreads the prop rather
 than typing it, so a runtime that does not know it simply ignores it.
 
@@ -640,7 +640,7 @@ settings:
 
 - the map is one named region with a hint naming the controls around it;
 - the seat card is a dialog, with custom actions, that hides the page beneath
-  it, and focus returns to the map when the card — or a toast's action — is
+  it, and focus returns to the map when the card (or a toast's action) is
   done with it;
 - a change that is news is a live region and nothing else is: where the buyer
   has arrived and how much room is left there, and the hold's countdown;
@@ -671,7 +671,7 @@ covers lifecycle, commands, and events in depth.
 
 `SeatLayerView` is a React Native component with a typed TypeScript controller
 and a SeatLayer venue-map renderer. The package contains no custom native
-module — no podspec, no Java, Kotlin, Swift, or Objective-C source — so
+module (no podspec, no Java, Kotlin, Swift, or Objective-C source), so
 application code works through TypeScript commands, payloads, errors, and
 events.
 
@@ -687,8 +687,8 @@ app that renders the SDK.
 
 When a buyer selects seats, the SDK creates a temporary hold that reserves the
 inventory against concurrent buyers for a limited window. The hold expires
-automatically if checkout does not complete — the `holdExpired` event tells the
-app to return the buyer to the map — and `extendHold` and `resumeHold` cover
+automatically if checkout does not complete (the `holdExpired` event tells the
+app to return the buyer to the map), and `extendHold` and `resumeHold` cover
 longer checkouts and app restarts. This prevents double-selling without locking
 seats forever.
 
@@ -696,7 +696,7 @@ seats forever.
 
 Yes. SeatLayer never processes payment inside the seat map. The app hands the
 `holdId` to your backend, and your backend charges through any payment provider
-you already use — Stripe, Adyen, Razorpay, or your own — before booking the hold
+you already use (Stripe, Adyen, Razorpay, or your own) before booking the hold
 through the
 [server-side checkout flow](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/).
 

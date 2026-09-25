@@ -168,7 +168,7 @@ describe('adaptive picker composition', () => {
   });
 
   it('mounts no section dock on a WIDE layout either, unless the host asks (§3.6)', async () => {
-    // The bar is opt-in on every width now (owner call 2026-09-06): it used to
+    // The bar is opt-in on every width now: it used to
     // be auto-resolved wide-on, so a wide picker got a bar nobody asked for.
     state.width = 920;
     state.scope = scope({

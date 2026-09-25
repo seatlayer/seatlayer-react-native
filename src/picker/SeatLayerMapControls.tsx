@@ -144,7 +144,7 @@ export function seatLayerPickerMapCanStepBack(map: MapCameraReading): boolean {
  * §3.5 `\u2212`, which exists on the WIDE composition and in a host's own
  * composition only. Live once the buyer is in among the seats and the ladder
  * still has a rung: at a section's own frame the only step back is the whole
- * venue, and that is a different control (owner, 2026-09-06). Two discs for
+ * venue, and that is a different control. Two discs for
  * one move read as a puzzle.
  */
 export function seatLayerPickerMapCanStepOut(map: MapCameraReading): boolean {
@@ -253,7 +253,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
     props.showZoomControls === true &&
     supports('picker.zoomIn', ['zoom']) && supports('picker.zoomOut', ['zoom']);
   // §3.5 phone column. `+` steps in and the framed dot puts the whole venue on
-  // screen from any depth; there is no `-` between them (owner, 2026-09-06): a
+  // screen from any depth; there is no `-` between them: a
   // `-` that only sometimes had a step to take read as a control that
   // sometimes worked.
   const zoomInSlotAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
@@ -358,7 +358,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
 /**
  * §3.5 — the map's floating controls, in their anchor regions.
  *
- * ONE COLUMN, BOTTOM-RIGHT, ON BOTH COMPOSITIONS (owner, 2026-09-06). The
+ * ONE COLUMN, BOTTOM-RIGHT, ON BOTH COMPOSITIONS. The
  * accessibility disc HEADS it and the zoom discs follow: who can sit where is
  * an earlier question than how close the camera is, and the disc used to stand
  * alone in the corner the floor rail already owns, which read as something the
