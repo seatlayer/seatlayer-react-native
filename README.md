@@ -8,12 +8,12 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
 The official SeatLayer React Native seat map SDK adds an interactive seating
-chart and seat picker to React Native and Expo ticketing apps on iOS and Android. It combines live
-availability, best-available selection, temporary holds, and typed TypeScript
-APIs with composable React Native buyer controls around SeatLayer's
-version-pinned shared venue renderer; your trusted server completes booking.
-SeatLayer is seating chart and reserved-seat ticketing software built for
-venues up to stadium scale.
+chart and seat picker to React Native and Expo ticketing apps on iOS and
+Android. It combines live availability, best-available selection, temporary
+holds and typed TypeScript APIs with React Native buyer controls around the
+SeatLayer map, the same map buyers see on the web; your trusted server completes
+booking. SeatLayer is seating chart and reserved-seat ticketing software built
+for venues up to stadium scale.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
@@ -31,10 +31,9 @@ venues up to stadium scale.
 what the buyer sees from the venue overview to the checkout handoff, and which
 parts a host can turn off, restyle, or replace.
 
-> **Production SDK:** Pin the release you validated, and check your event,
-> checkout handoff, lifecycle, and supported physical devices before rollout.
-> Each release pins one immutable hosted runtime; this one loads
-> `seatlayer-js@0.84.1` from `https://cdn.seatlayer.io`.
+> **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
+> Pin the version you tested, and test your event, checkout hand-off and target
+> devices before release.
 
 Two-step shape: the buyer picks and holds seats in the client with your public key, then your server confirms the booking with your secret key while your platform keeps checkout and its own payment provider.
 
@@ -501,30 +500,19 @@ Continue with
 [seat holds and secure server-side checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/)
 before connecting payment and booking.
 
-## React Native renderer architecture
+## Renderer version and origin
 
-`SeatLayerView` is a React component that renders the SeatLayer venue map.
-It loads the immutable, version-pinned SeatLayer runtime and its lazy assets
-from the canonical CDN origin, which gives iOS and Android one canonical HTTPS
-origin for origin-bound buyer sessions. This release pins
-`seatlayer-js@0.84.1`, so views load
-`https://cdn.seatlayer.io/seatlayer-js@0.84.1/mobile.html`; the pinned version
-is also exported as `seatLayerHostedWebVersion`. Register
-`https://cdn.seatlayer.io` on the publishable key used for public startup.
-For private inventory, omit
-`publicKey` and use `buyerAccessTokenProvider`; buyer access tokens stay in
-memory and are never placed in a page URL, a React key, or an event payload.
+`SeatLayerView` shows the SeatLayer venue map, the same map as on the web,
+inside your app. Each SDK release uses one matching map version, exported as
+`seatLayerHostedWebVersion`. Register `https://cdn.seatlayer.io` on the
+publishable key used for public startup. For private inventory, omit `publicKey`
+and use `buyerAccessTokenProvider`; buyer access tokens stay in memory and are
+never placed in a page URL, a React key or an event payload.
 
-Application code never touches the renderer. It works through a typed
-TypeScript controller whose contract matches the Web, iOS, and Flutter SDKs:
-
-- range-negotiated protocol compatibility before the chart renders;
-- one response per command, matched by correlation id;
-- a 15-second command deadline, with late replies dropped rather than delivered;
-- monotonic event ordering per event name, so a stale envelope is discarded; and
-- forward-compatible unknown events and unknown payload fields.
-
-See [the bridge contract](docs/bridge.md) for the wire-level details.
+Your code never touches the map directly. It works through a typed TypeScript
+controller whose contract matches the Web, iOS and Flutter SDKs: every command
+gets one answer, or a timeout error after 15 seconds, and events a newer map
+version adds are ignored safely by older apps.
 
 A host may warm the runtime page before the picker is opened, with
 `SeatLayerRuntimePrewarm`. On React Native this warms the *transport* (DNS,
