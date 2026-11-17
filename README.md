@@ -652,13 +652,13 @@ interactive seating chart with live availability; the
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
 covers lifecycle, commands, and events in depth.
 
-### Is this a native seat map component?
+### What is native in the SeatLayer React Native SDK?
 
-`SeatLayerView` is a React Native component with a typed TypeScript controller
-and a SeatLayer venue-map renderer. The package contains no custom native
-module (no podspec, no Java, Kotlin, Swift, or Objective-C source), so
-application code works through TypeScript commands, payloads, errors, and
-events.
+The picker controls around the seat map are React Native components, and your
+code works through typed TypeScript commands, payloads, errors and events. The
+seat map itself is the SeatLayer map from the web, shown inside your app; the
+package adds no custom native module (no podspec and no Swift, Kotlin, Java or
+Objective-C source).
 
 ### Does it work with Expo?
 
