@@ -555,15 +555,15 @@ Events: `ready` · `selectionChanged` · `holdChanged` · `holdRestored` ·
 `selectedObjectsUnavailable` · `error` · `hint` · `gaClick` · `seatHover` ·
 `deckTap` · `checkout` · `unknownEvent`
 
-Unknown future events remain observable through `unknownEvent`; adding a bundle
-event does not crash an older app.
+Unknown future events remain observable through `unknownEvent`, so a new map
+event never crashes an older app.
 
 ## Layout and lifecycle
 
 - Use a fixed-height or full-screen parent; do not put the map inside a vertical
   `ScrollView`. The canvas owns pan and pinch for map navigation.
 - Keep `configuration` stable with `useMemo`.
-- Change `reloadKey` to deliberately rebuild the renderer and bridge.
+- Change `reloadKey` to reload the map on purpose.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
 
