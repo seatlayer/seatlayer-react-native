@@ -300,10 +300,9 @@ Behaviour options worth knowing:
   as a live hold exists, whoever owns it. A host drawing its own clock sets it
   `false`. It composes with `chrome.holdPill`: the pill appears only where both
   are on.
-- `chrome.dock` and `chrome.showExtendHoldPrompt` resolve off on a phone and on
-  in the wide layout unless set explicitly. `showExtendHoldPrompt` is reserved:
-  no prompt is drawn on any layout yet, and the option is resolved and carried
-  so a host that sets it does not have to change when the wide prompt lands.
+- `chrome.showDockBar` shows the section dock bar. It is off by default on every
+  width; set it to `true` to show it. The older `chrome.dock` name still works,
+  and `showDockBar` wins when both are set.
 
 Callbacks are optional observations, never a place the SDK waits:
 `onReady` · `onChartLoad` · `onSelectionChanged` · `onSelectionValidityChanged` ·
