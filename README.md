@@ -313,9 +313,8 @@ Callbacks are optional observations, never a place the SDK waits:
 
 `onBooked` fires once, when the handed-off hold settles to booked, never on the
 handoff itself, because a buyer on the way to pay has not paid.
-`onSeatConfidence` opens the seat's confidence passport; supplying it turns the
-3D card's confidence teaser into a chip, and without it the teaser stays a
-static information row, because a chip beside a dead target would say nothing.
+`onSeatConfidence` is called when the buyer taps the seat-detail chip on the 3D
+card. Leave it out and that detail shows as plain text.
 
 `options.pricing.formatter` formats every native amount: confirmation, ticket
 rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
