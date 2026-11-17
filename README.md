@@ -509,9 +509,7 @@ and use `buyerAccessTokenProvider`; buyer access tokens stay in memory and are
 never placed in a page URL, a React key or an event payload.
 
 Your code never touches the map directly. It works through a typed TypeScript
-controller whose contract matches the Web, iOS and Flutter SDKs: every command
-gets one answer, or a timeout error after 15 seconds, and events a newer map
-version adds are ignored safely by older apps.
+controller whose contract matches the Web, iOS and Flutter SDKs: every command gets one answer, or a timeout error after 15 seconds.
 
 **Prepare the picker in advance (optional).** `SeatLayerRuntimePrewarm` fetches
 the venue map files before the picker opens. The result expires after a short
@@ -706,8 +704,7 @@ TypeScript declarations.
 - [Review the buyer SDK installation options](https://docs.seatlayer.io/buyer-sdk/install/)
   when the same event also has to render on the web.
 - [See how the 3D seat map works](https://seatlayer.io/3d-seat-map/): the 3D
-  venue and the view from each seat, built from the same chart, on every plan,
-  for venues up to 60,000 seats.
+  venue and the view from each seat, built from the same chart, on every plan. 3D is offered for venues up to 30,000 seats on phones and 60,000 on desktop by default; set `max3DSeats` to change it.
 - [Point AI coding agents at the SeatLayer docs index](https://docs.seatlayer.io/llms.txt)
   (`llms.txt`) for an agent-readable map of the documentation.
 
