@@ -706,8 +706,9 @@ outputs from one build.
   packages.
 - [Review the buyer SDK installation options](https://docs.seatlayer.io/buyer-sdk/install/)
   when the same event also has to render on the web.
-- [Explore the 3D seating chart for web buyers](https://seatlayer.io/3d-seat-map/)
-  as a separate browser capability when comparing the wider buyer experience.
+- [See how the 3D seat map works](https://seatlayer.io/3d-seat-map/): the 3D
+  venue and the view from each seat, built from the same chart, on every plan,
+  for venues up to 60,000 seats.
 - [Point AI coding agents at the SeatLayer docs index](https://docs.seatlayer.io/llms.txt)
   (`llms.txt`) for an agent-readable map of the documentation.
 
