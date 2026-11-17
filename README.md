@@ -273,8 +273,9 @@ The customization layers have distinct ownership:
 - `styles` provides 62 typed, aesthetic-only slots. Colour, type, borders,
   radii, shadows, and opacity may change; SDK-owned placement, safe areas,
   viewport insets, and 44-point minimum targets remain intact.
-- `builders` replaces any of 28 complete parts and receives the live scope plus
-  `defaultChild`. Use a builder when structure or placement must change.
+- `builders` replaces any of 25 complete parts (28 builder keys, three of them
+  alternative names) and receives the live scope plus `defaultChild`. Use a
+  builder when structure or placement must change.
 
 An app that wants the picker set in its own typeface passes
 `themeOptions.theme.fontFamily` and loads the face itself (with `expo-font`,
