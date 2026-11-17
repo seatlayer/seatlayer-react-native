@@ -376,9 +376,9 @@ The same scope also supports standalone confirmation and seat-view actions,
 best seats, section navigation, floor selection, GA/table prompts, dense cart
 lists, hold-lapse recovery, loading/error/empty states, attribution, venue 3D,
 and panorama chrome. Custom ticket trays can reuse the exported
-`resolveDenseTicketLines`, `groupTicketLines`, `runSeatsLabel`, and
-`ticketIsGroupable` utilities instead of reimplementing the pick-order and
-folding rules.
+`resolveSeatLayerTicketLines` helper instead of reimplementing the ticket-line
+rules: it turns cart items into lines with their section, row, seat, category,
+price and quantity.
 
 ## Picker controller
 
