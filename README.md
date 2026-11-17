@@ -514,12 +514,9 @@ controller whose contract matches the Web, iOS and Flutter SDKs: every command
 gets one answer, or a timeout error after 15 seconds, and events a newer map
 version adds are ignored safely by older apps.
 
-A host may warm the runtime page before the picker is opened, with
-`SeatLayerRuntimePrewarm`. On React Native this warms the *transport* (DNS,
-TLS, the CDN edge and the HTTP cache entry for the runtime document and, where
-named, its bundles) rather than a live page, because a page belongs to the
-component that rendered it. The warm entry lives on a short TTL and is dropped
-under memory pressure, and a picker that finds nothing warm simply starts cold.
+**Prepare the picker in advance (optional).** `SeatLayerRuntimePrewarm` fetches
+the venue map files before the picker opens. The result expires after a short
+time and is dropped under memory pressure.
 
 ## Commands
 
