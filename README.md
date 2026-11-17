@@ -685,11 +685,12 @@ with a stable booking reference.
 
 ### Which React Native and React versions are supported?
 
-The package declares peer dependencies of `react >= 18.2.0`,
-`react-native >= 0.72.0`, and `react-native-webview >= 13.0.0`, and it is
-developed and tested against React Native 0.86 and React 19. Both iOS and
-Android are supported; the SDK ships ESM, CommonJS, and TypeScript declaration
-outputs from one build.
+The package needs `react >= 18.2.0`, `react-native >= 0.72.0` and
+`react-native-webview >= 13.0.0`, and it is developed and tested against React
+Native 0.86 and React 19. `react-native-svg >= 13.0.0` is an optional peer: pass
+it to `installSeatLayerPickerSvgIcons` to draw the seat-note marks on iOS. iOS
+and Android are both supported, and the package ships ESM, CommonJS and
+TypeScript declarations.
 
 ## Continue your React Native integration
 
