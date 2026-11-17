@@ -8,12 +8,12 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-111827.svg)](LICENSE)
 
 The official SeatLayer React Native seat map SDK adds an interactive seating
-chart and seat picker to React Native and Expo ticketing apps on iOS and Android. It combines live
-availability, best-available selection, temporary holds, and typed TypeScript
-APIs with composable React Native buyer controls around SeatLayer's
-version-pinned shared venue renderer; your trusted server completes booking.
-SeatLayer is seating chart and reserved-seat ticketing software built for
-venues up to stadium scale.
+chart and seat picker to React Native and Expo ticketing apps on iOS and
+Android. It combines live availability, best-available selection, temporary
+holds and typed TypeScript APIs with React Native buyer controls around the
+SeatLayer map, the same map buyers see on the web; your trusted server completes
+booking. SeatLayer is seating chart and reserved-seat ticketing software built
+for venues up to stadium scale.
 
 [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
@@ -31,18 +31,17 @@ venues up to stadium scale.
 what the buyer sees from the venue overview to the checkout handoff, and which
 parts a host can turn off, restyle, or replace.
 
-> **Production SDK:** Pin the release you validated, and check your event,
-> checkout handoff, lifecycle, and supported physical devices before rollout.
-> Each release pins one immutable hosted runtime; this one loads
-> `seatlayer-js@0.84.1` from `https://cdn.seatlayer.io`.
+> **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
+> Pin the version you tested, and test your event, checkout hand-off and target
+> devices before release.
 
 Two-step shape: the buyer picks and holds seats in the client with your public key, then your server confirms the booking with your secret key while your platform keeps checkout and its own payment provider.
 
-**Start here:** [Quickstart](https://docs.seatlayer.io/start/quickstart/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [React Native guide](https://docs.seatlayer.io/buyer-sdk/react-native/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json) · [Pricing](https://seatlayer.io/pricing/): $0 entry, 100 free confirmed-sold-seat credits per organization each month, then $0.10 down to $0.05 a credit, and credits never expire.
+**Start here:** [Quickstart](https://docs.seatlayer.io/start/quickstart/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [React Native guide](https://docs.seatlayer.io/buyer-sdk/react-native/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json) · [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
 
 ## Scale evidence
 
-Benchmarked on public 100,000-, 150,000- and 200,000-seat venue fixtures on 15 September 2026: 200,000 seats chart-ready in 1.95 s, desktop, local production build. Fixtures, method and run logs: https://github.com/seatlayer/seatlayer-performance. Live 200,000-seat stadium demo: https://app.seatlayer.io/demo/play/century-stadium-200k. This is renderer evidence, not a concurrent-buyer claim.
+Benchmarked on public 100,000-, 150,000- and 200,000-seat venue fixtures on 15 September 2026: 200,000 seats chart-ready in 1.95 s, desktop, local production build. Tested at 10,000 simulated concurrent buyers on one 12,000-seat event (18 September 2026): engine-side hold latency p99 9 ms, zero server errors. Method, fixtures and run files: https://github.com/seatlayer/seatlayer-performance. Live 200,000-seat stadium demo: https://app.seatlayer.io/demo/play/century-stadium-200k.
 
 ## Install
 
@@ -274,8 +273,9 @@ The customization layers have distinct ownership:
 - `styles` provides 62 typed, aesthetic-only slots. Colour, type, borders,
   radii, shadows, and opacity may change; SDK-owned placement, safe areas,
   viewport insets, and 44-point minimum targets remain intact.
-- `builders` replaces any of 28 complete parts and receives the live scope plus
-  `defaultChild`. Use a builder when structure or placement must change.
+- `builders` replaces any of 25 complete parts (28 builder keys, three of them
+  alternative names) and receives the live scope plus `defaultChild`. Use a
+  builder when structure or placement must change.
 
 An app that wants the picker set in its own typeface passes
 `themeOptions.theme.fontFamily` and loads the face itself (with `expo-font`,
@@ -300,10 +300,9 @@ Behaviour options worth knowing:
   as a live hold exists, whoever owns it. A host drawing its own clock sets it
   `false`. It composes with `chrome.holdPill`: the pill appears only where both
   are on.
-- `chrome.dock` and `chrome.showExtendHoldPrompt` resolve off on a phone and on
-  in the wide layout unless set explicitly. `showExtendHoldPrompt` is reserved:
-  no prompt is drawn on any layout yet, and the option is resolved and carried
-  so a host that sets it does not have to change when the wide prompt lands.
+- `chrome.showDockBar` shows the section dock bar. It is off by default on every
+  width; set it to `true` to show it. The older `chrome.dock` name still works,
+  and `showDockBar` wins when both are set.
 
 Callbacks are optional observations, never a place the SDK waits:
 `onReady` · `onChartLoad` · `onSelectionChanged` · `onSelectionValidityChanged` ·
@@ -314,9 +313,8 @@ Callbacks are optional observations, never a place the SDK waits:
 
 `onBooked` fires once, when the handed-off hold settles to booked, never on the
 handoff itself, because a buyer on the way to pay has not paid.
-`onSeatConfidence` opens the seat's confidence passport; supplying it turns the
-3D card's confidence teaser into a chip, and without it the teaser stays a
-static information row, because a chip beside a dead target would say nothing.
+`onSeatConfidence` is called when the buyer taps the seat-detail chip on the 3D
+card. Leave it out and that detail shows as plain text.
 
 `options.pricing.formatter` formats every native amount: confirmation, ticket
 rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
@@ -377,9 +375,9 @@ The same scope also supports standalone confirmation and seat-view actions,
 best seats, section navigation, floor selection, GA/table prompts, dense cart
 lists, hold-lapse recovery, loading/error/empty states, attribution, venue 3D,
 and panorama chrome. Custom ticket trays can reuse the exported
-`resolveDenseTicketLines`, `groupTicketLines`, `runSeatsLabel`, and
-`ticketIsGroupable` utilities instead of reimplementing the pick-order and
-folding rules.
+`resolveSeatLayerTicketLines` helper instead of reimplementing the ticket-line
+rules: it turns cart items into lines with their section, row, seat, category,
+price and quantity.
 
 ## Picker controller
 
@@ -501,37 +499,21 @@ Continue with
 [seat holds and secure server-side checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/)
 before connecting payment and booking.
 
-## React Native renderer architecture
+## Renderer version and origin
 
-`SeatLayerView` is a React component that renders the SeatLayer venue map.
-It loads the immutable, version-pinned SeatLayer runtime and its lazy assets
-from the canonical CDN origin, which gives iOS and Android one canonical HTTPS
-origin for origin-bound buyer sessions. This release pins
-`seatlayer-js@0.84.1`, so views load
-`https://cdn.seatlayer.io/seatlayer-js@0.84.1/mobile.html`; the pinned version
-is also exported as `seatLayerHostedWebVersion`. Register
-`https://cdn.seatlayer.io` on the publishable key used for public startup.
-For private inventory, omit
-`publicKey` and use `buyerAccessTokenProvider`; buyer access tokens stay in
-memory and are never placed in a page URL, a React key, or an event payload.
+`SeatLayerView` shows the SeatLayer venue map, the same map as on the web,
+inside your app. Each SDK release uses one matching map version, exported as
+`seatLayerHostedWebVersion`. Register `https://cdn.seatlayer.io` on the
+publishable key used for public startup. For private inventory, omit `publicKey`
+and use `buyerAccessTokenProvider`; buyer access tokens stay in memory and are
+never placed in a page URL, a React key or an event payload.
 
-Application code never touches the renderer. It works through a typed
-TypeScript controller whose contract matches the Web, iOS, and Flutter SDKs:
+Your code never touches the map directly. It works through a typed TypeScript
+controller whose contract matches the Web, iOS and Flutter SDKs: every command gets one answer, or a timeout error after 15 seconds.
 
-- range-negotiated protocol compatibility before the chart renders;
-- one response per command, matched by correlation id;
-- a 15-second command deadline, with late replies dropped rather than delivered;
-- monotonic event ordering per event name, so a stale envelope is discarded; and
-- forward-compatible unknown events and unknown payload fields.
-
-See [the bridge contract](docs/bridge.md) for the wire-level details.
-
-A host may warm the runtime page before the picker is opened, with
-`SeatLayerRuntimePrewarm`. On React Native this warms the *transport* (DNS,
-TLS, the CDN edge and the HTTP cache entry for the runtime document and, where
-named, its bundles) rather than a live page, because a page belongs to the
-component that rendered it. The warm entry lives on a short TTL and is dropped
-under memory pressure, and a picker that finds nothing warm simply starts cold.
+**Prepare the picker in advance (optional).** `SeatLayerRuntimePrewarm` fetches
+the venue map files before the picker opens. The result expires after a short
+time and is dropped under memory pressure.
 
 ## Commands
 
@@ -571,15 +553,15 @@ Events: `ready` · `selectionChanged` · `holdChanged` · `holdRestored` ·
 `selectedObjectsUnavailable` · `error` · `hint` · `gaClick` · `seatHover` ·
 `deckTap` · `checkout` · `unknownEvent`
 
-Unknown future events remain observable through `unknownEvent`; adding a bundle
-event does not crash an older app.
+Unknown future events remain observable through `unknownEvent`, so a new map
+event never crashes an older app.
 
 ## Layout and lifecycle
 
 - Use a fixed-height or full-screen parent; do not put the map inside a vertical
   `ScrollView`. The canvas owns pan and pinch for map navigation.
 - Keep `configuration` stable with `useMemo`.
-- Change `reloadKey` to deliberately rebuild the renderer and bridge.
+- Change `reloadKey` to reload the map on purpose.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
 
@@ -668,13 +650,13 @@ interactive seating chart with live availability; the
 [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
 covers lifecycle, commands, and events in depth.
 
-### Is this a native seat map component?
+### What is native in the SeatLayer React Native SDK?
 
-`SeatLayerView` is a React Native component with a typed TypeScript controller
-and a SeatLayer venue-map renderer. The package contains no custom native
-module (no podspec, no Java, Kotlin, Swift, or Objective-C source), so
-application code works through TypeScript commands, payloads, errors, and
-events.
+The picker controls around the seat map are React Native components, and your
+code works through typed TypeScript commands, payloads, errors and events. The
+seat map itself is the SeatLayer map from the web, shown inside your app; the
+package adds no custom native module (no podspec and no Swift, Kotlin, Java or
+Objective-C source).
 
 ### Does it work with Expo?
 
@@ -686,28 +668,27 @@ app that renders the SDK.
 
 ### How do temporary seat holds work?
 
-When a buyer selects seats, the SDK creates a temporary hold that reserves the
-inventory against concurrent buyers for a limited window. The hold expires
-automatically if checkout does not complete (the `holdExpired` event tells the
-app to return the buyer to the map), and `extendHold` and `resumeHold` cover
-longer checkouts and app restarts. This prevents double-selling without locking
-seats forever.
+When a buyer goes to checkout, the SeatLayer picker holds the seats they picked
+for that buyer for a set time, which you can change per event, so no other buyer
+can take them. A hold that is never booked expires on its own: `onHoldExpired`
+tells your app, or the `holdExpired` event with `SeatLayerView`, where your code
+calls `hold()` itself. `extendHold` and `resumeHold` cover longer checkouts and
+app restarts.
 
 ### Can I use my own payment provider?
 
-Yes. SeatLayer never processes payment inside the seat map. The app hands the
-`holdId` to your backend, and your backend charges through any payment provider
-you already use (Stripe, Adyen, Razorpay, or your own) before booking the hold
-through the
-[server-side checkout flow](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/).
+Yes. Nothing in the app takes a payment. Your server reads the held seats and
+their prices, charges through the provider you already use, and books the hold
+with a stable booking reference.
 
 ### Which React Native and React versions are supported?
 
-The package declares peer dependencies of `react >= 18.2.0`,
-`react-native >= 0.72.0`, and `react-native-webview >= 13.0.0`, and it is
-developed and tested against React Native 0.86 and React 19. Both iOS and
-Android are supported; the SDK ships ESM, CommonJS, and TypeScript declaration
-outputs from one build.
+The package needs `react >= 18.2.0`, `react-native >= 0.72.0` and
+`react-native-webview >= 13.0.0`, and it is developed and tested against React
+Native 0.86 and React 19. `react-native-svg >= 13.0.0` is an optional peer: pass
+it to `installSeatLayerPickerSvgIcons` to draw the seat-note marks on iOS. iOS
+and Android are both supported, and the package ships ESM, CommonJS and
+TypeScript declarations.
 
 ## Continue your React Native integration
 
@@ -722,8 +703,8 @@ outputs from one build.
   packages.
 - [Review the buyer SDK installation options](https://docs.seatlayer.io/buyer-sdk/install/)
   when the same event also has to render on the web.
-- [Explore the 3D seating chart for web buyers](https://seatlayer.io/3d-seat-map/)
-  as a separate browser capability when comparing the wider buyer experience.
+- [See how the 3D seat map works](https://seatlayer.io/3d-seat-map/): the 3D
+  venue and the view from each seat, built from the same chart, on every plan. 3D is offered for venues up to 30,000 seats on phones and 60,000 on desktop by default; set `max3DSeats` to change it.
 - [Point AI coding agents at the SeatLayer docs index](https://docs.seatlayer.io/llms.txt)
   (`llms.txt`) for an agent-readable map of the documentation.
 
