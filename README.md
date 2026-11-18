@@ -1,4 +1,4 @@
-# SeatLayer React Native Seat Map SDK for Reserved Seating
+# SeatLayer SDK for React Native and Expo: seat map and seat picker
 
 [![CI](https://github.com/seatlayer/seatlayer-react-native/actions/workflows/ci.yml/badge.svg)](https://github.com/seatlayer/seatlayer-react-native/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@seatlayer/react-native?label=%40seatlayer%2Freact-native)](https://www.npmjs.com/package/@seatlayer/react-native)
@@ -15,35 +15,46 @@ SeatLayer map, the same map buyers see on the web; your trusted server completes
 booking. SeatLayer is seating chart and reserved-seat ticketing software built
 for venues up to stadium scale.
 
-[`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
-[SeatLayer SDK and API overview](https://seatlayer.io/developers/) ·
-[Buyer seat-map demo (web)](https://app.seatlayer.io/demo/play/grand-theatre) ·
-[All live demos](https://seatlayer.io/demo/) ·
-[SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
-[SeatLayer Android seat map SDK](https://github.com/seatlayer/seatlayer-android) ·
-[SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
-[SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
-
 ![Seat map picker running in a React Native app: venue overview, zoom into a section, a seat card naming what the seat is, the seat added to the cart, and a cart card that takes the map back to its seat](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
 
 [Walk through the picker screen by screen](docs/picker-walkthrough.md):
 what the buyer sees from the venue overview to the checkout handoff, and which
 parts a host can turn off, restyle, or replace.
 
+## What SeatLayer is
+
+SeatLayer is reserved-seat ticketing and seating software: organizers sell with hosted checkout,
+a box office, door check-in and season tickets, and platforms add the same seat maps, with 3D
+seat views, through the SeatLayer SDK and API. One chart drives the 2D map, the 3D venue and the
+view from each seat (3D for venues up to 60,000 seats; the 2D map benchmarked at 200,000 seats).
+
+[Website](https://seatlayer.io/) · [For developers](https://seatlayer.io/developers/) ·
+[Season tickets](https://seatlayer.io/season-tickets/) · [Pricing](https://seatlayer.io/pricing/) ·
+[Live demo](https://seatlayer.io/demo/)
+
+Season tickets are in the web and server SDKs today, not in this SDK.
+
+## Try it
+
+- [Buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) in your browser, no account needed · [All live demos](https://seatlayer.io/demo/)
+- [Quickstart](https://docs.seatlayer.io/start/quickstart/): your first event and keys
+- [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json)
+- [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) · [SeatLayer SDK and API overview](https://seatlayer.io/developers/)
+- [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
+
+**How it works:** the buyer picks and holds seats in your app with your public key. Your server then reads the hold, takes the payment through your own provider, and books the seats with your secret key.
+
+More from SeatLayer:
+[SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
+[SeatLayer Android seat map SDK](https://github.com/seatlayer/seatlayer-android) ·
+[SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
+[SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
+
+## Install
+
 > **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
 > Pin the version you tested, and test your event, checkout hand-off and target
 > devices before release.
-
-Two-step shape: the buyer picks and holds seats in the client with your public key, then your server confirms the booking with your secret key while your platform keeps checkout and its own payment provider.
-
-**Start here:** [Quickstart](https://docs.seatlayer.io/start/quickstart/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [React Native guide](https://docs.seatlayer.io/buyer-sdk/react-native/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json) · [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
-
-## Scale evidence
-
-Benchmarked on public 100,000-, 150,000- and 200,000-seat venue fixtures on 15 September 2026: 200,000 seats chart-ready in 1.95 s, desktop, local production build. Tested at 10,000 simulated concurrent buyers on one 12,000-seat event (18 September 2026): engine-side hold latency p99 9 ms, zero server errors. Method, fixtures and run files: https://github.com/seatlayer/seatlayer-performance. Live 200,000-seat stadium demo: https://app.seatlayer.io/demo/play/century-stadium-200k.
-
-## Install
 
 ### Expo
 
@@ -265,6 +276,7 @@ actions.
 The customization layers have distinct ownership:
 
 - `options` controls session behaviour and which ready-made parts are visible.
+  `options.max3DSeats`: 3D opens for venues up to 60,000 seats; on a touch screen the default is 30,000 unless you set this option.
 - `themeMode` and `themeOptions` map app colours, typography, radii, logos, and
   map colours into one resolved theme.
 - `locale` selects generated native wording; `strings` overrides any individual
@@ -484,6 +496,8 @@ the example shows setup guidance and does not mount a picker. The browser-based
 [buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) is a preview of the
 wider SeatLayer buyer experience, not a React Native app.
 
+To build and test the package itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Security boundary
 
 The React Native app **selects and holds** inventory. Your trusted backend
@@ -640,15 +654,24 @@ settings:
 
 ## Frequently asked questions
 
+### Is there a React Native SDK for seat selection in a ticketing app?
+
+Yes. `@seatlayer/react-native` gives React Native and Expo apps on iOS and
+Android a ready-made seat picker: live availability, seat selection, best
+available, holds, a cart, 3D and the view from a seat for venues up to 60,000
+seats, and a checkout hand-off to your backend. The controls are React Native
+components with typed TypeScript APIs, and the seat map itself is the SeatLayer
+map from the web, shown inside your app. You pay only for sold seats, with 100
+free every month, and the same charts run on the web, iOS, Android and Flutter.
+
 ### How do I add a seat map to a React Native app?
 
-Install [`@seatlayer/react-native`](https://www.npmjs.com/package/@seatlayer/react-native)
-alongside `react-native-webview`, create a controller with
-`useSeatLayerController()`, and render `<SeatLayerView>` with your event key in a
-full-screen or fixed-height parent. The quick start above is a complete
-interactive seating chart with live availability; the
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
-covers lifecycle, commands, and events in depth.
+Install `@seatlayer/react-native` with `react-native-webview`, then render
+`SeatLayerPicker` with your event key and publishable key in a full-screen or
+fixed-height parent. That one component is the whole buyer flow: the live seat
+map, filters, seat confirmation, cart, holds, best available, 3D for venues up
+to 60,000 seats, and the checkout hand-off. Use `SeatLayerView` with
+`useSeatLayerController()` only when your app draws every control itself.
 
 ### What is native in the SeatLayer React Native SDK?
 
@@ -658,13 +681,19 @@ seat map itself is the SeatLayer map from the web, shown inside your app; the
 package adds no custom native module (no podspec and no Swift, Kotlin, Java or
 Objective-C source).
 
+### How much does the SeatLayer React Native SDK cost?
+
+Building and testing is free: test mode has no time limit, needs no card and
+uses no credits. Live, you pay per sold seat: the first 100 sold seats each
+month are free, then 10 cents down to 5 cents a seat, with no subscription, and
+credits you buy never expire.
+
 ### Does it work with Expo?
 
-Yes. The only native dependency is `react-native-webview`, which Expo documents
-and includes in Expo Go, so `npx expo install react-native-webview` is enough for
-Expo Go on a supported Expo SDK. Development builds and bare React Native
-projects work the same way, and the repository's own `example/` app is an Expo
-app that renders the SDK.
+Yes. The only required native dependency is `react-native-webview`, which Expo
+Go already includes, so `npx expo install react-native-webview` is enough on a
+supported Expo SDK. Development builds and bare React Native projects work the
+same way, and the repository's `example/` app is an Expo app.
 
 ### How do temporary seat holds work?
 
@@ -674,12 +703,6 @@ can take them. A hold that is never booked expires on its own: `onHoldExpired`
 tells your app, or the `holdExpired` event with `SeatLayerView`, where your code
 calls `hold()` itself. `extendHold` and `resumeHold` cover longer checkouts and
 app restarts.
-
-### Can I use my own payment provider?
-
-Yes. Nothing in the app takes a payment. Your server reads the held seats and
-their prices, charges through the provider you already use, and books the hold
-with a stable booking reference.
 
 ### Which React Native and React versions are supported?
 
@@ -704,7 +727,8 @@ TypeScript declarations.
 - [Review the buyer SDK installation options](https://docs.seatlayer.io/buyer-sdk/install/)
   when the same event also has to render on the web.
 - [See how the 3D seat map works](https://seatlayer.io/3d-seat-map/): the 3D
-  venue and the view from each seat, built from the same chart, on every plan. 3D is offered for venues up to 30,000 seats on phones and 60,000 on desktop by default; set `max3DSeats` to change it.
+  venue and the view from each seat, built from the same chart, on every plan,
+  for venues up to 60,000 seats.
 - [Point AI coding agents at the SeatLayer docs index](https://docs.seatlayer.io/llms.txt)
   (`llms.txt`) for an agent-readable map of the documentation.
 
@@ -715,22 +739,16 @@ TypeScript declarations.
 | React Native | [`@seatlayer/react-native`](https://www.npmjs.com/package/@seatlayer/react-native) (this package) |
 | JavaScript | [`@seatlayer/js`](https://www.npmjs.com/package/@seatlayer/js) |
 | React | [`@seatlayer/react`](https://www.npmjs.com/package/@seatlayer/react) |
+| Vue | [`@seatlayer/vue`](https://www.npmjs.com/package/@seatlayer/vue) |
+| Angular | [`@seatlayer/angular`](https://www.npmjs.com/package/@seatlayer/angular) |
 | iOS | [`seatlayer-ios`](https://github.com/seatlayer/seatlayer-ios) |
 | Flutter | [`seatlayer`](https://pub.dev/packages/seatlayer) |
 | Android | [`seatlayer-android`](https://github.com/seatlayer/seatlayer-android) |
 | Server SDKs | [Node.js, Python, PHP, Ruby, .NET, Java, and Go](https://docs.seatlayer.io/server-sdk/install/) |
 
-## Development
+## Scale evidence
 
-```bash
-pnpm install
-pnpm validate
-```
-
-`pnpm validate` type-checks, runs the protocol tests, builds ESM, CommonJS, and
-type declarations, and validates the npm tarball with `publint` and
-`@arethetypeswrong/cli`. Production loads the exact hosted runtime; the package
-does not generate or ship an inline Web document.
+Benchmarked on public 100,000-, 150,000- and 200,000-seat venue fixtures on 15 September 2026: 200,000 seats chart-ready in 1.95 s, desktop, local production build. Tested at 10,000 simulated concurrent buyers on one 12,000-seat event (18 September 2026): engine-side hold latency p99 9 ms, zero server errors. Method, fixtures and run files: https://github.com/seatlayer/seatlayer-performance. Live 200,000-seat stadium demo: https://app.seatlayer.io/demo/play/century-stadium-200k.
 
 ## License
 
