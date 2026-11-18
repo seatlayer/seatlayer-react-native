@@ -694,15 +694,6 @@ Go already includes, so `npx expo install react-native-webview` is enough on a
 supported Expo SDK. Development builds and bare React Native projects work the
 same way, and the repository's `example/` app is an Expo app.
 
-### How do temporary seat holds work?
-
-When a buyer goes to checkout, the SeatLayer picker holds the seats they picked
-for that buyer for a set time, which you can change per event, so no other buyer
-can take them. A hold that is never booked expires on its own: `onHoldExpired`
-tells your app, or the `holdExpired` event with `SeatLayerView`, where your code
-calls `hold()` itself. `extendHold` and `resumeHold` cover longer checkouts and
-app restarts.
-
 ### Can I use my own payment provider?
 
 Yes. Nothing in the app takes a payment. Your server reads the held seats and
