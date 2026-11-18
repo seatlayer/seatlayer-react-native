@@ -1,4 +1,4 @@
-# SeatLayer React Native Seat Map SDK for Reserved Seating
+# SeatLayer SDK for React Native and Expo: seat map and seat picker
 
 [![CI](https://github.com/seatlayer/seatlayer-react-native/actions/workflows/ci.yml/badge.svg)](https://github.com/seatlayer/seatlayer-react-native/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@seatlayer/react-native?label=%40seatlayer%2Freact-native)](https://www.npmjs.com/package/@seatlayer/react-native)
