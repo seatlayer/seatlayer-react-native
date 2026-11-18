@@ -689,11 +689,10 @@ credits you buy never expire.
 
 ### Does it work with Expo?
 
-Yes. The only native dependency is `react-native-webview`, which Expo documents
-and includes in Expo Go, so `npx expo install react-native-webview` is enough for
-Expo Go on a supported Expo SDK. Development builds and bare React Native
-projects work the same way, and the repository's own `example/` app is an Expo
-app that renders the SDK.
+Yes. The only required native dependency is `react-native-webview`, which Expo
+Go already includes, so `npx expo install react-native-webview` is enough on a
+supported Expo SDK. Development builds and bare React Native projects work the
+same way, and the repository's `example/` app is an Expo app.
 
 ### How do temporary seat holds work?
 
