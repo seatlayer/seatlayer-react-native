@@ -653,6 +653,16 @@ settings:
 
 ## Frequently asked questions
 
+### Is there a React Native SDK for seat selection in a ticketing app?
+
+Yes. `@seatlayer/react-native` gives React Native and Expo apps on iOS and
+Android a ready-made seat picker: live availability, seat selection, best
+available, holds, a cart, 3D and the view from a seat for venues up to 60,000
+seats, and a checkout hand-off to your backend. The controls are React Native
+components with typed TypeScript APIs, and the seat map itself is the SeatLayer
+map from the web, shown inside your app. You pay only for sold seats, with 100
+free every month, and the same charts run on the web, iOS, Android and Flutter.
+
 ### How do I add a seat map to a React Native app?
 
 Install [`@seatlayer/react-native`](https://www.npmjs.com/package/@seatlayer/react-native)
@@ -670,6 +680,13 @@ code works through typed TypeScript commands, payloads, errors and events. The
 seat map itself is the SeatLayer map from the web, shown inside your app; the
 package adds no custom native module (no podspec and no Swift, Kotlin, Java or
 Objective-C source).
+
+### How much does the SeatLayer React Native SDK cost?
+
+Building and testing is free: test mode has no time limit, needs no card and
+uses no credits. Live, you pay per sold seat: the first 100 sold seats each
+month are free, then 10 cents down to 5 cents a seat, with no subscription, and
+credits you buy never expire.
 
 ### Does it work with Expo?
 
