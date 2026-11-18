@@ -715,6 +715,8 @@ TypeScript declarations.
 | React Native | [`@seatlayer/react-native`](https://www.npmjs.com/package/@seatlayer/react-native) (this package) |
 | JavaScript | [`@seatlayer/js`](https://www.npmjs.com/package/@seatlayer/js) |
 | React | [`@seatlayer/react`](https://www.npmjs.com/package/@seatlayer/react) |
+| Vue | [`@seatlayer/vue`](https://www.npmjs.com/package/@seatlayer/vue) |
+| Angular | [`@seatlayer/angular`](https://www.npmjs.com/package/@seatlayer/angular) |
 | iOS | [`seatlayer-ios`](https://github.com/seatlayer/seatlayer-ios) |
 | Flutter | [`seatlayer`](https://pub.dev/packages/seatlayer) |
 | Android | [`seatlayer-android`](https://github.com/seatlayer/seatlayer-android) |
