@@ -31,6 +31,19 @@ for venues up to stadium scale.
 what the buyer sees from the venue overview to the checkout handoff, and which
 parts a host can turn off, restyle, or replace.
 
+## What SeatLayer is
+
+SeatLayer is reserved-seat ticketing and seating software: organizers sell with hosted checkout,
+a box office, door check-in and season tickets, and platforms add the same seat maps, with 3D
+seat views, through the SeatLayer SDK and API. One chart drives the 2D map, the 3D venue and the
+view from each seat (3D for venues up to 60,000 seats; the 2D map benchmarked at 200,000 seats).
+
+[Website](https://seatlayer.io/) · [For developers](https://seatlayer.io/developers/) ·
+[Season tickets](https://seatlayer.io/season-tickets/) · [Pricing](https://seatlayer.io/pricing/) ·
+[Live demo](https://seatlayer.io/demo/)
+
+Season tickets are in the web and server SDKs today, not in this SDK.
+
 > **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
 > Pin the version you tested, and test your event, checkout hand-off and target
 > devices before release.
