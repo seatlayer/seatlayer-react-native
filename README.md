@@ -665,13 +665,12 @@ free every month, and the same charts run on the web, iOS, Android and Flutter.
 
 ### How do I add a seat map to a React Native app?
 
-Install [`@seatlayer/react-native`](https://www.npmjs.com/package/@seatlayer/react-native)
-alongside `react-native-webview`, create a controller with
-`useSeatLayerController()`, and render `<SeatLayerView>` with your event key in a
-full-screen or fixed-height parent. The quick start above is a complete
-interactive seating chart with live availability; the
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/)
-covers lifecycle, commands, and events in depth.
+Install `@seatlayer/react-native` with `react-native-webview`, then render
+`SeatLayerPicker` with your event key and publishable key in a full-screen or
+fixed-height parent. That one component is the whole buyer flow: the live seat
+map, filters, seat confirmation, cart, holds, best available, 3D for venues up
+to 60,000 seats, and the checkout hand-off. Use `SeatLayerView` with
+`useSeatLayerController()` only when your app draws every control itself.
 
 ### What is native in the SeatLayer React Native SDK?
 
