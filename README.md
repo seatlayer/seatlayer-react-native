@@ -15,16 +15,6 @@ SeatLayer map, the same map buyers see on the web; your trusted server completes
 booking. SeatLayer is seating chart and reserved-seat ticketing software built
 for venues up to stadium scale.
 
-[`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) ·
-[React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) ·
-[SeatLayer SDK and API overview](https://seatlayer.io/developers/) ·
-[Buyer seat-map demo (web)](https://app.seatlayer.io/demo/play/grand-theatre) ·
-[All live demos](https://seatlayer.io/demo/) ·
-[SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
-[SeatLayer Android seat map SDK](https://github.com/seatlayer/seatlayer-android) ·
-[SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
-[SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
-
 ![Seat map picker running in a React Native app: venue overview, zoom into a section, a seat card naming what the seat is, the seat added to the cart, and a cart card that takes the map back to its seat](https://raw.githubusercontent.com/seatlayer/seatlayer-react-native/main/docs/media/picker-flow.gif)
 
 [Walk through the picker screen by screen](docs/picker-walkthrough.md):
@@ -44,19 +34,31 @@ view from each seat (3D for venues up to 60,000 seats; the 2D map benchmarked at
 
 Season tickets are in the web and server SDKs today, not in this SDK.
 
-> **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
-> Pin the version you tested, and test your event, checkout hand-off and target
-> devices before release.
+## Try it
+
+- [Buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) in your browser, no account needed · [All live demos](https://seatlayer.io/demo/)
+- [Quickstart](https://docs.seatlayer.io/start/quickstart/): your first event and keys
+- [React Native seat-map documentation](https://docs.seatlayer.io/buyer-sdk/react-native/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json)
+- [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) · [SeatLayer SDK and API overview](https://seatlayer.io/developers/)
+- [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
 
 Two-step shape: the buyer picks and holds seats in the client with your public key, then your server confirms the booking with your secret key while your platform keeps checkout and its own payment provider.
 
-**Start here:** [Quickstart](https://docs.seatlayer.io/start/quickstart/) · [Holds and checkout](https://docs.seatlayer.io/buyer-sdk/holds-and-checkout/) · [React Native guide](https://docs.seatlayer.io/buyer-sdk/react-native/) · [SDK catalog](https://docs.seatlayer.io/sdk-catalog.json) · [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
+More from SeatLayer:
+[SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
+[SeatLayer Android seat map SDK](https://github.com/seatlayer/seatlayer-android) ·
+[SeatLayer Flutter seat map SDK](https://github.com/seatlayer/seatlayer-flutter) ·
+[SeatLayer AI Toolkit](https://github.com/seatlayer/seatlayer-ai-toolkit)
 
 ## Scale evidence
 
 Benchmarked on public 100,000-, 150,000- and 200,000-seat venue fixtures on 15 September 2026: 200,000 seats chart-ready in 1.95 s, desktop, local production build. Tested at 10,000 simulated concurrent buyers on one 12,000-seat event (18 September 2026): engine-side hold latency p99 9 ms, zero server errors. Method, fixtures and run files: https://github.com/seatlayer/seatlayer-performance. Live 200,000-seat stadium demo: https://app.seatlayer.io/demo/play/century-stadium-200k.
 
 ## Install
+
+> **Latest release:** see the version on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
+> Pin the version you tested, and test your event, checkout hand-off and target
+> devices before release.
 
 ### Expo
 
