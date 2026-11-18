@@ -495,6 +495,8 @@ the example shows setup guidance and does not mount a picker. The browser-based
 [buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) is a preview of the
 wider SeatLayer buyer experience, not a React Native app.
 
+To build and test the package itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Security boundary
 
 The React Native app **selects and holds** inventory. Your trusted backend
@@ -732,18 +734,6 @@ TypeScript declarations.
 | Flutter | [`seatlayer`](https://pub.dev/packages/seatlayer) |
 | Android | [`seatlayer-android`](https://github.com/seatlayer/seatlayer-android) |
 | Server SDKs | [Node.js, Python, PHP, Ruby, .NET, Java, and Go](https://docs.seatlayer.io/server-sdk/install/) |
-
-## Development
-
-```bash
-pnpm install
-pnpm validate
-```
-
-`pnpm validate` type-checks, runs the protocol tests, builds ESM, CommonJS, and
-type declarations, and validates the npm tarball with `publint` and
-`@arethetypeswrong/cli`. Production loads the exact hosted runtime; the package
-does not generate or ship an inline Web document.
 
 ## Scale evidence
 
