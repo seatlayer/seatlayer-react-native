@@ -42,7 +42,7 @@ Season tickets are in the web and server SDKs today, not in this SDK.
 - [`@seatlayer/react-native` on npm](https://www.npmjs.com/package/@seatlayer/react-native) · [SeatLayer SDK and API overview](https://seatlayer.io/developers/)
 - [Pricing](https://seatlayer.io/pricing/): test mode is free; live, the first 100 sold seats each month are free, then 10¢ down to 5¢ per sold seat, with no subscription, and purchased credits never expire.
 
-Two-step shape: the buyer picks and holds seats in the client with your public key, then your server confirms the booking with your secret key while your platform keeps checkout and its own payment provider.
+**How it works:** the buyer picks and holds seats in your app with your public key. Your server then reads the hold, takes the payment through your own provider, and books the seats with your secret key.
 
 More from SeatLayer:
 [SeatLayer iOS seat map SDK](https://github.com/seatlayer/seatlayer-ios) ·
@@ -276,6 +276,7 @@ actions.
 The customization layers have distinct ownership:
 
 - `options` controls session behaviour and which ready-made parts are visible.
+  `options.max3DSeats`: 3D opens for venues up to 60,000 seats; on a touch screen the default is 30,000 unless you set this option.
 - `themeMode` and `themeOptions` map app colours, typography, radii, logos, and
   map colours into one resolved theme.
 - `locale` selects generated native wording; `strings` overrides any individual
@@ -694,11 +695,14 @@ Go already includes, so `npx expo install react-native-webview` is enough on a
 supported Expo SDK. Development builds and bare React Native projects work the
 same way, and the repository's `example/` app is an Expo app.
 
-### Can I use my own payment provider?
+### How do temporary seat holds work?
 
-Yes. Nothing in the app takes a payment. Your server reads the held seats and
-their prices, charges through the provider you already use, and books the hold
-with a stable booking reference.
+When a buyer goes to checkout, the SeatLayer picker holds the seats they picked
+for that buyer for a set time, which you can change per event, so no other buyer
+can take them. A hold that is never booked expires on its own: `onHoldExpired`
+tells your app, or the `holdExpired` event with `SeatLayerView`, where your code
+calls `hold()` itself. `extendHold` and `resumeHold` cover longer checkouts and
+app restarts.
 
 ### Which React Native and React versions are supported?
 
