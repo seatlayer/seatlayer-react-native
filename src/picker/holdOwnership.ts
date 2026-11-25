@@ -114,35 +114,26 @@ export function seatLayerPickerCartLineKeepsRemove(
 }
 
 /**
- * "You're all set" is never shown on the hand-off: a buyer on the way to pay
- * has not paid. It appears only when the handed-off hold SETTLES to booked —
- * the hold vanishes from the snapshot with no `hold.expired` announced first,
- * which is the web picker's own `detectBooked` rule. The expiry is read off
- * the bridge on the same hop as the snapshot that follows it, so the order on
- * the wire (expiry, then snapshot) is the order this decision sees.
+ * The hold handed to checkout, and the sale it became.
+ *
+ * A sale is only what the page says is one. A hold that leaves the map is no
+ * sale: the page drops it too when it is loaded again, when the checkout is
+ * rejected, and when the server no longer has it.
  */
 export class SeatLayerPickerBookedDetector {
   private handoff: SeatLayerPickerCheckoutHandoff | undefined;
-  private expiryAnnounced = false;
   private holdWasActive = false;
   private booked: SeatLayerPickerCheckoutHandoff | undefined;
 
   /** The handoff the picker made, retained so a later release can name it. */
   handedOff(handoff: SeatLayerPickerCheckoutHandoff): void {
     this.handoff = handoff;
-    this.expiryAnnounced = false;
     this.holdWasActive = true;
     this.booked = undefined;
   }
 
-  /** From the runtime's own expiry signal, never from a snapshot. */
-  expired(): void {
-    this.expiryAnnounced = true;
-  }
-
   released(): void {
     this.handoff = undefined;
-    this.expiryAnnounced = false;
     this.holdWasActive = false;
     this.booked = undefined;
   }
@@ -152,7 +143,6 @@ export class SeatLayerPickerBookedDetector {
    * one handed off, until it has taken that hold up again.
    */
   reloaded(): void {
-    this.expiryAnnounced = false;
     this.holdWasActive = false;
   }
 
@@ -164,24 +154,25 @@ export class SeatLayerPickerBookedDetector {
     return this.booked;
   }
 
-  /** Answers the handoff exactly once, on the hop the sale lands. */
-  observe(
-    snapshot: SeatLayerPickerSnapshot | undefined,
-  ): SeatLayerPickerCheckoutHandoff | undefined {
-    const active = snapshot?.hold.active === true;
-    if (active) {
+  /** A hold that left the map is nothing to release any more. */
+  observe(snapshot: SeatLayerPickerSnapshot | undefined): void {
+    if (snapshot?.hold.active === true) {
       this.holdWasActive = true;
-      return undefined;
+      this.booked = undefined;
+      return;
     }
-    if (snapshot === undefined || !this.holdWasActive) return undefined;
+    if (snapshot === undefined || !this.holdWasActive) return;
     this.holdWasActive = false;
-    const handoff = this.handoff;
-    const expired = this.expiryAnnounced;
     this.handoff = undefined;
-    this.expiryAnnounced = false;
-    if (handoff === undefined || expired) return undefined;
+  }
+
+  /** The page said that `handoff` is booked. True the first time. */
+  said(handoff: SeatLayerPickerCheckoutHandoff): boolean {
+    if (this.booked?.holdId === handoff.holdId) return false;
+    this.handoff = undefined;
+    this.holdWasActive = false;
     this.booked = handoff;
-    return handoff;
+    return true;
   }
 }
 

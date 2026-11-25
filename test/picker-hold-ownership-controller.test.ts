@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { BridgeTransport } from '../src/bridge/client';
 import type { Envelope } from '../src/bridge/envelope';
@@ -136,29 +136,41 @@ describe('§4.8 the hold id arrives only at the handoff', () => {
   });
 });
 
-describe('booked fires once, when the sale lands', () => {
-  it('waits for the hold to settle rather than firing on the hand-off', async () => {
+describe('a hold that leaves the map is no sale', () => {
+  async function watched() {
     const { picker, transport } = await readyPicker();
-    const booked: unknown[] = [];
-    picker.subscribeBooked((handoff) => booked.push(handoff.holdId));
-    await handOff(picker, transport);
-    expect(booked).toEqual([]);
-    push(picker, 4, { active: false });
-    expect(booked).toEqual(['hold-9']);
-    push(picker, 5, { active: false });
-    expect(booked).toEqual(['hold-9']);
-    expect(picker.getBookedHandoff()?.holdId).toBe('hold-9');
+    const booked = vi.fn();
+    picker.subscribeBooked(booked);
+    const handoff = await handOff(picker, transport);
+    return { booked, handoff, picker, transport };
+  }
+
+  it('when the app rejects the checkout, as for a declined payment', async () => {
+    const { booked, handoff, picker, transport } = await watched();
+    const flight = picker.rejectHandoff(handoff.holdId);
+    await flush();
+    reply(picker, transport, { snapshot: snapshot(3, { active: false }) });
+    await flight;
+    expect(booked).not.toHaveBeenCalled();
+    expect(picker.getBookedHandoff()).toBeUndefined();
+    expect(picker.getCheckoutHandoff()).toBeUndefined();
     picker.dispose();
   });
 
-  it('stays silent when the runtime announced the expiry first', async () => {
-    const { picker, transport } = await readyPicker();
-    const booked: unknown[] = [];
-    picker.subscribeBooked((handoff) => booked.push(handoff.holdId));
-    await handOff(picker, transport);
+  it('when the server no longer has it', async () => {
+    const { booked, picker } = await watched();
+    push(picker, 4, { active: false });
+    push(picker, 5, { active: false });
+    expect(booked).not.toHaveBeenCalled();
+    expect(picker.getBookedHandoff()).toBeUndefined();
+    picker.dispose();
+  });
+
+  it('when its time is up', async () => {
+    const { booked, picker } = await watched();
     picker.mapController.ingestRaw({ sl: 1, k: 'evt', t: 'hold.expired', n: 40, p: {} });
     push(picker, 4, { active: false });
-    expect(booked).toEqual([]);
+    expect(booked).not.toHaveBeenCalled();
     expect(picker.getBookedHandoff()).toBeUndefined();
     picker.dispose();
   });

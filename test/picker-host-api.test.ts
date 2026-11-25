@@ -185,6 +185,19 @@ describe('a hold the app has booked', () => {
     expect(booked.mock.calls[0]?.[0]).toMatchObject({ holdId: 'hold-9' });
   });
 
+  it('is a sale too when the page let go of the hold before it answered', async () => {
+    const { booked, picker, reply } = await handedOff();
+    const marked = picker.markBooked();
+    await flush();
+    picker.mapController.ingestRaw({ sl: 1, k: 'evt', t: 'picker.snapshot', n: 9, p: snapshot(3) as never });
+    expect(picker.getSnapshot()?.hold.active).toBe(false);
+    expect(booked).not.toHaveBeenCalled();
+    await reply({ booked: true, status: 'booked', holdId: 'hold-9', revision: 4, snapshot: snapshot(4) });
+    await expect(marked).resolves.toBe(true);
+    expect(booked).toHaveBeenCalledOnce();
+    expect(picker.getBookedHandoff()).toMatchObject({ holdId: 'hold-9' });
+  });
+
   it('without an id means the hold handed to checkout', async () => {
     const { picker, reply, transport } = await handedOff();
     const marked = picker.markBooked();
