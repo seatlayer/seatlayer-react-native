@@ -64,6 +64,10 @@ stay; the changes below are the ones an app or a buyer can notice.
   bottom corner is drawn only with `chrome.floorStrip: false` or where an app
   draws its own `floorStrip` part. `SeatLayerFloorStrip` draws that pill
   everywhere, where each level was a chip of its own.
+- On a phone held sideways the pill stands on the line of the "Test mode" badge
+  and the Map / 3D control where all three fit. The pill keeps the map's margin on
+  both sides, and the chosen level comes into view by itself, without a motion
+  where the system asks for less of it.
 - `SeatLayerMapControls` takes `topInset`, the room something else needs at the top
   of the map. The column of map buttons stays under it, and makes a second column
   where it would not fit.

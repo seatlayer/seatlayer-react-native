@@ -16,7 +16,7 @@ vi.mock('../src/picker/SeatLayerPickerChart', () => ({
 }));
 vi.mock('../src/picker/header', () => ({ SeatLayerPickerHeader: 'header' }));
 vi.mock('../src/picker/SeatLayerPriceLegend', () => ({ SeatLayerPriceLegend: 'legend' }));
-vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerFloorStrip: 'floors' }));
+vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerMeasuredFloorStrip: 'floors' }));
 vi.mock('../src/picker/SeatLayerPickerFloorSelector', () => ({ SeatLayerPickerFloorSelector: 'floor-selector' }));
 vi.mock('../src/picker/SeatLayerPickerSectionNavigator', () => ({ SeatLayerPickerSectionNavigator: 'section-navigator' }));
 vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10, seatLayerPickerMapControlsRailTop: 8 }));

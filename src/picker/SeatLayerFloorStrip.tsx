@@ -5,6 +5,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
+  type LayoutRectangle,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -12,6 +14,7 @@ import {
 import { seatLayerAllFloors, type SeatLayerPickerFloorInfo } from './models';
 import { seatLayerPickerColorAlpha } from './colors';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
+import { useSeatLayerPickerReducedMotion } from './reducedMotion';
 import { useSeatLayerPickerScope, type SeatLayerPickerScopeValue } from './SeatLayerPickerScope';
 import {
   resolveSeatLayerPickerStyles,
@@ -58,6 +61,16 @@ export function isSeatLayerPickerFloorSelectionEnabled(selected: boolean, busy: 
 
 /** Snapshot-only horizontal floor chooser. One or no floors intentionally draw no chrome. */
 export function SeatLayerFloorStrip(props: SeatLayerFloorStripProps): React.ReactElement | null {
+  return <SeatLayerMeasuredFloorStrip {...props} />;
+}
+
+type MeasuredProps = SeatLayerFloorStripProps & Readonly<{
+  /** How wide the whole pill is, with all its levels in it. */
+  onWidth?: (width: number) => void;
+}>;
+
+/** The same for the picker's own layout, which stands it beside other pieces. */
+export function SeatLayerMeasuredFloorStrip(props: MeasuredProps): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const snapshot = scope.snapshot;
   const floors = snapshot?.map.floors ?? [];
@@ -70,7 +83,7 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
   scope: SeatLayerPickerScopeValue;
   snapshotSession: string;
   floors: readonly SeatLayerPickerFloorInfo[];
-  props: SeatLayerFloorStripProps;
+  props: MeasuredProps;
 }>): React.ReactElement {
   const [busy, setBusy] = useState(false);
   const activeRef = useRef(false);
@@ -106,6 +119,25 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
     insetLease.set({ top: seatLayerPickerTokens.size.minimumHitTarget });
     return () => insetLease.remove();
   }, [insetLease]);
+
+  const selected = selectedAll ? seatLayerAllFloors : scope.snapshot?.map.activeFloorId;
+  const reduceMotion = useSeatLayerPickerReducedMotion();
+  const scroller = useRef<ScrollView>(null);
+  const places = useRef(new Map<string, LayoutRectangle>());
+  const widths = useRef({ content: 0, shown: 0 });
+  // The chosen level stands in the pill's middle, or as near as its ends allow.
+  const reveal = (animated: boolean) => {
+    const place = selected === undefined ? undefined : places.current.get(selected);
+    const room = widths.current.content - widths.current.shown;
+    if (place === undefined || room <= 0) return;
+    const x = Math.max(0, Math.min(room, place.x + (place.width - widths.current.shown) / 2));
+    scroller.current?.scrollTo({ animated, x });
+  };
+  useEffect(() => { reveal(!reduceMotion); }, [selected]);
+  const measured = (key: string) => (event: LayoutChangeEvent) => {
+    places.current.set(key, event.nativeEvent.layout);
+    if (key === selected) reveal(false);
+  };
 
   const start = (target: string) => {
     const current = scopeRef.current;
@@ -158,11 +190,26 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
           top: (target - pill) / 2,
         }]}
       />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={nativeStyles.scroller} contentContainerStyle={nativeStyles.scroll}>
-        {offersAll ? <FloorChip {...chip} label={scope.strings.translate('allFloors')} selected={selectedAll} disabled={!isSeatLayerPickerFloorSelectionEnabled(selectedAll, disabled)} onPress={() => start(seatLayerAllFloors)} /> : null}
+      <ScrollView
+        contentContainerStyle={nativeStyles.scroll}
+        horizontal
+        onContentSizeChange={(width) => {
+          widths.current.content = width;
+          props.onWidth?.(width + seatLayerPickerTokens.size.floorRailPadding * 2);
+          reveal(false);
+        }}
+        onLayout={(event) => {
+          widths.current.shown = event.nativeEvent.layout.width;
+          reveal(false);
+        }}
+        ref={scroller}
+        showsHorizontalScrollIndicator={false}
+        style={nativeStyles.scroller}
+      >
+        {offersAll ? <FloorChip {...chip} label={scope.strings.translate('allFloors')} selected={selectedAll} disabled={!isSeatLayerPickerFloorSelectionEnabled(selectedAll, disabled)} onLayout={measured(seatLayerAllFloors)} onPress={() => start(seatLayerAllFloors)} /> : null}
         {floors.map((floor) => {
-          const selected = !selectedAll && scope.snapshot?.map.activeFloorId === floor.id;
-          return <FloorChip {...chip} key={floor.id} label={floor.name} selected={selected} disabled={!isSeatLayerPickerFloorSelectionEnabled(selected, disabled)} onPress={() => start(floor.id)} />;
+          const chosen = selected === floor.id;
+          return <FloorChip {...chip} key={floor.id} label={floor.name} selected={chosen} disabled={!isSeatLayerPickerFloorSelectionEnabled(chosen, disabled)} onLayout={measured(floor.id)} onPress={() => start(floor.id)} />;
         })}
         {props.onFloorInfo === undefined ? null : (
           <Pressable
@@ -193,7 +240,7 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
 }
 
 /** A segment of the pill: only the level being drawn wears the accent. */
-function FloorChip({ label, selected, disabled, busy, compact, paint, styles, theme, onPress }: Readonly<{
+function FloorChip({ label, selected, disabled, busy, compact, paint, styles, theme, onLayout, onPress }: Readonly<{
   label: string;
   selected: boolean;
   disabled: boolean;
@@ -202,9 +249,10 @@ function FloorChip({ label, selected, disabled, busy, compact, paint, styles, th
   paint: number;
   styles: ReturnType<typeof resolveSeatLayerPickerStyles>;
   theme: SeatLayerPickerScopeValue['resolvedTheme'];
+  onLayout: (event: LayoutChangeEvent) => void;
   onPress: () => void;
 }>): React.ReactElement {
-  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled, busy }} disabled={disabled} onPress={onPress} style={nativeStyles.target}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled, busy }} disabled={disabled} onLayout={onLayout} onPress={onPress} style={nativeStyles.target}>
     <View style={[
       nativeStyles.paint,
       {

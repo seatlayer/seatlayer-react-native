@@ -40,7 +40,7 @@ import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
 import { SeatLayerBookButton, SeatLayerCartSheet } from './SeatLayerCartSheet';
 import { SeatLayerCartList } from './SeatLayerCartList';
 import { SeatLayerDockBar } from './SeatLayerDockBar';
-import { SeatLayerFloorStrip } from './SeatLayerFloorStrip';
+import { SeatLayerMeasuredFloorStrip } from './SeatLayerFloorStrip';
 import { SeatLayerPickerFloorSelector } from './SeatLayerPickerFloorSelector';
 import { SeatLayerPickerSectionNavigator } from './SeatLayerPickerSectionNavigator';
 import { SeatLayerMapControls, seatLayerPickerMapControlsEdgeInset } from './SeatLayerMapControls';
@@ -257,7 +257,7 @@ export function SeatLayerPickerAdaptiveLayout({
     })
     : Object.freeze({ bottom: false, left: false, right: false });
   const [viewModeWidth, setViewModeWidth] = useState<number | undefined>(undefined);
-  useLayoutEffect(() => { setViewModeWidth(undefined); }, [phoneControls.right, scope.resolvedTheme, scope.sessionId, scope.snapshot?.sessionId, scope.strings]);
+  const [floorWidth, setFloorWidth] = useState<number | undefined>(undefined);
   const categoriesVisible = nativeChrome && (snapshot?.categories.some((category) => !category.notForSale) ?? false);
   const floorsVisible = (snapshot?.map.floors.length ?? 0) > 1;
   const venueVisible = venueMode && !panoramaUp && plan.options.chrome.venue3D && plan.options.enable3D && nativeChrome &&
@@ -271,10 +271,6 @@ export function SeatLayerPickerAdaptiveLayout({
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
   const testBadgeVisible = snapshot?.event.mode === 'test' && nativeChrome;
   const [testBadgeWidth, setTestBadgeWidth] = useState<number | undefined>(undefined);
-  const testBadgeCopy = testBadgeVisible ? scope.strings.translate('testMode') : '';
-  useLayoutEffect(() => {
-    setTestBadgeWidth(undefined);
-  }, [scope.sessionId, snapshot?.sessionId, testBadgeCopy, testBadgeVisible]);
   // §3.5, 0.9.1: the disc HEADS the map's control column on both compositions,
   // so it is drawn BY that column and cannot outlive it. A host that turns the
   // column off turns the disc off with it — and, decisively, stops the phone
@@ -300,10 +296,12 @@ export function SeatLayerPickerAdaptiveLayout({
   const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const backPillDrawn = venueMode && venueVisible;
   const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
-  const { badgeTop, floorBottom, floorTop, topHeight } = planSeatLayerPickerPhoneTop({
+  const { badgeTop, floorBottom, floorRail, topHeight } = planSeatLayerPickerPhoneTop({
     backPillDrawn, badgeCleared, floorStripVisible, immersiveTopInset, testBadgeVisible,
     ownFloorStrip: builders?.floorStrip !== undefined,
-    controls: phoneControls.left || phoneControls.right,
+    controls: phoneControls.left || phoneControls.right, viewModeVisible: phoneControls.right,
+    sideways: windowSize.width > windowSize.height, mapWidth: safeLayout.usableWidth ?? 0,
+    badgeWidth: testBadgeWidth, viewModeWidth, floorWidth,
   });
   // §4.10 — the dock's reported band has to be the height it DRAWS, or a
   // focused section lands under a dock that grew with the buyer's type.
@@ -540,7 +538,7 @@ export function SeatLayerPickerAdaptiveLayout({
     />)
     : null;
   const floors = floorStripVisible
-    ? part(builders, scope, 'floorStrip', <SeatLayerFloorStrip compact={!wide} reserveInset={false} />)
+    ? part(builders, scope, 'floorStrip', <SeatLayerMeasuredFloorStrip compact={!wide} onWidth={setFloorWidth} reserveInset={false} />)
     : null;
   const floorSelector = floorSelectorVisible
     ? part(builders, scope, 'floorSelector', withSafeArea(SeatLayerPickerFloorSelector, safeLayout.insets))
@@ -700,7 +698,7 @@ export function SeatLayerPickerAdaptiveLayout({
           {wide ? null : <SpotlightGlass anchorDy={anchorDy} screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
           {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(decisionUp)}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
-            {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, { top: floorTop }]}>{floors}</View>}
+            {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, floorRail]}>{floors}</View>}
             {testBadgeVisible ? <View
               onLayout={(event) => {
                 const next = event.nativeEvent.layout.width;
