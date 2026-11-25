@@ -341,19 +341,21 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
 
   return (
     <View
-      style={sanitizeSeatLayerPickerStyle(props.style)}
+      // The open list gives way where the screen is too short for it and the row.
+      style={[shrinks, sanitizeSeatLayerPickerStyle(props.style)]}
       testID="seatlayer-cart-sheet"
     >
       {/* The empty cart's way in to the best-seats form. Still a FORM, not a
           verb: the form only exists inside the open sheet, so the press opens
           the sheet on it — and a host-supplied checkout bar keeps the door. */}
       <SeatLayerSheetFinderProvider onFindBestSeats={() => ask(true)}>
-      <Animated.View style={{ transform: [{ translateY: belowPeek }] }}>
+      <Animated.View style={[shrinks, { transform: [{ translateY: belowPeek }] }]}>
       <View
         onLayout={(event: LayoutChangeEvent) => {
           if (!props.expanded) setCollapsedHeight(event.nativeEvent.layout.height);
         }}
         style={[{
+          flexShrink: 1,
           // The picker's own ground, and one line over it. No shadow: an
           // upward one reads as a grey band over the map.
           backgroundColor: theme.colors.background,
@@ -362,7 +364,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           paddingBottom: underRow,
         }, styles.sheetContainer]}
       >
-        <Animated.View style={{ height: body, overflow: 'hidden' }} testID="seatlayer-cart-region">
+        <Animated.View style={[shrinks, { height: body, overflow: 'hidden' }]} testID="seatlayer-cart-region">
           <ScrollView
             // The list scrolls inside its own box rather than pushing the
             // sheet: the map keeps its room whatever the cart holds.
@@ -435,6 +437,8 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     </View>
   );
 }
+
+const shrinks = { flexShrink: 1 } as const;
 
 /** The ready-made button, which the row measures; anything else is an app's own part. */
 function isOwnButton(part: ReactNode): boolean {

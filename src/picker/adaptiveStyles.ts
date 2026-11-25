@@ -11,6 +11,7 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   root: { flex: 1 },
   safeAreaContent: { flex: 1 },
   phone: { flex: 1 },
+  shrinks: { flexShrink: 1 },
   wide: { flex: 1, flexDirection: 'row' },
   map: { flex: 1, overflow: 'hidden', position: 'relative' },
   chartOwner: { flex: 1 },

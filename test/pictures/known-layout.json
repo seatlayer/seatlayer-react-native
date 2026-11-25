@@ -176,7 +176,7 @@
   "Interactive 3D venue view: under Display options": {
     "320": 2,
     "667x375": 1,
-    "844x390": 1,
+    "844x390": 2,
     "915x412": 1
   },
   "Interactive 3D venue view: under Remove seat Guest Tables 1": {
@@ -188,9 +188,7 @@
     "915x412": 2
   },
   "Interactive 3D venue view: under Zoom in": {
-    "320": 3,
-    "844x390": 1,
-    "915x412": 1
+    "320": 3
   },
   "Map: cut at the top or bottom": {
     "667x375": 2,

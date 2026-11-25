@@ -136,13 +136,13 @@ function withSafeArea(
 function ordered(
   rung: SeatLayerPickerReadingRung,
   child: React.ReactNode,
-  options?: Readonly<{ suffix?: string; overlay?: boolean; hidden?: boolean }>,
+  options?: Readonly<{ suffix?: string; overlay?: boolean; hidden?: boolean; shrinks?: boolean }>,
 ): React.ReactElement | null {
   if (child === null || child === undefined || child === false) return null;
   const nativeID = seatLayerPickerReadingOrderId(rung, options?.suffix);
   return options?.overlay === true
     ? <View collapsable={false} nativeID={nativeID} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(options.hidden)}>{child}</View>
-    : <View collapsable={false} nativeID={nativeID} {...underDialog(options?.hidden)}>{child}</View>;
+    : <View collapsable={false} nativeID={nativeID} style={options?.shrinks === true ? styles.shrinks : undefined} {...underDialog(options?.hidden)}>{child}</View>;
 }
 
 /**
@@ -775,7 +775,7 @@ export function SeatLayerPickerAdaptiveLayout({
           {ticketPanelVisible ? actionError : null}
           {ticketPanelVisible ? <SeatLayerPickerSalesClosedStatement /> : null}
           {ticketPanelVisible ? checkout : null}
-        </View> : <>{ordered('sheet', cartSheet)}<View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'foot')} pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}</> : null}</View></>}
+        </View> : <>{ordered('sheet', cartSheet, { shrinks: true })}<View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'foot')} pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}</> : null}</View></>}
         </View>
       </View>
       <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'states')} pointerEvents="box-none" style={styles.phoneOverlays}>
