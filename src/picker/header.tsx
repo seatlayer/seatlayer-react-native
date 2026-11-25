@@ -38,6 +38,7 @@ import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBold, seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 type HeaderSlots = Pick<
   SeatLayerPickerStyles,
@@ -644,6 +645,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     // (`picker_header.dart` › `_EventTitle`); eight hundred printed the name
     // two points wide of the reference frame.
     fontWeight: "700",
+    ...seatLayerPickerLineStart,
   },
   pill: {
     height: seatLayerPickerTokens.size.headerCloseSize,

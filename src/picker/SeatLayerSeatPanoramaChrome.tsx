@@ -2,7 +2,6 @@ import React, { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'r
 import {
   Animated,
   Easing,
-  I18nManager,
   Text,
   View,
   type StyleProp,
@@ -28,6 +27,7 @@ import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatLayerSeatView } from './models';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerJoinedLetters, seatLayerPickerLineStart } from './drawnShape';
 
 const captionGlass = seatLayerPickerImmersiveCaptionGlass;
 const size = seatLayerPickerTokens.size;
@@ -79,7 +79,6 @@ function ownsPanorama(scope: ReturnType<typeof useSeatLayerPickerScope>, view: S
  * close control, and—by default—the drag hint; this view takes no interaction.
  */
 export function SeatLayerSeatPanoramaChromeView(props: SeatLayerSeatPanoramaChromeViewProps): React.ReactElement {
-  const rtl = I18nManager.isRTL;
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   const wording = projectSeatLayerPanoramaWording(props.view);
   return <View
@@ -99,13 +98,13 @@ export function SeatLayerSeatPanoramaChromeView(props: SeatLayerSeatPanoramaChro
         styles.captionStrip,
         // §3.15: the caption strip wears the immersive caption glass, because
         // it floats over the panorama exactly as the 3D deck floats over the scene.
-        { backgroundColor: captionGlass.ground, borderColor: captionGlass.border, flexDirection: rtl ? 'row-reverse' : 'row' },
+        { backgroundColor: captionGlass.ground, borderColor: captionGlass.border },
         slots?.seatViewChromeContainer,
         sanitizeSeatLayerPickerStyle(props.style),
       ]}>
         <View pointerEvents="none" style={styles.copy}>
-          {wording.title ? <Text numberOfLines={2} style={[styles.title, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, textAlign: rtl ? 'right' : 'left' }]}>{wording.title}</Text> : null}
-          {wording.caption ? <Text numberOfLines={2} style={[styles.caption, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, textAlign: rtl ? 'right' : 'left' }]}>{wording.caption}</Text> : null}
+          {wording.title ? <Text numberOfLines={2} style={[styles.title, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.title}</Text> : null}
+          {wording.caption ? <Text numberOfLines={2} style={[styles.caption, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.caption}</Text> : null}
         </View>
         {wording.badge ? <View pointerEvents="none" style={[
           styles.badge,
@@ -116,13 +115,14 @@ export function SeatLayerSeatPanoramaChromeView(props: SeatLayerSeatPanoramaChro
         ]}>
           <Text numberOfLines={1} style={[
             styles.badgeText,
-            { color: props.view.real ? props.theme.colors.onAccent : captionGlass.ink, fontFamily: props.theme.fontFamily, textAlign: rtl ? 'right' : 'left' },
+            seatLayerPickerJoinedLetters(wording.badge),
+            { color: props.view.real ? props.theme.colors.onAccent : captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart },
             slots?.seatViewChromeButtonText,
           ]}>{wording.badge}</Text>
         </View> : null}
       </View>
       {props.showDragHint === true && wording.dragHint ? <View pointerEvents="none" style={[styles.hintChip, { backgroundColor: captionGlass.ground, borderColor: captionGlass.border, borderWidth: 1 }]}>
-        <Text numberOfLines={1} style={[styles.hint, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, textAlign: rtl ? 'right' : 'left' }]}>{wording.dragHint}</Text>
+        <Text numberOfLines={1} style={[styles.hint, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.dragHint}</Text>
       </View> : null}
     </View>
   </View>;
@@ -187,7 +187,7 @@ const styles = {
   } as ViewStyle,
   badgeText: { fontSize: 12, fontWeight: seatLayerPickerBold(800), letterSpacing: 0.2 } as TextStyle,
   caption: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600), lineHeight: 17, marginTop: 3 } as TextStyle,
-  captionStrip: { alignItems: 'flex-start', alignSelf: 'stretch', borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, gap: 10, maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 10 } as ViewStyle,
+  captionStrip: { alignItems: 'flex-start', alignSelf: 'stretch', borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, flexDirection: 'row', gap: 10, maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 10 } as ViewStyle,
   content: { alignItems: 'stretch', bottom: 0, justifyContent: 'flex-end', left: 18, position: 'absolute', right: 18, top: 0 } as ViewStyle,
   copy: { flex: 1, minWidth: 0 } as ViewStyle,
   hint: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600) } as TextStyle,

@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ width: 320, height: undefined as number | undefined, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn() }));
 
 vi.mock('react-native', () => ({
+  I18nManager: { isRTL: false },
   View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width, height: state.height }),
   StatusBar: 'StatusBar',
   AccessibilityInfo: { isReduceMotionEnabled: () => Promise.resolve(false), addEventListener: () => ({ remove: () => undefined }) },
@@ -932,7 +933,7 @@ describe('adaptive picker composition', () => {
     const expected = resolveSeatLayerPickerAdaptiveSafeLayout({ width: 900, height: 400 }, input).insets;
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-phone' })).toBeTruthy();
     expect(tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' }).props.style[1]).toMatchObject({
-      paddingBottom: 0, paddingEnd: 30, paddingStart: 40, paddingTop: 12,
+      paddingBottom: 0, paddingRight: 30, paddingLeft: 40, paddingTop: 12,
     });
     const forwarded = tree.root.findByType('ga-prompt' as any).props.safeAreaInsets;
     expect(forwarded).toEqual(expected);
@@ -1079,7 +1080,7 @@ describe('adaptive picker composition', () => {
     // off leases no band for it either.
     expect(tree.root.findAllByType('accessibility' as any)).toHaveLength(0);
     const outer = tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' });
-    expect(outer.props.style[1]).toMatchObject({ paddingBottom: 0, paddingEnd: 6, paddingStart: 6, paddingTop: 12 });
+    expect(outer.props.style[1]).toMatchObject({ paddingBottom: 0, paddingRight: 6, paddingLeft: 6, paddingTop: 12 });
     expect(tree.root.findByType('cart-sheet' as any).props.reserveBottomInset).toBe(true);
     expect(state.scope.lease.set).not.toHaveBeenCalled();
     await act(async () => { tree.unmount(); });

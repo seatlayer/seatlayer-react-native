@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('react-native', () => ({
+  I18nManager: { isRTL: false },
   View: 'View', ScrollView: 'ScrollView',
   StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} },
   useWindowDimensions: () => ({ width: state.width }),

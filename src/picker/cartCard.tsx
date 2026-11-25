@@ -9,6 +9,7 @@ import { seatLayerPickerSheetLayout } from './sheetLayout';
 import { seatLayerPickerBold } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
 import { seatLayerPickerSeatNoteSpoken, type SeatLayerPickerSeatNote } from './seatNotes';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 /**
  * ONE TICKET, ONE CARD — and the same card on every width (spec §3.10.2).
@@ -110,6 +111,7 @@ export function SeatLayerCartCard(props: SeatLayerCartCardProps): React.ReactEle
             numberOfLines={1}
             ellipsizeMode="tail"
             style={[{
+              ...seatLayerPickerLineStart,
               color: theme.colors.text,
               fontFamily: theme.fontFamily,
               fontSize: seatLayerPickerTokens.type.cartCardName.size,
@@ -125,6 +127,7 @@ export function SeatLayerCartCard(props: SeatLayerCartCardProps): React.ReactEle
                   numberOfLines={1}
                   ellipsizeMode="tail"
                   style={[{
+                    ...seatLayerPickerLineStart,
                     color: theme.colors.mutedText,
                     fontFamily: theme.fontFamily,
                     fontSize: seatLayerPickerTokens.type.cartCardPosition.size,
@@ -223,6 +226,7 @@ export function SeatLayerCartCardNotes({ notes, theme }: Readonly<{
           key={note.key}
           maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
           style={{
+            ...seatLayerPickerLineStart,
             color: theme.colors.mutedText,
             fontFamily: theme.fontFamily,
             fontSize: seatLayerPickerTokens.type.cartNoteText.size,

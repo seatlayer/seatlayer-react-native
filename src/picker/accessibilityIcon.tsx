@@ -1,6 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { seatLayerPickerDrawnShape } from './drawnShape';
+
 /**
  * The accessibility marks, DRAWN rather than typed.
  *
@@ -58,7 +60,7 @@ export function SeatLayerPickerAccessIcon({ color, size = 21, variant = 'iso' }:
     width: d * u,
   });
   return (
-    <View accessible={false} style={{ height: size, width: size }}>
+    <View accessible={false} style={[seatLayerPickerDrawnShape, { height: size, width: size }]}>
       {variant === 'iso'
         ? (
           <>

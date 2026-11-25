@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, type ViewStyle } from 'react-native';
+import { I18nManager, View, type ViewStyle } from 'react-native';
+
+import { seatLayerPickerDrawnShape } from './drawnShape';
 
 /**
  * The zoom glyphs, measured off the reference frame rather than drawn to a
@@ -32,9 +34,14 @@ export function SeatLayerPickerMinusIcon({ color }: { readonly color: string }):
   return <View style={{ backgroundColor: color, borderRadius: zoomGlyphStroke / 2, height: zoomGlyphStroke, width: zoomGlyphArm }} />;
 }
 
+/** Points to the start of the line, so it is turned round with the reading direction. */
 export function SeatLayerPickerBackIcon({ color }: { readonly color: string }): React.ReactElement {
   return (
-    <View style={{ height: 16, width: 18 }}>
+    <View style={[
+      seatLayerPickerDrawnShape,
+      { height: 16, width: 18 },
+      I18nManager.isRTL ? { transform: [{ scaleX: -1 }] } : null,
+    ]}>
       <View
         style={{
           backgroundColor: color,
@@ -81,7 +88,7 @@ export function SeatLayerPickerFocusCornersIcon({ color }: { readonly color: str
     />
   );
   return (
-    <View style={{ height: 16, width: 16 }}>
+    <View style={[seatLayerPickerDrawnShape, { height: 16, width: 16 }]}>
       {corner({ left: 0, top: 0 }, '0deg')}
       {corner({ right: 0, top: 0 }, '90deg')}
       {corner({ bottom: 0, right: 0 }, '180deg')}

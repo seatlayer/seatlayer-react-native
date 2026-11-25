@@ -1,6 +1,8 @@
 import React from 'react';
 import { View } from 'react-native';
 
+import { seatLayerPickerDrawnShape } from './drawnShape';
+
 /**
  * The finder's mark, DRAWN rather than typed.
  *
@@ -36,7 +38,7 @@ export function SeatLayerPickerSparkIcon({ color, ground, size = 16 }: Readonly<
   size?: number;
 }>): React.ReactElement {
   return (
-    <View accessible={false} style={{ height: size, width: size }}>
+    <View accessible={false} style={[seatLayerPickerDrawnShape, { height: size, width: size }]}>
       <Star color={color} ground={ground} side={size * .53125} x={size * .3856} y={size * .5} />
       <Star color={color} ground={ground} side={size * .25} x={size * .8125} y={size * .2083} />
       <Star color={color} ground={ground} side={size * .25} x={size * .8125} y={size * .7917} />

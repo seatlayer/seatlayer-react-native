@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import { resolveSeatLayerPickerMotion } from './motion';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
+import { seatLayerPickerDrawnShape } from './drawnShape';
 
 export interface SeatLayerSelectionFlightMoment {
   readonly id: number;
@@ -55,7 +56,7 @@ export function SeatLayerSelectionFlight({
 }
 
 const styles = StyleSheet.create({
-  overlay: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, zIndex: 80 },
+  overlay: { ...seatLayerPickerDrawnShape, bottom: 0, left: 0, position: 'absolute', right: 0, top: 0, zIndex: 80 },
   dot: {
     borderRadius: 6,
     height: 12,

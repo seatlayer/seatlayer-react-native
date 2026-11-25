@@ -37,6 +37,7 @@ import { seatLayerPickerFontWeight } from './fontWeight';
 import { blendSeatLayerPickerColor } from './pickerNavigation';
 import { seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerDrawnShape, seatLayerPickerLineStart } from './drawnShape';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type ChoiceKind = 'category' | 'zone';
@@ -221,8 +222,8 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
       hitSlop={selectReach}
       style={{ minHeight: seatLayerPickerTokens.size.bestSeatsSelectHeight, alignSelf: 'stretch', justifyContent: 'center' }}>
       <View style={[{ alignItems: 'center', backgroundColor: theme.colors.surface, borderColor: theme.colors.divider, borderRadius: seatLayerPickerTokens.radius.control, borderWidth: 1, flexDirection: 'row', height: seatLayerPickerTokens.size.bestSeatsSelectHeight, paddingEnd: 10, paddingStart: 9 }, styles.bestSeatsSelector]}>
-        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
-        <View accessible={false} style={{ borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 }} />
+        <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} style={{ ...seatLayerPickerLineStart, color: theme.colors.text, flex: 1, fontFamily: theme.fontFamily, fontSize: seatLayerPickerTokens.type.bestSeatsSelect.size, fontWeight: seatLayerPickerBold(seatLayerPickerTokens.type.bestSeatsSelect.weight) }}>{value}</Text>
+        <View style={{ marginStart: 8, marginTop: -4 }}><View accessible={false} style={{ ...seatLayerPickerDrawnShape, borderBottomColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderBottomWidth: 1.5, borderRightColor: allowed ? theme.colors.mutedText : theme.colors.divider, borderRightWidth: 1.5, height: 7, transform: [{ rotate: '45deg' }], width: 7 }} /></View>
       </View>
     </Pressable>
   );
@@ -235,7 +236,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
             if (choice?.kind === 'category') setCategoryKey(entry.id); else setZoneId(entry.id);
             closeChoice();
           }} style={{ minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }}>
-          <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{ color: theme.colors.text, fontFamily: theme.fontFamily }}>{entry.label}</Text>
+          <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} style={{ ...seatLayerPickerLineStart, color: theme.colors.text, fontFamily: theme.fontFamily }}>{entry.label}</Text>
         </Pressable>
       ))}</ScrollView>
     </View>
@@ -333,6 +334,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
             maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')}
             testID="seatlayer-best-seats-about-text"
             style={{
+              ...seatLayerPickerLineStart,
               color: theme.colors.mutedText,
               fontFamily: theme.fontFamily,
               fontSize: 12,

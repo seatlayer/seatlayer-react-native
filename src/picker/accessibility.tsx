@@ -24,6 +24,7 @@ import { seatLayerPickerMapChromeGround } from "./mapChromeTheme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { normalizeSeatLayerPickerSafeAreaInsets, type SeatLayerPickerSafeAreaInsetInput } from "./safeAreaInsets";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 type AccessibilitySlots = Pick<
   SeatLayerPickerStyles,
@@ -496,7 +497,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 12,
   },
-  wideLabel: { fontSize: 14, fontWeight: "700" },
+  wideLabel: { ...seatLayerPickerLineStart, fontSize: 14, fontWeight: "700" },
   badge: {
     position: "absolute",
     right: -4,

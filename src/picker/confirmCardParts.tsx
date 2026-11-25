@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { I18nManager, Image, Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import type { SeatLayerPickerBuyerAssetLoader } from './buyerAssetLoader';
 import { blendSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
@@ -13,6 +13,7 @@ import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerDrawnShape, seatLayerPickerJoinedLetters, seatLayerPickerLineStart } from './drawnShape';
 
 /** §3.8.3 — the parts the seat card is assembled from. */
 
@@ -56,7 +57,6 @@ export function ConfirmIdentityGrid(props: Readonly<{
   return <View
     style={[styles.grid, {
       borderBottomColor: theme.divider,
-      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
       minHeight: seatLayerPickerTokens.size.confirmIdentityHeight,
     }]}
     testID="seatLayerConfirmIdentity"
@@ -72,7 +72,7 @@ export function ConfirmIdentityGrid(props: Readonly<{
       <Text
         maxFontSizeMultiplier={clamp}
         numberOfLines={1}
-        style={[styles.cellKey, { color: theme.mutedText, fontFamily: theme.fontFamily }]}
+        style={[styles.cellKey, seatLayerPickerJoinedLetters(cell.key), { color: theme.mutedText, fontFamily: theme.fontFamily }]}
       >{cell.key.toLocaleUpperCase()}</Text>
       <Text
         maxFontSizeMultiplier={clamp}
@@ -114,7 +114,6 @@ export function ConfirmCategoryBand(props: Readonly<{
   return <View
     style={[styles.band, {
       backgroundColor: props.color,
-      flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row',
       paddingTop: pad.top,
       paddingBottom: pad.bottom,
       paddingStart: pad.leading,
@@ -217,7 +216,7 @@ export function ConfirmPhotoStrip(props: Readonly<{
     {props.sightline === undefined ? null : <View style={[styles.sightPill, { backgroundColor: plate }]} testID="seatLayerConfirmSightline">
       <Text maxFontSizeMultiplier={clamp} numberOfLines={1} style={[styles.sightText, { fontFamily: theme.fontFamily }]}>{props.sightline}</Text>
     </View>}
-    <View style={[styles.stripPills, { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row' }]}>
+    <View style={styles.stripPills}>
       {props.pills.map((pill) => <Pressable
         accessibilityRole="button"
         accessibilityLabel={pill.accessibilityLabel ?? pill.label}
@@ -314,7 +313,7 @@ export function ConfirmAnswerMark(props: Readonly<{ mode: 'add' | 'remove'; colo
       <View style={[styles.crossBar, { backgroundColor: props.color, transform: [{ rotate: '45deg' }] }]} />
       <View style={[styles.crossBar, { backgroundColor: props.color, transform: [{ rotate: '-45deg' }] }]} />
     </View>
-    : <View style={[styles.tick, { borderColor: props.color }]} testID="seatLayerConfirmTick" />;
+    : <View style={[seatLayerPickerDrawnShape, styles.tick, { borderColor: props.color }]} testID="seatLayerConfirmTick" />;
 }
 
 /**
@@ -324,7 +323,7 @@ export function ConfirmAnswerMark(props: Readonly<{ mode: 'add' | 'remove'; colo
  */
 export function ConfirmCubeGlyph(props: Readonly<{ color: string; fontFamily?: string; label: string }>): React.ReactElement {
   return <>
-    <View accessible={false} style={[styles.cubeMark, { borderColor: props.color }]}>
+    <View accessible={false} style={[seatLayerPickerDrawnShape, styles.cubeMark, { borderColor: props.color }]}>
       <View style={[styles.cubeStem, { backgroundColor: props.color }]} />
       <View style={[styles.cubeEdge, styles.cubeEdgeStart, { backgroundColor: props.color }]} />
       <View style={[styles.cubeEdge, styles.cubeEdgeEnd, { backgroundColor: props.color }]} />
@@ -346,7 +345,7 @@ const cubeInner = cubeSize - 2.8;
 const plate = seatLayerPickerColorAlpha('#0B0F19', 0.62);
 
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
-  grid: { borderBottomWidth: seatLayerPickerLineWidth },
+  grid: { flexDirection: 'row', borderBottomWidth: seatLayerPickerLineWidth },
   // The reference's own cell box: `EdgeInsets.fromLTRB(6, 8, 6, 7)`, not a
   // symmetric pad. The eyebrow and the value carry explicit line boxes for
   // the same reason the Dart does — a null height leaves the cell at the
@@ -361,12 +360,12 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     textAlign: 'center',
   },
   cellValue: { fontWeight: '800', textAlign: 'center' },
-  band: { alignItems: 'center', gap: 10, minHeight: seatLayerPickerTokens.size.confirmBandHeight },
-  bandName: { flex: 1, fontSize: seatLayerPickerTokens.size.confirmBandNameFontSize, fontWeight: '800' },
+  band: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: seatLayerPickerTokens.size.confirmBandHeight },
+  bandName: { ...seatLayerPickerLineStart, flex: 1, fontSize: seatLayerPickerTokens.size.confirmBandNameFontSize, fontWeight: '800' },
   bandPrice: { flexShrink: 0, fontVariant: ['tabular-nums'], fontWeight: '800' },
   strip: { height: seatLayerPickerTokens.size.confirmPhotoHeight, overflow: 'hidden', position: 'relative' },
   stripGround: { bottom: 0, flexDirection: 'row', left: 0, position: 'absolute', right: 0, top: 0 },
-  stripPills: { bottom: 6, end: 6, gap: 6, position: 'absolute' },
+  stripPills: { bottom: 6, end: 6, flexDirection: 'row', gap: 6, position: 'absolute' },
   pill: {
     alignItems: 'center',
     borderRadius: seatLayerPickerTokens.radius.pill,
@@ -389,8 +388,8 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   // than its cap height, so a flush top reads as a point high.
   noteIcon: { marginEnd: seatLayerPickerTokens.size.noteIconGap, marginTop: 1 },
   noteText: { flexGrow: 1, flexShrink: 1 },
-  noteTitle: {},
-  noteBody: { marginTop: 2 },
+  noteTitle: { ...seatLayerPickerLineStart },
+  noteBody: { ...seatLayerPickerLineStart, marginTop: 2 },
   tick: { borderBottomWidth: 2, borderLeftWidth: 2, height: 7, transform: [{ rotate: '-45deg' }], width: 12 },
   cross: { alignItems: 'center', height: 12, justifyContent: 'center', width: 12 },
   crossBar: { height: 2, position: 'absolute', width: 13 },

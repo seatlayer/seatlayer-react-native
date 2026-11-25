@@ -11,6 +11,7 @@ import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerJoinedLetters } from "./drawnShape";
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -48,7 +49,7 @@ export function SeatLayerPickerSoldOutOverlay(
     >
       <Text
         maxFontSizeMultiplier={seatLayerPickerStateScaleClamp}
-        style={[styles.eyebrow, { color: theme.colors.mutedText, fontFamily: theme.fontFamily }]}
+        style={[styles.eyebrow, seatLayerPickerJoinedLetters(eyebrow), { color: theme.colors.mutedText, fontFamily: theme.fontFamily }]}
       >
         {eyebrow.toLocaleUpperCase()}
       </Text>

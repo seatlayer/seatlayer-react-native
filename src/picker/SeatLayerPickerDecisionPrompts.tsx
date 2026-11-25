@@ -44,6 +44,7 @@ import { seatLayerPickerBuyerError } from './errorWords';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerLineStart, seatLayerPickerScreenSides } from './drawnShape';
 
 type PromptKind = Extract<SeatLayerPickerDecisionKind, 'ga' | 'table'>;
 type PromptSlots = Pick<SeatLayerPickerStyles,
@@ -375,8 +376,8 @@ function ModalPrompt({
     : scope.strings.translate('chooseGuestsCopy');
   const refused = state.error ? seatLayerPickerBuyerError(state.error, scope.strings) : undefined;
   return <SeatLayerPickerPromptModal visible>
-    <Pressable accessible={false} onPress={dismiss} style={[stylesNative.scrim, { backgroundColor: scope.resolvedTheme.colors.text, opacity: .42, paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} />
-    <View accessibilityViewIsModal style={[stylesNative.modalLayer, { paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} pointerEvents="box-none">
+    <Pressable accessible={false} onPress={dismiss} style={[stylesNative.scrim, { backgroundColor: scope.resolvedTheme.colors.text, opacity: .42, paddingTop: insets.top, paddingBottom: insets.bottom, ...seatLayerPickerScreenSides(insets) }]} />
+    <View accessibilityViewIsModal style={[stylesNative.modalLayer, { paddingTop: insets.top, paddingBottom: insets.bottom, ...seatLayerPickerScreenSides(insets) }]} pointerEvents="box-none">
       <View style={[stylesNative.card, { backgroundColor: scope.resolvedTheme.colors.surface, borderColor: scope.resolvedTheme.colors.divider, borderRadius: seatLayerPickerTokens.radius.card, padding: seatLayerPickerTokens.size.confirmCardGutter }, styles.card, localCard]}>
         <Text accessibilityRole="header" style={[stylesNative.title, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{title}</Text>
         <Text style={[stylesNative.subtitle, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>{subtitle}</Text>
@@ -455,10 +456,10 @@ const stylesNative = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill },
   modalLayer: { flex: 1, justifyContent: 'flex-end' },
   card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: seatLayerPickerLineWidth },
-  title: { fontSize: 17, fontWeight: '900' }, subtitle: { marginTop: 3, fontSize: 14 },
+  title: { ...seatLayerPickerLineStart, fontSize: 17, fontWeight: '900' }, subtitle: { ...seatLayerPickerLineStart, marginTop: 3, fontSize: 14 },
   quantity: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, marginTop: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   quantityValue: { minWidth: 70, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }, quantityText: { fontSize: 24, fontWeight: '700' },
   hit: { flex: 1, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, buttonPaint: { height: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', alignItems: 'center', borderWidth: 1, paddingHorizontal: 10 }, buttonText: { fontSize: 14, fontWeight: '800' },
-  tierScroll: { maxHeight: seatLayerPickerTokens.size.confirmActionHeight * 5 }, tierScrollContent: { paddingBottom: seatLayerPickerTokens.size.confirmCardGutter }, tiers: { marginTop: 14, gap: 8 }, tierHit: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, tierPaint: { minHeight: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 }, tierName: { fontSize: 14, fontWeight: '800' }, tierPrice: { fontSize: 13, fontWeight: '800' }, guidance: { marginTop: 2, fontSize: 11 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 14 }, error: { marginTop: 10, fontSize: 13 }, inline: { gap: 8 },
+  tierScroll: { maxHeight: seatLayerPickerTokens.size.confirmActionHeight * 5 }, tierScrollContent: { paddingBottom: seatLayerPickerTokens.size.confirmCardGutter }, tiers: { marginTop: 14, gap: 8 }, tierHit: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' }, tierPaint: { minHeight: seatLayerPickerTokens.size.confirmActionHeight, justifyContent: 'center', borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 }, tierName: { ...seatLayerPickerLineStart, fontSize: 14, fontWeight: '800' }, tierPrice: { ...seatLayerPickerLineStart, fontSize: 13, fontWeight: '800' }, guidance: { ...seatLayerPickerLineStart, marginTop: 2, fontSize: 11 },
+  actions: { flexDirection: 'row', gap: 10, marginTop: 14 }, error: { ...seatLayerPickerLineStart, marginTop: 10, fontSize: 13 }, inline: { gap: 8 },
 }));
