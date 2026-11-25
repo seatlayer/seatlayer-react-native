@@ -44,7 +44,7 @@ stay; the changes below are the ones an app or a buyer can notice.
 **Words and languages**
 
 - 43 languages (Hindi, Indonesian, Korean, Malay, Thai and Vietnamese are new)
-  and 233 sentences, the hosted map's own. Counted sentences use every plural
+  with the hosted map's own sentences. Counted sentences use every plural
   form their language has.
 - A refused action says why: the seats that were taken, a type that is sold out,
   a limit and its number, no connection, a pause for maintenance, a private
