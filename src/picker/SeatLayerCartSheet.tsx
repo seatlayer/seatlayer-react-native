@@ -324,6 +324,9 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const actionError = props.actionError === undefined ? <SeatLayerPickerActionError /> : props.actionError;
   const salesClosed = props.salesClosed === undefined
     ? <SeatLayerPickerSalesClosedStatement /> : props.salesClosed;
+  // Beside tickets the extras are often empty, and nothing takes no room.
+  const extrasPadBottom = !hasTickets || scope.snapshot?.event.salesClosed === true
+    ? seatLayerCartBarSize.listPadBottom : 0;
   const checkoutBar = props.checkoutBar === undefined
     ? <SeatLayerBookButton onCheckout={props.onCheckout} />
     : props.checkoutBar;
@@ -381,8 +384,8 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               onLayout={(event) => setExtrasNatural(event.nativeEvent.layout.height)}
               pointerEvents={props.expanded ? 'auto' : 'none'}
               style={props.expanded
-                ? { paddingBottom: seatLayerCartBarSize.listPadBottom, paddingTop: hasTickets ? 0 : seatLayerPickerTokens.size.cartTrayPadTop }
-                : { left: 0, opacity: 0, paddingBottom: seatLayerCartBarSize.listPadBottom, position: 'absolute', right: 0, top: 0 }}
+                ? { paddingBottom: extrasPadBottom, paddingTop: hasTickets ? 0 : seatLayerPickerTokens.size.cartTrayPadTop }
+                : { left: 0, opacity: 0, paddingBottom: extrasPadBottom, position: 'absolute', right: 0, top: 0 }}
               testID="seatlayer-cart-extras"
             >
               {salesClosed}
