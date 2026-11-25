@@ -85,6 +85,16 @@ stay; the changes below are the ones an app or a buyer can notice.
   the headings stand at the reading side.
   On an iPhone held sideways this sheet and the other prompts open sideways, where
   they turned the screen upright.
+- `SeatLayerPickerModal` turns with an iPhone, in every way the app itself
+  supports: an app that supports only upright stays upright. The hold, the chosen
+  seats and an open list stay. In an app that supports only sideways it stopped
+  the app. `supportedOrientations`, React Native's own prop, names other ways.
+  Upgrading: an app that keeps its own screens upright one by one, and not as a
+  whole, passes `supportedOrientations={['portrait']}` to keep the picker upright.
+- On a phone held sideways `SeatLayerPickerModal` is full screen, as it is upright.
+  It became a dialog when the window was 700 points wide, and the map started
+  again when an Android phone was turned. `presentation: 'dialog'` is still
+  honoured.
 - With no close button, the hold clock and the "Sales are closed" pill stand
   eight points clear of the header's edge.
 - In the 3D venue the status bar stands on the dark ground its light text is

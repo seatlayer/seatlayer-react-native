@@ -12,6 +12,7 @@ import {
   SafeAreaView,
   useWindowDimensions,
   View,
+  type ModalProps,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
@@ -28,6 +29,7 @@ import type { SeatLayerPickerHapticAdapter } from './hapticPlayer';
 import {
   seatLayerPickerModalMaximumHeight,
   seatLayerPickerModalMaximumWidth,
+  seatLayerPickerModalOrientations,
   seatLayerPickerModalPresentationInset,
   resolveSeatLayerPickerModalPresentation,
   type SeatLayerPickerModalPresentation,
@@ -56,6 +58,11 @@ export interface SeatLayerPickerModalProps extends SeatLayerPickerScopeStringPro
   readonly onRequestClose: (reason: SeatLayerPickerCloseReason) => void | Promise<void>;
   readonly presentation?: SeatLayerPickerModalPresentation;
   readonly barrierDismissible?: boolean;
+  /**
+   * How the modal may be held on iOS, as React Native's own prop. Every way by
+   * default, within what the app supports.
+   */
+  readonly supportedOrientations?: ModalProps['supportedOrientations'];
   readonly controller?: SeatLayerPickerController;
   readonly options?: SeatLayerPickerOptions;
   readonly themeMode?: SeatLayerThemeMode;
@@ -156,8 +163,8 @@ function ModalBody(
   },
 ): React.ReactElement {
   const scope = useSeatLayerPickerScope();
-  const { width } = useWindowDimensions();
-  const presentation = resolveSeatLayerPickerModalPresentation(props.presentation, width);
+  const { width, height } = useWindowDimensions();
+  const presentation = resolveSeatLayerPickerModalPresentation(props.presentation, width, height);
   const scopeRef = useRef(scope);
   const callbacksRef = useRef(props.callbacks);
   const hostCloseRef = useRef(props.onRequestClose);
@@ -284,6 +291,8 @@ function ModalBody(
       animationType={dialog ? 'fade' : 'slide'}
       presentationStyle={dialog ? 'overFullScreen' : 'fullScreen'}
       statusBarTranslucent={usesHostInsets}
+      supportedOrientations={props.supportedOrientations?.length
+        ? props.supportedOrientations : seatLayerPickerModalOrientations}
       onRequestClose={() => { void request('systemBack'); }}
     >
       <SeatLayerPickerScopeReprovider>
