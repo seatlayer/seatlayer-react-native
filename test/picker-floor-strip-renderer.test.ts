@@ -130,6 +130,25 @@ describe('SeatLayerFloorStrip', () => {
     expect(runtime.errors).toHaveLength(1);
   });
 
+  it('draws one pill with transparent segments, and the accent on the level being drawn', async () => {
+    setup(); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerFloorStrip)); });
+    const chip = (name: string) => {
+      const press = renderer.root.findByProps({ accessibilityLabel: name });
+      return { press, paint: Object.assign({}, ...[press.findByType('View' as any).props.style].flat()) };
+    };
+    expect(chip('Stalls').paint).toMatchObject({ backgroundColor: '#06f', height: 28 });
+    expect(chip('Gallery').paint).toMatchObject({ backgroundColor: 'transparent', height: 28 });
+    expect(chip('Gallery').paint.borderWidth).toBeUndefined();
+    expect(chip('Gallery').press.props.style).toMatchObject({ minHeight: 44, minWidth: 44 });
+    const pill = renderer.root.findAllByType('View' as any)
+      .map((view) => Object.assign({}, ...[view.props.style].flat()))
+      .find((style) => style.position === 'absolute');
+    expect(pill).toMatchObject({ borderColor: '#ccc', borderWidth: 1, height: 34, top: 5 });
+    await act(async () => { renderer.update(React.createElement(SeatLayerFloorStrip, { compact: false })); });
+    expect(chip('Stalls').paint.height).toBe(34);
+  });
+
   it('publishes the fixed inset band and removes an old lease on runtime-session replacement', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerFloorStrip, { reserveInset: true })); });

@@ -263,11 +263,10 @@ export function SeatLayerPickerAdaptiveLayout({
   const venueVisible = venueMode && !panoramaUp && plan.options.chrome.venue3D && plan.options.enable3D && nativeChrome &&
     snapshot?.capabilities.includes('venue3d') === true && scope.controller.mapController.supportsPickerCapability('venue-3d-v1') &&
     scope.controller.mapController.supportsPickerCommand('picker.setBuyerView');
-  const floorStripVisible = !venueMode && !panoramaUp && plan.options.chrome.floorStrip &&
-    (wide || !plan.options.chrome.floorSelector) && floorsVisible && nativeChrome &&
+  const floorStripVisible = !venueMode && !panoramaUp && plan.options.chrome.floorStrip && floorsVisible && nativeChrome &&
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
   const floorSelectorVisible = !venueMode && !panoramaUp && plan.options.chrome.floorSelector &&
-    (!wide || !plan.options.chrome.floorStrip) && floorsVisible &&
+    (!plan.options.chrome.floorStrip || (!wide && builders?.floorStrip !== undefined)) && floorsVisible &&
     scope.controller.mapController.isReady && nativeChrome &&
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
   const testBadgeVisible = snapshot?.event.mode === 'test' && nativeChrome;
@@ -303,6 +302,7 @@ export function SeatLayerPickerAdaptiveLayout({
   const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
   const { badgeTop, floorTop, topHeight } = planSeatLayerPickerPhoneTop({
     backPillDrawn, badgeCleared, floorStripVisible, immersiveTopInset, testBadgeVisible,
+    ownFloorStrip: builders?.floorStrip !== undefined,
     controls: phoneControls.left || phoneControls.right,
   });
   // §4.10 — the dock's reported band has to be the height it DRAWS, or a

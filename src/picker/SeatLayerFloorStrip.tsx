@@ -1,6 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  I18nManager,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,7 +10,8 @@ import {
 } from 'react-native';
 
 import { seatLayerAllFloors, type SeatLayerPickerFloorInfo } from './models';
-import { blendSeatLayerPickerColor } from './pickerNavigation';
+import { seatLayerPickerColorAlpha } from './colors';
+import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { useSeatLayerPickerScope, type SeatLayerPickerScopeValue } from './SeatLayerPickerScope';
 import {
   resolveSeatLayerPickerStyles,
@@ -129,13 +129,16 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
     });
   };
   const target = seatLayerPickerTokens.size.minimumHitTarget;
-  const paint = props.compact === false
-    ? seatLayerPickerTokens.size.floorChipHeight + 8
-    : seatLayerPickerTokens.size.floorChipHeight;
+  const compact = props.compact !== false;
+  const paint = seatLayerPickerTokens.size.floorChipHeight + (compact ? 0 : 6);
+  const pill = paint + seatLayerPickerTokens.size.floorRailPadding * 2;
   const actionBusy = scope.isBusy || busy;
   const disabled = actionBusy || !supportsSetFloor;
-  const rtl = I18nManager.isRTL;
-  return <View style={[
+  const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
+  const chip = { busy: actionBusy, compact, paint, styles, theme };
+  return <View
+    pointerEvents="box-none"
+    style={[
       nativeStyles.root,
       { minHeight: target, height: target },
       styles.floorStripContainer,
@@ -143,49 +146,62 @@ function FloorStripCurrent({ scope, snapshotSession, floors, props }: Readonly<{
       { minHeight: target, height: target },
     ]}
   >
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[nativeStyles.scroll, { flexDirection: rtl ? 'row-reverse' : 'row', paddingHorizontal: seatLayerPickerTokens.size.floorRailPadding }]}>
-      {offersAll ? <FloorChip label={scope.strings.translate('allFloors')} selected={selectedAll} disabled={!isSeatLayerPickerFloorSelectionEnabled(selectedAll, disabled)} busy={actionBusy} compact={props.compact !== false} paint={paint} target={target} scope={scope} styles={styles} onPress={() => start(seatLayerAllFloors)} /> : null}
-      {floors.map((floor) => {
-        const selected = !selectedAll && scope.snapshot?.map.activeFloorId === floor.id;
-        return <FloorChip key={floor.id} label={floor.name} selected={selected} disabled={!isSeatLayerPickerFloorSelectionEnabled(selected, disabled)} busy={actionBusy} compact={props.compact !== false} paint={paint} target={target} scope={scope} styles={styles} onPress={() => start(floor.id)} />;
-      })}
-      {props.onFloorInfo === undefined ? null : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={scope.strings.translate('allFloors')}
-          onPress={props.onFloorInfo}
-          style={nativeStyles.target}
-        >
-          <View
-            accessible={false}
-            style={[nativeStyles.info, {
-              borderColor: scope.resolvedTheme.colors.divider,
-              borderRadius: scope.resolvedTheme.radii.pill,
-            }]}
+    {/* One pill with the levels in it, not a row of loose chips: the pill is
+        what says they are one choice. It scrolls inside itself. */}
+    <View pointerEvents="box-none" style={nativeStyles.track}>
+      <View
+        pointerEvents="none"
+        style={[nativeStyles.pill, {
+          backgroundColor: seatLayerPickerColorAlpha(theme.colors.surface, .92),
+          borderColor: theme.colors.divider,
+          height: pill,
+          top: (target - pill) / 2,
+        }]}
+      />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={nativeStyles.scroller} contentContainerStyle={nativeStyles.scroll}>
+        {offersAll ? <FloorChip {...chip} label={scope.strings.translate('allFloors')} selected={selectedAll} disabled={!isSeatLayerPickerFloorSelectionEnabled(selectedAll, disabled)} onPress={() => start(seatLayerAllFloors)} /> : null}
+        {floors.map((floor) => {
+          const selected = !selectedAll && scope.snapshot?.map.activeFloorId === floor.id;
+          return <FloorChip {...chip} key={floor.id} label={floor.name} selected={selected} disabled={!isSeatLayerPickerFloorSelectionEnabled(selected, disabled)} onPress={() => start(floor.id)} />;
+        })}
+        {props.onFloorInfo === undefined ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={scope.strings.translate('allFloors')}
+            onPress={props.onFloorInfo}
+            style={nativeStyles.target}
           >
-            <Text
-              allowFontScaling={false}
-              style={[nativeStyles.infoGlyph, { color: scope.resolvedTheme.colors.mutedText }]}
+            <View
+              accessible={false}
+              style={[nativeStyles.info, {
+                borderColor: theme.colors.divider,
+                borderRadius: theme.radii.pill,
+              }]}
             >
-              i
-            </Text>
-          </View>
-        </Pressable>
-      )}
-    </ScrollView>
+              <Text
+                allowFontScaling={false}
+                style={[nativeStyles.infoGlyph, { color: theme.colors.mutedText }]}
+              >
+                i
+              </Text>
+            </View>
+          </Pressable>
+        )}
+      </ScrollView>
+    </View>
   </View>;
 }
 
-function FloorChip({ label, selected, disabled, busy, compact, paint, target, scope, styles, onPress }: Readonly<{
+/** A segment of the pill: only the level being drawn wears the accent. */
+function FloorChip({ label, selected, disabled, busy, compact, paint, styles, theme, onPress }: Readonly<{
   label: string;
   selected: boolean;
   disabled: boolean;
   busy: boolean;
   compact: boolean;
   paint: number;
-  target: number;
-  scope: SeatLayerPickerScopeValue;
   styles: ReturnType<typeof resolveSeatLayerPickerStyles>;
+  theme: SeatLayerPickerScopeValue['resolvedTheme'];
   onPress: () => void;
 }>): React.ReactElement {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected, disabled, busy }} disabled={disabled} onPress={onPress} style={nativeStyles.target}>
@@ -193,14 +209,24 @@ function FloorChip({ label, selected, disabled, busy, compact, paint, target, sc
       nativeStyles.paint,
       {
         height: paint,
-        backgroundColor: selected ? scope.resolvedTheme.colors.accent : blendSeatLayerPickerColor(scope.resolvedTheme.colors.text, scope.resolvedTheme.colors.surface, .04, scope.resolvedTheme.colors.surface),
-        borderColor: selected ? scope.resolvedTheme.colors.accent : scope.resolvedTheme.colors.divider,
-        borderRadius: scope.resolvedTheme.radii.chip,
+        backgroundColor: selected ? theme.colors.accent : 'transparent',
+        borderRadius: theme.radii.chip,
+        paddingHorizontal: seatLayerPickerTokens.size.floorChipPaddingX + (compact ? 0 : 3),
       },
       styles.floorChip,
       { height: paint },
     ]}>
-      <Text numberOfLines={1} ellipsizeMode="tail" style={[nativeStyles.label, { color: selected ? scope.resolvedTheme.colors.onAccent : scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily, fontSize: seatLayerPickerTokens.size.floorChipFontSize }, styles.floorChipText]}>{label}</Text>
+      <Text
+        ellipsizeMode="tail"
+        maxFontSizeMultiplier={2}
+        numberOfLines={1}
+        style={[
+          nativeStyles.label,
+          { color: selected ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily },
+          compact ? null : nativeStyles.wideLabel,
+          styles.floorChipText,
+        ]}
+      >{label}</Text>
     </View>
   </Pressable>;
 }
@@ -243,16 +269,35 @@ function report(scope: SeatLayerPickerScopeValue, error: unknown): void {
 }
 
 const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
-  root: { justifyContent: 'center', width: '100%' },
+  root: { alignItems: 'center', justifyContent: 'center', width: '100%' },
+  track: { maxWidth: '100%' },
+  pill: {
+    borderRadius: seatLayerPickerTokens.radius.pill,
+    borderWidth: 1,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    shadowColor: '#000000',
+    shadowOffset: { height: 1, width: 0 },
+    shadowOpacity: .18,
+    shadowRadius: 2,
+  },
+  // Cut by a curve inside the pill's own, so a chip never stands past its end.
+  scroller: {
+    borderRadius: seatLayerPickerTokens.size.minimumHitTarget / 2,
+    flexGrow: 0,
+    marginHorizontal: seatLayerPickerTokens.size.floorRailPadding,
+    overflow: 'hidden',
+  },
   scroll: { alignItems: 'center', gap: seatLayerPickerTokens.size.floorRailGap },
   target: { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' },
-  paint: {
-    borderWidth: 1,
-    justifyContent: 'center',
-    maxWidth: 160,
-    paddingHorizontal: seatLayerPickerTokens.size.floorChipPaddingX,
+  paint: { alignItems: 'center', justifyContent: 'center', maxWidth: 160 },
+  label: {
+    fontSize: seatLayerPickerTokens.size.floorChipFontSize,
+    fontWeight: '600',
+    letterSpacing: seatLayerPickerTokens.size.floorChipFontSize * .05,
   },
-  label: { fontSize: seatLayerPickerTokens.size.floorChipFontSize, fontWeight: '800' },
+  wideLabel: { fontSize: seatLayerPickerTokens.size.floorChipFontSize + 1 },
   info: {
     width: seatLayerPickerTokens.size.floorInfoSize,
     height: seatLayerPickerTokens.size.floorInfoSize,

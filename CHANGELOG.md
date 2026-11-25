@@ -59,6 +59,11 @@ stay; the changes below are the ones an app or a buyer can notice.
   chip it was put on with. Its dot is grey, it is drawn at full strength while it
   is chosen, and a screen reader hears "Sold out".
 - The word on the "Test mode" badge is not cut at a large text size.
+- On a phone the levels of a venue stand at the top of the map as one pill, under
+  the Map / 3D control, and the "Test mode" badge one line lower. The list in the
+  bottom corner is drawn only with `chrome.floorStrip: false` or where an app
+  draws its own `floorStrip` part. `SeatLayerFloorStrip` draws that pill
+  everywhere, where each level was a chip of its own.
 - The accessibility sheet starts with the two map switches, and the kinds of
   seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
   of `viewGroupTitle` changes nothing now.
