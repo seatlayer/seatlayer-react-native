@@ -38,6 +38,7 @@
     "build": "tsup",
     "picker:design": "node scripts/generate-picker-design.mjs --tokens design/tokens.json --strings design/locale_strings.json --out-dir src/picker",
     "picker:design:check": "node scripts/generate-picker-design.mjs --tokens design/tokens.json --strings design/locale_strings.json --out-dir src/picker --check",
+    "picker:icons": "node scripts/generate-seat-icon-masks.mjs",
     "check:public-hygiene": "node scripts/check-public-hygiene.mjs",
     "check:source-size": "node scripts/check-source-size.mjs",
     "typecheck": "tsc --noEmit",

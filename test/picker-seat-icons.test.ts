@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import React from 'react';
 import TestRenderer from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
@@ -11,10 +13,11 @@ function renderToJson(element: React.ReactElement): any {
 vi.mock('react-native', () => ({ Image: 'Image' }));
 
 import {
-  seatLayerPickerHasSeatIcon, seatLayerPickerSeatGlyphs,
+  SeatLayerPickerSeatIcon, seatLayerPickerHasSeatIcon, seatLayerPickerSeatGlyphs,
   seatLayerPickerSeatIconSource, seatLayerPickerSeatIconStrokeWidth,
   seatLayerPickerSeatIconSvg, seatLayerPickerSeatIconViewBox,
 } from '../src/picker/seatIcons';
+import { seatLayerPickerSeatIconMasks } from '../src/picker/seatIconMasks.g';
 
 /**
  * §3.8.9 — the path data IS the contract. These assertions exist so a port
@@ -73,14 +76,38 @@ describe('§3.8.9 the shared icon set', () => {
     expect(seatLayerPickerSeatIconSvg('premium', '#745F2C', 17)).toContain('stroke="#745F2C"');
     // The one filled shape paints in the same ink.
     expect(seatLayerPickerSeatIconSvg('contrast', '#111', 20)).toContain('fill="#111" stroke="none"');
-    expect(seatLayerPickerSeatIconSource('note', '#111')?.uri).toMatch(/^data:image\/svg\+xml;utf8,/);
   });
 
   it('draws NOTHING for a key this build does not know', () => {
     expect(seatLayerPickerHasSeatIcon('telepathy')).toBe(false);
     expect(seatLayerPickerSeatIconSvg('telepathy', '#111')).toBeUndefined();
-    expect(seatLayerPickerSeatIconSource('telepathy', '#111')).toBeUndefined();
+    expect(seatLayerPickerSeatIconSource('telepathy')).toBeUndefined();
     expect(seatLayerPickerHasSeatIcon('toString')).toBe(false);
+  });
+});
+
+describe('the masks an app without a vector renderer gets', () => {
+  it('match the path data, pixel for pixel', async () => {
+    // @ts-expect-error A plain script, without types.
+    const script = await import('../scripts/generate-seat-icon-masks.mjs');
+    const masks = await script.seatIconMasks();
+    const written = readFileSync(join(process.cwd(), 'src/picker/seatIconMasks.g.ts'), 'utf8');
+    expect(script.seatIconMasksMatch(written, masks)).toBe(true);
+    // A glyph redrawn without its mask is caught.
+    const [key, mask] = masks[0];
+    expect(script.seatIconMasksMatch(written, [[key, mask.map((level: number) => 15 - level)], ...masks.slice(1)]))
+      .toBe(false);
+    expect(Object.keys(seatLayerPickerSeatIconMasks)).toEqual(Object.keys(seatLayerPickerSeatGlyphs));
+  });
+
+  it('draws a mask in the row ink, and gives a host renderer its turn first', () => {
+    const drawn = renderToJson(React.createElement(SeatLayerPickerSeatIcon, {
+      color: '#745F2C', iconKey: 'premium', size: 17, style: { marginTop: 1 },
+    }));
+    expect(drawn.type).toBe('Image');
+    expect(drawn.props.source.uri).toMatch(/^data:image\/png;base64,iVBOR/);
+    expect(Object.assign({}, ...drawn.props.style))
+      .toEqual({ height: 17, marginTop: 1, tintColor: '#745F2C', width: 17 });
   });
 });
 

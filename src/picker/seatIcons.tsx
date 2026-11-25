@@ -4,6 +4,7 @@ import {
   seatLayerPickerSeatGlyphs, seatLayerPickerSeatIconStrokeWidth, seatLayerPickerSeatIconViewBox,
   type SeatLayerPickerSeatGlyph,
 } from './seatIconGlyphs';
+import { seatLayerPickerSeatIconMasks } from './seatIconMasks.g';
 
 export {
   seatLayerPickerSeatGlyphs, seatLayerPickerSeatIconStrokeWidth, seatLayerPickerSeatIconViewBox,
@@ -29,10 +30,9 @@ export {
  * **What is RN-specific.** This package takes no MANDATORY drawing dependency:
  * `react-native-svg` is an optional peer, and a bundler resolves a `require`
  * statically, so a guarded import here would put it in every consumer's build
- * graph. With nothing installed the glyph is handed to `Image` as an SVG data
- * URI — which iOS cannot decode, so the mark is simply absent there — and a
- * host that HAS a vector renderer installs it through
- * {@link installSeatLayerPickerSvgIcons} or
+ * graph. With nothing installed the glyph is a PNG mask drawn from the same path
+ * data (seatIconMasks.g.ts) in the row's ink, and a host that HAS a vector
+ * renderer installs it through {@link installSeatLayerPickerSvgIcons} or
  * {@link setSeatLayerPickerSeatIconRenderer} and gets it drawn natively. The
  * path data — not the renderer — is the contract a Swift or Compose port
  * transcribes.
@@ -72,16 +72,11 @@ export function seatLayerPickerSeatIconSvg(
     `stroke-linecap="round" stroke-linejoin="round">${parts.join('')}</svg>`;
 }
 
-/** The same drawing as an image source, for the default renderer. */
-export function seatLayerPickerSeatIconSource(
-  key: string,
-  color: string,
-  size: number = seatLayerPickerSeatIconViewBox,
-): Readonly<{ uri: string }> | undefined {
-  const markup = seatLayerPickerSeatIconSvg(key, color, size);
-  return markup === undefined
-    ? undefined
-    : Object.freeze({ uri: `data:image/svg+xml;utf8,${encodeURIComponent(markup)}` });
+/** The glyph's mask as an image source, for the default renderer. */
+export function seatLayerPickerSeatIconSource(key: string): Readonly<{ uri: string }> | undefined {
+  return seatLayerPickerHasSeatIcon(key)
+    ? { uri: `data:image/png;base64,${seatLayerPickerSeatIconMasks[key]}` }
+    : undefined;
 }
 
 export interface SeatLayerPickerSeatIconProps {
@@ -103,9 +98,7 @@ let installedRenderer: SeatLayerPickerSeatIconRenderer | undefined;
  *
  * A host with `react-native-svg` passes a component that reads
  * {@link seatLayerPickerSeatGlyphs} and draws the same paths natively. Without
- * one the glyph is an SVG data URI handed to `Image`, which is exactly as much
- * as this package can do with no drawing dependency of its own — and iOS has
- * no SVG decoder behind `Image`, so on iOS that fallback draws nothing.
+ * one the glyph is a PNG mask, sharp up to the sizes the picker draws.
  */
 export function setSeatLayerPickerSeatIconRenderer(
   renderer: SeatLayerPickerSeatIconRenderer | undefined,
@@ -126,13 +119,14 @@ export function SeatLayerPickerSeatIcon(
   if (!seatLayerPickerHasSeatIcon(props.iconKey)) return null;
   const Renderer = installedRenderer;
   if (Renderer !== undefined) return <Renderer {...props} size={size} />;
-  const source = seatLayerPickerSeatIconSource(props.iconKey, props.color, size);
+  const source = seatLayerPickerSeatIconSource(props.iconKey);
   if (source === undefined) return null;
   return <Image
     accessibilityElementsHidden
+    fadeDuration={0}
     importantForAccessibility="no-hide-descendants"
     source={source}
-    style={[{ height: size, width: size }, props.style]}
+    style={[{ height: size, tintColor: props.color, width: size }, props.style]}
     testID={`seatLayerSeatIcon-${props.iconKey}`}
   />;
 }
@@ -168,8 +162,7 @@ export interface SeatLayerPickerSvgIconModules {
  * start-up with its own imports — the same shape as
  * {@link setSeatLayerPickerSpotlightBlur} — and every glyph in the picker is
  * drawn natively, so it scales without resampling and takes the row's ink
- * directly — and it is the only way to get the marks drawn on iOS at all. A
- * host without it changes nothing else: the data-URI fallback stays.
+ * directly. A host without it keeps the PNG masks.
  *
  * ```tsx
  * import Svg, { Circle, Path } from 'react-native-svg';
