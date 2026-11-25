@@ -71,6 +71,7 @@ import { SeatLayerPickerEmptyView, SeatLayerPickerErrorView, SeatLayerPickerLoad
 import { planSeatLayerPickerPhoneTop } from './phoneTop';
 import { SeatLayerPickerSystemStatusBar } from './systemStatusBar';
 import { SeatLayerVenue3DChrome } from './SeatLayerVenue3DChrome';
+import { SeatLayerVenue3DBackSizeContext } from './venue3DBackSize';
 import { seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { chartSeatLayerPickerColor } from './chartColor';
 import { renderSeatLayerPickerAdaptivePart as part } from './adaptiveParts';
@@ -258,6 +259,7 @@ export function SeatLayerPickerAdaptiveLayout({
     })
     : Object.freeze({ bottom: false, left: false, right: false });
   const [viewModeWidth, setViewModeWidth] = useState<number | undefined>(undefined);
+  const [back, setBack] = useState<{ readonly width: number; readonly height: number } | undefined>(undefined);
   const [floorWidth, setFloorWidth] = useState<number | undefined>(undefined);
   const categoriesVisible = nativeChrome && (snapshot?.categories.some((category) => !category.notForSale) ?? false);
   const floorsVisible = (snapshot?.map.floors.length ?? 0) > 1;
@@ -297,12 +299,12 @@ export function SeatLayerPickerAdaptiveLayout({
   const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const backPillDrawn = venueMode && venueVisible;
   const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
-  const { badgeTop, floorBottom, floorRail, topHeight } = planSeatLayerPickerPhoneTop({
+  const { backTop, badgeTop, floorBottom, floorRail, topHeight } = planSeatLayerPickerPhoneTop({
     backPillDrawn, badgeCleared, floorStripVisible, immersiveTopInset, testBadgeVisible,
     ownFloorStrip: builders?.floorStrip !== undefined,
     controls: phoneControls.left || phoneControls.right, viewModeVisible: phoneControls.right,
     sideways: windowSize.width > windowSize.height, mapWidth: safeLayout.usableWidth ?? 0,
-    badgeWidth: testBadgeWidth, viewModeWidth, floorWidth,
+    badgeWidth: testBadgeWidth, viewModeWidth, back, floorWidth,
   });
   // §4.10 — the dock's reported band has to be the height it DRAWS, or a
   // focused section lands under a dock that grew with the buyer's type.
@@ -721,7 +723,7 @@ export function SeatLayerPickerAdaptiveLayout({
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
             <View pointerEvents="box-none" style={styles.wideFloorSelectorRail}>{floorSelector}</View>
           </View> : null}
-          {ordered('mapChrome', venueVisible ? part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : immersiveTopInset} />) : null, { overlay: true, suffix: 'venue3d' })}
+          {ordered('mapChrome', venueVisible ? <SeatLayerVenue3DBackSizeContext.Provider value={setBack}>{part(builders, scope, 'venue3D', <SeatLayerVenue3DChrome bottomInset={wide ? 10 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 10 : backTop} />)}</SeatLayerVenue3DBackSizeContext.Provider> : null, { overlay: true, suffix: 'venue3d' })}
           {ordered('mapChrome', plan.options.chrome.seatViewChrome && chromeEligibility.panorama ? part(builders, scope, 'seatViewChrome', <SeatLayerSeatPanoramaChrome bottomInset={wide ? 12 : seatLayerPickerMapControlsEdgeInset + bottomInset} reserveInset={!wide} topInset={wide ? 12 : immersiveTopInset} />) : null, { overlay: true, suffix: 'seat-view' })}
           {ordered('prompt', status === null && !immersiveInspectionVisible ? <SeatLayerPickerPromptTransition
             anchor={!wide && cardActive ? 'foot' : 'centre'}
