@@ -1,5 +1,5 @@
 import { seatLayerPickerPluralCategory } from './pluralRules';
-import { seatLayerPickerLocaleStrings, type SeatLayerPickerGeneratedLocale } from './strings.g';
+import { seatLayerPickerLocaleSources, type SeatLayerPickerGeneratedLocale } from './strings.g';
 import { seatLayerPickerTokens } from './tokens.g';
 
 export type SeatLayerPickerLocale = SeatLayerPickerGeneratedLocale | (string & {});
@@ -195,13 +195,21 @@ function isEnglish(candidate: string): boolean {
   return candidate === 'en' || candidate.toLowerCase().startsWith('en-');
 }
 
+const builtLocales: Partial<Record<SeatLayerPickerGeneratedLocale, Readonly<Record<string, string>>>> = {};
+
+/** The words of one language, built when it is first asked for. */
+export function seatLayerPickerLocaleWords(
+  locale: SeatLayerPickerGeneratedLocale,
+): Readonly<Record<string, string>> {
+  return builtLocales[locale] ??= seatLayerPickerLocaleSources[locale]();
+}
+
 function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Readonly<Record<string, string>> | undefined {
   for (const candidate of normalizedLocaleCandidates(locale)) {
     if (isEnglish(candidate)) return undefined;
-    const exact = seatLayerPickerLocaleStrings[candidate as SeatLayerPickerGeneratedLocale];
-    if (exact) return exact;
-    const matchingLocale = Object.keys(seatLayerPickerLocaleStrings).find((known) => known.toLowerCase() === candidate.toLowerCase());
-    if (matchingLocale) return seatLayerPickerLocaleStrings[matchingLocale as SeatLayerPickerGeneratedLocale];
+    const known = Object.keys(seatLayerPickerLocaleSources)
+      .find((locale) => locale.toLowerCase() === candidate.toLowerCase());
+    if (known) return seatLayerPickerLocaleWords(known as SeatLayerPickerGeneratedLocale);
   }
   return undefined;
 }

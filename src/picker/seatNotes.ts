@@ -1,6 +1,5 @@
 import { blendSeatLayerPickerColor, parseSeatLayerPickerColor, seatLayerPickerColorAlpha } from './colors';
-import { seatLayerPickerEnglishAccessNeeds } from './locale';
-import { seatLayerPickerLocaleStrings } from './strings.g';
+import { seatLayerPickerEnglishAccessNeeds, seatLayerPickerLocaleWords } from './locale';
 import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatCommercialAttributes, SelectedSeat } from '../types';
 
@@ -83,7 +82,7 @@ export function seatLayerPickerSeatNoteAccessLabel(
   if (typeof translated === 'string' && translated !== dictionaryKey && translated.length > 0) {
     return translated;
   }
-  const english = (seatLayerPickerLocaleStrings.en as Readonly<Record<string, string>>)[dictionaryKey];
+  const english = seatLayerPickerLocaleWords('en')[dictionaryKey];
   return typeof english === 'string' && english.length > 0 ? english : undefined;
 }
 

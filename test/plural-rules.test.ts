@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { translateSeatLayerPickerString } from '../src/picker/locale';
 import { seatLayerPickerPluralCategory } from '../src/picker/pluralRules';
-import { seatLayerPickerLocaleStrings } from '../src/picker/strings.g';
+import { seatLayerPickerLocaleSources } from '../src/picker/strings.g';
 
 interface Fixture {
   readonly counts: readonly number[];
@@ -19,7 +19,7 @@ const fixture = JSON.parse(
 describe('plural rules', () => {
   it('has a fixture row for every language the picker ships', () => {
     expect(Object.keys(fixture.categories).sort()).toEqual(
-      expect.arrayContaining(Object.keys(seatLayerPickerLocaleStrings).sort()),
+      expect.arrayContaining(Object.keys(seatLayerPickerLocaleSources).sort()),
     );
   });
 

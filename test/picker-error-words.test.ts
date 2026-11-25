@@ -4,7 +4,7 @@ import { SeatLayerError } from '../src/errors';
 import { seatLayerPickerBuyerError, seatLayerPickerErrorWords } from '../src/picker/errorWords';
 import { rememberSeatLayerPickerFailure } from '../src/picker/failureLog';
 import { createSeatLayerPickerStringResolver } from '../src/picker/locale';
-import { seatLayerPickerLocaleStrings } from '../src/picker/strings.g';
+import { seatLayerPickerLocaleSources } from '../src/picker/strings.g';
 
 const english = createSeatLayerPickerStringResolver({ locale: 'en' });
 const word = (key: string) => english.translate(key);
@@ -124,7 +124,7 @@ describe('what a refused action says', () => {
       refused('conflict'), refused('sold_out'), refused('guests_only'), refused('maintenance_mode', { details: { retryAfterS: 300 } }),
       refused('conflict', { details: { conflicts: [{ label: 'A-1' }] } }), new Error('x'),
     ];
-    for (const locale of Object.keys(seatLayerPickerLocaleStrings)) {
+    for (const locale of Object.keys(seatLayerPickerLocaleSources)) {
       const strings = createSeatLayerPickerStringResolver({ locale });
       for (const error of errors) {
         const { message } = seatLayerPickerErrorWords(error, strings);

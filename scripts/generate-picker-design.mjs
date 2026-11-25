@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 
 const usage = `Usage: node scripts/generate-picker-design.mjs --tokens <tokens.json> --strings <locale_strings.json> [--out-dir <directory>] [--check]`;
 
@@ -99,22 +99,80 @@ function validateInputs(tokens, strings) {
   }
 }
 
-/** @param {unknown} tokens @param {unknown} strings @param {{ tokens: string, strings: string }} sourceHashes */
-export function buildGeneratedDesignFiles(tokens, strings, sourceHashes) {
+const sourceRoot = resolve(import.meta.dirname, '../src');
+const publishedKeysPath = resolve(import.meta.dirname, 'picker-published-keys.json');
+
+/** Every name the source writes as a string or reads from the English table. */
+export async function readUsedNames(root = sourceRoot) {
+  const names = new Set();
+  const walk = async (directory) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await walk(path);
+      } else if (/\.tsx?$/.test(entry.name) && !entry.name.endsWith('.g.ts')) {
+        const code = (await readFile(path, 'utf8'))
+          .replace(/\/\*[\s\S]*?\*\//g, '')
+          .replace(/(^|\s)\/\/.*$/gm, '$1');
+        for (const match of code.matchAll(/(['"`])([A-Za-z][\w.-]*)\1|[sS]trings\.(\w+)/g)) {
+          names.add(match[2] ?? match[3]);
+        }
+      }
+    }
+  };
+  await walk(root);
+  return names;
+}
+
+/** The keys a published version had stay, so an app that names one still gets it. */
+export async function readPublishedKeys() {
+  return JSON.parse(await readFile(publishedKeysPath, 'utf8'));
+}
+
+/** @param {{ used: Set<string>, published: { english: string[], dictionaries: string[] } }} keys */
+export function keyFilters({ used, published }) {
+  const english = new Set(published.english);
+  const dictionaries = new Set(published.dictionaries);
+  const base = (key) => key.replace(/\.(zero|one|two|few|many|other)$/, '');
+  return {
+    english: (key) => {
+      const counted = key.replace(/(One|Other)$/, '');
+      return english.has(key) || used.has(key) || (counted !== key && used.has(counted));
+    },
+    dictionary: (key) => dictionaries.has(key) || dictionaries.has(`${base(key)}.other`) ||
+      used.has(key) || used.has(base(key)) || used.has(`${base(key)}.one`) ||
+      key.startsWith('accessNeeds.'),
+  };
+}
+
+function only(record, keep) {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => keep(key)));
+}
+
+/** @param {unknown} tokens @param {unknown} strings @param {{ tokens: string, strings: string }} sourceHashes @param {ReturnType<typeof keyFilters>} keep */
+export function buildGeneratedDesignFiles(tokens, strings, sourceHashes, keep) {
   validateInputs(tokens, strings);
   const { $schema: _schema, description: _description, ...runtimeTokens } = tokens;
   const reactNativeTokens = {
     ...runtimeTokens,
     color: normalizeReactNativeColorTokens(runtimeTokens.color),
+    strings: only(runtimeTokens.strings, keep.english),
   };
   const tokenHeader = `// This file is generated. Do not edit by hand.\n// Canonical token input SHA-256: ${sourceHashes.tokens}\n// Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.\n\n`;
   const stringHeader = `// This file is generated. Do not edit by hand.\n// Canonical locale input SHA-256: ${sourceHashes.strings}\n\n`;
-  const localeLines = Object.entries(sortJson(strings.strings))
-    .map(([locale, dictionary]) => `  ${JSON.stringify(locale)}: ${JSON.stringify(dictionary)},`)
+  const locales = Object.entries(sortJson(strings.strings));
+  const nameOf = (locale) => `${locale.replace(/-/g, '')}Words`;
+  const imports = locales
+    .map(([locale]) => `import { ${nameOf(locale)} } from './locales/${locale}.g';`)
     .join('\n');
+  const rows = locales.map(([locale]) => `  ${JSON.stringify(locale)}: ${nameOf(locale)},`).join('\n');
   return {
     'tokens.g.ts': `${tokenHeader}export const seatLayerPickerTokenSourceSha256 = '${sourceHashes.tokens}' as const;\nexport const seatLayerPickerTokenVersion = ${JSON.stringify(runtimeTokens.version ?? null)} as const;\n\nexport const seatLayerPickerTokens = ${JSON.stringify(sortJson(reactNativeTokens), null, 2)} as const;\n\nexport type SeatLayerPickerGeneratedTokens = typeof seatLayerPickerTokens;\n`,
-    'strings.g.ts': `${stringHeader}export const seatLayerPickerLocaleSourceSha256 = '${sourceHashes.strings}' as const;\n\nexport const seatLayerPickerLocaleStrings = {\n${localeLines}\n} as const;\n\nexport type SeatLayerPickerGeneratedLocale = keyof typeof seatLayerPickerLocaleStrings;\n`,
+    'strings.g.ts': `${stringHeader}${imports}\n\nexport const seatLayerPickerLocaleSourceSha256 = '${sourceHashes.strings}' as const;\n\n/** One language is built when it is first asked for. */\nexport const seatLayerPickerLocaleSources = {\n${rows}\n} as const;\n\nexport type SeatLayerPickerGeneratedLocale = keyof typeof seatLayerPickerLocaleSources;\n`,
+    ...Object.fromEntries(locales.map(([locale, dictionary]) => [
+      `locales/${locale}.g.ts`,
+      `${stringHeader}export const ${nameOf(locale)} = (): Readonly<Record<string, string>> => (${JSON.stringify(only(dictionary, keep.dictionary))});\n`,
+    ])),
   };
 }
 
@@ -144,11 +202,13 @@ export function parseArgs(args) {
 
 /** @param {{ tokens: string, strings: string, outDir: string, check: boolean }} options */
 export async function generatePickerDesign(options) {
-  const [tokens, strings] = await Promise.all([readJson(options.tokens), readJson(options.strings)]);
+  const [tokens, strings, used, published] = await Promise.all([
+    readJson(options.tokens), readJson(options.strings), readUsedNames(), readPublishedKeys(),
+  ]);
   const files = buildGeneratedDesignFiles(tokens.value, strings.value, {
     tokens: tokens.sha256,
     strings: strings.sha256,
-  });
+  }, keyFilters({ used, published }));
   const outputDir = resolve(options.outDir);
   const stale = [];
 
@@ -165,7 +225,10 @@ export async function generatePickerDesign(options) {
 
   if (options.check) return stale.map(({ destination }) => destination);
   await mkdir(outputDir, { recursive: true });
-  await Promise.all(stale.map(({ destination, expected }) => writeFile(destination, expected, 'utf8')));
+  await Promise.all(stale.map(async ({ destination, expected }) => {
+    await mkdir(dirname(destination), { recursive: true });
+    await writeFile(destination, expected, 'utf8');
+  }));
   return [];
 }
 

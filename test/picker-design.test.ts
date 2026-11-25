@@ -13,7 +13,7 @@ import {
 } from '../src/picker/locale';
 import {
   seatLayerPickerLocaleSourceSha256,
-  seatLayerPickerLocaleStrings,
+  seatLayerPickerLocaleSources,
 } from '../src/picker/strings.g';
 import {
   seatLayerPickerTokenSourceSha256,
@@ -155,8 +155,8 @@ describe('checked-in picker design output', () => {
     ]);
     const localTokens = JSON.parse(tokenInput.toString('utf8')) as { strings?: Record<string, string> };
     const localStrings = JSON.parse(stringInput.toString('utf8')) as { strings?: Record<string, unknown> };
-    expect(Object.keys(seatLayerPickerLocaleStrings)).toHaveLength(Object.keys(localStrings.strings ?? {}).length);
-    expect(seatLayerPickerTokens.strings).toEqual(localTokens.strings);
+    expect(Object.keys(seatLayerPickerLocaleSources)).toHaveLength(Object.keys(localStrings.strings ?? {}).length);
+    expect(localTokens.strings).toMatchObject(seatLayerPickerTokens.strings);
     expect(seatLayerPickerTokenSourceSha256).toBe(sha256(tokenInput));
     expect(seatLayerPickerLocaleSourceSha256).toBe(sha256(stringInput));
     expect(tokens).toContain(`SHA-256: ${seatLayerPickerTokenSourceSha256}`);

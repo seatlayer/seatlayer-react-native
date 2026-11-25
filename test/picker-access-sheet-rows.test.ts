@@ -327,7 +327,7 @@ describe('every row wears the drawing that row is about (§3.5)', () => {
 describe('the row names come from the generated short set (§3.5)', () => {
   it('names a provision in the buyer language, English from the tokens', async () => {
     const { createSeatLayerPickerStringResolver } = await import('../src/picker/locale');
-    const { seatLayerPickerLocaleStrings } = await import('../src/picker/strings.g');
+    const { seatLayerPickerLocaleWords } = await import('../src/picker/locale');
     // The extractor takes the other thirty-six from the runtime's own
     // `picker.accessShort.*`, so a French sheet, a French seat card and the
     // runtime say the same words. Nothing read them, and a French picker
@@ -335,7 +335,7 @@ describe('the row names come from the generated short set (§3.5)', () => {
     expect(createSeatLayerPickerStringResolver({ locale: 'fr' }).accessNeed('wheelchair'))
       .toBe('Emplacement fauteuil roulant');
     expect(createSeatLayerPickerStringResolver({ locale: 'de' }).accessNeed('semi-ambulatory'))
-      .toBe(seatLayerPickerLocaleStrings.de['accessNeeds.semi-ambulatory']);
+      .toBe(seatLayerPickerLocaleWords('de')['accessNeeds.semi-ambulatory']);
     // English keeps the short names in the token table, which is what the
     // reference draws: it deliberately has no locale dictionary of its own.
     expect(createSeatLayerPickerStringResolver({ locale: 'en' }).accessNeed('wheelchair'))
