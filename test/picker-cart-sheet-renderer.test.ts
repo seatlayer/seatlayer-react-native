@@ -444,6 +444,16 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'dismissError' }).length).toBeGreaterThan(0);
   });
 
+  it('takes the last refusal away when the buyer tries again', async () => {
+    setup();
+    const clearError = vi.fn();
+    scope = { ...scope, clearError, error: { buyerMessage: 'Refused.' } };
+    const renderer = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
+    expect(clearError).not.toHaveBeenCalled();
+    await act(async () => { renderer.root.findAllByProps({ testID: 'seatlayer-cart-checkout' })[0]!.props.onPress(); await Promise.resolve(); });
+    expect(clearError).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps disabled best-seat controls truthful with 44 hit targets around 44 painted controls', async () => {
     const runtime = setup();
     runtime.snapshot.cartLines = [];

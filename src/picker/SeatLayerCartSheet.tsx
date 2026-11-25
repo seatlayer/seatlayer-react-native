@@ -182,6 +182,8 @@ function useSeatLayerCheckoutFlight(
     const flight = ++nextFlightRef.current;
     flightRef.current = flight;
     setBusy(true);
+    // Why the last try was refused is not what this one is about.
+    before.clearError();
     try {
       const handoff = await before.controller.checkout();
       if (!before.isSessionActive() || !isSeatLayerCartActionCurrent(lease, scopeRef.current)) {

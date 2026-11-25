@@ -176,6 +176,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
     const flight = ++nextFlightRef.current;
     flightRef.current = flight;
     setSubmitting(true);
+    before.clearError();
     try {
       await before.controller.bestAvailable(request.quantity, {
         ...(request.categoryKey ? { categoryKey: request.categoryKey } : {}),

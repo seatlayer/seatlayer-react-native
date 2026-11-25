@@ -49,7 +49,7 @@ stay; the changes below are the ones an app or a buyer can notice.
   `errorMessage` override no longer reaches refused actions; it stands under the
   title when the map did not load.
 - The error line shows its whole text, scrolls when it is very long, and closes
-  with a × ("Dismiss error").
+  with a × ("Dismiss error"). It goes when the buyer tries again.
 - When the map did not load, the buyer reads "The seat map didn’t load" and
   "Check your connection and try again." over a filled Try again button.
 - "Securing your seats…" and "Seats secured. Opening checkout…" stand on the
