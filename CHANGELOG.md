@@ -30,10 +30,10 @@ stay; the changes below are the ones an app or a buyer can notice.
   change nothing.
 - On a phone the cart is one row: the arrow that opens the list, the count and
   the total with the seats under them, and the checkout button. It is 65 points
-  high over the phone's bottom strip, where it was 107 or 132, and the same held
-  sideways. The button's words stand on up to two lines; an app's own
-  `holdAndCheckout` words do too. Where they need more, at a large text size on a
-  narrow phone, the button goes under the others.
+  high, or 55 over the bottom strip of a phone that has one, where it was 107 or
+  132; the same held sideways. The button's words stand on up to two lines; an
+  app's own `holdAndCheckout` words do too. Where they need more, at a large text
+  size on a narrow phone, the button goes under the others.
   - The words open the list as the arrow does, the list is at most 240 points
     high, and a new seat closes it.
   - `layout.cartPeekMaxHeight` still caps the list; the `sheetHandle…` and

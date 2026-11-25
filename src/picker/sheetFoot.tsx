@@ -11,8 +11,8 @@ import type { SeatLayerPickerStyles } from './styles';
 
 /**
  * The phone's cart row: the circle that opens the list, what is in the cart and
- * what it comes to, and the way on, on one line with the phone's bottom strip
- * under it. News about the buyer's own seats stands over it.
+ * what it comes to, and the way on, on one line. The sheet keeps the room under
+ * it. News about the buyer's own seats stands over it.
  */
 export interface SeatLayerSheetFootProps {
   readonly holdLapse?: ReactNode;
@@ -67,7 +67,7 @@ export function SeatLayerSheetFoot(props: SeatLayerSheetFootProps): React.ReactE
           gap: under ? bar.underGap : bar.gap,
           opacity: props.asking ? bar.askingOpacity : 1,
           paddingHorizontal: bar.padX,
-          paddingVertical: bar.padY,
+          paddingTop: bar.padY,
         }}
         testID="seatlayer-cart-row"
       >

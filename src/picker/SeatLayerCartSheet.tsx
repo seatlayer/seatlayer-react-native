@@ -153,7 +153,10 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const [footHeight, setFootHeight] = useState(0);
   const [cartNatural, setCartNatural] = useState(0);
   const [extrasNatural, setExtrasNatural] = useState(0);
-  const chrome = footHeight + inset;
+  // The phone's own strip is the room under the row. A phone without one keeps
+  // the row's.
+  const underRow = Math.max(seatLayerCartBarSize.padY, inset);
+  const chrome = footHeight + underRow;
   const ceilings = seatLayerCartSheetCeilings(window.height, chrome, hasTickets, theme.layout);
   // The list scrolls inside its own box and the map keeps its room. An app's
   // own cap is honoured.
@@ -356,7 +359,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.divider,
           borderTopWidth: seatLayerPickerLineWidth,
-          paddingBottom: inset,
+          paddingBottom: underRow,
         }, styles.sheetContainer]}
       >
         <Animated.View style={{ height: body, overflow: 'hidden' }} testID="seatlayer-cart-region">

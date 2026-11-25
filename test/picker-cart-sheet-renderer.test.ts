@@ -234,7 +234,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' }).props.accessibilityLabel)
       .toBe('continueToCheckout');
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-row' }).props.style)
-      .toMatchObject({ paddingHorizontal: 12, paddingVertical: 10 });
+      .toMatchObject({ paddingHorizontal: 12, paddingTop: 10 });
   });
 
   it('says "No seats selected" on an empty cart and offers the finder on the same button', async () => {
@@ -325,7 +325,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
   });
 
-  it('stands on the phone\'s own bottom strip', async () => {
+  it('keeps 10 under the row, or the phone\'s own bottom strip where that is more', async () => {
     setup();
     const paddings = async (insetBottom: number, reserveBottomInset = true) => {
       const renderer = await render(React.createElement(SeatLayerCartSheet, {
@@ -336,9 +336,13 @@ describe('cart checkout renderer', () => {
         && node.props.style[0]?.borderTopWidth === 1 && node.props.style[0]?.paddingBottom !== undefined)
         .map((node) => node.props.style[0].paddingBottom)[0];
     };
-    expect(await paddings(0)).toBe(0);
+    expect(await paddings(0)).toBe(10);
+    expect(await paddings(6)).toBe(10);
+    expect(await paddings(24)).toBe(24);
     expect(await paddings(34)).toBe(34);
-    expect(await paddings(0, false)).toBe(0);
+    expect(await paddings(0, false)).toBe(10);
+    // The app keeps the strip itself: the row keeps its own room only.
+    expect(await paddings(34, false)).toBe(10);
   });
 
   it('says a closed sale once, with its date and no button, and keeps the way on for held seats', async () => {
