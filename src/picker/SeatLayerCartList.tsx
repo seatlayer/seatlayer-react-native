@@ -140,6 +140,7 @@ export function SeatLayerCartList(props: SeatLayerCartListProps): React.ReactEle
     // §3.10.2 — in flight, but not in the way: `removingCartLine` is the one
     // action that does not block Continue.
     before.setBusyAction('removingCartLine');
+    before.clearError();
     try {
       for (const label of started.intent.labels) {
         // Inventory mutations are serialised by the controller, so a Continue

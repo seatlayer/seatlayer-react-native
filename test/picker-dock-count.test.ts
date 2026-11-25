@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { seatLayerDockAccessGlyph, seatLayerDockCountCopy } from '../src/picker/dockCount';
+import { createSeatLayerPickerStringResolver } from '../src/picker/locale';
 import { resolveSeatLayerPickerChromeOptions } from '../src/picker/options';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
-const strings = seatLayerPickerTokens.strings;
-
-function translate(
-  key: string,
-  options?: { count?: number; values?: Record<string, string | number> },
-): string {
-  const template = (strings as Record<string, string>)[key] ?? key;
-  return template.replace(/\{(\w+)\}/g, (placeholder, name: string) => {
-    const value = options?.values?.[name] ?? options?.count;
-    return value === undefined ? placeholder : String(value);
-  });
-}
+const { translate } = createSeatLayerPickerStringResolver();
 
 function copy(input: {
   seatsLeft?: number;
@@ -37,6 +27,18 @@ function copy(input: {
 }
 
 describe('§3.6 dock count fit ladder', () => {
+  it('counts in the buyer\'s language, with every form it has', () => {
+    const russian = createSeatLayerPickerStringResolver({ locale: 'ru' });
+    const long = (seatsLeft: number): string => seatLayerDockCountCopy({
+      sectionName: '205', seatsLeft, section: undefined, snapshot: undefined,
+      translate: russian.translate, locale: 'ru',
+    }).long;
+    const forms = [1, 2, 5].map((count) => long(count).replace(/\d+/, '#'));
+    expect(new Set(forms).size).toBe(3);
+    expect(long(21).replace(/\d+/, '#')).toBe(forms[0]);
+    for (const form of forms) expect(form).toMatch(/[А-Яа-я]/);
+  });
+
   it('says the full sentence first and the short one next', () => {
     const one = copy({ seatsLeft: 1 });
     expect(one.long).toBe('1 seat left');

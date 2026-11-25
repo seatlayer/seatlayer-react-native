@@ -40,7 +40,7 @@ import {
   type SeatLayerPickerDecisionScope,
   type SeatLayerPickerTableRemovalOperation,
 } from './decisionPrompts';
-import { isRefusedGAHold } from './generalAdmissionAmounts';
+import { seatLayerPickerBuyerError } from './errorWords';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
@@ -138,10 +138,7 @@ function useCoordinator(): Readonly<{
   const coordinatorRef = useRef<SeatLayerPickerDecisionCoordinator | undefined>(undefined);
   if (!coordinatorRef.current) coordinatorRef.current = new SeatLayerPickerDecisionCoordinator(
     () => decisionScope(committedScope.current),
-    (error) => {
-      const { reportError, strings } = committedScope.current;
-      reportError(Object.assign(error as Error, { buyerMessage: strings.translate('seatsJustTaken') }));
-    },
+    (error) => { committedScope.current.reportError(error); },
   );
   const coordinator = coordinatorRef.current;
   const state = useSyncExternalStore(coordinator.subscribe, coordinator.getState, coordinator.getState);
@@ -256,10 +253,10 @@ function PromptButton({
 }
 
 function Quantity({
-  value, minimum, maximum, onChange, disabled, label, scope, styles,
+  value, minimum, maximum, onChange, disabled, guests, label, scope, styles,
 }: Readonly<{
   value: number; minimum: number; maximum: number; onChange: (value: number) => void; disabled: boolean;
-  label: string; scope: SeatLayerPickerScopeValue; styles: DecisionPromptStyles;
+  guests: boolean; label: string; scope: SeatLayerPickerScopeValue; styles: DecisionPromptStyles;
 }>): React.ReactElement {
   const decrement = () => onChange(Math.max(minimum, value - 1));
   const increment = () => onChange(Math.min(maximum, value + 1));
@@ -269,11 +266,11 @@ function Quantity({
     if (event.nativeEvent.actionName === 'decrement' && value > minimum) decrement();
   };
   return <View style={stylesNative.quantity}>
-    <PromptButton label="−" accessibilityLabel={scope.strings.translate('fewerTickets')} disabled={disabled || value <= minimum} busy={disabled} primary={false} onPress={decrement} scope={scope} styles={styles} />
+    <PromptButton label="−" accessibilityLabel={scope.strings.translate(guests ? 'fewerGuests' : 'fewerTickets')} disabled={disabled || value <= minimum} busy={disabled} primary={false} onPress={decrement} scope={scope} styles={styles} />
     <View accessible accessibilityRole="adjustable" accessibilityLabel={label} accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]} onAccessibilityAction={action} accessibilityState={{ disabled }} accessibilityValue={{ min: minimum, max: maximum, now: value }} style={stylesNative.quantityValue}>
       <Text style={[stylesNative.quantityText, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }]}>{value}</Text>
     </View>
-    <PromptButton label="+" accessibilityLabel={scope.strings.translate('moreTickets')} disabled={disabled || value >= maximum} busy={disabled} primary={false} onPress={increment} scope={scope} styles={styles} />
+    <PromptButton label="+" accessibilityLabel={scope.strings.translate(guests ? 'moreGuests' : 'moreTickets')} disabled={disabled || value >= maximum} busy={disabled} primary={false} onPress={increment} scope={scope} styles={styles} />
   </View>;
 }
 
@@ -370,22 +367,25 @@ function ModalPrompt({
     active.handle.dismiss();
     observe(callbacks.current.removed, result);
   };
+  const inCart = decision.kind === 'table' &&
+    scope.snapshot?.cartLines.some((line) => line.label === decision.seat.label) === true;
   const title = decision.kind === 'ga' ? decision.area.label ?? scope.strings.translate('generalAdmission') : decision.seat.displayLabel ?? decision.seat.label;
   const subtitle = decision.kind === 'ga'
     ? scope.strings.translate('placesAvailable', { values: { count: decision.available }, count: decision.available })
-    : scope.strings.translate('chooseTableGuests');
+    : scope.strings.translate('chooseGuestsCopy');
+  const refused = state.error ? seatLayerPickerBuyerError(state.error, scope.strings) : undefined;
   return <SeatLayerPickerPromptModal visible>
     <Pressable accessible={false} onPress={dismiss} style={[stylesNative.scrim, { backgroundColor: scope.resolvedTheme.colors.text, opacity: .42, paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} />
     <View accessibilityViewIsModal style={[stylesNative.modalLayer, { paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} pointerEvents="box-none">
       <View style={[stylesNative.card, { backgroundColor: scope.resolvedTheme.colors.surface, borderColor: scope.resolvedTheme.colors.divider, borderRadius: seatLayerPickerTokens.radius.card, padding: seatLayerPickerTokens.size.confirmCardGutter }, styles.card, localCard]}>
         <Text accessibilityRole="header" style={[stylesNative.title, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{title}</Text>
         <Text style={[stylesNative.subtitle, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>{subtitle}</Text>
-        <Quantity value={decision.quantity} minimum={decision.minimum} maximum={decision.maximum} onChange={setQuantity} disabled={inFlight} label={scope.strings.translate(decision.kind === 'table' ? 'chooseTableGuests' : 'chooseTickets')} scope={scope} styles={styles} />
+        <Quantity value={decision.quantity} minimum={decision.minimum} maximum={decision.maximum} onChange={setQuantity} disabled={inFlight} guests={decision.kind === 'table'} label={scope.strings.translate(decision.kind === 'table' ? 'numberOfGuests' : 'chooseTickets')} scope={scope} styles={styles} />
         {decision.kind === 'ga' && (decision.area.tiers?.length ?? 0) > 0 ? <ScrollView style={stylesNative.tierScroll} contentContainerStyle={stylesNative.tierScrollContent}><TierChoices decision={decision} value={tierId ?? decision.tierId} onChange={setTierId} disabled={inFlight} scope={scope} styles={styles} /></ScrollView> : null}
-        {state.error ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{scope.strings.translate(isRefusedGAHold(state.error) ? 'seatsJustTaken' : 'errorMessage')}</Text> : null}
+        {refused ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{[refused.message, refused.detail].filter(Boolean).join(' ')}</Text> : null}
         <View style={stylesNative.actions}>
-          <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeSeat')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
-          <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate('confirmTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />
+          <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeWord')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
+          <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate(inCart ? 'updateTable' : 'selectTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />
         </View>
       </View>
     </View>

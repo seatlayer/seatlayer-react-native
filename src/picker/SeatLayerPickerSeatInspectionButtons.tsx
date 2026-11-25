@@ -91,7 +91,7 @@ function SeatInspectionButton({
   const inVenue3D = scope.snapshot?.map.buyerView === 'venue3d';
   const copy = clean(label) ?? (kind === 'seatView'
     ? scope.strings.translate('viewFromHere')
-    : inVenue3D ? scope.strings.translate('viewFromHere') : 'See it in 3D');
+    : scope.strings.translate(inVenue3D ? 'viewFromThisSeat' : 'seeItIn3D'));
   const disabled = scope.isBusy || scope.readOnly || busy;
   return <Pressable
     accessibilityLabel={copy}

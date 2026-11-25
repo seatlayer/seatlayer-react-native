@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { SeatLayerError } from '../../src/errors';
+import { formatSeatLayerPickerCompactMoney } from '../../src/picker/format';
 import type { CategoryTier, SelectedSeat } from '../../src/types';
 import { SeatLayerPickerAdaptiveLayout } from '../../src/picker/SeatLayerPickerAdaptiveLayout';
 import { SeatLayerPickerHoldCountdown } from '../../src/picker/SeatLayerPickerHoldCountdown';
@@ -591,7 +593,7 @@ function fixtureScope(
     resolvedTheme: theme,
     styles: Object.freeze({}),
     pricing: undefined,
-    formatMoney: (amount: number, currency: string) => `${currency === 'EUR' ? '€' : `${currency} `}${amount}`,
+    formatMoney: (amount: number, currency: string) => formatSeatLayerPickerCompactMoney(amount, currency),
     strings: createSeatLayerPickerStringResolver({
       locale: rtl ? 'ar' : 'en',
       ...(scenario === 'long-copy' ? { overrides: {
@@ -607,11 +609,9 @@ function fixtureScope(
       isOverview: overview,
       mapRung: snapshot.map.rung,
     }),
-    error: scenario === 'error' || scenario === 'action-error'
-      ? Object.freeze({ buyerMessage: scenario === 'action-error'
-        ? 'That seat changed before the selection could be completed.'
-        : 'Seats could not be loaded.' })
-      : undefined,
+    error: scenario === 'action-error'
+      ? SeatLayerError.bridge({ code: 'conflict', message: 'conflict', details: { status: 409, conflicts: [{ label: 'A-12' }] } })
+      : scenario === 'error' ? SeatLayerError.transport('The page did not load.') : undefined,
     isBusy: false,
     isReady: ready,
     readOnly: false,

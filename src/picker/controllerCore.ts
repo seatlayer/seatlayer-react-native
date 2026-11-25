@@ -7,6 +7,7 @@ import type { SeatLayerConfiguration } from '../types';
 import type { SeatLayerPickerMapTheme, SeatLayerThemeMode } from './theme';
 import { decodeSeatLayerPickerCheckoutHandoff, decodeSeatLayerPickerSnapshot, decodeSeatLayerSeatView } from './decode';
 import { seatLayerAllFloors } from './models';
+import { rememberSeatLayerPickerFailure } from './failureLog';
 import { refusedGAHold } from './generalAdmissionAmounts';
 import { sameSeatView } from './seat-view';
 import type {
@@ -697,7 +698,7 @@ export class SeatLayerPickerControllerCore {
       ) {
         throw error;
       }
-      await this.mapController.hold(ttlMs === undefined ? {} : { ttlMs });
+      await rememberSeatLayerPickerFailure(this.mapController.hold(ttlMs === undefined ? {} : { ttlMs }), 'hold');
       return await this.command('picker.continue', payload);
     }
   }
@@ -713,9 +714,9 @@ export class SeatLayerPickerControllerCore {
         ),
       );
     }
-    return this.dispatch.run(
+    return rememberSeatLayerPickerFailure(this.dispatch.run(
       () => this.mapController.runPickerCommand(command, payload),
-    );
+    ), command, payload, this.snapshots.getSnapshot());
   }
   protected async applyMutationResult(
     result: JsonValue | undefined,

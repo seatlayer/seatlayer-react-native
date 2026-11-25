@@ -330,25 +330,29 @@ describe('cart checkout renderer', () => {
     expect(runtime.insetLeases[0]!.retired).toBe(false);
   });
 
-  it('centres the by-line at the foot of the sheet and lets server branding hide it', async () => {
+  it('draws no credit, whatever the branding says', async () => {
     const runtime = setup();
     runtime.snapshot.branding.attributionRequired = true;
-    const props = () => React.createElement(SeatLayerCartSheet, {
+    const renderer = await render(React.createElement(SeatLayerCartSheet, {
       expanded: false, onExpandedChanged: () => {}, onCheckout: () => {}, safeAreaBottomInset: 34,
-    });
-    const renderer = await render(props());
-    expect(renderer.root.findByProps({ accessibilityLabel: 'poweredBy' })).toBeTruthy();
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-attribution-foot' }).props.style)
-      .toMatchObject({
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: seatLayerPickerTokens.size.attributionHeight,
-      });
-    // Server branding is authoritative: a white-label entitlement hides it.
-    runtime.snapshot.branding.attributionRequired = false;
-    await act(async () => { renderer.update(props()); });
+    }));
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
-    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-attribution-foot' })).toHaveLength(0);
+  });
+
+  it('keeps the button off the edge where the phone takes no room at its foot', async () => {
+    setup();
+    const paddings = async (insetBottom: number, reserveBottomInset = true) => {
+      const renderer = await render(React.createElement(SeatLayerCartSheet, {
+        expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
+        reserveBottomInset, safeAreaBottomInset: insetBottom,
+      }));
+      return renderer.root.findAll((node) => Array.isArray(node.props.style)
+        && node.props.style[0]?.borderTopLeftRadius === seatLayerPickerTokens.radius.sheet)
+        .map((node) => node.props.style[0].paddingBottom)[0];
+    };
+    expect(await paddings(0)).toBe(seatLayerPickerTokens.size.footMinInset);
+    expect(await paddings(34)).toBe(34);
+    expect(await paddings(0, false)).toBe(0);
   });
 
   it('keeps empty guidance semantic while its best-seats controls remain discoverable', async () => {
@@ -441,7 +445,17 @@ describe('cart checkout renderer', () => {
     runtime.snapshot.cartLines = [];
     scope = { ...scope, error: { message: 'retry' } };
     const renderer = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
-    expect(renderer.root.findAllByProps({ accessibilityLabel: 'close' }).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'dismissError' }).length).toBeGreaterThan(0);
+  });
+
+  it('takes the last refusal away when the buyer tries again', async () => {
+    setup();
+    const clearError = vi.fn();
+    scope = { ...scope, clearError, error: { buyerMessage: 'Refused.' } };
+    const renderer = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
+    expect(clearError).not.toHaveBeenCalled();
+    await act(async () => { renderer.root.findAllByProps({ testID: 'seatlayer-cart-checkout' })[0]!.props.onPress(); await Promise.resolve(); });
+    expect(clearError).toHaveBeenCalledTimes(1);
   });
 
   it('keeps disabled best-seat controls truthful with 44 hit targets around 44 painted controls', async () => {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createSeatLayerPickerStringResolver } from '../src/picker/locale';
 
 import { seatLayerCheckoutCtaState } from '../src/picker/checkoutCta';
 import {
@@ -164,7 +165,15 @@ describe('§3.10.3 checkout call to action', () => {
     expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), creatingHold: true, handoffInFlight: true }))
       .toMatchObject({ label: 'securingSeats', busy: true });
     expect(seatLayerCheckoutCtaState({ ...base, snapshot: snapshot(), handoffInFlight: true }))
-      .toMatchObject({ label: 'openingCheckout', busy: true });
+      .toMatchObject({ label: 'seatsSecuredOpeningCheckout', busy: true });
+  });
+
+  it('keeps an app’s own words for the opening checkout', () => {
+    const strings = (overrides: Record<string, string>) =>
+      createSeatLayerPickerStringResolver({ locale: 'en', overrides }).translate('seatsSecuredOpeningCheckout');
+    expect(strings({})).toBe('Seats secured. Opening checkout…');
+    expect(strings({ openingCheckout: 'One moment…' })).toBe('One moment…');
+    expect(strings({ openingCheckout: 'One moment…', seatsSecuredOpeningCheckout: 'Secured.' })).toBe('Secured.');
   });
 
   it('says what would fix a rejected selection, and falls back where there is no number', () => {

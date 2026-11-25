@@ -1,33 +1,35 @@
-import { seatLayerPickerLocaleStrings, type SeatLayerPickerGeneratedLocale } from './strings.g';
+import { seatLayerPickerPluralCategory } from './pluralRules';
+import { seatLayerPickerLocaleSources, type SeatLayerPickerGeneratedLocale } from './strings.g';
 import { seatLayerPickerTokens } from './tokens.g';
 
 export type SeatLayerPickerLocale = SeatLayerPickerGeneratedLocale | (string & {});
 export type SeatLayerPickerStringValues = Readonly<Record<string, string | number | undefined>>;
 
+type TokenStrings = typeof seatLayerPickerTokens.strings;
+type CountedKey<Key extends string> = Key extends `${infer Base}One` ? `${Base}.one`
+  : Key extends `${infer Base}Other` ? `${Base}.other` : never;
+type CountedStrings = {
+  readonly [Key in keyof TokenStrings as CountedKey<Key & string>]: TokenStrings[Key];
+};
+
+/** `fooOne` and `fooOther` under the names the language dictionaries use. */
+function countedStrings(): CountedStrings {
+  const counted: Record<string, string> = {};
+  for (const [key, value] of Object.entries(seatLayerPickerTokens.strings)) {
+    const form = /^(.+)(One|Other)$/.exec(key);
+    if (form) counted[`${form[1]}.${form[2]!.toLowerCase()}`] = value;
+  }
+  return counted as CountedStrings;
+}
+
 /** English wording for native chrome which is not present in the runtime locale dictionaries. */
-export const seatLayerPickerEnglishStrings = {
+export const seatLayerPickerEnglishStrings: Readonly<
+  TokenStrings & CountedStrings & { readonly onlyLeft: string }
+> = {
   ...seatLayerPickerTokens.strings,
-  'findBestSeats.one': seatLayerPickerTokens.strings.findBestSeatsOne,
-  'findBestSeats.other': seatLayerPickerTokens.strings.findBestSeatsOther,
-  'holdLapsedAllTaken.one': seatLayerPickerTokens.strings.holdLapsedAllTakenOne,
-  'holdLapsedAllTaken.other': seatLayerPickerTokens.strings.holdLapsedAllTakenOther,
-  'holdLapsedSomeTaken.one': seatLayerPickerTokens.strings.holdLapsedSomeTakenOne,
-  'holdLapsedSomeTaken.other': seatLayerPickerTokens.strings.holdLapsedSomeTakenOther,
-  'holdLapsedStillFree.one': seatLayerPickerTokens.strings.holdLapsedStillFreeOne,
-  'holdLapsedStillFree.other': seatLayerPickerTokens.strings.holdLapsedStillFreeOther,
-  'holdMinutesLeft.one': seatLayerPickerTokens.strings.holdMinutesLeftOne,
-  'holdMinutesLeft.other': seatLayerPickerTokens.strings.holdMinutesLeftOther,
-  'holdSecondsLeft.one': seatLayerPickerTokens.strings.holdSecondsLeftOne,
-  'holdSecondsLeft.other': seatLayerPickerTokens.strings.holdSecondsLeftOther,
-  'removeTickets.one': seatLayerPickerTokens.strings.removeTicketsOne,
-  'removeTickets.other': seatLayerPickerTokens.strings.removeTicketsOther,
-  'reselectSeats.one': seatLayerPickerTokens.strings.reselectSeatsOne,
-  'reselectSeats.other': seatLayerPickerTokens.strings.reselectSeatsOther,
-  'seatsFree.one': seatLayerPickerTokens.strings.seatsFreeOne,
-  'seatsFree.other': seatLayerPickerTokens.strings.seatsFreeOther,
-  'ticketCount.one': seatLayerPickerTokens.strings.ticketCountOne,
-  'ticketCount.other': seatLayerPickerTokens.strings.ticketCountOther,
-} as const;
+  ...countedStrings(),
+  onlyLeft: seatLayerPickerTokens.strings.onlyLeftOther,
+};
 
 export type SeatLayerPickerEnglishStringKey = keyof typeof seatLayerPickerEnglishStrings;
 /** Accepts future runtime string keys without making an unknown key a decoding failure. */
@@ -177,6 +179,8 @@ function normalizedLocaleCandidates(locale: SeatLayerPickerLocale | null | undef
     const traditional = normalized.some((part) => part === 'TW' || part === 'HK' || part === 'MO');
     candidates.splice(Math.max(0, candidates.length - 1), 0, traditional ? 'zh-Hant' : 'zh-Hans');
   }
+  // Norwegian Bokmål devices report `nb`; its dictionary is filed as `no`.
+  if (language === 'nb') candidates.push('no');
   return [...new Set(candidates)];
 }
 
@@ -191,13 +195,21 @@ function isEnglish(candidate: string): boolean {
   return candidate === 'en' || candidate.toLowerCase().startsWith('en-');
 }
 
+const builtLocales: Partial<Record<SeatLayerPickerGeneratedLocale, Readonly<Record<string, string>>>> = {};
+
+/** The words of one language, built when it is first asked for. */
+export function seatLayerPickerLocaleWords(
+  locale: SeatLayerPickerGeneratedLocale,
+): Readonly<Record<string, string>> {
+  return builtLocales[locale] ??= seatLayerPickerLocaleSources[locale]();
+}
+
 function localeDictionary(locale: SeatLayerPickerLocale | null | undefined): Readonly<Record<string, string>> | undefined {
   for (const candidate of normalizedLocaleCandidates(locale)) {
     if (isEnglish(candidate)) return undefined;
-    const exact = seatLayerPickerLocaleStrings[candidate as SeatLayerPickerGeneratedLocale];
-    if (exact) return exact;
-    const matchingLocale = Object.keys(seatLayerPickerLocaleStrings).find((known) => known.toLowerCase() === candidate.toLowerCase());
-    if (matchingLocale) return seatLayerPickerLocaleStrings[matchingLocale as SeatLayerPickerGeneratedLocale];
+    const known = Object.keys(seatLayerPickerLocaleSources)
+      .find((locale) => locale.toLowerCase() === candidate.toLowerCase());
+    if (known) return seatLayerPickerLocaleWords(known as SeatLayerPickerGeneratedLocale);
   }
   return undefined;
 }
@@ -224,21 +236,34 @@ function generatedAccessNeedLabel(
   return typeof value === 'string' && value ? value : undefined;
 }
 
-function pluralCategory(locale: SeatLayerPickerLocale | null | undefined, count: number): string {
-  try {
-    return new Intl.PluralRules(typeof locale === 'string' ? locale : 'en').select(count);
-  } catch {
-    return count === 1 ? 'one' : 'other';
-  }
-}
-
 function safeKey(key: unknown): string {
   return typeof key === 'string' ? key : '';
 }
 
+const countedKeyPattern = /^(.+)\.(zero|one|two|few|many)$/;
+
 function keyCandidates(key: string, locale: SeatLayerPickerLocale | null | undefined, count: number | undefined): readonly string[] {
+  // A form named outright still has the general one to fall back to.
+  const named = countedKeyPattern.exec(key);
+  if (named) return [key, `${named[1]}.other`];
   if (count === undefined || !Number.isFinite(count)) return [key];
-  return [...new Set([`${key}.${pluralCategory(locale, count)}`, `${key}.other`, key])];
+  return [...new Set([`${key}.${seatLayerPickerPluralCategory(locale, count)}`, `${key}.other`, key])];
+}
+
+/** Wording an app gave a sentence that a newer one has taken the place of. */
+const replacedSentences: Readonly<Record<string, string>> = {
+  seatsSecuredOpeningCheckout: 'openingCheckout',
+};
+
+/** Wording may also be given under the `…One` and `…Other` names of the English strings. */
+function overrideCandidates(candidates: readonly string[]): readonly string[] {
+  return candidates.flatMap((candidate) => {
+    const form = /^(.+)\.(one|other)$/.exec(candidate);
+    return form
+      ? [candidate, `${form[1]}${form[2] === 'one' ? 'One' : 'Other'}`]
+      : [candidate, ...(Object.prototype.hasOwnProperty.call(replacedSentences, candidate)
+        ? [replacedSentences[candidate] as string] : [])];
+  });
 }
 
 function formatTemplate(template: unknown, values: SeatLayerPickerStringValues): string | undefined {
@@ -320,7 +345,7 @@ function translate(
   const candidates = keyCandidates(safe, locale, safeCount);
   const context = contextFor(safe, locale, safeCount, safeValues);
   const safeOverrides = frozenOverrides ?? freezeOverrides(overrides);
-  const override = resolveOverride(safeOverrides.strings, candidates, context);
+  const override = resolveOverride(safeOverrides.strings, overrideCandidates(candidates), context);
   const dictionary = localeDictionary(locale);
   const template = override
     ?? (safe === 'continueWithTotal' ? localizedContinueTemplate(dictionary) : undefined)

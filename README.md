@@ -333,6 +333,8 @@ card. Leave it out and that detail shows as plain text.
 
 `options.pricing.formatter` formats every native amount: confirmation, ticket
 rows, GA/table tiers, peek, expanded cart, and best-available entry pricing.
+Without one, amounts are written as the picker's language writes them, with the
+currency's own decimals (`KWD 12,454.500`); a whole amount has none.
 It changes presentation only. Runtime selection, hold totals, and the trusted
 server checkout remain authoritative; the SDK never recalculates inventory
 prices from display text.
@@ -388,7 +390,7 @@ or scoped actions.
 
 The same scope also supports standalone confirmation and seat-view actions,
 best seats, section navigation, floor selection, GA/table prompts, dense cart
-lists, hold-lapse recovery, loading/error/empty states, attribution, venue 3D,
+lists, hold-lapse recovery, loading/error/empty states, venue 3D,
 and panorama chrome. Custom ticket trays can reuse the exported
 `resolveSeatLayerTicketLines` helper instead of reimplementing the ticket-line
 rules: it turns cart items into lines with their section, row, seat, category,

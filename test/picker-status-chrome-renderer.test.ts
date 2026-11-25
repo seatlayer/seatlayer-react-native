@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock("react-native", () => ({
-  ActivityIndicator: "ActivityIndicator", Pressable: "Pressable", Text: "Text", View: "View",
+  ActivityIndicator: "ActivityIndicator", Pressable: "Pressable", ScrollView: "ScrollView", useWindowDimensions: () => ({ width: 390, height: 844 }), Text: "Text", View: "View",
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
 }));
 
@@ -12,7 +12,6 @@ let scope: Record<string, any>;
 vi.mock("../src/picker/SeatLayerPickerScope", () => ({ useSeatLayerPickerScope: () => scope }));
 
 import { SeatLayerPickerActionError } from "../src/picker/actionError";
-import { SeatLayerPickerAttribution } from "../src/picker/attribution";
 import {
   SeatLayerPickerEmptyStatus,
   SeatLayerPickerErrorStatus,
@@ -52,7 +51,7 @@ function setup(): { readonly errors: unknown[]; readonly clear: () => number } {
     strings: {
       translate: (key: string) => ({
         loading: "Loading", errorMessage: "Buyer-safe error", retry: "Retry", testMode: "Test mode", testModeLong: "Test mode · books nothing",
-        poweredBy: "Powered by SeatLayer", close: "Close",
+        poweredBy: "Powered by SeatLayer", close: "Close", dismissError: "Dismiss error",
       } as Record<string, string>)[key] ?? key,
     },
     resolvedTheme: {
@@ -122,14 +121,16 @@ describe("picker status chrome", () => {
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerActionError)); });
     expect(renderer.toJSON()).toBeNull();
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerErrorView)); });
-    expect(renderer.root.findByProps({ accessibilityRole: "alert" })).toBeTruthy();
+    expect(renderer.root.findByProps({ accessibilityRole: "alert" }).children).toEqual(["mapDidNotLoad"]);
+    expect(renderer.root.findAllByType("Text" as any).map((node) => node.children[0]))
+      .toEqual(["mapDidNotLoad", "Initial load failed", "checkConnection", "Retry"]);
     const retry = renderer.root.findByProps({ accessibilityLabel: "Retry" });
     await act(async () => { retry.props.onPress(); });
     expect(scope.retry).toHaveBeenCalledTimes(1);
-    scope = { ...scope, isReady: true, styles: { statusAction: { borderRadius: 3 } }, error: { buyerMessage: "A very long buyer-safe command message that remains limited to two lines" } };
+    scope = { ...scope, isReady: true, styles: { statusAction: { borderRadius: 3 } }, error: { buyerMessage: "A very long buyer-safe command message that is never cut" } };
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerActionError)); });
-    const close = renderer.root.findByProps({ accessibilityLabel: "Close" });
-    expect(renderer.root.findByProps({ numberOfLines: 2 })).toBeTruthy();
+    const close = renderer.root.findByProps({ accessibilityLabel: "Dismiss error" });
+    expect(renderer.root.findAll((node) => node.props.numberOfLines !== undefined)).toHaveLength(0);
     expect(close.props.style.minHeight).toBe(44);
     const paint = close.findByType("View" as any);
     expect(paint.props.style).toEqual(expect.arrayContaining([
@@ -140,18 +141,18 @@ describe("picker status chrome", () => {
     await act(async () => { close.props.onPress(); });
     expect(clear()).toBe(1);
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerActionError, { clearable: false })); });
-    expect(renderer.root.findAllByProps({ accessibilityLabel: "Close" })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: "Dismiss error" })).toHaveLength(0);
     await act(async () => {
       renderer.update(React.createElement(SeatLayerPickerActionError, {
         error: { buyerMessage: "A different operation failed" },
       }));
     });
-    expect(renderer.root.findAllByProps({ accessibilityLabel: "Close" })).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: "Dismiss error" })).toHaveLength(0);
     scope = { ...scope, error: Object.create(null, {
       buyerMessage: { enumerable: true, get: () => { throw new Error("hostile"); } },
     }) };
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerActionError)); });
-    expect(renderer.root.findByProps({ numberOfLines: 2 }).children).toEqual(["Buyer-safe error"]);
+    expect(renderer.root.findAllByType("Text" as any)[0]!.children).toEqual(["checkConnection"]);
   });
 
   it("does not manufacture retry and quarantines rapid or retired retry failures", async () => {
@@ -186,18 +187,10 @@ describe("picker status chrome", () => {
     expect(errors).toHaveLength(0);
   });
 
-  it("keeps required attribution unsuppressible and gates the test badge by event and native chrome", async () => {
+  it("gates the test badge by event and native chrome", async () => {
     let renderer!: ReactTestRenderer;
     scope.controller.mapController.supportsPickerCapability = () => false;
     scope.snapshot = snapshot("test", true);
-    await act(async () => {
-      renderer = create(React.createElement(SeatLayerPickerAttribution, {
-        visible: false, style: { opacity: 0 }, slots: { attributionText: { color: "#000" } },
-      }));
-    });
-    const attribution = renderer.root.findByProps({ accessibilityLabel: "Powered by SeatLayer" });
-    expect(attribution).toBeTruthy();
-    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.72 }));
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTestModeIndicator, { compact: true })); });
     expect(renderer.toJSON()).toBeNull();
     scope.controller.mapController.supportsPickerCapability = (value: string) => value === "native-chrome-contract-v1";

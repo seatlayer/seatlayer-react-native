@@ -51,6 +51,7 @@ import {
 } from './types';
 import { decodeSeatLayerPickerSnapshot } from './picker/decode';
 import type { SeatLayerPickerReadyInfo } from './picker/models';
+import { seatLayerPickerMapDidNotLoad } from './picker/unloadedMap';
 
 interface Handshake {
   resolve(value: ReadyInfo): void;
@@ -82,6 +83,7 @@ export class SeatLayerController {
   private handshake: Handshake | undefined;
   private queuedFrames: Envelope[] = [];
   private disposed = false;
+  private loadError: SeatLayerError | undefined;
 
   constructor(private readonly handshakeClock: () => number = defaultHandshakeClock) {}
 
@@ -155,6 +157,7 @@ export class SeatLayerController {
     this.configuration = configuration;
     this.profile = profile;
     this.readyInfo = undefined;
+    this.loadError = undefined;
     this.bundleInfo = undefined;
     this.protocolRevision = undefined;
     this.bundleCommands = [];
@@ -576,6 +579,13 @@ export class SeatLayerController {
           ...timings,
           ...(snapshot === undefined ? {} : { snapshot }),
         };
+        if (this.profile.surface === 'picker' && seatLayerPickerMapDidNotLoad(object?.snapshot)) {
+          const error = this.loadError ?? SeatLayerError.transport('The seat map did not load.');
+          this.finishHandshake(error);
+          this.client?.close(error);
+          this.client = undefined;
+          return;
+        }
         if (this.profile.surface === 'picker' && ready.protocolRevision !== 2) {
           this.finishHandshake(
             SeatLayerError.incompatible(
@@ -693,7 +703,7 @@ export class SeatLayerController {
         this.events.emit('hint', asString(object?.message));
         return;
       case 'error':
-        this.events.emit('error', SeatLayerError.bridge(payload));
+        this.reportPageError(SeatLayerError.bridge(payload));
         return;
       case 'seat.hover':
         this.events.emit('seatHover', decodeSeatHover(object?.details));
@@ -711,6 +721,12 @@ export class SeatLayerController {
     }
   }
 
+  /** What went wrong while the page starts is also why it did not start. */
+  private reportPageError(error: SeatLayerError): void {
+    if (this.handshake !== undefined) this.loadError = error;
+    this.events.emit('error', error);
+  }
+
   private finishHandshake(outcome: ReadyInfo | SeatLayerError): void {
     const handshake = this.handshake;
     if (!handshake || handshake.settled) {
@@ -723,7 +739,8 @@ export class SeatLayerController {
 
     if (outcome instanceof SeatLayerError) {
       handshake.reject(outcome);
-      this.events.emit('error', outcome);
+      // The page's own error was reported when it came.
+      if (outcome !== this.loadError) this.events.emit('error', outcome);
       return;
     }
     this.readyInfo = outcome;

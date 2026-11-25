@@ -65,8 +65,11 @@ export interface SeatLayerPickerStyles {
   statusActionText?: StyleProp<TextStyle>;
   errorContainer?: StyleProp<ViewStyle>;
   errorText?: StyleProp<TextStyle>;
+  /** @deprecated Nothing is drawn with it. */
   attributionContainer?: StyleProp<ViewStyle>;
+  /** @deprecated Nothing is drawn with it. */
   attributionText?: StyleProp<TextStyle>;
+  /** @deprecated Nothing is drawn with it. */
   attributionMark?: StyleProp<ViewStyle>;
 }
 

@@ -375,10 +375,10 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
       recentreEnabled={targeted}
       recentreLabel={scope.strings.translate('recentre')}
       primaryVisible={!targeted || seatViewAvailable}
-      primaryLabel={scope.strings.translate(targeted ? 'viewFromHere' : 'fitVenue')}
+      primaryLabel={scope.strings.translate(targeted ? 'viewFromHere' : 'fitWholeVenue')}
       targeted={targeted}
-      zoomInLabel="Zoom in"
-      zoomOutLabel="Zoom out"
+      zoomInLabel={scope.strings.translate('zoomIn')}
+      zoomOutLabel={scope.strings.translate('zoomOut')}
       slots={slots}
       style={props.style}
       theme={theme}

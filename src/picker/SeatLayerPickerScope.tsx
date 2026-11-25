@@ -251,8 +251,8 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
   );
   const formatMoney = useCallback(
     (amount: number, currency: string) =>
-      formatSeatLayerPickerMoney(amount, currency, pricing?.formatter, reportError),
-    [pricing?.formatter, reportError],
+      formatSeatLayerPickerMoney(amount, currency, pricing?.formatter, reportError, strings.locale),
+    [pricing?.formatter, reportError, strings.locale],
   );
   const clearError = useCallback(() => {
     if (aliveRef.current && generationRef.current === sessionId) setError(undefined);

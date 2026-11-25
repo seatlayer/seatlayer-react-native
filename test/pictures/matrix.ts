@@ -87,7 +87,7 @@ const main: Cell['scenario'][] = ['overview', 'confirmation', 'cart-expanded', '
 /** The cells that are drawn and compared. */
 export const pictureCells: readonly Cell[] = [
   ...cells(pick('390'), [1], {
-    only: [...main, 'floors', 'seat-view', 'best-seats', 'error', 'general-admission', 'empty'],
+    only: [...main, 'floors', 'seat-view', 'best-seats', 'error', 'action-error', 'general-admission', 'empty'],
   }),
   ...cells(pick('390'), [1], { mode: 'dark', only: main }),
   ...cells(pick('320'), [1], { only: main }),

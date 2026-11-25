@@ -23,12 +23,53 @@ function safeCurrency(value: unknown): string {
   return code || 'USD';
 }
 
-function safeFixed(amount: number): string {
+/** Currencies whose amounts are not written with two decimals. */
+const noDecimals: ReadonlySet<string> = new Set((
+  'AFN ALL BIF CLP COP DJF GNF HUF IDR IQD IRR ISK JPY KMF KPW KRW LAK LBP MGA MMK PKR PYG RWF '
+  + 'SLL SOS SYP UGX VND VUV XAF XOF XPF YER'
+).split(' '));
+const threeDecimals: ReadonlySet<string> = new Set(['BHD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND']);
+
+/** A whole amount has no decimals; any other has as many as its currency has. */
+function moneyDigits(amount: number, currency: string): number {
+  if (Number.isInteger(amount) || noDecimals.has(currency)) return 0;
+  return threeDecimals.has(currency) ? 3 : 2;
+}
+
+/** English marks, for an engine with no number formats and for a code it does not take. */
+function plainMoney(amount: number, currency: string, digits: number): string {
+  const [whole = '0', decimals] = Math.abs(amount).toFixed(digits).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+$)/g, ',');
+  const value = decimals === undefined ? grouped : `${grouped}.${decimals}`;
+  const symbol = Object.prototype.hasOwnProperty.call(currencySymbols, currency)
+    ? currencySymbols[currency] as string
+    : `${currency}\u00A0`;
+  return `${amount < 0 ? '-' : ''}${symbol}${value}`;
+}
+
+// An engine takes long to make a number format, and a price list asks for the
+// same few on every draw.
+const numberFormats = new Map<string, Intl.NumberFormat | undefined>();
+
+function numberFormat(locale: string, currency: string, digits: number): Intl.NumberFormat | undefined {
+  const key = `${locale}|${currency}|${digits}`;
+  if (numberFormats.has(key)) return numberFormats.get(key);
+  let format: Intl.NumberFormat | undefined;
   try {
-    return amount.toFixed(Number.isInteger(amount) ? 0 : 2);
+    format = new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+      // Engines differ in the digits they give Arabic; the map writes 0 to 9.
+      ...(locale.toLowerCase() === 'ar' ? { numberingSystem: 'latn' } : {}),
+    });
   } catch {
-    return '0';
+    // No number formats in this engine, or a code or a language it does not take.
   }
+  if (numberFormats.size > 200) numberFormats.clear();
+  numberFormats.set(key, format);
+  return format;
 }
 
 function reportFormatterError(callback: unknown, error: unknown): void {
@@ -40,25 +81,37 @@ function reportFormatterError(callback: unknown, error: unknown): void {
   }
 }
 
-/** Formats a finite amount with a known symbol or a normalized currency-code prefix. */
-export function formatSeatLayerPickerCompactMoney(amount: number, currency: string): string {
-  const safeCurrencyCode = safeCurrency(currency);
-  const value = safeFixed(safeAmount(amount));
-  const symbol = currencySymbols[safeCurrencyCode];
-  return symbol === undefined ? `${safeCurrencyCode} ${value}` : `${symbol}${value}`;
+/** Writes a finite amount as `locale` writes the currency, English when none is given. */
+export function formatSeatLayerPickerCompactMoney(
+  amount: number,
+  currency: string,
+  locale?: string | null,
+): string {
+  const value = safeAmount(amount);
+  const code = safeCurrency(currency);
+  const digits = moneyDigits(value, code);
+  try {
+    const language = typeof locale === 'string' && locale.trim() ? locale.trim() : 'en';
+    const text = (numberFormat(language, code, digits) ?? numberFormat('en', code, digits))?.format(value);
+    if (typeof text === 'string' && text.trim()) return text;
+  } catch {
+    // Written plainly below.
+  }
+  return plainMoney(value, code, digits);
 }
 
-/** Uses a host formatter when it safely returns visible text, otherwise the compact picker format. */
+/** Uses a host formatter when it safely returns visible text, otherwise the currency as `locale` writes it. */
 export function formatSeatLayerPickerMoney(
   amount: number,
   currency: string,
   formatter?: SeatLayerPickerMoneyFormatter,
   onFormatterError?: SeatLayerPickerFormatterErrorHandler,
+  locale?: string | null,
 ): string {
   const safeAmountValue = safeAmount(amount);
   const safeCurrencyCode = safeCurrency(currency);
   if (typeof formatter !== 'function') {
-    return formatSeatLayerPickerCompactMoney(safeAmountValue, safeCurrencyCode);
+    return formatSeatLayerPickerCompactMoney(safeAmountValue, safeCurrencyCode, locale);
   }
   try {
     const formatted = formatter(safeAmountValue, safeCurrencyCode);
@@ -67,7 +120,7 @@ export function formatSeatLayerPickerMoney(
   } catch (error) {
     reportFormatterError(onFormatterError, error);
   }
-  return formatSeatLayerPickerCompactMoney(safeAmountValue, safeCurrencyCode);
+  return formatSeatLayerPickerCompactMoney(safeAmountValue, safeCurrencyCode, locale);
 }
 
 function safeText(value: unknown): string {

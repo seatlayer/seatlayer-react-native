@@ -1,3 +1,4 @@
+import { seatLayerPickerPluralCategory } from './pluralRules';
 import type { SeatLayerPickerHoldLapse } from './holdLapse';
 import type { SeatLayerPickerSnapshot } from './models';
 
@@ -96,24 +97,13 @@ const lapseCopy: Readonly<Record<SeatLayerPickerHoldLapseShape, Readonly<{
   noneRecoverable: { base: 'holdLapsedAllTaken', tone: 'error', action: false },
 });
 
-/**
- * The plural form to ask for. The generated tokens carry `…One` / `…Other`
- * rather than a `key.one` suffix, so the choice is made here instead of being
- * hidden in the resolver.
- */
+/** The counted form to ask for, as the language dictionaries name it. */
 export function seatLayerPickerPluralKey(
   base: string,
   count: number,
   locale?: string | null,
 ): string {
-  let category = count === 1 ? 'one' : 'other';
-  try {
-    category = new Intl.PluralRules(typeof locale === 'string' && locale ? locale : 'en')
-      .select(count);
-  } catch {
-    // A locale the platform does not know still gets English plurals.
-  }
-  return `${base}${category === 'one' ? 'One' : 'Other'}`;
+  return `${base}.${seatLayerPickerPluralCategory(locale, count)}`;
 }
 
 export interface SeatLayerPickerHoldLapseTelling {

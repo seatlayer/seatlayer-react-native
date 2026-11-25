@@ -50,7 +50,6 @@ import { resolveSeatLayerPickerStyles } from '../src/picker/styles';
 import { SeatLayerPickerHeaderView } from '../src/picker/header';
 import { SeatLayerPickerHoldCountdownView } from '../src/picker/SeatLayerPickerHoldCountdown';
 import { SeatLayerPickerErrorStatus, SeatLayerPickerTestModeIndicatorView } from '../src/picker/status';
-import { SeatLayerPickerAttributionView } from '../src/picker/attribution';
 import {
   focusedPickerSection,
   seatsLeftInPickerSection,
@@ -332,7 +331,7 @@ describe('picker chrome pure plans', () => {
     expect(error.root.findAll((node) => node.props.accessibilityRole === 'alert')).toHaveLength(1);
   });
 
-  it('uses warning-specific ink and keeps required attribution non-customizable', () => {
+  it('uses warning-specific ink', () => {
     const theme = {
       themeMode: 'light', colors: {
         accent: '#111111', onAccent: '#ffffff', surface: '#ffffff', background: '#ffffff',
@@ -355,16 +354,6 @@ describe('picker chrome pure plans', () => {
     expect(ink).toBeTypeOf('string');
     expect(seatLayerPickerContrastRatio(ink!, wash))
       .toBeGreaterThanOrEqual(seatLayerPickerTestChipContrastFloor);
-    let attribution!: TestRenderer.ReactTestRenderer;
-    act(() => {
-      attribution = TestRenderer.create(React.createElement(SeatLayerPickerAttributionView, {
-        required: true, label: 'poweredBy', textColor: '#111111',
-        style: { opacity: 0, position: 'absolute' }, visible: false,
-      }));
-    });
-    expect(attribution.root.findByType('View' as any).props.style).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ opacity: 0 })]),
-    );
   });
 
   it('does not report a retired retry completion after unmount', async () => {

@@ -17,7 +17,6 @@ stay; the changes below are the ones an app or a buyer can notice.
 - In a seat's 3D view, a map 560 points or wider shows a small plan of where the
   seat is.
 - `setViewMode('iso')` and `setViewMode('perspective')` show the flat map.
-- The map no longer draws a "Powered by SeatLayer" badge of its own.
 - Seats with a price of their own, and events priced by tier and time, can be
   chosen and held.
 
@@ -26,6 +25,11 @@ stay; the changes below are the ones an app or a buyer can notice.
 - A phone held sideways keeps the phone layout. The wide layout needs a window
   whose shorter side is at least 600 points, besides the width it needed before.
   `options.layout: 'wide'` is still honoured.
+- "Powered by SeatLayer" is no longer drawn, on the map or under the cart.
+  `SeatLayerPickerAttribution` is deprecated and draws nothing; its style slots
+  change nothing.
+- The checkout button keeps 12 points from the edge on a phone with no safe area
+  at its foot.
 - In the 3D venue the status bar stands on the dark ground its light text is
   chosen for.
 - A standing area sold as one box offers only the party sizes it is sold in, and
@@ -36,6 +40,46 @@ stay; the changes below are the ones an app or a buyer can notice.
   more seats were just taken. Please pick again.", and
   `SeatLayerPickerController.holdGA` rejects with `hold_unavailable`, where it
   resolved as if they were held.
+
+**Words and languages**
+
+- 43 languages (Hindi, Indonesian, Korean, Malay, Thai and Vietnamese are new)
+  with the hosted map's own sentences. Counted sentences use every plural
+  form their language has.
+- A refused action says why: the seats that were taken, a type that is sold out,
+  a limit and its number, no connection, a pause for maintenance, a private
+  event's access. An error that carries its own `buyerMessage` is still shown as
+  it is, and the error itself still reaches `onError` unchanged. An
+  `errorMessage` override no longer reaches refused actions; it stands under the
+  title when the map did not load.
+- The error line shows its whole text, scrolls when it is very long, and closes
+  with a × ("Dismiss error"). It goes when the buyer tries again.
+- When the map did not load, the buyer reads "The seat map didn’t load" and
+  "Check your connection and try again." over a filled Try again button.
+- A picker opened with no network shows that view too, with Try again, where it
+  showed an access panel over an empty map. `onError` gets the failure and
+  `onReady` waits for a map.
+- "Securing your seats…" and "Seats secured. Opening checkout…" stand on the
+  checkout button without a spinner. An `openingCheckout` override is still used
+  unless `seatsSecuredOpeningCheckout` is given.
+- A table prompt says "Select table", or "Update table" for one in the cart. The
+  3D venue says "Show whole venue", and the seat buttons "View from this seat"
+  and "See it in 3D". Overrides of `confirmTable`, `chooseTableGuests`,
+  `fitVenue` and `removeSeat` no longer reach these places: use `selectTable` /
+  `updateTable`, `chooseGuestsCopy`, `fitWholeVenue` and `removeWord`.
+
+**Money**
+
+- Amounts have the decimals of their currency and a thousands mark, in the
+  picker's language: `KWD 12.625`, `KWD 12,454.500`, `₹125,000`, `1.234,50 €`.
+  Whole amounts still have no decimals. `pricing.formatter` is still used first.
+
+**Colours**
+
+- The text on the accent colour is white wherever white can be read on it, and
+  a near-black (`#1A1200`) on pale accents; it was black on many mid-tone
+  accents. The event's own `accentInk` is used where it can be read, with the
+  app's accent too. An app's `onAccent` is used as before.
 
 **When the system closes the map's page (low memory)**
 

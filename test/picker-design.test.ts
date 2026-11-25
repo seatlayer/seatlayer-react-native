@@ -8,11 +8,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createSeatLayerPickerStringResolver,
   formatSeatLayerPickerString,
+  seatLayerPickerEnglishStrings,
   translateSeatLayerPickerString,
 } from '../src/picker/locale';
 import {
   seatLayerPickerLocaleSourceSha256,
-  seatLayerPickerLocaleStrings,
+  seatLayerPickerLocaleSources,
 } from '../src/picker/strings.g';
 import {
   seatLayerPickerTokenSourceSha256,
@@ -154,8 +155,8 @@ describe('checked-in picker design output', () => {
     ]);
     const localTokens = JSON.parse(tokenInput.toString('utf8')) as { strings?: Record<string, string> };
     const localStrings = JSON.parse(stringInput.toString('utf8')) as { strings?: Record<string, unknown> };
-    expect(Object.keys(seatLayerPickerLocaleStrings)).toHaveLength(Object.keys(localStrings.strings ?? {}).length);
-    expect(seatLayerPickerTokens.strings).toEqual(localTokens.strings);
+    expect(Object.keys(seatLayerPickerLocaleSources)).toHaveLength(Object.keys(localStrings.strings ?? {}).length);
+    expect(localTokens.strings).toMatchObject(seatLayerPickerTokens.strings);
     expect(seatLayerPickerTokenSourceSha256).toBe(sha256(tokenInput));
     expect(seatLayerPickerLocaleSourceSha256).toBe(sha256(stringInput));
     expect(tokens).toContain(`SHA-256: ${seatLayerPickerTokenSourceSha256}`);
@@ -180,17 +181,17 @@ describe('checked-in picker design output', () => {
       fromPrice: 'From {price}',
       generalAdmission: 'General admission',
       moreCount: '+{count} more',
-      moveVenue: 'Drag to move venue',
+      moveVenue: 'Drag to move the venue',
       placeNumberIdentity: 'Place {place}',
       orbitMode: 'Rotate venue',
       panMode: 'Move venue',
       placesAvailable: '{count} places currently available',
       removeSeat: 'Remove seat',
       rowIdentity: 'Row {row}',
-      rotateVenue: 'Drag to rotate venue',
+      rotateVenue: 'Drag to rotate the venue',
       seatNumberIdentity: 'Seat {seat}',
       selectTicketTier: 'Select a ticket type',
-      tierCompanionGuidance: 'Requires the adjacent wheelchair place.',
+      tierCompanionGuidance: 'Requires the adjacent wheelchair place',
     });
   });
 });
@@ -210,8 +211,8 @@ describe('picker theme', () => {
       brand: 'sunshine',
       brands: { sunshine: { colors: { accent: '#FFFF00' } } },
     });
-    expect(theme.colors.onAccent).toBe('#000000');
-    expect(theme.roles.primaryAction.foreground).toBe('#000000');
+    expect(theme.colors.onAccent).toBe('#1A1200');
+    expect(theme.roles.primaryAction.foreground).toBe('#1A1200');
     expect(deriveSeatLayerPickerOnAccent('#000066', '#111111')).toBe('#FFFFFF');
   });
 
@@ -240,9 +241,9 @@ describe('picker theme', () => {
       theme: { colors: { accent: '#FFFF00', onAccent: '#101010' } },
       organizerBranding: { accent: '#000066', accentInk: '#FFFFFF' },
     });
-    expect(derived.colors.onAccent).toBe('#000000');
+    expect(derived.colors.onAccent).toBe('#1A1200');
     expect(explicit.colors.onAccent).toBe('#101010');
-    expect(derived.roles.primaryAction.foreground).toBe('#000000');
+    expect(derived.roles.primaryAction.foreground).toBe('#1A1200');
   });
 
   it('applies authored accent ink by precedence without borrowing a lower pairing', () => {
@@ -264,8 +265,19 @@ describe('picker theme', () => {
     });
     expect(hostInk.colors.onAccent).toBe('#AABBCC');
     expect(brandInk.colors.onAccent).toBe('#102030');
-    expect(hostAccent.colors.onAccent).toBe('#000000');
+    expect(hostAccent.colors.onAccent).toBe('#1A1200');
     expect(organizerPair.colors).toMatchObject({ accent: '#224488', onAccent: '#F0F0F0' });
+  });
+
+  it('keeps the organizer’s ink only where it can be read, and white wherever white can', () => {
+    const ink = (accent: string, accentInk?: string, host = {}) => resolveSeatLayerPickerTheme({
+      theme: { colors: host }, organizerBranding: { accent, ...(accentInk ? { accentInk } : {}) },
+    }).colors.onAccent;
+    expect(ink('#E54558', '#FFE8EC')).toBe('#FFE8EC');
+    expect(ink('#FFD400', '#FFFFFF')).toBe('#1A1200');
+    expect(ink('#224488', '#FFE8EC', { accent: '#114422' })).toBe('#FFE8EC');
+    expect(ink('#E54558')).toBe('#FFFFFF');
+    expect(ink('#FFD400')).toBe('#1A1200');
   });
 
   it('applies explicit, brand, organizer, and generated visual precedence coherently', () => {
@@ -388,8 +400,28 @@ describe('picker locale', () => {
     expect(formatSeatLayerPickerString('Hello {name}; {missing}', { name: 'Ada' })).toBe('Hello Ada; {missing}');
   });
 
+  it('reads Norwegian for a device that reports Bokmål, and six languages more', () => {
+    expect(translateSeatLayerPickerString('close', { locale: 'nb-NO' }))
+      .toBe(translateSeatLayerPickerString('close', { locale: 'no' }));
+    const english = translateSeatLayerPickerString('close');
+    for (const locale of ['no', 'hi', 'id', 'ko', 'ms', 'th', 'vi']) {
+      expect(translateSeatLayerPickerString('close', { locale })).not.toBe(english);
+    }
+  });
+
+  it('takes wording for a counted sentence under either name, and falls back to the general form', () => {
+    for (const name of ['ticketCount', 'ticketCount.one', 'ticketCountOne']) {
+      expect(translateSeatLayerPickerString('ticketCount', { count: 1, overrides: { [name]: 'one seat' } as never })).toBe('one seat');
+    }
+    expect(translateSeatLayerPickerString('reselectSeats.few', { count: 3, locale: 'ru', overrides: { reselectSeatsOther: 'again' } })).toBe('again');
+    expect(translateSeatLayerPickerString('reselectSeats.few')).toBe('Select them again');
+    expect(translateSeatLayerPickerString('onlyLeft', { count: 8 })).toBe('8 seats left');
+    expect(seatLayerPickerEnglishStrings.onlyLeft).toBe('{count} seats left');
+  });
+
   it('keeps the full native-chrome English surface while overlaying generated locales', () => {
-    expect(translateSeatLayerPickerString('allFloors', { locale: 'de-DE' })).toBe('All floors');
+    expect(translateSeatLayerPickerString('confirmTable', { locale: 'de-DE' })).toBe('Confirm table');
+    expect(translateSeatLayerPickerString('allFloors', { locale: 'de-DE' })).toBe('Alle Etagen');
     expect(translateSeatLayerPickerString('findBestSeats', { count: 1 })).toBe('Find 1 best seat');
     expect(translateSeatLayerPickerString('findBestSeats', { locale: 'unsupported-ZZ', count: 1 })).toBe('Find 1 best seat');
     expect(translateSeatLayerPickerString('findBestSeats', { locale: 'en-GB', count: 1 })).toBe('Find 1 best seat');

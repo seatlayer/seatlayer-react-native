@@ -246,7 +246,7 @@ describe('standalone picker controls', () => {
     expect(runtime.commands.openSeatView).toHaveBeenCalledWith('seat-a');
 
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerSeat3DButton, { seat })); });
-    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'See it in 3D' }).props.onPress(); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'seeItIn3D' }).props.onPress(); });
     expect(runtime.commands.setBuyerView).toHaveBeenCalledWith('venue3d', { flyToSeatId: 'seat-a' });
 
     const host = vi.fn();

@@ -84,17 +84,84 @@ the seat-view caption — each floats over imagery that can be any colour.
 
 ### 2.1 Two compositions, keyed off the container
 
-Measure the **picker's own container width**, never the device or window:
+Measure the **picker's own container width**, and take the wide composition
+only on a tablet:
 
 | Composition | Rule |
 | --- | --- |
-| compact (phone) | container width below `size.phoneBreakpoint` |
-| wide | container width at or above `size.wideBreakpoint` |
+| compact (phone) | container width below `size.phoneBreakpoint`, or any phone |
+| wide | container width at or above `size.wideBreakpoint`, on a device whose shortest side is `size.tabletShortestSide` or more |
 
-Between the two the compact composition holds. Everything in §3 describes the
+Between the two the compact composition holds.
+
+**A phone is a phone however it is held.** Turned sideways a phone is 844 to
+932 wide but only 390 to 430 tall. That is past both breakpoints, but the side
+panel is built for a tablet's height: on a phone its column overflowed. So the
+device's shortest side decides, never its width alone. The same rule holds for
+`showSeatLayerPicker`'s adaptive presentation: the dialog is for a tablet 700
+or more wide, and a phone held either way opens full screen.
+
+**The sides are the picker's own to keep clear.** Held sideways, a phone's
+camera cutout or curved edge is a side inset (52 points on a Pixel 7). The
+picker keeps every part of itself inside the side insets, on its own ground,
+whether or not the host wraps it in a SafeArea; the top and bottom stay with
+the header and the cart, as before. Everything in §3 describes the
 compact composition unless a row says otherwise; the wide composition moves the
 cart into a side pane and the Map/3D control into the corner-control stack, and
 otherwise reuses the same components.
+
+**The wide composition.** The header spans the width; under it the map and a
+side panel `size.widePanelWidth` wide share a row. The panel stands at the end
+edge, on `color.*.surface`, with a `color.*.divider` hairline on its **start**
+edge — the edge that meets the map, so the hairline mirrors with the panel in a
+right-to-left locale.
+
+```
+Header   brand · name over "date · venue" · sales-closed pill · hold pill · close
+┌ map surface ──────────────────────────┐┌ panel ───────────────────────┐
+│ top-start  test chip                   ││ strings.ticketPrices heading │
+│ seat card / prompts / status overlays  ││ price list (named rows)      │
+│ bottom-start (empty by default)        ││ floor strip (multi-floor)    │
+│ bottom-end control column, top down:   ││ strings.yourSeats heading    │
+│              Venue (section framed)    ││ best-seats card              │
+│              Map | 3D · Rotate / Move  ││ cart list (scrolls)          │
+│              ♿ · + · −                 ││ action error                 │
+│                                        ││ summary line                 │
+│                                        ││ full-width checkout button   │
+└────────────────────────────────────────┘└──────────────────────────────┘
+```
+
+- **Panel headings.** `strings.ticketPrices` over the price legend, drawn only
+  while the chart has a for-sale category; `strings.yourSeats` over the
+  best-seats card and the cart, drawn in every phase but the first load.
+  `size.widePanelHeadingFontSize` at w700 in `color.*.mutedText`, padded
+  `size.widePanelPadX` at both sides, `size.widePanelHeadingPadTop` above
+  (`size.widePanelSeatsHeadingPadTop` above the seats heading) and
+  `size.widePanelHeadingPadBottom` below, start-aligned. **Drawn as given**: no
+  port upper-cases them in code, which breaks Turkish. Each is exposed to
+  assistive technology as a heading.
+- **The control column stands at the map's bottom end**, `size.mapAnchorInset`
+  from both edges, and grows upward: the way back joins its top, so nothing
+  below it moves.
+- **The prices are a list**, one row per for-sale category (§3.2, wide).
+- **The foot is the phone sheet's foot**: the summary line —
+  `strings.noSeatsSelected`, or `strings.ticketCount(n)` with the total at the
+  end — `size.footTotalGap` over one full-width button at
+  `size.checkoutButtonHeight`, padded `size.widePanelPadX` at the sides, 8
+  above and 12 below. The button follows the checkout button's label ladder
+  (§3.10) with
+  `strings.holdAndCheckout` as its label, and `strings.continueToCheckout` once
+  the seats are held. With an empty cart it reads `strings.findBestSeatsCta`
+  and is **off** — the best-seats card above it is the way to seats — but only
+  where that card can exist, the gate the phone's button uses
+  (`enableBestAvailable` and not `readOnly`); otherwise it reads
+  `strings.selectSeats`, off. The state comes from the ladder's own
+  find-best-seats flag, never from comparing label text.
+- **The credit closes the panel**, under the checkout button, end-aligned. The
+  bottom safe inset is taken once, under the credit, not between the button and
+  the credit.
+- **The header's second line** is `event.startsAtLabel` and `event.venue`,
+  joined by ` · ` (§3.1).
 
 ### 2.2 The compact column
 
@@ -113,6 +180,13 @@ Price rail band                            size.topRailHeight          (row)
 └─────────────────────────────────────────────────────────────────────────┘
 Cart sheet (collapsed)          handle + foot + bottom safe area
 ```
+
+**Corners follow the reading direction.** "left" and "right" in the diagram
+are the start and end edges: in a right-to-left locale the test chip, the
+floor rail and the section way-back stand on the right, and the control column,
+the Map | 3D control and the 3D Rotate / Move pair on the left, as the header and
+the price rail already mirror. The venue itself never mirrors: it is the
+runtime's drawing of a real place.
 
 The header, the price rail and the cart sheet are **rows of the same column**:
 the map surface begins and ends where they do. Everything else in the diagram is
@@ -184,7 +258,7 @@ additionally tell the runtime to stop accepting input at all
 (`picker.setInteractionEnabled`), so the map is quiet as well as unclaimed
 while a decision is open.
 
-**The second guard, on the runtime's side (2026-09-05).** The three rules
+**The second guard, on the runtime's side.** The three rules
 above are necessary and, on iOS 26, not sufficient: measured on the
 simulator, the platform view is told it lost 134 ms before the finger lifts
 and WKWebView is handed the touch regardless, so a tap on a corner disc still
@@ -250,12 +324,28 @@ button read as clutter on the phone.
 header's own style slot, which defaults to `color.*.surface` with `color.*.text`
 on it; a ground and its ink are always resolved as a pair, never from two
 independent tokens (a host that darkens `background` for the map must not
-lose the event name) — with a hairline of `color.*.divider` under it. Left: the
+lose the event name) — with a hairline of `color.*.divider` under it. Start
+(the left in a left-to-right language, the right in Arabic or Hebrew): the
 brand mark, a square of `size.headerLogoSize` at `radius.headerLogo`, filled
 with the accent and carrying either the organizer's logo image (cover-fitted) or
-the first letter of the brand or event name in `color.*.onAccent`. Centre: the
-event name at `size.headerNameFontSize` w700, one line, ellipsized. Right, in
-order: the hold pill, the sales-closed pill, the close ring.
+the first letter of the brand or event name in `color.*.onAccent` (on a brand
+accent: the organizer's ink where it reads at 3:1, else white where white
+does, else `#1A1200`, the web picker's rule from runtime 1.0.1). Centre: the
+event name at `size.headerNameFontSize` w700, one line, ellipsized. End, in
+order: the hold pill, the sales-closed pill, the close ring. The row's padding
+is directional: 12 before the mark on a phone (16 / 12 / 4 / 12 start / top /
+end / bottom on the wide header), so the mark stands as far from its edge in
+Arabic as it does in English.
+
+**The wide header's second line.** Under the name (16, w800), one line at 12 in
+`color.*.mutedText`, ellipsized: `event.startsAtLabel`, then `event.venue`,
+joined by ` · ` — "Sat 15 Aug · 15:00 · Wrenmoor Park". Either part may be
+absent, and with neither there is no second line. **The date comes only from
+`event.startsAtLabel`**, which the runtime writes in the event's own time zone
+and the picker's language. `event.startsAt` is an instant: a port never formats
+it on the device, because the device's zone is not the venue's, and a buyer
+abroad would read a wrong hour, which is worse than none. The phone header
+stays one line and draws no date.
 
 The venue-and-date meta line is **not drawn** on a phone. The event name alone
 is the identity.
@@ -295,7 +385,8 @@ runs out. The first snapshot of a session fires none of them
 countdown updates politely, not assertively — it must not interrupt a screen
 reader every second; announce it on the minute and on the expiring transition.
 
-**Snapshot.** `event.name`, `event.venue`, `event.salesClosed`, `branding.logoUrl`,
+**Snapshot.** `event.name`, `event.venue`, `event.startsAtLabel` (optional
+string; absent until the runtime sends it), `event.salesClosed`, `branding.logoUrl`,
 `branding.brandName`, `hold.active`, `hold.expiresAt`, `hold.owner`.
 
 ### 3.2 Price rail, chips and All prices
@@ -309,6 +400,24 @@ beneath. It is not floated over the map: on a busy chart the seat numbers read
 through the gaps, and the last chip clipped under the Map/3D control. Inside it,
 one horizontally scrolling row of chips, indented by the rail's own 10 pt of
 horizontal margin (12 on wide).
+
+**On the wide composition the prices are a list, not a rail.** The panel has
+the room to name every price, so under the `strings.ticketPrices` heading each
+for-sale category is a row: a disc of its colour at `size.widePriceDotSize`,
+`size.widePriceDotGap`, its name (`size.widePriceFontSize`, w600, one line,
+ellipsized, flexible), `size.widePriceDotGap`, and its price at the end
+(`size.widePriceFontSize`, w800, tabular figures; a spread is written as its
+floor with `+`, as on a chip). Rows are at least `size.widePriceRowHeight`
+tall, padded `size.widePriceRowPadX`, so the words line up with the headings at
+`size.widePanelPadX`. A row is the chip's toggle: pressed, the map shows only
+that category (with focus); pressed again, everything. The selected row takes
+the accent at 9 per cent behind it, at `radius.control`, and its words in the
+accent's readable ink. A sold-out price is struck through, its words in
+`color.*.mutedText`, its disc at `opacity.legendSoldOut`, and it stays a toggle.
+The list scrolls inside `size.widePriceListMaxHeight`, so a long one never
+pushes the buyer's seats out of the panel. The phone's grey "not available"
+key is not part of the list. Accessible name: the chip's (name — price, and
+`strings.soldOutTitle` when sold out), as a button with its selected state.
 
 The band takes the **map chrome's** palette, so it darkens with the 3D scene,
 and it is not drawn at all while the immersive scene is up.
@@ -371,13 +480,19 @@ way. It is deliberately **not a chip**: it filters nothing, so it wears no
 pill, no hairline and no press target, and it is not a toggle to assistive
 technology.
 
-**Sold out.** A sold-out category keeps its chip, disabled and struck through —
-removing it would silently rewrite the price ladder the buyer was reading.
-An **absent** availability figure means *unknown*, never zero, and is never
-struck.
+**Sold out.** A sold-out category keeps its chip, struck through, at
+`opacity.legendSoldOut`, its dot in `color.*.mutedText` (the grey the map paints
+on a seat nobody can take) — removing it would silently rewrite the price ladder
+the buyer was reading. It **stays a toggle**: a tap switches the filter on and
+off like any other chip, so a buyer who pinned it can switch it off from the
+chip they switched it on with. Selected, it takes the accent ground at full
+strength and keeps the strike. Its accessible name ends with
+`strings.soldOutTitle`. Only a runtime that advertises
+`category-availability-v1` reports `free`, and only there is `free: 0` sold out:
+an **absent** figure means *unknown*, never zero, and is never struck.
 
-**States.** idle / selected / sold out / disabled; empty (the band is not
-drawn); over the immersive scene (not drawn).
+**States.** idle / selected / sold out (struck, still a toggle) / selected and
+sold out; empty (the band is not drawn); over the immersive scene (not drawn).
 
 **Motion.** On first reveal the chips stagger in on `motion.duration.stagger`
 between children, each on `motion.curve.easeEnter`. Filtering does not re-animate
@@ -389,9 +504,10 @@ a single group named for ticket prices.
 
 **Snapshot.** `categories[]` (`key`, `label`, `color`, `priceMin`, `priceMax`,
 `available`, `notForSale`), `map.categoryFilter`, `event.currency`. Live free
-counts are the runtime's `category-availability-v1` reporting; a count of zero is
-treated as *not reported* rather than as sold out, because a figure the buyer
-cannot trust is worse than no figure.
+counts are the runtime's `category-availability-v1` reporting, sent per category
+only once it is counted (`free`); `available`, which reads zero before counts
+arrive, is never taken as sold out, because a figure the buyer cannot trust is
+worse than no figure.
 
 **Command.** `picker.setCategoryFilter { keys, focus }` — the first press
 filters and drills in, the second clears.
@@ -464,6 +580,13 @@ amber as the floor allows rather than driving to maximum contrast.
 **Copy.** Sentence case `strings.testMode`; the accessible name keeps
 `strings.testModeLong`; the description is `strings.testModeExplained`.
 
+**A tap explains it.** Tapping the chip shows `strings.testModeExplained` as the
+explainer toast (§3.12): through the one toast queue, announced once, gone after
+`motion.durationOutsideBudget.toastDwell` or on a tap on the toast. Nothing else
+reacts to the tap. The chip is exposed as a button named `strings.testModeLong`.
+A layout composed without `SeatLayerPickerToastLayer` has no band to show it
+on, so there the tap shows the same sentence as a tooltip under the chip.
+
 **Placement.** The map's top-left corner in both 2D and 3D, at
 `size.mapAnchorInset`. It steps down by the back pill's height plus
 `size.mapAnchorGap` **only while the immersive scene's back pill is actually
@@ -526,6 +649,18 @@ broken-map reading, so it goes inert once `map.rung` is `seats` or
 altogether pulled the ♿ disc down under the thumb already reaching for it.
 Reserve the slot; do not reflow the column.
 
+**On a short map the column flows; it never climbs over the chrome above it.**
+The column's ceiling is the foot of whatever stands on the map's top line on
+its side — the Map | 3D control, or the floor strip across the map's full
+width — plus `size.mapAnchorGap`. The test badge stands on the other side and
+does not count. A column that fits under the ceiling is drawn exactly as
+above. On a map too short for it, as on a phone held sideways, the discs that
+would climb past the ceiling flow into a second column on the start side, at
+full size and in the same order from the foot, so the whole-venue disc keeps
+the corner and the retired `+` keeps its slot. A map shorter than one disc
+(`size.mapControlSize`), as under an open cart sheet on a small phone at a
+large text size, draws no column at all rather than a sliver of one.
+
 **A retired or disabled disc looks retired, and its ground never changes.**
 These controls dim in place rather than disappearing, which only works as an
 answer if the buyer can see that it is one. The glyph steps back to
@@ -565,8 +700,14 @@ beside the sheet asking about a seat reads as clutter, and none of them may be
 pressed while it asks. It fades — it is not unmounted — so nothing else on the
 map moves.
 
-**The wide composition** draws the same ♿ disc at the head, then `+` and `−`,
-and **no fit control of its own** (2026-09-06). It carried a plain fit-to-screen
+**The wide composition's column** stands at the map's bottom end and grows
+upward. Top to bottom: the way back to the venue
+while a section is framed, the Map | 3D control, the 3D Rotate / Move pair while
+the scene is up under the older gestures (§3.14), the same ♿ disc, then `+` and `−`. The way back joins the top
+and leaves again, so it never moves a control below it. The standalone
+colourblind toggle is **off by default on both widths** — the palette is a
+switch in the accessibility sheet — and `showColorblindControl: true` adds it
+last, under `−`. The column has **no fit control of its own**. It carried a plain fit-to-screen
 button until then; two ways to frame the same flat venue on one composition is
 one too many, and the one that went is the one a pinch already does. The
 immersive scene keeps its own Fit chip (§3.14), which frames a camera rather
@@ -575,8 +716,8 @@ than a map, and says `strings.fitWholeVenue` like the phone's disc.
 it back in a composition of its own.
 
 Back-to-overview is a different question and keeps its own condition: it renders
-only while a section is actually framed — top-left on the phone, in the column
-on the wide layout.
+only while a section is actually framed — top-left on the phone, at the head of
+the column on the wide layout.
 
 **Dock lift.** Only where a host has opted into a section dock. While one is
 mounted and neither a seat card nor the immersive scene is up, the three bottom
@@ -590,7 +731,12 @@ A circle of `size.accessibilityControlSize` at `radius.pill`, taking the same
 `color.*.chrome` ground and `color.*.chromeLine` hairline as every other
 floating disc, ink `color.*.text`, glyph drawn at 21, with a soft shadow. With
 filters on, the ink turns to the accent and the disc carries a badge with the
-number of active provisions. The **same disc on both compositions**: it
+number of active provisions. Where a host draws the control as a labelled
+button instead (`compact: false`), the label reads `strings.activeFilters(n)`
+("1 filter", "2 filters") while any filter is on. The round disc's tooltip
+and accessible name with filters on is
+`strings.accessibilityFiltersActive(n)` ("1 accessibility filter active",
+"2 accessibility filters active"). The **same disc on both compositions**: it
 floats on the map either way, so the wide side does not get a labelled button
 of its own, and the wide panel no longer repeats the control under the
 best-seats card. The glyph is **drawn**, never an emoji: a
@@ -609,10 +755,50 @@ row list scrolls within it. (The web bounds its popover to the room above the
 ♿ button *inside the map*, for the mirror-image reason: a panel measured
 against the window opens straight through the ticket sheet below it.)
 
-Its sheet opens upward from the button and contains switch rows:
+**On the wide composition it is a popover, not a sheet.** The ♿ control in the
+wide column opens the same content — title, the two map switches, the
+provisions under `strings.showSeatsFor` — in a card beside itself, so the map
+it filters stays in view. The card is `size.accessPopoverWidth` wide (less where
+the screen is narrower), bounded in height exactly as the sheet is, on
+`color.*.surface` at `radius.sheet` and `elevation.sheet` with a
+`color.*.divider` hairline, padded `size.accessPopoverPadX` at the sides,
+`size.accessPopoverPadTop` above and `size.accessPopoverPadBottom` below. It
+stands on the control's **start** side, `size.accessPopoverGap` from it — away
+from the column, towards the map, so it mirrors in a right-to-left locale — its
+top level with the control's top; where that would run off the foot it is
+level with the control's bottom instead, and it is always held
+`size.accessPopoverMargin` inside the safe area. There is no scrim. It is modal:
+a tap outside, the system back gesture or Escape closes it with nothing (a tap
+outside never reaches the map), a pressed count closes it and starts the walk,
+exactly as on the sheet, and focus returns to the control. It is announced as
+a dialog (`SemanticsRole.dialog`, naming its route with
+`strings.accessibilityTitle`). It closes itself when the window changes size
+while it is open — a rotation or a split-screen resize moves the control, or
+takes the wide layout away — rather than pointing at where the control was. It fades
+in over `motion.duration.pop`, and appears at once under reduced motion. The
+phone keeps the bottom sheet.
 
-- one row per access need the chart actually authors, in the runtime's order,
-  each with its live free count — `strings.accessFreeCount`, or **`0`** with
+Its sheet opens upward from the button. Its title, `strings.accessibilityTitle`,
+is the picker's own type, never the host's: `size.accessSheetTitleFontSize`
+w800, line height 1.2, in `color.*.text` and the picker font. It contains
+switch rows:
+
+- **first**, under the title, the two switches that act on the MAP rather
+  than on seats: `strings.hideLimitedView`, only where some seat is restricted
+  or obstructed, and `strings.colorblindSafe`. Neither of them reserves a count
+  column.
+- then, **under a group heading** `strings.showSeatsFor`, drawn exactly as
+  given — the string is written in capitals by its translator (English
+  `SHOW SEATS FOR`), and no port upper-cases it in code, which breaks Turkish,
+  Greek and Lithuanian — 11 /
+  w700 in `color.*.mutedText`, letter-spaced `size.accessGroupHeadingTracking`
+  em (1.1 at 11), inset 8 with 18 above (0 when
+  no map switch is drawn) and 4 below — the provisions (next bullet). The
+  heading is what stops the two map switches from reading as two more
+  provisions; it is drawn only where at least one provision exists. (`strings.viewGroupTitle` is no
+  longer drawn by the sheet; it stays a public string.)
+- each provision row: one per access need the chart actually authors, in the
+  runtime's order, each with its live free count — `strings.accessFreeCount`, or **`0`** with
   the row disabled when the last space goes. A figure, not a sentence: the
   count column carries numbers on every other row, "Not available" needed a
   chip to hold it and made the sold-out row the loudest line on the sheet, and
@@ -626,14 +812,6 @@ Its sheet opens upward from the button and contains switch rows:
   answers. A wheelchair row carries the note `strings.companionSeatsNote` where
   the chart has companion places — **behind an ⓘ**, not on a second line of the
   row: see "one line per row" below.
-- then, **under a group heading** `strings.viewGroupTitle` — 11 / w700 in
-  `color.*.mutedText`, letter-spaced .6, inset 8 with 18 above and 4 below —
-  the two switches that act on the MAP rather than on seats:
-  `strings.hideLimitedView`, only where some seat is restricted or obstructed,
-  and `strings.colorblindSafe`. The heading is what stops those two from
-  reading as two more provisions at the bottom of the provision list; it is
-  drawn only where at least one of the two rows exists. Neither of them
-  reserves a count column.
 
 **Every row wears a drawing, and it is the drawing that row is about.** Each
 provision row takes its own glyph from the shared per-attribute set (§3.8.9) by
@@ -672,8 +850,8 @@ label now (`size.accessNoteIconSize`, muted, accent while open, inside a
 line is a line whether or not the buyer has asked for it. The ⓘ carries the
 sentence as its own accessible name, so it is spoken either way, and it is a
 separate node from the row's switch because the two do different things. The
-label itself is `maxLines: 1` and truncates: a translation that runs long
-shortens rather than wrapping.
+label itself is never cut: a name too long for its cell wraps and its row
+grows.
 
 **The line reads icon · name · ⓘ · count · switch**, and the ⓘ shares ONE cell
 with the label: it explains the words beside it, not the switch at the far end.
@@ -684,18 +862,19 @@ The names are the SHORT ones. The runtime's own taxonomy labels
 (`picker.access.*`) are written for a seat popup, where "Designated aisle /
 transfer seat" is the honest length; every place this SDK prints a provision is
 a single line in a narrow column. The English defaults in `design/tokens.json`
-have always been short, and the locale extractor takes the other thirty-six
-from `picker.accessShort.*` so they agree.
+have always been short, and the locale extractor takes every other locale
+from `picker.accessShort.*` so they agree. The wire key `cart` is the CART
+live-caption provision (its glyph is the CC mark), so its English name is
+"Live captions"; it is not a mobility vehicle.
 
-Row anatomy, leading to trailing, at **one fixed height of 50 for every row on
-the sheet** — a sheet whose rows breathe differently reads as three lists in a
-trench coat:
+Row anatomy, leading to trailing, at **a height of 50 for every row whose name
+fits**; a row whose name wraps grows, with 6 above and below the name:
 
 | Cell | Width | Contents |
 | --- | --- | --- |
 | icon | `size.accessRowIconCell` (20) | the attribute's own drawing at `size.accessRowIconSize`, in `color.*.mutedText` |
 | gap | `size.accessRowGap` (10) | — |
-| label + ⓘ | flexible | the short name at `size.accessRowLabelFontSize` / w600 in `color.*.text`, one line, ellipsized; then, only where the row has a note, the ⓘ in a 36-wide column |
+| label + ⓘ | flexible | the short name at `size.accessRowLabelFontSize` / w600 in `color.*.text`, wrapping (never cut); then, only where the row has a note, the ⓘ in a 36-wide column |
 | count | 68, trailing-aligned | `strings.accessFreeCount`, or `0`; wide enough for "999 free" |
 | gap | `size.accessRowSwitchGap` (12) | — |
 | switch | `size.accessSwitchWidth` × `size.accessSwitchHeight` | drawn, not the platform's |
@@ -935,12 +1114,25 @@ control that opens nothing is not drawn.
 `strings.allFloors` is the first chip where the runtime offers an all-floors
 view.
 
+**One level selector.** The floor selector (`SeatLayerPickerFloorSelector`, the
+list at the map's bottom start corner) is not drawn beside the rail's chips. It
+stands in where `showFloorStrip` is off, beside a host's own
+`builders.floorStrip`, and in the immersive scene where `showVenue3DChrome` is
+off. `showFloorSelector: false` never draws it. A host that wants both places
+`SeatLayerPickerFloorSelector` itself.
+
+**Touch area.** In the ready-made layout a chip takes a tap over
+`size.minimumHitTarget` of height: the room above and below the track (in the
+wide panel, above it) is the nearest chip's. Nothing drawn moves.
+
 **Capability.** `floor-stack-v1`. Without it the floor list is not offered.
 
 **Accessibility.** A group named for floors; each chip a toggle with a pressed
 state.
 
-**Snapshot.** the runtime's floor list and the active floor.
+**Snapshot.** the runtime's floor list and the active floor; on a chart with
+two or more levels, each `selection.seats[]` entry carries `floorId` and, when
+the level is named, `levelName` (runtime 1.0.0+).
 **Command** `picker.setFloor`.
 
 ### 3.8 Seat card
@@ -1043,9 +1235,17 @@ The card has **one home**. It is the bottom sheet the buyer already expects,
 `restInset` above the foot of whatever the picker's own chrome has left of the
 map, on every tap, for every seat — nothing about the tapped seat is read when
 it is placed. `topInset` and `bottomInset` are the bands that chrome stands on,
-so the sheet never slides under the dock or behind the floor rail; a card
-taller than the band it lives in keeps its top edge rather than climbing past
-`topInset`.
+so the sheet never slides under the dock or behind the floor rail. A press
+reaches only what lies inside the map, so a card that hung past its foot, as
+on a phone held sideways (145 to 170 points of map), was drawn where Add seat
+could not be pressed. A card that fits is unchanged. A card taller than the
+room between `topInset` and its resting place keeps that resting place and
+**rises over the chrome on the map's top line**, up to
+`size.confirmCardTopInset` under the map's own top edge. That chrome is idle
+while a card asks, and its buttons keep their size. Only a card taller than the
+whole map is **drawn scaled down** to fit between that edge and `restInset`
+above the foot. Held sideways at text 1.3, the card's buttons stay about 34
+points, where scaling under the top line's chrome drew them at 21.
 
 Keeping the seat and its card together is then the **map's** job, and it is
 done the way the web sheet does it — by a **pan**, never a zoom:
@@ -1140,6 +1340,11 @@ same card over flat glass, which is a correct state, not a degraded one.
    `strings.rowWord`, `strings.seatWord`, `strings.placeWord` — the row eyebrow
    follows the object's own word (Row, Table, Booth). **Print the row with its
    section prefix stripped**, or the card reads `Stalls D · Row Stalls D C`.
+   The eyebrows are drawn upper-cased, but the card's spoken lines say the
+   English place word as "Place", not the locale's capitals "PLACE", which a
+   screen reader may spell out. **The wide layout's tap card**
+   (`SeatLayerPickerSeatConfirmation`) draws its eyebrows **as given** — "Section",
+   "Row", "Seat" — and never upper-cases them in code.
 2. **Category band**, minimum height `size.confirmBandHeight`. Ground is the
    **category colour itself, full bleed** — no dot, no tint, no leading rail:
    a nine-point disc beside an eleven-per-cent wash said the colour twice and
@@ -1167,8 +1372,8 @@ same card over flat glass, which is a correct state, not a degraded one.
    price into the card's edge. The **legend** carries the count, where a buyer
    comparing categories is actually looking, and the dock carries the focused
    section's. `strings.seatsLeft` therefore has no confirm-card caller;
-   `strings.onlyLeft` remains available to a host that wants a scarcity
-   telling of its own somewhere else.
+   `strings.onlyLeft` ("8 seats left") remains available to a host that
+   wants a scarcity telling of its own somewhere else.
 3. **Photo strip**, height `size.confirmPhotoHeight`, full-bleed inside the
    card's corner, drawn **only where the seat names an authored photograph**
    (`selection[].seatViewThumb`, capability `seat-view-thumbnail-v1`); a
@@ -1679,7 +1884,9 @@ bottom edge instead and the spring puts it back.
   `type.footTotalAmount` (17 / w700) in tabular figures once there is one.
 - **While collapsed and non-empty, a second, muted line under it names the
   seats**: each cart line's label with `-` replaced by ` · `, joined by a comma
-  and two spaces — `204 · Q · 7,  204 · U · 13` — at 12 / w600 in
+  and two spaces — `204 · Q · 7,  204 · U · 13`. A seat the chart gives a name
+  of its own is named as its card names it, section, row and seat, or by that
+  name where it has no row — at 12 / w600 in
   `color.*.mutedText`, one line, ellipsized, 3 points under the total row, with
   an unfold glyph at 16 on the trailing edge. "2 tickets" alone told a buyer
   they had bought something and not what, and the handle above was the only way
@@ -1697,9 +1904,10 @@ do about it, on the one line a buyer reads to find out what they are about to
 pay. `fromAmount` / `fromPriceText` and every path that carried them are gone.
 
 **The foot** is the lapse notice, the hold-ending cue, the inline action error,
-the total line, `size.footTotalGap` (8), the BookButton and the centred
-attribution, inside `size.footPadX` (16) / `size.footPadTop` (4) /
-`size.footPadBottom` (2). It carries a hairline on its top edge **only when the
+the total line, `size.footTotalGap` (8) and the BookButton, inside
+`size.footPadX` (16) / `size.footPadTop` (4) /
+`size.footPadBottom` (2), over the bottom safe inset, which is never less than
+`size.footMinInset` (10). It carries a hairline on its top edge **only when the
 sheet is open and there are tickets above it** — the collapsed sheet has
 nothing above the foot but the panel's own top edge, and a second hairline a
 few points under the first read as two lines for one edge. It is **not
@@ -1849,7 +2057,7 @@ for a line the selection cannot name, and `picker.frameSeat` for the card tap.
 #### 3.10.3 Foot
 
 Order: the lapse notice if there is one, the hold-ending cue, the inline action
-error, the total line, the checkout button, then the attribution. The whole
+error, the total line, then the checkout button. The whole
 foot is drawn in both sheet states, and it carries a hairline above it **only
 while the sheet is open with tickets in it** (§3.9).
 
@@ -1869,8 +2077,18 @@ Label ladder, in priority order:
    with no card up** and is simply disabled, and it offers no finder either.
    The card is the question; the footer says nothing about it, so the buyer's
    cart still reads as their cart underneath.
-4. securing → disabled, spinner, `strings.securingSeats`
-5. opening checkout → disabled, spinner, `strings.openingCheckout`
+4. securing → disabled, **no spinner** (words only),
+   `strings.securingSeats`; still busy, so the button stays down
+5. opening checkout → disabled, **no spinner** (words only; the seats are held),
+   `strings.seatsSecuredOpeningCheckout`; still busy, so the button stays down
+   (the hold has succeeded by now, so the sentence says so; `strings.openingCheckout`
+   stays a public string for a host that composes its own button). Strings
+   built with `openingCheckout` and without `seatsSecuredOpeningCheckout` draw
+   `openingCheckout` here, so a host's earlier wording for this state still
+   shows.
+   Both readings carry `busyInWords: true`, so a host that rebuilds one or
+   draws its own button can tell them apart; a busy reading without it draws a
+   spinner beside its label.
 6. the selection breaks the event's rules → disabled,
    `strings.chooseMore` / `strings.removeTickets…` / `strings.adjustSelection`
 7. **an empty cart on a surface that may offer the finder** → ENABLED,
@@ -1891,13 +2109,9 @@ Label ladder, in priority order:
 hold is never stranded. Checkout phases run idle → holding → checkout and each
 phase ends where the work ends, never on a timer.
 
-**Attribution** — `SeatLayerPickerAttribution`, height
-`size.attributionHeight`, `type.attribution`, centred at the **foot of the
-sheet**, where a phone's rounded corner cannot clip it. It reads the map
-chrome's palette, not the picker's, so its words survive on the dark scene
-sheet. Copy `strings.poweredBy`. Drawn when `branding.attributionRequired`; it is
-**absent entirely on a white-labelled account**, hidden server-side with no
-host switch.
+**No credit line.** The picker draws no "Powered by SeatLayer", whatever
+`branding.attributionRequired` says: the foot ends with its button.
+`SeatLayerPickerAttribution` is kept, deprecated, and draws nothing.
 
 The total is said ONCE, on the foot's own line, and there is no separate
 "secured" strip on a phone: the header pill is the clock, and each held card's
@@ -1998,6 +2212,18 @@ a chip. With an action it becomes a row: the sentence, then a pill at
 for `motion.durationOutsideBudget.toastDwell`, then leaves and resets to
 neutral. One queue: a second toast replaces the first rather than stacking.
 
+**Explainer.** The answer to a tap on the picker's own chrome (today only the
+test chip, §3.4) is a different surface on the same queue, motion and
+announcement: a full-width band at the map's foot, inset `size.mapAnchorInset`
+at each side and 14 + `size.sheetHandleOverhang` above the bottom chrome (the
+cart handle stands proud of the chrome under the map in every composition, and
+the band never crosses it), ground `color.*.text`, ink
+`color.*.background`, corner `radius.explainerToast`, padding
+`size.explainerToastPaddingY` × `size.explainerToastPaddingX`, text
+`size.explainerToastFontSize` w500 at line height 1.35, wrapping, aligned to
+the reading start; shadow 0 12 30 −12 at black .5. No hairline and no tone.
+A tap on the band dismisses it.
+
 **Accessibility.** A polite live region. A toast is never the only place a
 consequence is stated — anything that outlives 4 seconds also has a persistent
 form (see 3.13.7).
@@ -2076,7 +2302,7 @@ Capability `accessibility-focus-v1` gates all three. An older runtime applies
 the filter and leaves the camera where it was, so every control below is
 withheld from it rather than degraded.
 
-**Booked ("You're all set").** Never shown on the hand-off: a buyer on the way
+**Booked ("You’re all set").** Never shown on the hand-off: a buyer on the way
 to pay has not paid. It appears only when the handed-off hold settles to
 booked — the hold vanishes from the snapshot with no `hold.expired` announced
 first — which is the web picker's `detectBooked` rule. The expiry is read off
@@ -2085,6 +2311,15 @@ wire (expiry, then snapshot) is the order the decision sees. A host hears the
 same moment once through `onBooked(handoff)`. Port note: RN / iOS / Android
 must gate their success screen the same way; showing it on hand-off was the
 bug a pilot host hit when a buyer backed out of checkout without paying.
+
+A host whose server has booked says so with `markBooked({holdId?})`
+(`picker.markBooked`, capability `hold-mark-booked-v1`). The runtime paints the
+bought seats booked, stops the clock, never releases that hold, and sends the
+snapshot without it, so the rule above reaches the same "booked" at once
+instead of on the next map read. Without `holdId` it means the hand-off hold
+only. It resolves true for `booked` and `already_booked`, false (nothing
+changed) for `no_hold`, `different_hold`, or a runtime without the capability,
+where nothing is sent. Allowed while read-only.
 
 Every state below is a **designed state**, not a set of disabled controls.
 
@@ -2097,12 +2332,31 @@ low opacity, breathing slowly under a diagonal sweep, with a thin indeterminate
 progress strip at the top of the map. The sentence
 `strings.loading` is announced but not drawn.
 
+Where the map area is shorter than the silhouette and its line, as on a phone
+held sideways (145 to 170 points of map), the two scale down together to fit;
+they are never cut.
+
 Reveal sequence, once the runtime has framed the map: the loading surface fades
 out over `motion.duration.exit`-scale time, a sweep passes over the shells for
 `motion.durationOutsideBudget.shellSweep`, the rail chips stagger in, and the
 cart sheet rises last; the whole arrival is done by
 `motion.durationOutsideBudget.revealDelay`. Under reduced motion the loading
 surface is simply removed — no fade, no sweep, no stagger.
+
+**The wide panel while loading.** Until the first snapshot arrives, the wide
+panel keeps the shape it is about to have instead of standing empty: the
+`strings.ticketPrices` heading; three bars at 70, 55 and 62 per cent of the
+panel's inner width, `size.widePanelPlaceholderBarHeight` tall at
+`radius.pill`, `size.widePanelPlaceholderBarGap` apart, inset
+`size.widePanelPadX`; and at the foot a bar at 40 per cent over a block
+`size.widePanelPlaceholderButtonHeight` tall at `radius.peekButton`, the full
+inner width — where the summary and the button will stand. Every bar is
+`color.*.divider`. They breathe with the venue silhouette — opacity 55 to 100
+per cent over `motion.durationOutsideBudget.loadingBreath`, eased both ways —
+and stand still at full strength under reduced motion. They are hidden from
+assistive technology; the map's loading surface already announces the load.
+No "Your seats" heading, best-seats card, cart or checkout bar is drawn until
+the snapshot lands.
 
 The load itself: adopt a prewarmed runtime page only **after** the picker has
 been laid out, so the chart's first paint is at its final size; hold the loading
@@ -2117,6 +2371,12 @@ the SDK logs and sends nothing.
 a title `strings.mapDidNotLoad`, a line `strings.checkConnection`, and an action
 `strings.retry` at `radius.button` on the accent. Retry fully remounts the
 picker rather than patching a half-built one.
+
+Between the title and that line stands the host's own sentence (`message`, else
+`strings.errorMessage`) only when it says something the title does not; the
+default `errorMessage` is the title's words, so by default there is none. **The
+error's own message is never drawn**: it is a developer's line in English
+("SeatLayer bridge error [code]: …"), and it reaches the app through `onError`.
 
 #### 3.13.3 Access
 
@@ -2264,7 +2524,7 @@ dismiss at `size.minimumHitTarget`. Due while the hold has under a minute left
 and the booked overlay is not up — and mounted only where the layout asks for
 it, which by default is the wide layout alone.
 
-**Decision (2026-09-04): not shown on the phone by default.** The phone picker
+**Not shown on the phone by default.** The phone picker
 gives the buyer ONE timer — the header's hold countdown
 (`SeatLayerPickerHoldCountdown`), which fills with the accent, breathes its
 status light, and counts the last minute out second by second to a screen
@@ -2376,6 +2636,51 @@ the hold after handoff, which is checkout's contract, not the picker's.
 
 Dart file: `lib/src/picker/picker_errors.dart`.
 
+#### 3.13.14 What a refused action says
+
+After the map is ready, a failure is said in the inline action error in the web
+picker's own sentence, in the buyer's language. The machine code and the
+server's message go to the host's `onError`, never to the buyer. Where the code
+names its own sentence, the code decides; otherwise the action does.
+
+| What came back | What the buyer reads |
+|---|---|
+| no connection, no answer, a 5xx page, a 503, a command that timed out | `checkConnection` |
+| `maintenance_mode` | the operator's notice; else `maintenancePaused(minutes)` from `retryAfterS`, rounded up; else `maintenancePausedShortly` |
+| `event_closed`, "seat sales are closed" | `salesClosedToast` |
+| `guests_only` / `guest_choice_closed` | `guestsOnly` / `guestChoiceClosed` |
+| `rate_limited` | `tooManyAttempts` |
+| `companion_pair_required` / `ticket_option_not_applicable` | `companionPairRequired` / `ticketOptionNotApplicable` |
+| `channel_paused`; `buyer_access_revoked`; an expired or invalid session; `buyer_access_*_mismatch`, `access_provider_unavailable` | the access panel's title and body for paused; revoked; expired; not verified |
+| `seat_held_for_renewal` | `seatHeldForRenewal` |
+| `hold_quantity_exceeded`, when the limit comes with it | `maxTicketsForOrder(limit)` / `maxOneTicketForOrder` |
+| `channel_access_denied` | `accessUnverifiedCopy` |
+| `hold_not_active` / `hold_not_found`, `legacy_hold_requires_restart` | `holdExpired` / `savedSeatsNotRestored` |
+| `order_edit_in_progress`, `event_not_found`, `key_not_found`, `key_revoked`, `mode_mismatch`, `org_mismatch`, `credit_limit_reached`; `forbidden` and `not_found` on a hold or Best Available | `eventUnavailable` |
+| Best Available: `not_enough_together` / `sold_out` / anything else | `couldNotFindSeatsTogether(n)` / `ticketTypeSoldOut` / `seatsNoLongerAvailableTryAnother` |
+| a removal, anything else | `couldNotRemoveLabel(line)`; a standing place by its area |
+| more time, anything else | `couldNotAddMoreTime` |
+| a hold, with seats named (the first three, standing places left out) | `labelNoLongerAvailable` / `labelsNoLongerAvailable` |
+| `not_for_sale`, with no seat named | `seatUnavailable` |
+| a hold, anything else | `seatsJustTaken` |
+| a call made wrongly, or a page the app cannot speak to (`sl_incompatible`, `unsupported_*`, `read_only`, `destroyed`, `bad_payload`, `handoff_not_owned`, `table_quantity_rejected`, a missing or invalid argument, an idempotency key used twice) | `eventUnavailable` |
+| anything else | `checkConnection` |
+
+A removal and more time keep their own sentence for the codes from
+`seat_held_for_renewal` to `eventUnavailable`.
+
+The last two rows answer nobody: the action's own sentence would not be true.
+"Anything else" is a failure that may pass (a transport or decoding fault, a
+map still loading, a page's fallback code, an exception of the app's own
+checkout) and any code the picker does not know, outside a hold, Best
+Available, a removal and more time. The error's own line is never drawn.
+
+A sentence wraps and is never cut; the bar's words take at most 15 per cent of
+the screen's height (84 at least) and scroll past it, so the button under them stays in
+reach.
+
+Dart file: `lib/src/picker/picker_error_words.dart`.
+
 ### 3.14 3D chrome
 
 **Name** `SeatLayerVenue3D` · **slot** `pillStyle` · **file**
@@ -2410,9 +2715,40 @@ The stepper is disabled in venue mode.
 **Caption** — `size.immersiveCaptionFontSize` on the caption glass at
 `radius.chip`, naming the seat.
 
-**Nav mode** — `SeatLayerPicker3DNavigationModeButton`: a two-state control for
-orbit versus pan, `strings.orbitMode` / `strings.panMode`, with the drag hints
-`strings.rotateVenue` / `strings.moveVenue`.
+**Nav mode** — `SeatLayerPicker3DNavigationModeButton`: a **labelled pair** on
+the glass, top-end of the scene, on the phone and on wide — `strings.orbitMode`
+| `strings.panMode`, the selected half filled with
+`color.dark.immersiveModeSelected` at `radius.pill`. The pair is inset
+`size.immersiveModePairPadding`; each half is at least
+`size.immersiveModeSegmentHeight` tall (it grows with the text rather than
+clipping it at large text sizes) with
+`size.immersiveModeSegmentPaddingX` of padding and an
+`size.immersiveNavChipFontSize` w600 label, inside a reach at least
+`size.minimumHitTarget` wide and tall. While the picker is busy both halves
+are dimmed and say they are disabled to assistive technology. Pressing the unselected half switches the
+one-finger gesture; the drag hints `strings.rotateVenue` /
+`strings.moveVenue` are each half's accessible hint. An icon that flipped
+between two drawings never said which gesture a drag would make.
+
+**Only under the older gestures.** The pair is drawn only when the host boots
+the scene with `touchNavigation3D: 'classic'`. The runtime's default touch
+gestures (`'map'`, runtime 1.0.0) move the venue under a finger, turn it with
+a two-finger twist and tilt it with a two-finger drag, and never ask the drag
+mode what a finger does, so a Rotate / Move choice would change nothing. The
+pair is not drawn there, on the phone or on wide, as the web picker leaves it
+out on touch. Init config `enable3DCrowd: false` turns the standing crowd off.
+
+**Where the words do not fit, glyphs.** The pair is laid out in the room the
+scene's top row leaves it: the scene's width less `size.mapAnchorInset` at both
+ends, less the back pill and `size.mapAnchorGap` while the pill is up, and
+never less than two `size.minimumHitTarget` halves. Where the labelled pair
+(each half its words plus its padding, at least a touch target wide) measures
+wider than that room at the buyer's text size, each half draws its glyph
+instead — a 360° turn for `strings.orbitMode`, a four-way move for
+`strings.panMode` — at `size.immersiveModeIconSize`, the selected half still
+filled. The words stay: each half is named `strings.orbitMode` /
+`strings.panMode` to assistive technology and shows it as a tooltip on a long
+press. A pair with no bound at all (a host's own column) keeps its words.
 
 **Motion.** The chrome settles on `motion.duration.immersive`. The recentre
 control arrives with a single spin on `motion.curve.spring`.
@@ -2436,6 +2772,104 @@ caption glass at `radius.chip`.
 at `init` to suppress its own words. Consequently, a host that hides this strip
 **owns the disclosure itself** — turning the native strip off does not give the
 words back to the runtime.
+
+### 3.16 The Season page
+
+**Name** `SeatLayerSeasonPicker` · **show** `showSeatLayerSeasonPicker` ·
+**file** `lib/src/season/seat_layer_season_picker.dart`
+
+A Season (one package of dates, the same seat for every date) is drawn by the
+pinned `season.html` (contract `seatlayer-season-surface-v1`, capabilities
+`season-surface-v1` and `season-app-shell-v1`), booted with `appBar: true`: the
+package step, the dates, the map and the cart are the page's. The app draws only
+what stands around it. A page that lists `season-app-shell-v2` honours `appBar`
+and hides its own name row, hold clock and full-screen control (the row stays
+only to carry Sales closed or the offer to extend a hold); an older page ignores
+it and shows them.
+
+**Bar.** §3.1's header, the same layout and numbers: brand mark, name, the
+hold pill, the dismiss control. No new tokens.
+- Name: `season.status`'s `season.name` (every status once the Season is read)
+  when the page sends it, else the loading words `strings.chooseSeats`. Brand: its `branding` (`brandName`,
+  `logoUrl`, `accent`, the event's field names), else the seat glyph.
+- Hold pill: from `season.hold` / `season.holdChanged` to `null` or
+  `season.holdExpired`, counting the handoff's `expiresAt`.
+
+**Frame.** The same route frame as the event page: top and side safe areas on
+the page's own ground, the bottom one sent to the page with
+`season.setViewportInsets` (its cart docks over the home indicator, on the
+cart's own ground where the page honours `appBar`). The app adds no band.
+
+**Close.** The dismiss control and system Back send `season.requestClose`,
+every press: the page may ask the buyer to release or keep the seats, so the
+command has no deadline. `closed`, `released` and `booked` close the screen;
+`kept` closes it and reports the operation id; `stayed` (a second press while
+the question is up, which dismisses it) stays.
+
+**Could not load.** A Season the page cannot mount renders nothing and fails
+the handshake (`sys.error`, `sys.incompatible` or no answer in time). Under the
+bar stands the event picker's own failure view (`SeatLayerPickerErrorView`,
+§3.13.2: `strings.mapDidNotLoad`, `strings.checkConnection`, `strings.retry`),
+no new words or tokens. Retry boots a new page; the dismiss
+control closes at once (`closed`), as there is no page to ask. A `failed`
+status after `ready` is the page's own (a hold it could not make) and stays on
+the page.
+
+**Follows the app.** The boot side goes in `init.config.theme`; a later flip is
+`season.setThemeMode`, in place. The app going to the background and coming back
+is `season.lifecycle`.
+
+**Checkout.** `season.continue` hands the hold to the app (once per operation
+id); the app's server books it, then `season.markBooked`. `season.status`
+`booked` for a hold the page made is `onBooked`.
+
+### 3.17 The run page
+
+**Name** `SeatLayerRunPicker` · **show** `showSeatLayerRunPicker` · **file**
+`lib/src/run/seat_layer_run_picker.dart`
+
+A run (a few performances sold to one buyer as one hold) is drawn by the pinned
+`group.html` (contract `seatlayer-group-surface`, capabilities
+`group-surface-v1` and `group-app-shell-v1`), booted with `header: false`,
+`appBar: true` and `checkout: handoff`: the map, the seat card and the cart are
+the page's. A page that says
+`group-app-shell-v2` honours `appBar` and hides its own name row, steps, hint
+line and key; the seat card is a bottom sheet on a phone. A 1.0.0 page ignores
+`appBar` and shows them.
+
+**Bar.** §3.1's header, as on the Season page (§3.16), no new tokens. Name:
+`group.ready`'s `performanceGroup.name`, else the loading words
+`strings.chooseSeats` until it arrives. Brand: `group.status`'s `branding` when
+a page sends it, else the run name's letter. Hold pill: `group.hold` /
+`group.holdChanged` to `null` or `group.holdExpired`; a resumed hold
+(`initialOperationId`) is read once with `group.getHeldOrder` at ready.
+
+**Frame.** §3.16's route frame. The page fits the web view (`group-app-shell-v2`),
+but the web view passes it no bottom safe area (`env(safe-area-inset-bottom)` is
+0 on iOS and Android). A page that lists `group.setViewportInsets` in its
+commands runs to the bottom edge: the picker sends it the bottom safe area
+(`{top: 0, right: 0, bottom, left: 0}`) after `group.ready` and again whenever
+it changes (rotation), and the page keeps its cart clear of the home indicator
+/ gesture bar on the cart's own ground (§4.6: one surface owns the bottom
+inset). For a page without the command, or one that refuses the inset, the app
+keeps the page above the bottom safe area, on `color.*.surface` (the cart's).
+
+**Close.** The dismiss control and system Back send `group.destroy`, once, and
+close when it answers: as on the event picker, seats not handed off are
+released, and a hold handed off or booked is kept. There is no question to the
+buyer.
+
+**One side.** The page boots on the app's side and stays on it, the bar and
+frame included: runtime 1.0.0's run page has no command to repaint in place,
+and a reload would take the buyer's seats. The app going to the background and
+coming back is `group.lifecycle`.
+
+**Could not load.** As §3.16: the failure view (§3.13.2) under the bar, Retry
+boots a new page, the dismiss control closes at once.
+
+**Checkout.** `group.checkout` hands the hold to the app (once per operation
+id; it carries no price); the app's server prices and books it, then
+`group.markBooked`. `group.booked` is `onBooked`, once per operation.
 
 ---
 
@@ -2477,7 +2911,25 @@ height and nothing is subtracted.
 
 **4.3 String overrides.** Every buyer-facing string in `strings` is overridable,
 individually, without replacing the set. Counted strings need one/other forms
-(and the plural categories the platform's own locale rules require). Access-need
+(and the plural categories the platform's own locale rules require); the
+English defaults choose between their `…One` and `…Other` tokens by the same
+plural rule as every other locale, never by `count == 1`. The counted strings
+are `ticketCount`, `seatsFree`, `seatsLeftInSection`, `findBestSeats`,
+`reselectSeats`, `holdLapsedStillFree`, `holdLapsedSomeTaken`,
+`holdLapsedAllTaken`, `removeTickets`, `holdMinutesLeft`, `holdSecondsLeft`,
+`holdLapsedBody`, `seatsNotRecovered`, `accessibleSections`, `placesAvailable`,
+`activeFilters`, `accessibilityFiltersActive` and `onlyLeft`. Sentences only an app draws come from the runtime's app
+strings, with every category its locale's rule produces; a sentence a locale's
+source does not carry yet (today `backToSeatMap`) draws English there. `onlyLeft`
+is the same counted sentence as `seatsLeftInSection` ("8 seats left"), and
+`accessNeedWithCount` joins the need and its count with the locale's own pair
+separator ("Wheelchair · 2"; Japanese "・"). The
+shipped translations carry every form the runtime has (`zero`, `one`, `two`,
+`few`, `many`, `other`) and choose by the locale's CLDR category for the
+count, exactly as the runtime's `Intl.PluralRules` does; a form a dictionary
+lacks falls back to `other`. A port checks its rules against
+`test/fixtures/plural_categories.json`, the categories `Intl.PluralRules` gives
+every shipped locale for a fixed list of counts. Access-need
 names are overridable by need. The picker ships localized defaults; a host
 override always wins.
 
@@ -2541,10 +2993,10 @@ credentials off the device. Capability `hold-ownership-v1`, and
 These are designed but cannot be built until the runtime reports the data. Do
 not fake them, and do not design around their absence as if it were permanent.
 
-- **Previous-price and sold-out chips on the price rail.** The web rail strikes
-  a previous price and keeps a sold-out category's chip disabled. Natively this
-  needs a per-category previous price and a trustworthy free count that
-  distinguishes *zero* from *not reported*; today a zero is read as unknown.
+- **Previous prices on the price rail.** The web rail strikes a previous
+  price. Natively this needs a per-category previous price, which the snapshot
+  does not carry. (The sold-out half is built: `free`, under
+  `category-availability-v1`, separates *zero* from *not reported*; §3.2.)
 - **Held versus pending counts for `Secure more`.** `strings.secureMoreAndCheckout`
   needs how many of the buyer's tickets are already held and how many are still
   pending. Until the split is reported the label falls back to
@@ -2675,8 +3127,8 @@ of them portable:
   floored at `size.accessSheetMinHeight`, never taller than the screen — and
   the provision list **scrolls inside** that bound rather than the sheet
   growing;
-- **every row is one line at one fixed height (50)**, short name truncating
-  rather than wrapping, with any sentence it needs behind an ⓘ that opens
+- **every row is 50 high and grows only where its short name wraps**, with any
+  sentence it needs behind an ⓘ that opens
   *under* the row it belongs to;
 - **the whole line toggles**, so the target is the words and not the
   20-point switch at the end of it, and each row's count keeps its own
@@ -2684,8 +3136,8 @@ of them portable:
 - **a provision the venue has but has sold out of stays**, named, dimmed and
   reading `0` — removing it would claim the venue has no such seats, which is
   a different fact — and the two switches that recolour or filter the MAP sit
-  under their own `strings.viewGroupTitle` heading so they do not read as two
-  more provisions.
+  above the provisions, which have their own `strings.showSeatsFor` heading,
+  so the switches do not read as two more provisions.
 
 Unbounded and multi-line, the same list took the whole screen on a phone and
 put its first two rows — the wheelchair and companion filters, the two rows the
@@ -2747,6 +3199,8 @@ from the wrong one.
 | `hold-ownership-v1`, `hold-selection-v1` | who owns a hold, and holding a named selection |
 | `checkout-handoff-v1`, `checkout-handoff-reject-v1` | the hold crossing to the host, and giving it back |
 | `cart-line-remove-v1` | removing a cart line the selection cannot name |
+| `host-pricing-v1` | the host's own category and tier prices (`pricing.categories`) and, from runtime 1.0.0, single-seat and table prices by label (`pricing.objects`: a number, or `{ tiers }`) on the rail, the seat card, the cart and the handoff, sent in `init.config.pricing` and changed live with `picker.setPricing`; a category the host leaves out keeps the chart's price, a seat listed in `objects` wins over its category, and an older runtime keeps the chart's prices for all |
+| `hold-mark-booked-v1` | `picker.markBooked { holdId? }`: the host's server booked the hold; the runtime settles it and the booked state follows (§3.13) |
 
 A capability the runtime does not advertise is a feature that is **not offered**,
 never a feature that fails.

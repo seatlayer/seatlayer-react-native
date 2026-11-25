@@ -252,7 +252,7 @@ describe('deterministic native picker visual fixtures', () => {
       .toMatchObject({ disabled: true });
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Drag to rotate venue' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Drag to rotate the venue' }).props.onPress();
       await Promise.resolve();
     });
     expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
@@ -283,7 +283,7 @@ describe('deterministic native picker visual fixtures', () => {
     const overviewChrome = tree.root.findByType(SeatLayerVenue3DChrome);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'View from here' })).toHaveLength(0);
     expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Back to venue' })).toHaveLength(0);
-    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
+    expect(overviewChrome.findAllByProps({ accessibilityLabel: 'Show whole venue' })).toHaveLength(1);
 
     await act(async () => {
       tree.root.findByProps({ accessibilityLabel: 'Flat 2D map' }).props.onPress();
@@ -301,6 +301,6 @@ describe('deterministic native picker visual fixtures', () => {
     expect(returned3D).toContain('venue3d · overview');
     expect(returned3D).toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
     expect(tree.root.findByType(SeatLayerVenue3DChrome)
-      .findAllByProps({ accessibilityLabel: 'Fit venue' })).toHaveLength(1);
+      .findAllByProps({ accessibilityLabel: 'Show whole venue' })).toHaveLength(1);
   });
 });

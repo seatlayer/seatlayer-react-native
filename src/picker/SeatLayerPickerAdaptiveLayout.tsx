@@ -19,7 +19,6 @@ import {
   seatLayerPickerPhoneChromeTop,
 } from './adaptiveLayoutState';
 import { useSeatLayerPickerAdaptiveSheetOpening } from './adaptiveSheetOpening';
-import { SeatLayerPickerAttribution } from './attribution';
 import type { SeatLayerPickerBuilders } from './builders';
 import { SeatLayerConfirmCard } from './SeatLayerConfirmCard';
 import { SeatLayerPickerSeatConfirmation } from './SeatLayerPickerSeatConfirmation';
@@ -581,8 +580,8 @@ export function SeatLayerPickerAdaptiveLayout({
       showOverviewControl={plan.options.chrome.overview}
       showZoomControls={plan.options.chrome.zoom}
       showZoomToFitControl={plan.options.chrome.fit}
-      zoomInLabel="Zoom in"
-      zoomOutLabel="Zoom out"
+      zoomInLabel={scope.strings.translate('zoomIn')}
+      zoomOutLabel={scope.strings.translate('zoomOut')}
       // §3.5, 0.9.1: the accessibility disc HEADS the column. It used to be
       // anchored bottom-left on its own, which put two ways to reach the same
       // filter on the same map once the column grew one.
@@ -771,9 +770,8 @@ export function SeatLayerPickerAdaptiveLayout({
           {ordered('sheet', ticketPanelVisible ? <ScrollView style={[styles.wideCart, { borderColor: scope.resolvedTheme.colors.divider }]} contentContainerStyle={styles.wideCartContent}>{holdLapse}{cartList}</ScrollView> : null, { suffix: 'wide' })}
           {ticketPanelVisible ? actionError : null}
           {ticketPanelVisible ? <SeatLayerPickerSalesClosedStatement /> : null}
-          <View style={styles.trailingAttribution} testID="seatlayer-wide-attribution"><SeatLayerPickerAttribution compact={false} /></View>
           {ticketPanelVisible ? checkout : null}
-        </View> : <>{ordered('sheet', cartSheet)}<View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'foot')} pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}<View style={styles.trailingAttribution} testID="seatlayer-phone-attribution"><SeatLayerPickerAttribution /></View></> : null}</View></>}
+        </View> : <>{ordered('sheet', cartSheet)}<View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'foot')} pointerEvents="box-none" style={[styles.phoneFooter, { paddingBottom: cartSheet === null ? safeLayout.insets.bottom : 0 }]} testID="seatlayer-phone-footer">{cartSheet === null ? <>{holdLapse}{actionError}</> : null}</View></>}
         </View>
       </View>
       <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'states')} pointerEvents="box-none" style={styles.phoneOverlays}>

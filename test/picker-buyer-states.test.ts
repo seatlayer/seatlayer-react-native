@@ -117,9 +117,9 @@ describe('§3.13.7 hold expired and hold lapsed', () => {
     expect(telling).toMatchObject({
       shape: 'someTaken',
       count: 2,
-      messageKey: 'holdLapsedSomeTakenOther',
+      messageKey: 'holdLapsedSomeTaken.other',
       tone: 'warning',
-      actionKey: 'reselectSeatsOne',
+      actionKey: 'reselectSeats.one',
     });
     expect(strings.holdLapsedSomeTakenOther).toContain('{count}');
   });
@@ -128,7 +128,7 @@ describe('§3.13.7 hold expired and hold lapsed', () => {
     const telling = seatLayerPickerHoldLapseTelling(lapse(['A', 'B'], []));
     expect(telling).toMatchObject({
       shape: 'noneRecoverable',
-      messageKey: 'holdLapsedAllTakenOther',
+      messageKey: 'holdLapsedAllTaken.other',
       tone: 'error',
     });
     expect(telling.actionKey).toBeUndefined();
@@ -138,8 +138,8 @@ describe('§3.13.7 hold expired and hold lapsed', () => {
     expect(seatLayerPickerHoldLapseTelling(lapse(['A'], ['A']))).toMatchObject({
       shape: 'allRecoverable',
       count: 1,
-      messageKey: 'holdLapsedStillFreeOne',
-      actionKey: 'reselectSeatsOne',
+      messageKey: 'holdLapsedStillFree.one',
+      actionKey: 'reselectSeats.one',
     });
   });
 
@@ -151,8 +151,8 @@ describe('§3.13.7 hold expired and hold lapsed', () => {
   });
 
   it('picks the plural form the generated tokens actually carry', () => {
-    expect(seatLayerPickerPluralKey('holdMinutesLeft', 1)).toBe('holdMinutesLeftOne');
-    expect(seatLayerPickerPluralKey('holdMinutesLeft', 4)).toBe('holdMinutesLeftOther');
+    expect(seatLayerPickerPluralKey('holdMinutesLeft', 1)).toBe('holdMinutesLeft.one');
+    expect(seatLayerPickerPluralKey('holdMinutesLeft', 4)).toBe('holdMinutesLeft.other');
     expect(strings.holdMinutesLeftOne).toBe('{count} minute left');
   });
 });
