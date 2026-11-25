@@ -11,6 +11,14 @@ import {
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
 import {
+  seatLayerHostPricesPayload,
+  seatLayerHostPricingCapability,
+  seatLayerMarkBookedCapability,
+  seatLayerMarkBookedCommand,
+  seatLayerSetPricingCommand,
+} from './hostPricing';
+import type { SeatLayerPickerPricing } from './options';
+import {
   SeatLayerPickerPageRecovery,
   seatLayerPickerResumeRetryMs,
   seatLayerPickerUnanswered,
@@ -383,6 +391,58 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     return this.rejectHandoff(handoff.holdId).then(() => {
       this.booked.released();
       return true;
+    });
+  }
+
+  /** Whether the open page takes the app's own prices. */
+  get supportsHostPricing(): boolean {
+    return this.available(seatLayerHostPricingCapability, seatLayerSetPricingCommand);
+  }
+
+  /**
+   * Shows these prices on the open map, or the chart's own for `null`. The
+   * prices a picker opens with are its `options.pricing`. A page that does not
+   * take prices keeps the chart's. Display only: the server prices the hold.
+   */
+  setPricing(pricing: SeatLayerPickerPricing | null): Promise<void> {
+    if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
+    if (pricing !== null && (typeof pricing !== 'object' || Array.isArray(pricing))) {
+      return Promise.reject(badPayload('SeatLayer pricing must be an object or null.'));
+    }
+    if (!this.supportsHostPricing) return Promise.resolve();
+    return this.mutation(seatLayerSetPricingCommand, {
+      pricing: seatLayerHostPricesPayload(pricing),
+    }).then(() => undefined);
+  }
+
+  /** Whether the open page can be told that a hold is booked. */
+  get supportsMarkBooked(): boolean {
+    return this.available(seatLayerMarkBookedCapability, seatLayerMarkBookedCommand);
+  }
+
+  /**
+   * Settles a hold your server has booked: the map shows the seats booked, the
+   * hold clock stops, and the picker never releases that hold.
+   *
+   * Call it only after your server has booked; called earlier, the seats show
+   * as taken until the server's hold runs out. Without `holdId` it means the
+   * hold this picker handed to your checkout. A named one must be the hold held
+   * now. Answers false, and changes nothing, for another hold, no hold, or a
+   * page that cannot be told; the picker then finds the booking by itself.
+   */
+  markBooked(options: { holdId?: string } = {}): Promise<boolean> {
+    if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
+    const error = validateOptions(options) ??
+      (options.holdId === undefined ? undefined : validateNonEmpty('holdId', options.holdId));
+    if (error) return Promise.reject(error);
+    if (!this.supportsMarkBooked) return Promise.resolve(false);
+    return this.serial(async () => {
+      const result = await this.command(
+        seatLayerMarkBookedCommand,
+        options.holdId === undefined ? {} : { holdId: options.holdId },
+      );
+      await this.applyMutationResult(result);
+      return ownData(result, 'booked') === true;
     });
   }
 

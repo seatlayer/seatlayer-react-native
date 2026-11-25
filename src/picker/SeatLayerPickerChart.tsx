@@ -21,6 +21,8 @@ import {
   type SeatLayerPickerScopeValue,
   useSeatLayerPickerScope,
 } from './SeatLayerPickerScope';
+import { seatLayerHostPricesPayload } from './hostPricing';
+import { useSeatLayerHostPricingSync } from './hostPricingSync';
 
 export interface SeatLayerPickerChartProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -40,9 +42,10 @@ function PickerChartInstance({
   const lostError = scope.controller.getPageLostError?.();
   if (lostError !== undefined) return <PickerChartBootError scope={scope} style={style} error={lostError} />;
   if (bootRef.current === undefined) {
+    const prices = seatLayerHostPricesPayload(scope.pricing);
     bootRef.current = tryCreateSeatLayerPickerChartBoot(
       scope.configuration,
-      scope.bridgeConfig,
+      prices === null ? scope.bridgeConfig : { ...scope.bridgeConfig, pricing: prices },
       scope.resolvedTheme.mapTheme as JsonObject,
       scope.resolvedTheme.themeMode,
       scope.readOnly,
@@ -139,6 +142,15 @@ function PickerChartReady({
       scope.controller.setThemeMode(theme.mode, theme.mapTheme),
     ).catch(scope.reportError);
   }, [desiredThemeKey, scope.controller, scope.isReady, scope.reportError]);
+
+  useSeatLayerHostPricingSync({
+    boot: boot.bridgeConfig.pricing,
+    controller: scope.controller,
+    isReady: scope.isReady,
+    onError: scope.reportError,
+    pricing: scope.pricing,
+    session: scope.snapshot?.sessionId,
+  });
 
   const awaitingActiveRef = useRef<{ remove(): void } | undefined>(undefined);
   useEffect(() => () => awaitingActiveRef.current?.remove(), []);

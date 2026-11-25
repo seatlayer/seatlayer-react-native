@@ -34,6 +34,11 @@ export interface SeatLayerConfiguration {
   currency?: string;
   colorblindSafe?: boolean;
   initialView?: SeatLayerViewMode;
+  /**
+   * False: the map page sends SeatLayer no load or error reports. Omitted or
+   * true keeps them on. `onChartLoad` is called either way.
+   */
+  telemetry?: boolean;
   /** Leave false when the app renders its own touch-friendly seat sheet. */
   showsWebSeatTooltip?: boolean;
   /**
@@ -174,6 +179,10 @@ export interface SelectedSeat {
   sectionLabel?: string;
   rowLabel?: string;
   seatNumber?: string;
+  /** The seat's level, on a chart with two or more. Set even where it has no name. */
+  floorId?: string;
+  /** The level's own name ("Stalls"); absent where it has none. Display only. */
+  levelName?: string;
   currency?: string;
   quantity?: number;
   bookingMode?: string | (string & {});

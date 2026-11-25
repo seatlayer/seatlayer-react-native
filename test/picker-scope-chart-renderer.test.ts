@@ -18,12 +18,14 @@ vi.mock('react-native', () => ({
 }));
 
 vi.mock('../src/SeatLayerRenderer', () => ({
-  SeatLayerRenderer(props: { readonly onUnmount?: () => void; readonly onPageLost: () => void }): React.ReactElement {
+  SeatLayerRenderer(props: {
+    readonly controller?: unknown; readonly onUnmount?: () => void; readonly onPageLost: () => void;
+  }): React.ReactElement {
     useEffect(() => {
       rendererLifecycle.mounts += 1;
       return () => { rendererLifecycle.unmounts += 1; props.onUnmount?.(); };
     }, []);
-    return React.createElement('seatlayer-renderer', { onPageLost: props.onPageLost });
+    return React.createElement('seatlayer-renderer', { bridge: props.controller, onPageLost: props.onPageLost });
   },
 }));
 
@@ -97,6 +99,24 @@ describe('picker chart scope lifecycle', () => {
     expect(tree.root.findAllByType('seatlayer-renderer' as never)).toHaveLength(0);
     await act(async () => { await controller.retry(); });
     expect(tree.root.findAllByType('seatlayer-renderer' as never)).toHaveLength(1);
+    act(() => tree.unmount());
+  });
+
+  it('boots with the prices of the app, and does not reload for new ones', async () => {
+    rendererLifecycle.mounts = 0;
+    const controller = new SeatLayerPickerController();
+    const priced = (amount: number) => React.createElement(
+      SeatLayerPickerScope,
+      { configuration: { event: 'chart-event' }, controller, pricing: { categories: { stalls: amount } } },
+      React.createElement(SeatLayerPickerChart),
+    );
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(priced(45)); });
+    const start = vi.spyOn(controller, 'beginHandshake').mockResolvedValue({} as never);
+    tree.root.findByType('seatlayer-renderer' as never).props.bridge.beginHandshake({ send: () => undefined }, { event: 'chart-event' });
+    expect(start.mock.calls[0]?.[2]).toMatchObject({ config: { pricing: { prices: { stalls: 45 } } } });
+    await act(async () => { tree.update(priced(50)); });
+    expect(rendererLifecycle.mounts).toBe(1);
     act(() => tree.unmount());
   });
 

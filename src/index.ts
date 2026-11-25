@@ -266,6 +266,12 @@ export {
   type SeatLayerPickerRecovery,
   type SeatLayerPickerRecovery as SeatLayerRecovery,
 } from './picker/availability';
+export {
+  seatLayerHostPricingCapability,
+  seatLayerMarkBookedCapability,
+  type SeatLayerCategoryPricing,
+  type SeatLayerSeatPricing,
+} from './picker/hostPricing';
 export type { SeatLayerChartLoadListener } from './picker/chartLoadSubscription';
 export type { SeatLayerPickerInsetLease } from './picker/insetOwnership';
 export type { SeatLayerPickerPromptLease } from './picker/promptOwnership';
