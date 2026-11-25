@@ -281,10 +281,9 @@ Behaviour options worth knowing:
 - `eventName` names the event in the header before the runtime reports one, so
   the title does not swap a second after the picker opens. It is never sent to
   the runtime; the runtime's own name wins the moment it arrives.
-- `showBookedOverlay` (default `true`) draws the picker's own "You're all set"
-  screen when the handed-off hold settles to booked. A host with its own
-  confirmation screen sets it `false` and listens to `onBooked` instead, so the
-  buyer is told once.
+- `showBookedOverlay` is the picker's own "You're all set" screen. This version
+  does not draw it: the map page says nothing of a sale. Show your own
+  confirmation when your server has booked.
 - `showHoldPill` (default `true`) draws the header's hold countdown for as long
   as a live hold exists, whoever owns it. A host drawing its own clock sets it
   `false`. It composes with `chrome.holdPill`: the pill appears only where both
@@ -301,8 +300,8 @@ Callbacks are optional observations, never a place the SDK waits:
 `onThemeResolved` · `onSectionFocused` · `onSeatSelected` · `onSeatRemoved` ·
 `onSeatViewOpened` · `onSeatConfidence` · `onContinue`
 
-`onBooked` fires once, when the handed-off hold settles to booked — never on the
-handoff itself, because a buyer on the way to pay has not paid.
+`onBooked` is not called in this version: the map page says nothing of a sale.
+Take a sale from your own server.
 `onSeatConfidence` opens the seat's confidence passport; supplying it turns the
 3D card's confidence teaser into a chip, and without it the teaser stays a
 static information row, because a chip beside a dead target would say nothing.
@@ -384,8 +383,8 @@ venue-map ones. Reach it as `controller` from `useSeatLayerPicker()` inside a
 | `focusAccessibilityFilter()` | Flies to the matches of the filter already on, leaving the filter alone. |
 | `focusNextAccessibleSection(types?)` | Steps to the next section holding a free matching space, in chart order, wrapping. `null` — nothing matches — is an answer; `undefined` means the runtime does not offer the tour. |
 | `subscribeSeatRetap(listener)` | A seat already in the selection tapped again. Subscribing never replays an earlier event. |
-| `subscribeBooked(listener)` | Fires once per sale, with the handoff that became it. |
-| `getCheckoutHandoff()` / `getBookedHandoff()` | The handoff this picker made, and the one whose hold settled to booked. |
+| `subscribeBooked(listener)` | Not called in this version. |
+| `getCheckoutHandoff()` / `getBookedHandoff()` | The handoff this picker made; the second is always `undefined` in this version. |
 | `releaseHandoffAndChangeSeats()` | Gives a handed-off hold back so the seats go on sale again and the buyer picks afresh. Answers `false` where there is no handoff or the runtime does not offer the reject. |
 | `releasePickerOwnedHold()` | Releases a picker-owned hold after earlier queued mutations have settled. |
 | `refreshAvailability()` / `holdSelection({ ttlMs })` | Re-reads live availability; holds the current selection. |

@@ -106,21 +106,9 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private readonly seatRetapListeners = new Set<SeatLayerPickerSeatRetapListener>();
   private readonly booked = new SeatLayerPickerBookedDetector();
   private readonly bookedListeners = new Set<SeatLayerPickerBookedListener>();
-  private readonly unsubscribeHoldExpiry = this.mapController.on(
-    'holdExpired',
-    () => this.booked.expired(),
+  private readonly unsubscribeBookedWatch = this.subscribe(
+    () => this.booked.observe(this.getSnapshot()),
   );
-  private readonly unsubscribeBookedWatch = this.subscribe(() => {
-    const handoff = this.booked.observe(this.getSnapshot());
-    if (handoff === undefined) return;
-    for (const listener of [...this.bookedListeners]) {
-      try {
-        listener(handoff);
-      } catch {
-        // A host listener cannot break the snapshot pump.
-      }
-    }
-  });
   private readonly unsubscribeChartLoad = this.mapController.on('unknownEvent', ({ name, payload }) => {
     if (name === 'telemetry.chartLoad') this.chartLoads.accept(payload);
     if (
@@ -191,7 +179,6 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   }
 
   override dispose(): void {
-    this.unsubscribeHoldExpiry();
     this.unsubscribeBookedWatch();
     this.bookedListeners.clear();
     this.unsubscribeChartLoad();
@@ -221,11 +208,11 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   getCheckoutHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
     this.booked.pendingHandoff;
 
-  /** The handoff whose hold settled to booked, once the sale has landed. */
+  /** Always undefined: the page of this version says nothing of a sale. */
   getBookedHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
     this.booked.bookedHandoff;
 
-  /** Fires once per sale, with the handoff that became it. */
+  /** Never fires: the page of this version says nothing of a sale. */
   subscribeBooked = (listener: SeatLayerPickerBookedListener): (() => void) => {
     this.bookedListeners.add(listener);
     return () => {
