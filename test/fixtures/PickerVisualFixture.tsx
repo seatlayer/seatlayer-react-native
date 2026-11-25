@@ -70,6 +70,13 @@ export const seatLayerVisualFixtureScenarios = Object.freeze([
   'loading',
   'error',
   'hold-countdown',
+  'held',
+  'long-total',
+  'securing',
+  'secured',
+  'sales-closed',
+  'sales-closed-held',
+  'sold-out',
   'hold-lapse',
   'action-error',
   'empty',
@@ -272,6 +279,14 @@ const denseFixtureSeats = Object.freeze([
   fixtureSeat(8, { categoryKey: 'sponsor', price: 130, rowLabel: 'T25' }),
 ]);
 
+/** Six seats of one section. */
+const oneSectionSeats = Object.freeze([6, 7, 8, 9, 10, 11].map((number) =>
+  fixtureSeat(number, { rowLabel: 'C', sectionLabel: 'Dress Circle' })));
+const longTotalSeats = Object.freeze(oneSectionSeats.map((seat) =>
+  Object.freeze({ ...seat, price: 2_075.75, currency: 'KWD' })));
+const cartRowScenarios: ReadonlySet<SeatLayerVisualFixtureScenario> =
+  new Set(['held', 'long-total', 'securing', 'secured', 'sales-closed-held']);
+
 function fixtureCartLine(seat: Readonly<SelectedSeat>): Readonly<SeatLayerPickerCartLine> {
   return Object.freeze({
     lineKey: `line-${seat.id}`,
@@ -296,6 +311,7 @@ function scenarioSeats(
   tierId: 'adult' | 'child' = 'adult',
 ): readonly Readonly<SelectedSeat>[] {
   if (scenario === 'cart-dense') return denseFixtureSeats;
+  if (cartRowScenarios.has(scenario)) return scenario === 'long-total' ? longTotalSeats : oneSectionSeats;
   if (scenario === 'seat-tier') return Object.freeze([fixtureTierSeat(tierId)]);
   if (scenario === 'variable-table') return Object.freeze([fixtureVariableTable()]);
   if (scenario === 'wide') return Object.freeze([
@@ -352,7 +368,8 @@ function fixtureSnapshot(
         : scenario === 'rtl'
           ? 'المسرح الكبير'
         : 'SeatLayer venue',
-      salesClosed: false,
+      startsAtLabel: 'Sat 27 Aug 2027, 19:30',
+      salesClosed: scenario === 'sales-closed' || scenario === 'sales-closed-held',
     }),
     branding: Object.freeze({
       attributionRequired: true,
@@ -364,7 +381,7 @@ function fixtureSnapshot(
       ? Object.freeze([fixtureGoldCategory, fixtureSilverCategory])
       : scenario === 'seat-tier'
       ? Object.freeze([fixtureGoldCategory])
-      : scenario === 'empty'
+      : scenario === 'empty' || scenario === 'sold-out'
       ? Object.freeze(fixtureCategories.map((category) => Object.freeze({ ...category, available: 0 })))
       : fixtureCategories,
     zones: Object.freeze([
@@ -447,7 +464,7 @@ function fixtureSnapshot(
     cartLines,
     cartTotal: cartLines.reduce((total, line) => total + line.unitPrice * line.quantity, 0),
     currency: 'EUR',
-    hold: scenario === 'hold-countdown'
+    hold: scenario === 'hold-countdown' || scenario === 'held' || scenario === 'sales-closed-held'
       ? Object.freeze({ active: true, owner: 'picker', expiresAt: seatLayerVisualFixtureClock + 272_000 })
       : Object.freeze({ active: false, owner: 'picker' }),
     accessConfigured: false,
@@ -561,7 +578,7 @@ function fixtureScope(
     zoomOut: async () => immersiveValidation?.recordCamera('picker.zoomOut'),
     zoomToFit: async () => immersiveValidation?.recordCamera('picker.zoomToFit'),
     overview: asyncNoOp,
-    checkout: async () => ({ holdId: 'fixture-hold', expiresAt: seatLayerVisualFixtureClock, currency: 'EUR', lineItems: snapshot.cartLines, total: snapshot.cartTotal }),
+    checkout: async () => scenario === 'securing' ? new Promise<never>(() => undefined) : ({ holdId: 'fixture-hold', expiresAt: seatLayerVisualFixtureClock, currency: 'EUR', lineItems: snapshot.cartLines, total: snapshot.cartTotal }),
     bestAvailable: asyncNoOp,
     holdGA: asyncNoOp,
     setSeatTier: async (_seatId: string, tierId: string | null) => {
@@ -904,7 +921,9 @@ function SeatLayerPickerVisualFixtureSession({
     } : {}),
   }), [device, immersiveValidation, scenario, scope.resolvedTheme]);
   const onCheckout = useCallback((handoff: SeatLayerPickerCheckoutHandoff) => {
+    if (scenario === 'secured') return new Promise<never>(() => undefined);
     if (scenario === 'seat-tier') setCheckoutHandoff(handoff);
+    return undefined;
   }, [scenario]);
   const wide = device === undefined && scenario === 'wide';
   const panelInitiallyCollapsed = baseScope.presentation.sheet !== 'expanded';

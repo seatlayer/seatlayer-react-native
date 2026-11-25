@@ -28,8 +28,27 @@ stay; the changes below are the ones an app or a buyer can notice.
 - "Powered by SeatLayer" is no longer drawn, on the map or under the cart.
   `SeatLayerPickerAttribution` is deprecated and draws nothing; its style slots
   change nothing.
-- The checkout button keeps 12 points from the edge on a phone with no safe area
-  at its foot.
+- On a phone the cart is one row: the arrow that opens the list, the count and
+  the total with the seats under them, and the checkout button. It is 65 points
+  high over the phone's bottom strip, where it was 107 or 132, and the same held
+  sideways. The button's words stand on up to two lines; an app's own
+  `holdAndCheckout` words do too. Where they need more, at a large text size on a
+  narrow phone, the button goes under the others.
+  - The words open the list as the arrow does, the list is at most 240 points
+    high, and a new seat closes it.
+  - `layout.cartPeekMaxHeight` still caps the list; the `sheetHandle…` and
+    `sheetHeadHeight` sizes change nothing now.
+  - An app's own `checkoutBar` part keeps the full width, under the words.
+    `SeatLayerBookButton` placed anywhere else looks as it did.
+- While a seat card asks, the row is faded and takes no press.
+- When sales close, a buyer who holds seats can still continue to checkout. With
+  no seats held the row says "Sales are closed" and the event's date, and has no
+  button. `snapshot.event.startsAtLabel` carries that date.
+- On a sold-out event the row stays under the statement with "Select seats",
+  where it offered the finder or was not drawn.
+- The checkout button says "Securing your seats…" until the seats are held, and
+  "Seats secured. Opening checkout…" after. `useSeatLayerCheckoutCta` takes a
+  third argument for it.
 - In the 3D venue the status bar stands on the dark ground its light text is
   chosen for.
 - A standing area sold as one box offers only the party sizes it is sold in, and

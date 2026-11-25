@@ -3,12 +3,14 @@ import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-nat
 
 import { seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerBold } from './boldText';
+import { SeatLayerCartBarButton, useSeatLayerCartBarRow } from './cartBarButton';
 import {
   captureSeatLayerCartActionLease,
   isSeatLayerCartActionCurrent,
   projectSeatLayerCartSheet,
 } from './cartSheetUi';
 import { seatLayerCheckoutCtaState, type SeatLayerCheckoutCtaState } from './checkoutCta';
+import { isSeatLayerPickerSoldOut } from './emptyState';
 import { seatLayerPickerLineWidth } from './lineWidth';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
@@ -53,7 +55,7 @@ function canRejectHandoff(controller: Scope['controller']): boolean {
 function checkoutAllowed(scope: Scope): boolean {
   const snapshot = scope.controller.getSnapshot();
   return snapshot !== undefined && scope.isReady && !scope.readOnly && !scope.blocksCheckout &&
-    scope.pendingSeat === null && !snapshot.event.salesClosed &&
+    scope.pendingSeat === null && (!snapshot.event.salesClosed || snapshot.hold.active) &&
     snapshot.selectionValidity?.isValid !== false &&
     projectSeatLayerCartSheet(snapshot, null).confirmed.items.length > 0 &&
     supportsSeatLayerPickerSurface(scope.controller, ['checkout-handoff-v1'], ['picker.continue']);
@@ -62,14 +64,14 @@ function checkoutAllowed(scope: Scope): boolean {
 /** One checkout flight, shared by every surface that draws the call to action. */
 function useSeatLayerCheckoutFlight(
   onCheckout: SeatLayerBookButtonProps['onCheckout'],
-): Readonly<{ busy: boolean; press: () => void }> {
+): Readonly<{ busy: 'holding' | 'handing' | undefined; press: () => void }> {
   const scope = useSeatLayerPickerScope();
   const scopeRef = useRef(scope);
   const callbackRef = useRef(onCheckout);
   const mountedRef = useRef(true);
   const flightRef = useRef(0);
   const nextFlightRef = useRef(0);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'holding' | 'handing' | undefined>(undefined);
   useLayoutEffect(() => { scopeRef.current = scope; callbackRef.current = onCheckout; }, [onCheckout, scope]);
   useEffect(() => {
     mountedRef.current = true;
@@ -78,7 +80,7 @@ function useSeatLayerCheckoutFlight(
   useLayoutEffect(() => {
     flightRef.current = 0;
     nextFlightRef.current += 1;
-    setBusy(false);
+    setBusy(undefined);
   }, [scope.controller, scope.sessionId, scope.snapshot?.sessionId]);
   const checkout = async () => {
     const before = scopeRef.current;
@@ -86,7 +88,8 @@ function useSeatLayerCheckoutFlight(
     if (!lease || flightRef.current || !checkoutAllowed(before)) return;
     const flight = ++nextFlightRef.current;
     flightRef.current = flight;
-    setBusy(true);
+    // A hold that is already there is only handed over.
+    setBusy(before.controller.getSnapshot()?.hold.active === true ? 'handing' : 'holding');
     // Why the last try was refused is not what this one is about.
     before.clearError();
     try {
@@ -97,6 +100,7 @@ function useSeatLayerCheckoutFlight(
         }
         return;
       }
+      if (mountedRef.current && flightRef.current === flight) setBusy('handing');
       try {
         await Promise.resolve(callbackRef.current(Object.freeze({
           ...handoff,
@@ -117,7 +121,7 @@ function useSeatLayerCheckoutFlight(
       if (mountedRef.current && flightRef.current === flight &&
         isSeatLayerCartActionCurrent(lease, scopeRef.current)) {
         flightRef.current = 0;
-        setBusy(false);
+        setBusy(undefined);
       }
     }
   };
@@ -128,6 +132,7 @@ function useSeatLayerCheckoutFlight(
 export function useSeatLayerCheckoutCta(
   handoffInFlight: boolean,
   canOfferFind = false,
+  creatingHold = false,
 ): SeatLayerCheckoutCtaState {
   const scope = useSeatLayerPickerScope();
   const projection = projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat);
@@ -136,6 +141,7 @@ export function useSeatLayerCheckoutCta(
   return seatLayerCheckoutCtaState({
     canCheckout: checkoutAllowed(scope),
     canOfferFind,
+    creatingHold,
     handoffInFlight,
     label: scope.strings.translate('holdAndCheckout'),
     pendingCount: 0,
@@ -160,15 +166,16 @@ export function useSeatLayerCheckoutCta(
 function bestSeatsAllowed(scope: Scope, offered: boolean): boolean {
   return offered && !scope.readOnly && !scope.isBusy && scope.isReady &&
     !scope.snapshot?.event.salesClosed && scope.snapshot?.hold.owner !== 'host' &&
-    scope.snapshot?.hold.active !== true &&
+    scope.snapshot?.hold.active !== true && !isSeatLayerPickerSoldOut(scope.snapshot) &&
     scope.snapshot?.selectionValidity?.isValid !== false &&
     supportsSeatLayerPickerSurface(scope.controller, ['picker-actions-v1'], ['picker.bestAvailable']);
 }
 
 /**
- * The foot's call to action (spec §3.10.3). Full width, and carrying NOTHING
- * BUT ITS OWN LABEL — the total is on the line above it, and stating it twice
- * on one foot is how the button came to be read as a second, different price.
+ * The call to action (spec §3.10.3), carrying NOTHING BUT ITS OWN LABEL: the
+ * total stands beside the count, and stating it twice is how the button came to
+ * be read as a second, different price. In the phone's cart row it takes the
+ * row's measures; placed anywhere else it is full width.
  *
  * ONE BUTTON, TWO DOORS: with an empty cart on a phone it offers the best-seats
  * form instead of a disabled label.
@@ -180,19 +187,32 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
   const inherited = useSeatLayerSheetFinder();
   const openFinder = props.onFindBestSeats ?? inherited;
   const cta = useSeatLayerCheckoutCta(
-    flight.busy,
+    flight.busy === 'handing',
     openFinder !== undefined && bestSeatsAllowed(scope, true),
+    flight.busy === 'holding',
   );
+  const row = useSeatLayerCartBarRow();
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
   const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   const disabled = !cta.enabled;
+  const onPress = cta.findsBestSeats ? openFinder : flight.press;
+  if (row !== undefined) {
+    return <SeatLayerCartBarButton
+      cta={cta}
+      onPress={onPress}
+      paint={[styles.continueButton, sanitizeSeatLayerPickerStyle(props.style)]}
+      textSlot={styles.continueButtonText}
+      theme={theme}
+      row={row}
+    />;
+  }
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={cta.label}
       accessibilityState={{ busy: cta.busy, disabled }}
       disabled={disabled}
-      onPress={cta.findsBestSeats ? openFinder : flight.press}
+      onPress={onPress}
       testID="seatlayer-cart-checkout"
       style={{ justifyContent: 'center' }}
     >

@@ -19,6 +19,8 @@ export interface SeatLayerPickerEventDetails {
   readonly currency: string;
   readonly venue?: string;
   readonly startsAt?: number;
+  /** The start, written in the event's own timezone and the buyer's language. */
+  readonly startsAtLabel?: string;
   readonly timezone?: string;
   readonly locale?: string;
   readonly posterUrl?: string;

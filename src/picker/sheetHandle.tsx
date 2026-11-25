@@ -1,118 +1,97 @@
 import React from 'react';
-import { Animated, Pressable, View, type GestureResponderHandlers } from 'react-native';
+import { Animated, Pressable, View } from 'react-native';
 
-import { useSeatLayerPickerBlockedRegion } from './blockedRegionsContext';
+import { seatLayerCartBarSize as bar } from './cartBarRule';
+import { seatLayerPickerLineWidth } from './lineWidth';
 import type { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { seatLayerPickerTokens } from './tokens.g';
-import { seatLayerPickerSheetLayout } from './sheetLayout';
 
 type Theme = ReturnType<typeof resolveSeatLayerPickerMapChromeTheme>;
 
 /**
- * The sheet's handle: a disc straddling the sheet's own top edge, the way a
- * drawer handle sits on a drawer (spec §3.9).
+ * The cart row's circle: the one named control that opens and closes the list.
  *
- * It used to be a grab bar and, separately, a chevron in a corner — the state
- * and the control that changes it drawn as two different things. It is one
- * thing now: the chevron lives INSIDE the disc and turns over when the sheet
- * opens. White, lifted by its own shadow, `size.sheetHandleOverhang` above the
- * edge and the rest inside, with NOTHING DRAWN UNDER IT — no divider, no band.
- *
- * A port that draws the disc outside its parent's own box must make the parent
- * take the overhang into its height, or the upper half is neither painted nor
- * pressable. In React Native that is the parent's `overflow: 'visible'` plus a
- * head strip of `size.sheetHeadHeight` under it.
+ * Its arrow points up while the list is shut and turns over when it opens, so
+ * the state and the control that changes it are one thing. Drawn at 28 points,
+ * pressed over 44.
  */
 export interface SeatLayerSheetHandleProps {
   readonly expanded: boolean;
   readonly theme: Theme;
   readonly label: string;
-  /** 0 shut, 1 open; the chevron turns over it. */
+  /** 0 shut, 1 open; the arrow turns over it. */
   readonly progress: Animated.AnimatedInterpolation<number> | Animated.Value;
   readonly onPress: () => void;
-  /** The sheet's own drag runs under the whole band. */
-  readonly panHandlers?: Partial<GestureResponderHandlers>;
+  /** A seat card is asking: the circle is not drawn and its place is kept. */
+  readonly hidden: boolean;
 }
+
+const target = seatLayerPickerTokens.size.minimumHitTarget;
+const reach = (target - bar.disc) / 2;
 
 export function SeatLayerSheetHandle(props: SeatLayerSheetHandleProps): React.ReactElement {
   const { theme } = props;
-  const overhang = seatLayerPickerSheetLayout(theme).sheetHandleOverhang;
-  const head = seatLayerPickerSheetLayout(theme).sheetHeadHeight;
-  // §2.4 — the disc's upper half stands over the map's foot and takes its own
-  // touch; the map is told so it does not treat the tap as a seat press.
-  const blocked = useSeatLayerPickerBlockedRegion();
+  if (props.hidden) return <View style={{ height: bar.disc, width: bar.disc }} />;
   return (
-    <View
-      collapsable={false}
-      onLayout={blocked.onLayout}
-      pointerEvents="box-none"
-      ref={blocked.ref as never}
-      style={{
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={props.label}
+      accessibilityState={{ expanded: props.expanded }}
+      onPress={props.onPress}
+      testID="seatlayer-cart-handle"
+      style={({ pressed }) => ({
         alignItems: 'center',
-        height: overhang + head,
-        left: 0,
-        position: 'absolute',
-        right: 0,
-        top: -overhang,
-      }}
-      testID="seatlayer-cart-handle-band"
-      {...(props.panHandlers ?? {})}
+        height: target,
+        justifyContent: 'center',
+        margin: -reach,
+        opacity: pressed ? .7 : 1,
+        width: target,
+      })}
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={props.label}
-        accessibilityState={{ expanded: props.expanded }}
-        onPress={props.onPress}
-        testID="seatlayer-cart-handle"
-        style={({ pressed }) => ({
+      <View
+        accessible={false}
+        style={{
           alignItems: 'center',
-          // The disc keeps its own size whatever strip the sheet lends it: a
-          // head shorter than the disc must not squash it into an oval.
           backgroundColor: theme.colors.background,
-          borderRadius: seatLayerPickerTokens.radius.pill,
-          elevation: 3,
-          height: seatLayerPickerSheetLayout(theme).sheetHandleHeight,
+          borderColor: theme.colors.divider,
+          borderRadius: bar.disc / 2,
+          borderWidth: seatLayerPickerLineWidth,
+          height: bar.disc,
           justifyContent: 'center',
-          opacity: pressed ? .86 : 1,
-          shadowColor: '#000000',
-          shadowOffset: { height: 2, width: 0 },
-          shadowOpacity: .2,
-          shadowRadius: 5,
-          width: seatLayerPickerSheetLayout(theme).sheetHandleWidth,
-        })}
+          width: bar.disc,
+        }}
+        testID="seatlayer-cart-handle-disc"
       >
         <Animated.View
-          accessible={false}
           style={{
-            borderBottomColor: theme.colors.mutedText,
-            borderBottomWidth: 1.9,
-            borderRightColor: theme.colors.mutedText,
-            borderRightWidth: 1.9,
-            height: chevronArm,
-            // Points UP while shut, and turns over on `motion.duration.chevron`
-            // when the sheet opens: the state and the control are one thing.
-            marginTop: 3,
-            transform: [{ rotate: interpolateTurn(props.progress) }],
-            width: chevronArm,
+            alignItems: 'center',
+            height: bar.chevron,
+            justifyContent: 'center',
+            transform: [{ rotate: turned(props.progress) }],
+            width: bar.chevron,
           }}
-        />
-      </Pressable>
-    </View>
+        >
+          <View style={{
+            borderColor: theme.colors.text,
+            borderLeftWidth: stroke,
+            borderTopLeftRadius: stroke / 2,
+            borderTopWidth: stroke,
+            height: arm,
+            // Half of the corner's own height, so the arrow stands in the middle.
+            marginTop: arm * Math.SQRT1_2,
+            transform: [{ rotate: '45deg' }],
+            width: arm,
+          }} />
+        </Animated.View>
+      </View>
+    </Pressable>
   );
 }
 
-function interpolateTurn(
-  progress: SeatLayerSheetHandleProps['progress'],
-): Animated.AnimatedInterpolation<string> {
-  return (progress as Animated.Value).interpolate({
-    inputRange: [0, 1],
-    outputRange: ['225deg', '45deg'],
-  });
+function turned(progress: SeatLayerSheetHandleProps['progress']): Animated.AnimatedInterpolation<string> {
+  return (progress as Animated.Value).interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
 }
 
-/**
- * Arm of the chevron, measured corner to corner: two edges of a square turned
- * 45 degrees span the square's own side times root two, so the arm is the
- * reference's sixteen-point chevron divided back down rather than the sixteen.
- */
-const chevronArm = 5.6;
+/** The arrow is 12 by 6 in a box of 24, with a stroke of 2.6. */
+const stroke = 2.6 * bar.chevron / 24;
+const arm = 6 * Math.SQRT2 * bar.chevron / 24 + stroke;

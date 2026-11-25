@@ -48,7 +48,7 @@ import { SeatLayerMapControls, seatLayerPickerMapControlsEdgeInset, seatLayerPic
 import { SeatLayerPickerChart } from './SeatLayerPickerChart';
 import { SeatLayerPickerGAPrompt, SeatLayerPickerTablePrompt } from './SeatLayerPickerDecisionPrompts';
 import { createSeatLayerPickerTableCandidate } from './decisionPrompts';
-import { isSeatLayerPickerSnapshotEmpty } from './emptyState';
+import { isSeatLayerPickerSnapshotEmpty, isSeatLayerPickerSoldOut } from './emptyState';
 import { SeatLayerPickerHeader } from './header';
 import { SeatLayerPickerHoldCountdown } from './SeatLayerPickerHoldCountdown';
 import { SeatLayerPickerHaptics } from './SeatLayerPickerHaptics';
@@ -344,7 +344,9 @@ export function SeatLayerPickerAdaptiveLayout({
   const phoneInsetsVisible = !wide && (phoneBands.top > 0 || phoneBands.bottom > 0);
   const fatal = !scope.isReady && scope.error !== undefined;
   const emptySnapshot = scope.isReady && isSeatLayerPickerSnapshotEmpty(snapshot);
-  const ticketPanelVisible = plan.options.chrome.cartSheet && !emptySnapshot;
+  // On a phone the sold-out statement covers the map alone, and the row stays.
+  const phoneSoldOut = !wide && scope.isReady && isSeatLayerPickerSoldOut(snapshot);
+  const ticketPanelVisible = plan.options.chrome.cartSheet && (phoneSoldOut || !emptySnapshot);
   const pendingId = typeof scope.pendingSeat?.id === 'string' ? scope.pendingSeat.id : undefined;
   const candidateEpoch = pendingId === undefined ? undefined : seatLayerPickerPendingCandidateEpochFor({
     id: pendingId,
@@ -616,7 +618,7 @@ export function SeatLayerPickerAdaptiveLayout({
     ? part(builders, scope, 'error', <SeatLayerPickerErrorView />)
     : !scope.isReady || !framed
       ? part(builders, scope, 'loading', <SeatLayerPickerLoadingView framed={framed} />)
-      : emptySnapshot
+      : emptySnapshot && !phoneSoldOut
         ? part(builders, scope, 'empty', <SeatLayerPickerEmptyView />)
         : null;
   // §3.13.13 — the hand-off notice is its own inline statement, never the
@@ -670,6 +672,7 @@ export function SeatLayerPickerAdaptiveLayout({
     { rung: 'dock', mounted: dock !== null },
     { rung: 'dock', mounted: wide && sections !== null },
     { rung: 'prompt', mounted: status === null && !immersiveInspectionVisible },
+    { rung: 'notice', mounted: !wide, suffix: 'sold-out' },
     { rung: 'notice', mounted: true, suffix: 'toast' },
     { rung: 'notice', mounted: status !== null, suffix: 'status' },
     { rung: 'notice', mounted: !wide, suffix: 'foot' },
@@ -756,6 +759,7 @@ export function SeatLayerPickerAdaptiveLayout({
               : seatLayerPickerColorAlpha(scope.resolvedTheme.colors.surface, .64)}
             sessionId={`${scope.sessionId}:${snapshot?.sessionId ?? ''}`}
           /> : null, { overlay: true })}
+          {wide ? null : ordered('notice', <SeatLayerPickerSoldOutOverlay />, { overlay: true, suffix: 'sold-out' })}
           {ordered('notice', toastLayer, { overlay: true, suffix: 'toast' })}
           {status === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'status')} style={[styles.owner, {
             backgroundColor: seatLayerPickerColorAlpha(
@@ -775,7 +779,7 @@ export function SeatLayerPickerAdaptiveLayout({
         </View>
       </View>
       <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('notice', 'states')} pointerEvents="box-none" style={styles.phoneOverlays}>
-        <SeatLayerPickerSoldOutOverlay />
+        {wide ? <SeatLayerPickerSoldOutOverlay /> : null}
         {plan.options.showBookedOverlay ? <SeatLayerPickerBookedOverlay onBackToMap={onClose} /> : null}
         <SeatLayerPickerAccessPanel hostOwnsRecovery={hostOwnsAccessRecovery} />
       </View>

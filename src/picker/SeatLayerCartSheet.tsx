@@ -1,4 +1,5 @@
 import React, {
+  isValidElement,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -27,7 +28,6 @@ import { SeatLayerHoldLapseNotice } from './SeatLayerHoldLapseNotice';
 import {
   seatLayerPickerCardAsking, useSeatLayerPickerSeatRemovalSeat,
 } from './seatConfirmationRemoval';
-import { SeatLayerSheetHandle } from './sheetHandle';
 import { SeatLayerSheetFoot } from './sheetFoot';
 import { SeatLayerBookButton } from './checkoutButton';
 import { SeatLayerSheetFinderProvider } from './sheetFinder';
@@ -59,6 +59,7 @@ import {
   type SeatLayerPickerStyles,
 } from './styles';
 import { seatLayerPickerTypeScaleClamp } from './a11y';
+import { seatLayerCartBarSize } from './cartBarRule';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerSheetLayout } from './sheetLayout';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
@@ -76,10 +77,9 @@ import { seatLayerPickerLineWidth } from './lineWidth';
  * the foot that carries it was hidden at peek. PORTS MUST NOT REINTRODUCE A
  * PEEK BAR.
  *
- * Collapsed it is the handle, the total line, the button and the by-line; the
- * cards wait behind the handle. Opening lifts the cart's cap and adds what
- * there is no room to read at peek: the closed-sales statement and, on an empty
- * cart, the best-seats form.
+ * Collapsed it is one row: the circle, what the cart holds, the button. The
+ * cards wait behind the circle, and with them what there is no room to read in
+ * a row: the closed-sales statement and, on an empty cart, the best-seats form.
  *
  * It never opens itself. A sheet that springs up when a seat is picked covers
  * the map the buyer is still choosing from.
@@ -135,23 +135,17 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     props.safeAreaInsets === undefined ? { bottom: props.safeAreaBottomInset } : props.safeAreaInsets,
     window,
   );
-  // A phone that takes no room at its foot still keeps the button off the
-  // glass's edge.
-  const inset = reserve ? Math.max(safeInsets.bottom, seatLayerPickerTokens.size.footMinInset) : 0;
+  const inset = reserve ? safeInsets.bottom : 0;
   const runtimeSession = scope.snapshot?.sessionId;
   const projection = useMemo(
     () => projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat),
     [scope.pendingSeat, scope.snapshot],
   );
   const hasTickets = projection.confirmed.items.length > 0;
-  // The handle leaves while a confirm card is up: the disc sat half under the
-  // card's scrim, and the card is the only question on the screen until it is
-  // answered.
+  // §3.8.1 — the ONE boolean: an add card or a remove card is asking about a
+  // seat, and nothing in the row can be pressed until it is answered.
   const removalSeat = useSeatLayerPickerSeatRemovalSeat();
-  // §3.8.1 — the ONE boolean. The handle used to read `pendingSeat` alone,
-  // which left it drawn under the REMOVE card: a second thing to press while
-  // the card is the only question on screen.
-  const confirming = seatLayerPickerCardAsking(scope, removalSeat);
+  const asking = seatLayerPickerCardAsking(scope, removalSeat);
 
   // Everything that is NOT the cart region, measured rather than assumed: the
   // foot grows with the platform's text size, with a lapse notice and with an
@@ -159,12 +153,15 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
   const [footHeight, setFootHeight] = useState(0);
   const [cartNatural, setCartNatural] = useState(0);
   const [extrasNatural, setExtrasNatural] = useState(0);
-  const headHeight = seatLayerPickerSheetLayout(theme).sheetHeadHeight;
-  const chrome = headHeight + footHeight + inset;
+  const chrome = footHeight + inset;
   const ceilings = seatLayerCartSheetCeilings(window.height, chrome, hasTickets, theme.layout);
-  // THREE CARDS AND A SLIVER OF THE FOURTH, open or shut: the cart scrolls
-  // inside its own box and the map keeps its room.
-  const openNatural = Math.min(cartNatural, seatLayerPickerSheetLayout(theme).cartPeekMaxHeight) + extrasNatural;
+  // The list scrolls inside its own box and the map keeps its room. An app's
+  // own cap is honoured.
+  const appCap = seatLayerPickerSheetLayout(theme).cartPeekMaxHeight;
+  const openNatural = Math.min(
+    cartNatural + extrasNatural,
+    appCap === seatLayerPickerTokens.size.cartPeekMaxHeight ? seatLayerCartBarSize.listMaxHeight : appCap,
+  );
   const detents = useMemo(() => seatLayerSheetDetents({
     content: Math.max(0, Math.min(openNatural, ceilings.body)),
     full: Math.max(0, Math.min(openNatural, ceilings.full)),
@@ -309,6 +306,16 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     return () => animation.stop();
   }, [disclosure, props.expanded, reducedMotion]);
 
+  // A new seat closes the list: the buyer is back on the map, and the row
+  // says what the cart holds now.
+  const seatCount = projection.confirmed.items.length;
+  const seatsBefore = useRef(seatCount);
+  useEffect(() => {
+    const grew = seatCount > seatsBefore.current;
+    seatsBefore.current = seatCount;
+    if (grew && detentRef.current !== 'peek') settleRef.current('peek', 0);
+  }, [seatCount]);
+
   const ask = (open: boolean) => settleRef.current(open ? 'content' : 'peek', 0);
   const cartList = props.cartList === undefined ? <SeatLayerCartList /> : props.cartList;
   const bestSeats = props.bestSeats === undefined
@@ -328,9 +335,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
 
   return (
     <View
-      // The disc's upper half is drawn OUTSIDE this box; a clipped parent
-      // neither paints nor hit-tests it.
-      style={[{ overflow: 'visible' }, sanitizeSeatLayerPickerStyle(props.style)]}
+      style={sanitizeSeatLayerPickerStyle(props.style)}
       testID="seatlayer-cart-sheet"
     >
       {/* The empty cart's way in to the best-seats form. Still a FORM, not a
@@ -343,27 +348,14 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           if (!props.expanded) setCollapsedHeight(event.nativeEvent.layout.height);
         }}
         style={[{
-          // The PANEL'S own ground, not the card's: the cards inside are on
-          // `surface`, and a sheet painted the same colour would leave them
-          // with nothing to sit on.
-          backgroundColor: theme.roles.sheet.background,
-          // A hairline and nothing else above it: an upward shadow read as a
-          // grey band over the map on a phone.
+          // The picker's own ground, and one line over it. No shadow: an
+          // upward one reads as a grey band over the map.
+          backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.divider,
-          borderTopLeftRadius: seatLayerPickerTokens.radius.sheet,
-          borderTopRightRadius: seatLayerPickerTokens.radius.sheet,
           borderTopWidth: seatLayerPickerLineWidth,
-          // A HAIRLINE AND NOTHING ELSE ABOVE IT. The web's upward shadow
-          // read as a grey band over the map on a phone — a few points of
-          // nothing between the venue and the handle — and the disc is lifted
-          // by its own shadow instead.
-          elevation: seatLayerPickerTokens.elevation.sheet,
           paddingBottom: inset,
         }, styles.sheetContainer]}
       >
-        {/* The lower half of the handle, and NOTHING DRAWN UNDER IT: no
-            divider, no band. */}
-        <View style={{ height: headHeight }} testID="seatlayer-cart-head-strip" />
         <Animated.View style={{ height: body, overflow: 'hidden' }} testID="seatlayer-cart-region">
           <ScrollView
             // The list scrolls inside its own box rather than pushing the
@@ -414,32 +406,31 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           </ScrollView>
         </Animated.View>
         <View onLayout={(event) => setFootHeight(event.nativeEvent.layout.height)}>
+          {props.expanded ? <View style={{ backgroundColor: theme.colors.divider, height: seatLayerPickerLineWidth }} /> : null}
           <SeatLayerSheetFoot
             actionError={actionError}
+            asking={asking}
             checkoutBar={checkoutBar}
-            collapsed={!props.expanded}
-            divider={props.expanded && hasTickets}
+            checkoutBarIsCustom={!isOwnButton(checkoutBar)}
+            expanded={props.expanded}
             holdLapse={holdLapse}
             {...(props.cartLanding === undefined ? {} : { landing: props.cartLanding })}
-            onOpenCart={() => ask(true)}
-            totalStyle={styles.peekSummaryText}
+            onToggle={() => ask(!props.expanded)}
+            panHandlers={pan.panHandlers}
+            progress={disclosure}
+            styles={styles}
+            toggleLabel={toggleLabel}
+            width={window.width - safeInsets.left - safeInsets.right}
           />
         </View>
       </View>
       </Animated.View>
       </SeatLayerSheetFinderProvider>
-      {confirming
-        ? null
-        : (
-          <SeatLayerSheetHandle
-            expanded={props.expanded}
-            label={toggleLabel}
-            onPress={() => ask(!props.expanded)}
-            panHandlers={pan.panHandlers}
-            progress={disclosure}
-            theme={theme}
-          />
-        )}
     </View>
   );
+}
+
+/** The ready-made button, which the row measures; anything else is an app's own part. */
+function isOwnButton(part: ReactNode): boolean {
+  return isValidElement(part) && part.type === SeatLayerBookButton;
 }
