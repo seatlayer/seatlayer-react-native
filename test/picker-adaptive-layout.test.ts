@@ -358,7 +358,7 @@ describe('adaptive picker composition', () => {
     state.width = 320;
     const first = scope({ isReady: false, snapshot: {
       categories: [{}], capabilities: ['venue3d'], sections: [{ id: 's1', label: 'One' }],
-      map: { floors: [{}, {}], buyerView: 'venue3d', rung: 'seats', focusedSectionId: 's1' }, event: { mode: 'test' },
+      map: { floors: [{}, {}], buyerView: 'venue3d', rung: 'seats', focusedSectionId: 's1', view3DTargetSeatId: 'a' }, event: { mode: 'test' },
     } });
     state.scope = first;
     let tree!: TestRenderer.ReactTestRenderer;
@@ -1093,9 +1093,30 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('lets the test badge stand on the top line of a 3D scene with nothing else there', async () => {
+    const badgeTop = async (map: object, bridgeConfig?: object, layout?: string) => {
+      state.scope = scope({ bridgeConfig, snapshot: {
+        categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, sections: [],
+        map: { floors: [], buyerView: 'venue3d', ...map },
+      } });
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+        onCheckout: checkout, ...(layout === undefined ? {} : { options: { layout } }),
+      })); });
+      const top = tree.root.findByType('test-badge' as any).parent?.props.style[1].top;
+      await act(async () => { tree.unmount(); });
+      return top;
+    };
+    expect(await badgeTop({})).toBe(8);
+    expect(await badgeTop({ view3DTargetSeatId: 'a' })).toBe(56);
+    expect(await badgeTop({}, { touchNavigation3D: 'classic' })).toBe(56);
+    expect(await badgeTop({}, undefined, 'wide')).toBe(12);
+    expect(await badgeTop({ view3DTargetSeatId: 'a' }, undefined, 'wide')).toBe(62);
+  });
+
   it('uses the venue back-target offset for a wide test badge without map framing', async () => {
     const current = scope({
-      snapshot: { categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, map: { floors: [], buyerView: 'venue3d' } },
+      snapshot: { categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, map: { floors: [], buyerView: 'venue3d', view3DTargetSeatId: 'a' } },
     });
     state.scope = current;
     let tree!: TestRenderer.ReactTestRenderer;
