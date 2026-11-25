@@ -55,7 +55,6 @@ export function SeatLayerPickerTestModeIndicatorView(props: SeatLayerPickerTestM
   return <View
     accessibilityRole="text"
     accessibilityLabel={spoken}
-    accessibilityHint={props.strings.translate("testModeExplained")}
     style={[
       styles.root,
       props.compact ? styles.compact : styles.wide,

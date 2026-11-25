@@ -202,7 +202,7 @@ describe("picker status chrome", () => {
     // 3.4: the chip is painted on the warning WASH over the surface, not on the
     // raw warning colour, and the accessible name is the long form.
     const chip = renderer.root.findByProps({ accessibilityLabel: "Test mode · books nothing" });
-    expect(chip.props.accessibilityHint).toBe("testModeExplained");
+    expect(chip.props.accessibilityHint).toBeUndefined();
     const word = renderer.root.findAllByType("Text" as any)[0]!;
     // Never larger than its chip, and never cut at its own line.
     const drawn = Object.assign({}, ...(word.props.style as object[])) as { lineHeight: number; paddingVertical: number; marginVertical: number };
