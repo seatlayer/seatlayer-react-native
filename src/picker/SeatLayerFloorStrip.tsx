@@ -287,7 +287,6 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
     borderRadius: seatLayerPickerTokens.size.minimumHitTarget / 2,
     flexGrow: 0,
     marginHorizontal: seatLayerPickerTokens.size.floorRailPadding,
-    overflow: 'hidden',
   },
   scroll: { alignItems: 'center', gap: seatLayerPickerTokens.size.floorRailGap },
   target: { minWidth: seatLayerPickerTokens.size.minimumHitTarget, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center' },
