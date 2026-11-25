@@ -157,6 +157,32 @@ describe('standalone picker controls', () => {
     }
   });
 
+  it('flows the discs into a second column on a map too short for one', async () => {
+    setup(); let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerMapControls, compactControls));
+    });
+    const columns = () => renderer.root.findAllByType('View' as never)
+      .filter((node) => node.props.style?.alignItems === 'flex-end' && node.props.style.minHeight === undefined
+        && node.props.style.position === undefined && node.props.style.flexDirection === undefined)
+      .map((node) => node.findAll((inner) => ['zoomIn', 'fitWholeVenue'].includes(inner.props.accessibilityLabel)
+        && inner.props.accessibilityRole === 'button').map((inner) => inner.props.accessibilityLabel));
+    const layout = async (height: number) => {
+      const surface = renderer.root.findAll((node) => (node.type as unknown) === 'View'
+        && typeof node.props.onLayout === 'function')[0]!;
+      await act(async () => { surface.props.onLayout({ nativeEvent: { layout: { height } } }); });
+    };
+    await layout(600);
+    expect(columns().length).toBe(1);
+    await layout(70);
+    expect(columns().length).toBeGreaterThan(1);
+    // The foot of the column stays in the corner, the rest goes beside it.
+    const all = columns();
+    expect(all[all.length - 1]).toContain('fitWholeVenue');
+    await layout(50);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' })).toHaveLength(0);
+  });
+
   it('never reads an ABSENT camera field as a ceiling', async () => {
     // `canZoomIn` is present-only: an older runtime leaves the key off, and
     // absent means "the engine cannot say", never "no".

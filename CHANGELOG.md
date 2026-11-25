@@ -45,6 +45,8 @@ stay; the changes below are the ones an app or a buyer can notice.
   zoom in to, where it left a gap between the other two buttons. The accessibility
   button stands over the others, 4 points further in, and is pressed over 44
   points.
+- On a map too short for one column of them, as sideways with the list open,
+  these buttons stand beside one another, and are never over Map/3D.
 - When sales close, a buyer who holds seats can still continue to checkout. With
   no seats held the row says "Sales are closed" and the event's date, and has no
   button. `snapshot.event.startsAtLabel` carries that date.

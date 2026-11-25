@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, type ReactNode } from 'react';
+import React, { useMemo, useRef, useState, type ReactNode } from 'react';
 import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import {
@@ -116,6 +116,26 @@ export function planSeatLayerMapBottomControls(
   const count = Number.isFinite(members) ? Math.max(0, Math.trunc(members)) : 0;
   if (count === 0) return Object.freeze({ height: 0 });
   return Object.freeze({ height: count * target + (count - 1) * zoomColumnGap });
+}
+
+/**
+ * How many discs one column of them has room for: those over the first stand in
+ * a second column beside it, so none is drawn over the Map/3D control. A map too
+ * short for one disc has none.
+ */
+export function seatLayerMapDiscsPerColumn(input: Readonly<{
+  /** Not known before the first layout. */
+  mapHeight: number | undefined;
+  bottom: number;
+  viewControl: boolean;
+  discSize: number;
+}>): number {
+  if (input.mapHeight === undefined) return Number.POSITIVE_INFINITY;
+  const ceiling = input.viewControl
+    ? seatLayerPickerMapControlsRailTop + seatLayerPickerTokens.size.viewModeControlHeight + controlGap
+    : seatLayerPickerMapControlsEdgeInset;
+  const room = input.mapHeight - input.bottom - ceiling;
+  return Math.max(0, Math.floor((room + zoomColumnGap) / (input.discSize + zoomColumnGap)));
 }
 
 type MapCameraReading = Readonly<{
@@ -432,6 +452,7 @@ function SeatLayerMapControlsView({
   readonly accessibleStepper?: ReactNode;
 }): React.ReactElement {
   const bottom = edgeInset + bottomInset;
+  const [mapHeight, setMapHeight] = useState<number | undefined>(undefined);
   const discBed = seatLayerPickerMapControlsDiscBed;
   const onMap = buyerView === 'map';
   const usableZoomInLabel = typeof zoomInLabel === 'string' ? zoomInLabel.trim() : '';
@@ -535,29 +556,24 @@ function SeatLayerMapControlsView({
   // the column and its foot have the same reach and the token gap is measured
   // between the DISCS. The anchor takes the reach back on both axes: the
   // region's inset is measured to the disc, not to the target around it.
-  const member = (child: ReactNode, first: boolean) => (
-    <View
-      pointerEvents="box-none"
-      style={{
-        alignItems: 'flex-end',
-        justifyContent: 'center',
-        marginTop: first ? 0 : zoomColumnGap - discBed * 2,
-        minHeight: target,
-      }}
-    >
-      {child}
-    </View>
-  );
-  const columnMembers: ReactNode[] = [];
-  if (onMap && head !== null) columnMembers.push(member(head, columnMembers.length === 0));
-  if (onMap && zoomInSlotAvailable) {
-    columnMembers.push(member(phoneZoomIn, columnMembers.length === 0));
-  }
-  if (onMap && wholeVenueAvailable) {
-    columnMembers.push(member(wholeVenue, columnMembers.length === 0));
+  const members: ReactNode[] = [];
+  if (onMap && head !== null) members.push(head);
+  if (onMap && zoomInSlotAvailable) members.push(phoneZoomIn);
+  if (onMap && wholeVenueAvailable) members.push(wholeVenue);
+  const each = seatLayerMapDiscsPerColumn({
+    mapHeight, bottom, viewControl: view !== null, discSize: seatLayerPickerTokens.size.mapControlSize,
+  });
+  // Filled from the foot of the end column; what is left goes towards the start.
+  const columns: ReactNode[][] = [];
+  if (each > 0) {
+    for (let end = members.length; end > 0; end -= each) columns.unshift(members.slice(Math.max(0, end - each), end));
   }
   return (
     <View
+      onLayout={(event) => {
+        const next = event.nativeEvent.layout.height;
+        if (Number.isFinite(next) && next > 0) setMapHeight(next);
+      }}
       pointerEvents={cardAsking ? 'none' : 'box-none'}
       style={[
         { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
@@ -584,20 +600,35 @@ function SeatLayerMapControlsView({
           {view}
         </SeatLayerPickerBlockedRegion>
       ) : null}
-      {cardAsking ? null : columnMembers.length > 0 ? (
+      {cardAsking || columns.length === 0 ? null : (
         <SeatLayerPickerBlockedRegion
           style={{
             alignItems: 'flex-end',
             bottom: bottom - discBed,
             end: edgeInset - discBed,
+            flexDirection: 'row',
+            gap: zoomColumnGap - discBed * 2,
             position: 'absolute',
           }}
         >
-          {columnMembers.map((entry, index) => (
-            <React.Fragment key={index}>{entry}</React.Fragment>
+          {columns.map((column, index) => (
+            <View key={index} pointerEvents="box-none" style={{ alignItems: 'flex-end' }}>
+              {column.map((entry, position) => (
+                <View
+                  key={position}
+                  pointerEvents="box-none"
+                  style={{
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    marginTop: position === 0 ? 0 : zoomColumnGap - discBed * 2,
+                    minHeight: target,
+                  }}
+                >{entry}</View>
+              ))}
+            </View>
           ))}
         </SeatLayerPickerBlockedRegion>
-      ) : null}
+      )}
       {onMap && canOverview ? (
         <SeatLayerPickerBlockedRegion style={{ position: 'absolute', start: edgeInset - discBed, top: edgeInset - discBed }}>
           {overview}
