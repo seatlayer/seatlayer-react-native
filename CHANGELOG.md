@@ -59,6 +59,7 @@ stay; the changes below are the ones an app or a buyer can notice.
   chip it was put on with. Its dot is grey, it is drawn at full strength while it
   is chosen, and a screen reader hears "Sold out".
 - The word on the "Test mode" badge is not cut at a large text size.
+- A screen reader reads the "Test mode" badge's name and no sentence after it.
 - On a phone the levels of a venue stand at the top of the map as one pill, under
   the Map / 3D control, and the "Test mode" badge one line lower. The list in the
   bottom corner is drawn only with `chrome.floorStrip: false` or where an app
