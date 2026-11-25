@@ -453,7 +453,7 @@ export function SeatLayerPickerAccessibilityFilters(
         visible={open}
         title={scope.strings.translate("accessibilityTitle")}
         closeLabel={scope.strings.translate("close")}
-        viewGroupTitle={scope.strings.translate("viewGroupTitle")}
+        needsTitle={scope.strings.translate("showSeatsFor")}
         screenHeight={viewport.height}
         theme={theme}
         slots={slots}

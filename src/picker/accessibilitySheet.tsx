@@ -56,8 +56,8 @@ export interface SeatLayerPickerAccessSheetProps {
   readonly visible: boolean;
   readonly title: string;
   readonly closeLabel: string;
-  /** The heading over the two map switches — `strings.viewGroupTitle`. */
-  readonly viewGroupTitle: string;
+  /** The heading over the provisions, in the capitals its translator wrote. */
+  readonly needsTitle: string;
   readonly theme: SeatLayerPickerThemeData;
   readonly slots: SeatLayerPickerStyles;
   readonly safeAreaInsets: SeatLayerPickerSafeAreaInsets;
@@ -167,37 +167,35 @@ export function SeatLayerPickerAccessibilitySheet(
             >
               {props.title}
             </Text>
-            {/* ONLY the provision list scrolls. The View group is a fixed foot
-                under it, so the two map switches never scroll out of reach of
-                a buyer who is twelve rows down the vocabulary. */}
-            {props.needRows.length > 0
-              ? (
-                <ScrollView
-                  contentContainerStyle={styles.list}
-                  style={styles.listBox}
-                >
-                  {props.needRows.map((row) => (
-                    <AccessRow key={row.key} row={row} {...rowProps} />
-                  ))}
-                </ScrollView>
-              )
-              : null}
-            {props.switchRows.length > 0
-              ? (
-                <Text
-                  accessibilityRole="header"
-                  style={[styles.groupTitle, {
-                    color: props.theme.colors.mutedText,
-                    fontFamily: props.theme.fontFamily,
-                  }]}
-                >
-                  {props.viewGroupTitle}
-                </Text>
-              )
-              : null}
+            {/* The two map switches come first and the provisions sit under
+                their own heading, so the switches never read as two more
+                provisions at the foot of the list. Only the list scrolls. */}
             {props.switchRows.map((row) => (
               <AccessRow key={row.key} row={row} {...rowProps} />
             ))}
+            {props.needRows.length > 0
+              ? (
+                <>
+                  <Text
+                    accessibilityRole="header"
+                    style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, {
+                      color: props.theme.colors.mutedText,
+                      fontFamily: props.theme.fontFamily,
+                    }]}
+                  >
+                    {props.needsTitle}
+                  </Text>
+                  <ScrollView
+                    contentContainerStyle={styles.list}
+                    style={styles.listBox}
+                  >
+                    {props.needRows.map((row) => (
+                      <AccessRow key={row.key} row={row} {...rowProps} />
+                    ))}
+                  </ScrollView>
+                </>
+              )
+              : null}
           </Pressable>
         </View>
       </View>
@@ -499,11 +497,11 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   groupTitle: {
     fontSize: 11,
     fontWeight: "700",
-    letterSpacing: .6,
+    letterSpacing: 11 * size.accessGroupHeadingTracking,
     paddingBottom: 4,
     paddingHorizontal: 8,
-    paddingTop: 18,
   },
+  groupTitleUnder: { paddingTop: 18 },
   rowWrap: { alignSelf: "stretch" },
   row: {
     minHeight: rowHeight,

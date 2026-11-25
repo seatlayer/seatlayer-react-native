@@ -59,6 +59,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   chip it was put on with. Its dot is grey, it is drawn at full strength while it
   is chosen, and a screen reader hears "Sold out".
 - The word on the "Test mode" badge is not cut at a large text size.
+- The accessibility sheet starts with the two map switches, and the kinds of
+  seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
+  of `viewGroupTitle` changes nothing now.
 - With no close button, the hold clock and the "Sales are closed" pill stand
   eight points clear of the header's edge.
 - In the 3D venue the status bar stands on the dark ground its light text is

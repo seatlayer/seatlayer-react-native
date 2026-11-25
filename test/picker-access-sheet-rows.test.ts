@@ -91,7 +91,7 @@ function setup(options: {
           colorblindSafe: english.colorblindSafe,
           companionSeatsNote: english.companionSeatsNote,
           notAvailable: english.notAvailable,
-          viewGroupTitle: english.viewGroupTitle,
+          showSeatsFor: 'SHOW SEATS FOR',
           accessJumpFirstSection: english.accessJumpFirstSection,
         };
         return table[key] ?? key;
@@ -236,7 +236,7 @@ describe('one aligned list of fixed rows (§3.5, Flutter 0.9.0/0.9.1)', () => {
     expect(runtime.calls).toEqual([['filter']]);
   });
 
-  it('closes each row with a hairline, and the last row of the sheet without one', async () => {
+  it('closes each row with a hairline, and the last map switch without one', async () => {
     setup();
     const renderer = await openSheet();
     expect(styleOf(row(renderer, 'wheelchair')).borderBottomWidth).toBeGreaterThan(0);
@@ -255,14 +255,19 @@ describe('one aligned list of fixed rows (§3.5, Flutter 0.9.0/0.9.1)', () => {
     expect(runtime.calls).toEqual([['filter', 'wheelchair']]);
   });
 
-  it('heads the two map switches with the View group, and omits it where they are absent', async () => {
+  it('puts the two map switches first, and a heading over the provisions', async () => {
     setup();
-    const withView = await openSheet();
-    expect(withView.root.findAllByProps({ children: english.viewGroupTitle })).not.toHaveLength(0);
+    const renderer = await openSheet();
+    const drawn = JSON.stringify(renderer.toJSON());
+    const order = [english.hideLimitedView, english.colorblindSafe, 'SHOW SEATS FOR', 'wheelchair']
+      .map((words) => drawn.indexOf(`"${words}"`));
+    expect(order.every((at) => at >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(renderer.root.findAllByProps({ children: english.viewGroupTitle })).toHaveLength(0);
 
     setup({ view: false });
     const without = await openSheet();
-    expect(without.root.findAllByProps({ children: english.viewGroupTitle })).toHaveLength(0);
+    expect(without.root.findAllByProps({ children: 'SHOW SEATS FOR' })).not.toHaveLength(0);
   });
 });
 

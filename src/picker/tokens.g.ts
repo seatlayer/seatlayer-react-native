@@ -589,6 +589,7 @@ export const seatLayerPickerTokens = {
     "selectTable": "Select table",
     "selectTicketTier": "Select a ticket type",
     "showLess": "Show less",
+    "showSeatsFor": "SHOW SEATS FOR",
     "sightline": "≈ {m} m to stage",
     "soldOutCopy": "No reserved seats are currently available for this event.",
     "soldOutEyebrow": "This event",
