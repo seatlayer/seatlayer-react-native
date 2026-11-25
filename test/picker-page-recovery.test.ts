@@ -209,8 +209,8 @@ describe('a page the system ended', () => {
     await flush();
     expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
     push(picker, 3, { active: false }, 'page-2');
-    expect(booked).toHaveBeenCalledTimes(1);
-    expect(booked).toHaveBeenCalledWith(expect.objectContaining({ holdId: 'hold-9' }));
+    expect(booked).not.toHaveBeenCalled();
+    expect(picker.getCheckoutHandoff()).toBeUndefined();
     picker.dispose();
   });
 
@@ -287,8 +287,7 @@ describe('a page the system ended', () => {
       await flush();
       expect(picker.getSnapshot()?.hold).toMatchObject({ active: true, expiresAt: 9_000 });
       expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
-      push(picker, 3, { active: false }, 'page-2');
-      expect(booked).toHaveBeenCalledTimes(1);
+      expect(booked).not.toHaveBeenCalled();
       expect(vi.getTimerCount()).toBe(0);
       picker.dispose();
     });

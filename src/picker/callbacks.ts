@@ -28,10 +28,11 @@ export interface SeatLayerPickerCallbacks {
   ) => void | Promise<void>;
   readonly onHoldExpired?: () => void | Promise<void>;
   /**
-   * The handed-off hold settled to booked — the sale landed. It fires once,
-   * never on the hand-off itself: a buyer on the way to pay has not paid
-   * (§3.13). A host drawing its own confirmation screen listens here and sets
-   * `showBookedOverlay: false`.
+   * The page said the handed-off hold is booked, which it does after your
+   * server has booked and you call `markBooked`. Once per sale, and never on
+   * the hand-off: a buyer on the way to pay has not paid. Take a sale from your
+   * own server, never from here. A host drawing its own confirmation screen
+   * listens here and sets `showBookedOverlay: false`.
    */
   readonly onBooked?: (handoff: SeatLayerPickerCheckoutHandoff) => void | Promise<void>;
   readonly onAccessExpired?: (event: BuyerAccessExpiredEvent) => void | Promise<void>;

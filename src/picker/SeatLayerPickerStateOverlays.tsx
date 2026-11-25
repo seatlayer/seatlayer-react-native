@@ -77,8 +77,8 @@ export interface SeatLayerPickerBookedOverlayProps extends SeatLayerPickerStateO
 
 /**
  * §3.13.10. Never shown on the hand-off: a buyer on the way to pay has not
- * paid. It appears only once the handed-off hold has settled to booked, which
- * the controller decides from the runtime's own expiry signal (§3.13).
+ * paid. It appears only once the page has said the handed-off hold is booked,
+ * after `controller.markBooked`.
  */
 export function SeatLayerPickerBookedOverlay(
   props: SeatLayerPickerBookedOverlayProps,

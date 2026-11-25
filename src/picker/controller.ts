@@ -133,21 +133,9 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private readonly seatRetapListeners = new Set<SeatLayerPickerSeatRetapListener>();
   private readonly booked = new SeatLayerPickerBookedDetector();
   private readonly bookedListeners = new Set<SeatLayerPickerBookedListener>();
-  private readonly unsubscribeHoldExpiry = this.mapController.on(
-    'holdExpired',
-    () => this.booked.expired(),
+  private readonly unsubscribeBookedWatch = this.subscribe(
+    () => this.booked.observe(this.getSnapshot()),
   );
-  private readonly unsubscribeBookedWatch = this.subscribe(() => {
-    const handoff = this.booked.observe(this.getSnapshot());
-    if (handoff === undefined) return;
-    for (const listener of [...this.bookedListeners]) {
-      try {
-        listener(handoff);
-      } catch {
-        // A host listener cannot break the snapshot pump.
-      }
-    }
-  });
   private readonly unsubscribeChartLoad = this.mapController.on('unknownEvent', ({ name, payload }) => {
     if (name === 'telemetry.chartLoad') this.chartLoads.accept(payload);
     if (
@@ -331,7 +319,6 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
 
   override dispose(): void {
     this.forgetResume();
-    this.unsubscribeHoldExpiry();
     this.unsubscribeBookedWatch();
     this.bookedListeners.clear();
     this.unsubscribeChartLoad();
@@ -361,7 +348,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   getCheckoutHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
     this.booked.pendingHandoff;
 
-  /** The handoff whose hold settled to booked, once the sale has landed. */
+  /** The handoff the page said is booked, after `markBooked`. */
   getBookedHandoff = (): SeatLayerPickerCheckoutHandoff | undefined =>
     this.booked.bookedHandoff;
 
@@ -415,6 +402,17 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     }).then(() => undefined);
   }
 
+  private bookedByPage(handoff: SeatLayerPickerCheckoutHandoff): void {
+    if (!this.booked.said(handoff)) return;
+    for (const listener of [...this.bookedListeners]) {
+      try {
+        listener(handoff);
+      } catch {
+        // A host listener cannot break the call that booked.
+      }
+    }
+  }
+
   /** Whether the open page can be told that a hold is booked. */
   get supportsMarkBooked(): boolean {
     return this.available(seatLayerMarkBookedCapability, seatLayerMarkBookedCommand);
@@ -428,7 +426,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
    * as taken until the server's hold runs out. Without `holdId` it means the
    * hold this picker handed to your checkout. A named one must be the hold held
    * now. Answers false, and changes nothing, for another hold, no hold, or a
-   * page that cannot be told; the picker then finds the booking by itself.
+   * page that cannot be told.
    */
   markBooked(options: { holdId?: string } = {}): Promise<boolean> {
     if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
@@ -437,12 +435,16 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     if (error) return Promise.reject(error);
     if (!this.supportsMarkBooked) return Promise.resolve(false);
     return this.serial(async () => {
+      const handoff = this.booked.pendingHandoff;
       const result = await this.command(
         seatLayerMarkBookedCommand,
         options.holdId === undefined ? {} : { holdId: options.holdId },
       );
       await this.applyMutationResult(result);
-      return ownData(result, 'booked') === true;
+      const booked = ownData(result, 'booked') === true;
+      const same = options.holdId === undefined || options.holdId === handoff?.holdId;
+      if (booked && handoff !== undefined && same) this.bookedByPage(handoff);
+      return booked;
     });
   }
 

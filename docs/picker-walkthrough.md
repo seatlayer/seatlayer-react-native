@@ -167,7 +167,7 @@ The designed full states are:
 | Hold lapsed | A counted sentence with an action, matching what the toast said. |
 | Seats already in checkout | `Your seats are already in checkout`, with `Release and change seats` — which gives the hold back so the seats go on sale again and the buyer picks afresh. The cart line keeps its `×` throughout. |
 | A second hold on a picker-owned one | `Your seats are already held`, with the way on to checkout. |
-| Booked | `You're all set`, with the seat list and a way back — shown when the handed-off hold settles to booked, not when it was handed over. `showBookedOverlay: false` keeps it down for a host with its own confirmation screen; `onBooked` fires either way. |
+| Booked | `You're all set`, with the seat list and a way back — shown after your server has booked and you call `controller.markBooked`, not when the hold was handed over. `showBookedOverlay: false` keeps it down for a host with its own confirmation screen; `onBooked` fires either way. |
 
 ## 9. Accessibility
 

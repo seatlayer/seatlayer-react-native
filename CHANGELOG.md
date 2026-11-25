@@ -27,6 +27,13 @@ stay; the changes below are the ones an app or a buyer can notice.
   open map.
 - `controller.markBooked({ holdId })`, after your server has booked: the map shows
   the seats booked and the hold clock stops.
+- **`onBooked` and "You're all set" (behaviour change)** come only when the page
+  says the hold is booked, which it does after your server has booked and you
+  call `controller.markBooked`. They also came when the handed-off hold left the
+  map for another reason: the page was loaded again, by `retry()` or a changed
+  setting such as the language, the checkout was rejected, or the hold was lost
+  on the server. The buyer then read that their tickets were confirmed, and
+  nothing was booked. Take a sale from your own server, never from `onBooked`.
 - `SelectedSeat.floorId` and `SelectedSeat.levelName`, on a chart with two or more
   levels.
 - `SeatLayerConfiguration.telemetry: false` stops the map page sending SeatLayer
@@ -196,8 +203,6 @@ stay; the changes below are the ones an app or a buyer can notice.
   view with Try again.
 - `SeatLayerView` reports an `sl_transport` error on the controller. Change
   `reloadKey` to load the map again.
-- A reload, automatic or with `retry()`, no longer reports a handed-off hold as
-  booked when the new page has not taken it up yet.
 - A hold paid for while the map's page was closed is not reported with
   `onBooked`: take the sale from your own checkout. The picker opens with an
   empty cart and shows the seats as taken.
