@@ -15,7 +15,7 @@ vi.mock('../src/picker/SeatLayerPickerChart', () => ({
 }));
 vi.mock('../src/picker/header', () => ({ SeatLayerPickerHeader: 'header' }));
 vi.mock('../src/picker/SeatLayerPriceLegend', () => ({ SeatLayerPriceLegend: 'legend' }));
-vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerFloorStrip: 'floors' }));
+vi.mock('../src/picker/SeatLayerFloorStrip', () => ({ SeatLayerMeasuredFloorStrip: 'floors' }));
 vi.mock('../src/picker/SeatLayerPickerFloorSelector', () => ({ SeatLayerPickerFloorSelector: 'floor-selector' }));
 vi.mock('../src/picker/SeatLayerPickerSectionNavigator', () => ({ SeatLayerPickerSectionNavigator: 'section-navigator' }));
 vi.mock('../src/picker/SeatLayerMapControls', () => ({ SeatLayerMapControls: 'controls', seatLayerPickerMapControlsEdgeInset: 10, seatLayerPickerMapControlsRailTop: 8 }));
@@ -584,7 +584,7 @@ describe('adaptive picker composition', () => {
     });
     state.scope = current;
     let tree!: TestRenderer.ReactTestRenderer;
-    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, options: { chrome: { floorStrip: false } } })); });
     const floor = tree.root.findByType('floor-selector' as any);
     const floorStyle = floor.parent?.props.style[1] as { bottom: number };
     // 0.9.1: the accessibility disc has moved into the map's control column, so
@@ -889,27 +889,26 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('uses one floor navigator by default and preserves an explicit phone strip choice', async () => {
+  it('draws the level chips, and the list only where an app turns them off or draws its own', async () => {
     state.width = 320;
     state.scope = scope({
       snapshot: { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [{ id: 'ground' }, { id: 'upper' }], buyerView: 'map' } },
     });
-    let tree!: TestRenderer.ReactTestRenderer;
-    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
-    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
-    await act(async () => { measure(tree, 900); });
-    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('floors' as any)).toHaveLength(1);
-    await act(async () => { tree.unmount(); });
-
-    state.width = 320;
-    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
-      onCheckout: checkout, options: { chrome: { floorSelector: false, floorStrip: true } },
-    })); });
-    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('floors' as any)).toHaveLength(1);
-    await act(async () => { tree.unmount(); });
+    const count = async (props: object) => {
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, ...props })); });
+      const drawn = () => [tree.root.findAllByType('floors' as any).length, tree.root.findAllByType('floor-selector' as any).length];
+      const phone = drawn();
+      await act(async () => { measure(tree, 900); });
+      const wide = drawn();
+      await act(async () => { tree.unmount(); });
+      state.width = 320;
+      return { phone, wide };
+    };
+    expect(await count({})).toEqual({ phone: [1, 0], wide: [1, 0] });
+    expect(await count({ options: { chrome: { floorStrip: false } } })).toEqual({ phone: [0, 1], wide: [0, 1] });
+    expect(await count({ options: { chrome: { floorSelector: false } } })).toEqual({ phone: [1, 0], wide: [1, 0] });
+    expect(await count({ builders: { floorStrip: () => null } })).toEqual({ phone: [0, 1], wide: [0, 0] });
   });
 
   it('uses normalized parent-safe geometry for the breakpoint and all modal surfaces', async () => {
@@ -927,7 +926,7 @@ describe('adaptive picker composition', () => {
     const input = { top: 12, right: 30, bottom: 18, left: 40 };
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
-      onCheckout: checkout, safeAreaInsets: input, options: { chrome: { mapControls: false } },
+      onCheckout: checkout, safeAreaInsets: input, options: { chrome: { floorStrip: false, mapControls: false } },
     })); });
     await act(async () => { measure(tree, 900, 400); });
     const expected = resolveSeatLayerPickerAdaptiveSafeLayout({ width: 900, height: 400 }, input).insets;
@@ -1006,13 +1005,15 @@ describe('adaptive picker composition', () => {
     })); });
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
-    // The band is out of the map's top-left corner entirely, so the TEST chip
-    // owns it alone, on the map's own top line.
+    // The band is out of the map's top-left corner entirely, so the level
+    // chips and the TEST chip share it.
     expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
-    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 54 });
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    // The level chips stand under the corner controls, drawn at 56 inside their
+    // taller tap area, and the badge one line under them.
+    expect(tree.root.findByType('floors' as any).parent?.props.style[1].top).toBe(51);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(102);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 128, bottom: 54 });
     await act(async () => { tree.unmount(); });
   });
 
@@ -1035,10 +1036,12 @@ describe('adaptive picker composition', () => {
     const badgeRail = tree.root.findByType('test-badge' as any).parent!;
     await act(async () => { badgeRail.props.onLayout({ nativeEvent: { layout: { width: 72 } } }); });
     expect(tree.root.findByType('legend' as any).parent?.props.testID).toBe('seatlayer-price-band');
-    expect(tree.root.findAllByType('floors' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(1);
-    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(8);
-    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 54, bottom: 54 });
+    expect(tree.root.findAllByType('floor-selector' as any)).toHaveLength(0);
+    // The level chips stand under the corner controls, drawn at 56 inside their
+    // taller tap area, and the badge one line under them.
+    expect(tree.root.findByType('floors' as any).parent?.props.style[1].top).toBe(51);
+    expect(tree.root.findByType('test-badge' as any).parent?.props.style[1].top).toBe(102);
+    expect(current.lease.set).toHaveBeenLastCalledWith({ top: 128, bottom: 54 });
     await act(async () => { tree.unmount(); });
   });
 

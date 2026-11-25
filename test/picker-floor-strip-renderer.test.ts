@@ -4,13 +4,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 vi.mock('react-native', () => ({
+  AccessibilityInfo: { addEventListener: (_: string, listener: (value: boolean) => void) => { setReduceMotion = listener; return { remove: () => undefined }; }, isReduceMotionEnabled: () => Promise.resolve(false) },
   I18nManager: { isRTL: false }, Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value },
 }));
+let setReduceMotion: (value: boolean) => void;
 let scope: Record<string, any>;
 vi.mock('../src/picker/SeatLayerPickerScope', () => ({ useSeatLayerPickerScope: () => scope }));
 
-import { SeatLayerFloorStrip } from '../src/picker/SeatLayerFloorStrip';
+import { SeatLayerFloorStrip, SeatLayerMeasuredFloorStrip } from '../src/picker/SeatLayerFloorStrip';
 import type { SeatLayerPickerSnapshot } from '../src/picker/models';
 
 function snapshot(floors: readonly { id: string; name: string }[], overrides: Partial<SeatLayerPickerSnapshot['map']> = {}): SeatLayerPickerSnapshot {
@@ -130,6 +132,25 @@ describe('SeatLayerFloorStrip', () => {
     expect(runtime.errors).toHaveLength(1);
   });
 
+  it('draws one pill with transparent segments, and the accent on the level being drawn', async () => {
+    setup(); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerFloorStrip)); });
+    const chip = (name: string) => {
+      const press = renderer.root.findByProps({ accessibilityLabel: name });
+      return { press, paint: Object.assign({}, ...[press.findByType('View' as any).props.style].flat()) };
+    };
+    expect(chip('Stalls').paint).toMatchObject({ backgroundColor: '#06f', height: 28 });
+    expect(chip('Gallery').paint).toMatchObject({ backgroundColor: 'transparent', height: 28 });
+    expect(chip('Gallery').paint.borderWidth).toBeUndefined();
+    expect(chip('Gallery').press.props.style).toMatchObject({ minHeight: 44, minWidth: 44 });
+    const pill = renderer.root.findAllByType('View' as any)
+      .map((view) => Object.assign({}, ...[view.props.style].flat()))
+      .find((style) => style.position === 'absolute');
+    expect(pill).toMatchObject({ borderColor: '#ccc', borderWidth: 1, height: 34, top: 5 });
+    await act(async () => { renderer.update(React.createElement(SeatLayerFloorStrip, { compact: false })); });
+    expect(chip('Stalls').paint.height).toBe(34);
+  });
+
   it('publishes the fixed inset band and removes an old lease on runtime-session replacement', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerFloorStrip, { reserveInset: true })); });
@@ -138,5 +159,55 @@ describe('SeatLayerFloorStrip', () => {
     (scope.snapshot as any).sessionId = 'replacement';
     await act(async () => { renderer.update(React.createElement(SeatLayerFloorStrip, { reserveInset: true })); });
     expect(runtime.insetCalls).toContain('remove');
+  });
+
+  it('brings the chosen level into view at first and on every change', async () => {
+    for (const still of [false, true]) {
+      const runtime = setup();
+      const moves: unknown[] = [];
+      let renderer!: ReactTestRenderer;
+      await act(async () => {
+        renderer = create(React.createElement(SeatLayerFloorStrip), {
+          createNodeMock: () => ({ scrollTo: (move: unknown) => moves.push(move) }),
+        });
+      });
+      await act(async () => { setReduceMotion(still); });
+      const place = (label: string, x: number) => renderer.root.findByProps({ accessibilityLabel: label })
+        .props.onLayout({ nativeEvent: { layout: { x, width: 100 } } });
+      const scroller = renderer.root.findByType('ScrollView' as any);
+      await act(async () => {
+        scroller.props.onLayout({ nativeEvent: { layout: { width: 200 } } });
+        ['All floors', 'Stalls', 'Dress circle', 'Gallery'].forEach((label, index) => place(label, index * 100));
+        scroller.props.onContentSizeChange(400);
+      });
+      // As drawn first: where it stands, without a move.
+      expect(moves.splice(0)).toEqual([{ animated: false, x: 50 }]);
+      const floors = scope.snapshot.map.floors;
+      const choose = async (overrides: object) => {
+        runtime.update(snapshot(floors, overrides));
+        await act(async () => { renderer.update(React.createElement(SeatLayerFloorStrip)); });
+      };
+      await choose({ activeFloorId: 'gallery' });
+      expect(moves.splice(0)).toEqual([{ animated: !still, x: 200 }]);
+      await choose({ floorMode: 'all' });
+      expect(moves.splice(0)).toEqual([{ animated: !still, x: 0 }]);
+      // A pill with room for all of them has nowhere to go.
+      await act(async () => { scroller.props.onLayout({ nativeEvent: { layout: { width: 400 } } }); });
+      await choose({ activeFloorId: 'stalls' });
+      expect(moves).toEqual([]);
+      await act(async () => { renderer.unmount(); });
+    }
+    await act(async () => { setReduceMotion(false); });
+  });
+
+  it('tells the layout how wide the whole pill is', async () => {
+    setup();
+    const widths: number[] = [];
+    let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerMeasuredFloorStrip, { onWidth: (width) => { widths.push(width); } }));
+    });
+    await act(async () => { renderer.root.findByType('ScrollView' as any).props.onContentSizeChange(400); });
+    expect(widths).toEqual([406]);
   });
 });

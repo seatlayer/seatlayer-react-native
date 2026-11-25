@@ -51,6 +51,8 @@ export interface SeatLayerMapControlsProps {
   >;
   readonly edgeInset?: number;
   readonly bottomInset?: number;
+  /** How far down something else stands at the top of a phone's map; the column stays under it. */
+  readonly topInset?: number;
   readonly enable3D?: boolean;
   readonly showZoomControls?: boolean;
   /** On compact layouts, replace Fit with one level of map return while zoomed in. */
@@ -128,12 +130,16 @@ export function seatLayerMapDiscsPerColumn(input: Readonly<{
   mapHeight: number | undefined;
   bottom: number;
   viewControl: boolean;
+  topInset?: number;
   discSize: number;
 }>): number {
   if (input.mapHeight === undefined) return Number.POSITIVE_INFINITY;
-  const ceiling = input.viewControl
-    ? seatLayerPickerMapControlsRailTop + seatLayerPickerTokens.size.viewModeControlHeight + controlGap
-    : seatLayerPickerMapControlsEdgeInset;
+  const ceiling = Math.max(
+    input.viewControl
+      ? seatLayerPickerMapControlsRailTop + seatLayerPickerTokens.size.viewModeControlHeight + controlGap
+      : seatLayerPickerMapControlsEdgeInset,
+    input.topInset === undefined ? 0 : input.topInset + controlGap,
+  );
   const room = input.mapHeight - input.bottom - ceiling;
   return Math.max(0, Math.floor((room + zoomColumnGap) / (input.discSize + zoomColumnGap)));
 }
@@ -333,6 +339,7 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
       slots={styles}
       accessibilityControl={accessibilityControl}
       bottomInset={bottomInset}
+      topInset={props.topInset}
       canFit={fitAvailable}
       canOverview={overviewAvailable}
       canZoomIn={zoomPairAvailable && snapshot.map.canZoomIn !== false}
@@ -390,6 +397,7 @@ function SeatLayerMapControlsView({
   target,
   edgeInset,
   bottomInset = 0,
+  topInset,
   zoomInLabel,
   zoomOutLabel,
   buyerView,
@@ -561,7 +569,7 @@ function SeatLayerMapControlsView({
   if (onMap && zoomInSlotAvailable) members.push(phoneZoomIn);
   if (onMap && wholeVenueAvailable) members.push(wholeVenue);
   const each = seatLayerMapDiscsPerColumn({
-    mapHeight, bottom, viewControl: view !== null, discSize: seatLayerPickerTokens.size.mapControlSize,
+    mapHeight, bottom, viewControl: view !== null, topInset, discSize: seatLayerPickerTokens.size.mapControlSize,
   });
   // Filled from the foot of the end column; what is left goes towards the start.
   const columns: ReactNode[][] = [];
