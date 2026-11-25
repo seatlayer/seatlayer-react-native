@@ -46,7 +46,7 @@
     "915x412": 26
   },
   "Display options: under Gallery tables, €70": {
-    "320": 3
+    "320": 2
   },
   "Find 2 best seats: text ends in …": {
     "320": 12
@@ -85,6 +85,9 @@
     "412": 3,
     "430": 2
   },
+  "Hold seats & checkout: outside the safe area": {
+    "915x412": 1
+  },
   "Interactive 3D venue view: touch area under 44": {
     "320": 42,
     "360": 42,
@@ -98,18 +101,18 @@
     "915x412": 28
   },
   "Interactive 3D venue view: under Display options": {
-    "320": 3,
+    "320": 4,
     "667x375": 1,
-    "844x390": 2,
-    "915x412": 5
+    "844x390": 1,
+    "915x412": 1
   },
   "Interactive 3D venue view: under Show whole venue": {
-    "667x375": 5,
-    "844x390": 5,
-    "915x412": 3
+    "667x375": 4,
+    "844x390": 4,
+    "915x412": 2
   },
   "Interactive 3D venue view: under Zoom in": {
-    "320": 4,
+    "320": 2,
     "667x375": 1,
     "844x390": 1,
     "915x412": 1
@@ -167,20 +170,17 @@
     "320": 39,
     "390": 39
   },
-  "خيارات العرض: under Premium, ‏165 €": {
-    "320": 1
-  },
   "خيارات العرض: under Sponsor tables, ‏130 €": {
-    "320": 5
+    "320": 3
   },
   "عرض تفاعلي ثلاثي الأبعاد للمكان: touch area under 44": {
     "320": 42,
     "390": 42
   },
   "عرض تفاعلي ثلاثي الأبعاد للمكان: under تكبير": {
-    "320": 7
+    "320": 3
   },
   "عرض تفاعلي ثلاثي الأبعاد للمكان: under خيارات العرض": {
-    "320": 2
+    "320": 3
   }
 }
