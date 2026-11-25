@@ -2,7 +2,7 @@ import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
-const text = vi.hoisted(() => ({ scale: 1 }));
+const device = vi.hoisted(() => ({ scale: 1, width: 390 }));
 
 vi.mock('react-native', () => ({
   AccessibilityInfo: {
@@ -17,7 +17,7 @@ vi.mock('react-native', () => ({
   Easing: { bezier: () => 'ease' },
   I18nManager: { isRTL: false },
   StyleSheet: { create: <T>(value: T) => value, flatten: (value: unknown) => value },
-  useWindowDimensions: () => ({ fontScale: text.scale, height: 568, scale: 2, width: 320 }),
+  useWindowDimensions: () => ({ fontScale: device.scale, height: 844, scale: 2, width: device.width }),
   View: 'View', Text: 'Text', Pressable: 'Pressable',
 }));
 
@@ -39,6 +39,7 @@ import {
   seatLayerVenue3DHasFocusedView,
   seatLayerVenue3DNavigationIsOwned,
   seatLayerVenue3DCaption,
+  seatLayerVenue3DCaptionInTwoLines,
   seatLayerVenue3DNeighbours,
 } from '../src/picker/immersiveChrome';
 import { translateSeatLayerPickerString } from '../src/picker/locale';
@@ -164,6 +165,25 @@ describe('immersive venue and panorama chrome', () => {
     expect(caption('ku')).toMatch(/^Stalls · Rêza A · Cihê 2 · /);
   });
 
+  it('never cuts the row or the seat out of the caption: the view goes first and whole, then the section', () => {
+    const view = 'view from your seat';
+    const fit = (section: string, width: number, scale: number) => seatLayerVenue3DCaptionInTwoLines(
+      `${section} · Row T22 · Seat 2 · ${view}`, section, view, width, scale,
+    );
+    expect(fit('Stalls', 325, 1)).toBe('Stalls · Row T22 · Seat 2 · view from your seat');
+    // At 320 and text 2 the name stands in two lines, and the view's words do not: none of them.
+    expect(fit('Guest Tables', 262, 2)).toBe('Guest Tables · Row T22 · Seat 2');
+    for (const section of ['North Stand Upper Tier Hospitality Boxes', 'Haupttribünenobergeschoss', '二階席中央特別指定席エリア北側']) {
+      const drawn = fit(section, 262, 2);
+      expect(drawn).toMatch(/^.+… · Row T22 · Seat 2$/);
+      expect(section.startsWith(drawn.split('…')[0]!)).toBe(true);
+    }
+    expect(fit('North', 40, 2)).toContain('Seat 2');
+    const arabic = '\u200fالمدرج الشمالي العلوي الكبير · الصف T22 · المقعد 2 · المنظر من مقعدك';
+    expect(seatLayerVenue3DCaptionInTwoLines(arabic, 'المدرج الشمالي العلوي الكبير', 'المنظر من مقعدك', 262, 2))
+      .toMatch(/^\u200f.+… · الصف T22 · المقعد 2$/);
+  });
+
   it('quarantines retained immersive work across controller, scope, and runtime-session replacement', () => {
     const origin = { controller: {}, scopeSessionId: 7, runtimeSessionId: 'one' };
     expect(seatLayerImmersiveRequestIsCurrent(origin, { ...origin })).toBe(true);
@@ -200,13 +220,37 @@ describe('immersive venue and panorama chrome', () => {
     const buttons = renderer!.root.findAllByType('Pressable' as any);
     expect(buttons).toHaveLength(6);
     for (const button of buttons) {
-      expect(button.props.style({ pressed: false })).toMatchObject({ height: 44, minWidth: 44 });
+      expect(button.props.style({ pressed: false })).toMatchObject({ minHeight: 44, minWidth: 44 });
     }
     const rootStyle = renderer!.root.findByType('View' as any).props.style as readonly unknown[];
     expect(rootStyle).toContainEqual({ backgroundColor: '#123456' });
     expect(rootStyle).toContainEqual({ bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 });
     act(() => buttons[1]!.props.onPress());
     expect(onNavigation).toHaveBeenCalledOnce();
+    act(() => renderer!.unmount());
+  });
+
+  it.each([
+    [390, 2, ['Previous', 'View from here', 'Next', 'Recentre']],
+    [320, 1, ['Previous', 'View from here', 'Next', 'Recentre']],
+    [320, 2, ['View from here', 'Previous', 'Next', 'Recentre']],
+  ])('keeps every control on a screen of %s at text size %s, and a caption of two lines', (width, scale, order) => {
+    Object.assign(device, { scale, width });
+    let renderer: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(SeatLayerVenue3DChromeView, {
+        backVisible: false, backLabel: 'Back', bottomInset: 12, caption: 'Stalls · A · 2', disabled: false,
+        nextEnabled: true, nextLabel: 'Next', onBack: vi.fn(), onNext: vi.fn(), onPrevious: vi.fn(),
+        onPrimary: vi.fn(), onRecentre: vi.fn(), onZoomIn: vi.fn(), onZoomOut: vi.fn(),
+        previousEnabled: true, previousLabel: 'Previous', primaryLabel: 'View from here', primaryVisible: true,
+        recentreEnabled: true, recentreLabel: 'Recentre', targeted: true, zoomInLabel: 'Zoom in',
+        zoomOutLabel: 'Zoom out', theme: resolveSeatLayerPickerImmersiveTheme(theme), topInset: 12,
+      }));
+    });
+    Object.assign(device, { scale: 1, width: 390 });
+    expect(renderer!.root.findAllByType('Pressable' as any).map((node) => node.props.accessibilityLabel)).toEqual(order);
+    const caption = renderer!.root.findAllByType('Text' as any).find((node) => node.children[0] === 'Stalls · A · 2');
+    expect(caption?.props).toMatchObject({ accessibilityLabel: 'Stalls · A · 2', numberOfLines: 2 });
     act(() => renderer!.unmount());
   });
 
@@ -265,7 +309,7 @@ describe('immersive venue and panorama chrome', () => {
   });
 
   it.each([[0.8, 90], [1, 90], [2, 180]])('keeps the whole title and room for it beside the badge at text size %s', (scale, room) => {
-    text.scale = scale;
+    device.scale = scale;
     let renderer: TestRenderer.ReactTestRenderer;
     act(() => {
       renderer = TestRenderer.create(React.createElement(SeatLayerSeatPanoramaChromeView, {
@@ -273,7 +317,7 @@ describe('immersive venue and panorama chrome', () => {
         view: { badge: 'Real view', generated: false, real: true, title: 'Guest Tables · T22 · Seat 1' },
       }));
     });
-    text.scale = 1;
+    device.scale = 1;
     const title = renderer!.root.findAllByType('Text' as any)[0]!;
     expect(title.props.numberOfLines).toBeUndefined();
     expect(title.parent!.props.style).toEqual(expect.arrayContaining([{ flexBasis: room }]));
