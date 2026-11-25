@@ -436,6 +436,9 @@ describe('picker locale', () => {
     expect(translateSeatLayerPickerString('placeNumberIdentity', { values: { place: 4 } })).toBe('Place 4');
     expect(translateSeatLayerPickerString('rowIdentity', { values: { row: 'C' } })).toBe('Row C');
     expect(translateSeatLayerPickerString('seatNumberIdentity', { values: { seat: 6 } })).toBe('Seat 6');
+    expect(translateSeatLayerPickerString('rowIdentity', { locale: 'ar', values: { row: 'C' } })).toBe('الصف C');
+    expect(translateSeatLayerPickerString('seatNumberIdentity', { locale: 'ar', values: { seat: 6 } })).toBe('المقعد 6');
+    expect(translateSeatLayerPickerString('rowIdentity', { locale: 'hu', values: { row: 'C' } })).toBe('C. sor');
     expect(translateSeatLayerPickerString('futureRuntimeLabel')).toBe('futureRuntimeLabel');
   });
 
