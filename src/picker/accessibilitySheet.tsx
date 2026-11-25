@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   type GestureResponderEvent, I18nManager, Pressable, ScrollView,
-  StyleSheet, Text, useWindowDimensions, View,
+  StyleSheet, Text, type TextStyle, useWindowDimensions, View,
 } from "react-native";
 
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
@@ -15,6 +15,9 @@ import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+
+/** iOS starts a line at the side its own language reads from, not the layout's. */
+const readingSide = (): TextStyle | null => (I18nManager.isRTL ? { writingDirection: "rtl" } : null);
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
@@ -192,7 +195,7 @@ export function SeatLayerPickerAccessibilitySheet(
         ? (
           <Text
             accessibilityRole="header"
-            style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, {
+            style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, readingSide(), {
               color: props.theme.colors.mutedText,
               fontFamily: props.theme.fontFamily,
             }]}
@@ -261,7 +264,7 @@ export function SeatLayerPickerAccessibilitySheet(
             </Pressable>
             <Text
               accessibilityRole="header"
-              style={[styles.heading, {
+              style={[styles.heading, readingSide(), {
                 color: props.theme.colors.text,
                 fontFamily: props.theme.fontFamily,
               }, props.slots.accessibilityControlLabel]}
@@ -444,7 +447,7 @@ function AccessRow(props: Readonly<{
         <View style={styles.labelCell}>
           <View style={styles.labelLine}>
             <Text
-              style={[styles.rowLabel, {
+              style={[styles.rowLabel, readingSide(), {
                 color: theme.colors.text,
                 fontFamily: theme.fontFamily,
               }, props.slots.accessibilityNeedText]}
@@ -484,19 +487,10 @@ function AccessRow(props: Readonly<{
             backgroundColor: row.on
               ? theme.colors.accent
               : seatLayerPickerColorAlpha(theme.colors.mutedText, .32),
-            flexDirection: I18nManager.isRTL ? "row-reverse" : "row",
+            justifyContent: row.on ? "flex-end" : "flex-start",
           }]}
         >
-          <View
-            style={[styles.knob, {
-              backgroundColor: theme.colors.surface,
-              transform: [{
-                translateX: row.on
-                  ? (I18nManager.isRTL ? -knobTravel : knobTravel)
-                  : 0,
-              }],
-            }]}
-          />
+          <View style={[styles.knob, { backgroundColor: theme.colors.surface }]} />
         </View>
       </Pressable>
       {/* The sentence opens UNDER the row it explains rather than inside it,
@@ -505,7 +499,7 @@ function AccessRow(props: Readonly<{
         ? (
           <Text
             accessible={false}
-            style={[styles.noteText, {
+            style={[styles.noteText, readingSide(), {
               color: theme.colors.mutedText,
               fontFamily: theme.fontFamily,
             }]}
@@ -552,9 +546,6 @@ function SeatLayerPickerInfoIcon({ color, size: glyph }: Readonly<{
     </View>
   );
 }
-
-const knobTravel = size.accessSwitchWidth - size.accessSwitchKnob -
-  (size.accessSwitchHeight - size.accessSwitchKnob);
 
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { flex: 1 },
@@ -637,6 +628,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   countText: { fontSize: size.accessRowNoteFontSize, fontWeight: "800" },
   switchGap: { width: size.accessRowSwitchGap },
   track: {
+    flexDirection: "row",
     width: size.accessSwitchWidth,
     height: size.accessSwitchHeight,
     borderRadius: radius.pill,

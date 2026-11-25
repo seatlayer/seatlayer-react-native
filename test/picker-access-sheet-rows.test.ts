@@ -314,6 +314,14 @@ describe('one aligned list of fixed rows (§3.5, Flutter 0.9.0/0.9.1)', () => {
     expect(styleOf(row(renderer, english.colorblindSafe)).borderBottomWidth).toBeUndefined();
   });
 
+  it('draws the knob at the end it is switched to, whichever way the layout reads', async () => {
+    setup({ active: ['wheelchair'] });
+    const renderer = await openSheet();
+    const track = (label: string) => styleOf(row(renderer, label).findAllByType('View' as any).slice(-2)[0]!);
+    expect(track('wheelchair')).toEqual(expect.objectContaining({ flexDirection: 'row', justifyContent: 'flex-end' }));
+    expect(track('companion')).toEqual(expect.objectContaining({ flexDirection: 'row', justifyContent: 'flex-start' }));
+  });
+
   it('toggles from anywhere on the row, not from the switch alone', async () => {
     const runtime = setup();
     const renderer = await openSheet();
