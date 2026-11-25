@@ -264,6 +264,65 @@ export function seatLayerVenue3DCaption(
   return rightToLeft.test(viewFromYourSeat) ? `\u200f${parts}` : parts;
 }
 
+/** A letter's width in bold type as a share of its size, on the generous side. */
+const narrowLetter = 0.32;
+const letterWidths: readonly (readonly [RegExp, number])[] = [
+  [/[\u200b-\u200f\u0300-\u036f\u064b-\u065f]/, 0],
+  [/[ ·.,:;'’"!|()[\]/\-iljftrI1]/, narrowLetter],
+  [/[\u1100-\u11ff\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uff60]/, 1],
+  [/[MW@%…]/, 0.95],
+  [/[A-ZÀ-ÞΑ-ΫА-Яmwшщжюфы]/, 0.76],
+];
+
+function lettersWidth(text: string): number {
+  return [...text].reduce((sum, letter) =>
+    sum + (letterWidths.find(([kind]) => kind.test(letter))?.[1] ?? 0.6), 0);
+}
+
+/** Whether a line that breaks at its spaces stands in two lines of this width. */
+function standsInTwo(text: string, lineWidth: number): boolean {
+  let line = 0;
+  let lines = 1;
+  for (const word of text.split(' ')) {
+    const width = lettersWidth(word);
+    if (line > 0 && line + narrowLetter + width > lineWidth) {
+      lines += 1;
+      line = width;
+    } else line += (line > 0 ? narrowLetter : 0) + width;
+    if (line > lineWidth) {
+      lines += Math.ceil(line / lineWidth) - 1;
+      line %= lineWidth;
+    }
+  }
+  return lines <= 2;
+}
+
+/**
+ * The caption drawn in two lines. The words of the view go first, all of them;
+ * where the seat's name alone does not stand in two lines, the section's name is
+ * shortened, never the row or the seat.
+ */
+export function seatLayerVenue3DCaptionInTwoLines(
+  caption: string,
+  section: string | undefined,
+  viewFromYourSeat: string,
+  width: number,
+  fontScale: number,
+): string {
+  const lineWidth = width / (seatLayerPickerTokens.size.immersiveCaptionFontSize * Math.max(fontScale, 0.1));
+  const tail = ` · ${viewFromYourSeat}`;
+  const name = caption.endsWith(tail) ? caption.slice(0, -tail.length) : caption;
+  if (standsInTwo(caption, lineWidth)) return caption;
+  if (standsInTwo(name, lineWidth)) return name;
+  const letters = [...(section ?? '').trim()];
+  if (letters.length === 0 || !name.includes(letters.join(''))) return name;
+  for (let kept = letters.length - 1; kept > 0; kept -= 1) {
+    const shorter = name.replace(letters.join(''), () => `${letters.slice(0, kept).join('').trimEnd()}…`);
+    if (standsInTwo(shorter, lineWidth)) return shorter;
+  }
+  return name.replace(`${letters.join('')} · `, '');
+}
+
 export function seatLayerImmersiveDuration(reducedMotion: boolean): number {
   return reducedMotion ? 0 : seatLayerPickerTokens.motion.duration.immersive;
 }

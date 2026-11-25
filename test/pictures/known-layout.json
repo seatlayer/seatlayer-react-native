@@ -114,19 +114,6 @@
     "844x390": 2,
     "915x412": 2
   },
-  "Guest Tables · Row T22 · Seat 2 · view f: text ends in …": {
-    "320": 3,
-    "360": 2,
-    "375": 2,
-    "390": 2,
-    "393": 2,
-    "412": 2,
-    "430": 1
-  },
-  "‏Guest Tables · الصف T22 · المقعد 2 · ال: text ends in …": {
-    "320": 3,
-    "390": 2
-  },
   "Guest Tables · T22-1, T22-2, T22-3: text ends in …": {
     "320": 4,
     "360": 2,
@@ -165,16 +152,6 @@
     "844x390": 2,
     "915x412": 4
   },
-  "Previous seat: outside the safe area": {
-    "320": 1,
-    "360": 1,
-    "375": 1
-  },
-  "Recentre the view: outside the safe area": {
-    "320": 1,
-    "360": 1,
-    "375": 1
-  },
   "T24 · 7 · Premium: text ends in …": {
     "320": 2
   },
@@ -192,19 +169,9 @@
   "إضافة مقعد: text ends in …": {
     "320": 2
   },
-  "إعادة التمركز على المسرح: outside the safe area": {
-    "320": 1
-  },
   "ابحث عن أفضل 2 مقعدين: text ends in …": {
     "320": 26,
     "390": 12
-  },
-  "المشهد من هنا: cut at the top or bottom": {
-    "320": 1,
-    "390": 1
-  },
-  "المقعد السابق: outside the safe area": {
-    "320": 1
   },
   "عرض تفاعلي ثلاثي الأبعاد للمكان: touch area under 44": {
     "320": 51,

@@ -135,6 +135,11 @@ stay; the changes below are the ones an app or a buyer can notice.
   resolved as if they were held.
 - The view from a seat shows its whole title: at a large text size on a narrow
   phone the badge goes under the words, where the title ended in "…".
+- In the 3D view the seat's name takes two lines where it needs them. Where "view
+  from your seat" does not fit whole it is left out, then the section's name is
+  shortened; a screen reader hears the whole line. At a large text size on a
+  narrow phone the worded button stands over the arrows, which went off the sides
+  of the screen.
 
 **Words and languages**
 

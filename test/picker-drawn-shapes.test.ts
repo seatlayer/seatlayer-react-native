@@ -20,6 +20,7 @@ vi.mock('react-native', () => ({
     absoluteFill: {}, create: <T>(value: T) => value,
     flatten: (value: unknown) => Object.assign({}, ...[value].flat(9).filter(Boolean)), hairlineWidth: 0.5,
   },
+  useWindowDimensions: () => ({ fontScale: 1, height: 844, scale: 1, width: 390 }),
 }));
 
 import { I18nManager } from 'react-native';

@@ -6,6 +6,7 @@ import {
   Pressable,
   Text,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -23,6 +24,7 @@ import {
   seatLayerImmersiveInsetPlan,
   seatLayerImmersiveRequestIsCurrent,
   seatLayerVenue3DCaption,
+  seatLayerVenue3DCaptionInTwoLines,
   seatLayerVenue3DIsOwned,
   seatLayerVenue3DNavigationIsOwned,
   seatLayerVenue3DNeighbours,
@@ -65,6 +67,8 @@ export interface SeatLayerVenue3DChromeViewProps {
   readonly topInset: number;
   readonly bottomInset: number;
   readonly caption?: string;
+  readonly captionSection?: string;
+  readonly captionView?: string;
   readonly backVisible: boolean;
   readonly backLabel: string;
   readonly targeted: boolean;
@@ -94,6 +98,15 @@ export interface SeatLayerVenue3DChromeViewProps {
 const size = seatLayerPickerTokens.size;
 const target = size.minimumHitTarget;
 const paint = size.immersiveNavChipHeight;
+/** The row's width without the worded button's letters, and the letters' at
+ *  text size 1. Where both do not fit, the worded button stands over the rest. */
+const deckWidth = 212;
+const deckLetters = 88;
+/** The caption's share of the width, and what its own sides take of that. A map
+ *  beside a panel is narrower than the window, so a wide one counts as this. */
+const captionShare = 0.9;
+const captionSides = 26;
+const captionMaxWidth = 430;
 const glass = seatLayerPickerImmersiveGlass;
 const captionGlass = seatLayerPickerImmersiveCaptionGlass;
 
@@ -193,7 +206,7 @@ function VenueButton({
     accessibilityState={{ disabled: !enabled }}
     disabled={!enabled}
     onPress={onPress}
-    style={({ pressed }) => ({ alignItems: 'center', height: target, justifyContent: 'center', minWidth: target, opacity: enabled ? (pressed ? 0.72 : 1) : 0.48 })}
+    style={({ pressed }) => ({ alignItems: 'center', flexShrink: labelled ? 1 : 0, justifyContent: 'center', minHeight: target, minWidth: target, opacity: enabled ? (pressed ? 0.72 : 1) : 0.48 })}
   >
     <View style={[
       styles.button,
@@ -202,12 +215,12 @@ function VenueButton({
       { backgroundColor: glass.ground, borderColor: glass.border, borderRadius: seatLayerPickerTokens.radius.pill },
       slots?.immersiveChromeButton,
       {
-        height: kind === 'back' ? size.immersiveBackPillHeight : paint,
+        minHeight: kind === 'back' ? size.immersiveBackPillHeight : paint,
         minWidth: labelled ? target : Math.max(paint, size.immersiveNavCloseSize),
       },
     ]}>
       <Icon color={glass.ink} kind={kind} rtl={rtl} />
-      {labelled ? <Text numberOfLines={1} style={[styles.buttonText, { color: glass.ink, fontFamily: theme.fontFamily, fontSize: kind === 'back' ? size.immersiveBackFontSize : size.immersiveNavChipFontSize }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
+      {labelled ? <Text numberOfLines={kind === 'back' ? 1 : undefined} style={[styles.buttonText, { color: glass.ink, fontFamily: theme.fontFamily, fontSize: kind === 'back' ? size.immersiveBackFontSize : size.immersiveNavChipFontSize }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
     </View>
   </Pressable>;
 }
@@ -216,6 +229,11 @@ function VenueButton({
 export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProps): React.ReactElement {
   const rtl = I18nManager.isRTL;
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
+  const { fontScale, width } = useWindowDimensions();
+  const primaryAbove = width < deckWidth + deckLetters * fontScale;
+  const primary = !props.targeted || props.primaryVisible
+    ? <VenueButton enabled={!props.disabled} kind={props.targeted ? 'seatView' : 'fit'} label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} />
+    : null;
   return <View pointerEvents="box-none" style={[styles.root, slots?.immersiveChromeContainer, sanitizeSeatLayerPickerStyle(props.style), styles.rootSafety]}>
     <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset }]}>
       {props.backVisible ? <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} /> : null}
@@ -223,17 +241,23 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
     </View>
     <View pointerEvents="box-none" style={[styles.deck, { bottom: props.bottomInset }]}>
       {props.caption ? <View pointerEvents="none" style={[styles.caption, { backgroundColor: captionGlass.ground, borderColor: captionGlass.border }]}>
-        <Text numberOfLines={1} style={[styles.captionText, { color: captionGlass.ink, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
+        <Text accessibilityLabel={props.caption} numberOfLines={2} style={[styles.captionText, { color: captionGlass.ink, fontFamily: props.theme.fontFamily }]}>{
+          seatLayerVenue3DCaptionInTwoLines(
+            props.caption, props.captionSection, props.captionView ?? '',
+            Math.min(width, captionMaxWidth) * captionShare - captionSides, fontScale,
+          )
+        }</Text>
       </View> : null}
+      {primaryAbove ? <View pointerEvents="box-none" style={styles.controls}>{primary}</View> : null}
       <View pointerEvents="box-none" style={styles.controls}>
         {props.targeted ? <>
           <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
-          {props.primaryVisible ? <VenueButton enabled={!props.disabled} kind="seatView" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} /> : null}
+          {primaryAbove ? null : primary}
           <VenueButton enabled={!props.disabled && props.nextEnabled} kind="next" label={props.nextLabel} onPress={props.onNext} rtl={rtl} slots={slots} theme={props.theme} />
           <VenueButton enabled={!props.disabled && props.recentreEnabled} kind="recentre" label={props.recentreLabel} onPress={props.onRecentre} rtl={rtl} slots={slots} theme={props.theme} />
         </> : <>
           <VenueButton enabled={!props.disabled} kind="zoomOut" label={props.zoomOutLabel} onPress={props.onZoomOut} rtl={rtl} slots={slots} theme={props.theme} />
-          <VenueButton enabled={!props.disabled} kind="fit" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} />
+          {primaryAbove ? null : primary}
           <VenueButton enabled={!props.disabled} kind="zoomIn" label={props.zoomInLabel} onPress={props.onZoomIn} rtl={rtl} slots={slots} theme={props.theme} />
         </>}
       </View>
@@ -358,6 +382,8 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
       backLabel={scope.strings.translate('backToVenue')}
       bottomInset={bottomInset}
       caption={seatLayerVenue3DCaption(seats.target, sectionId, scope.strings.translate, scope.strings.translate('viewFromYourSeat'))}
+      captionSection={seats.target?.sectionLabel}
+      captionView={scope.strings.translate('viewFromYourSeat')}
       disabled={scope.isBusy || busy}
       nextEnabled={seats.nextSeatId !== undefined}
       nextLabel={scope.strings.translate('nextSeat')}
@@ -395,11 +421,11 @@ const styles = {
   animatedRoot: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
   backRail: { flexDirection: 'row', gap: 8, position: 'absolute', start: 10 } as ViewStyle,
   button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
-  buttonText: { fontSize: size.immersiveNavChipFontSize, fontWeight: seatLayerPickerBold(800) } as TextStyle,
+  buttonText: { flexShrink: 1, fontSize: size.immersiveNavChipFontSize, fontWeight: seatLayerPickerBold(800) } as TextStyle,
   caption: { borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, marginBottom: 8, maxWidth: '90%', paddingHorizontal: 12, paddingVertical: 7 } as ViewStyle,
-  captionText: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(700) } as TextStyle,
+  captionText: { textAlign: 'center', fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(700) } as TextStyle,
   chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: size.immersiveBackIconSize / 2, width: size.immersiveBackIconSize / 2 } as ViewStyle,
-  controls: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' } as ViewStyle,
+  controls: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center', maxWidth: '100%', paddingHorizontal: 4 } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,
   focusCorner: { borderLeftWidth: 2, borderTopWidth: 2, height: 6, position: 'absolute', width: 6 } as ViewStyle,
   focusIcon: { height: 16, width: 16 } as ViewStyle,
