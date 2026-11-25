@@ -63,6 +63,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
   of `viewGroupTitle` changes nothing now.
   Held sideways, all of it scrolls under the title: the list had no room left.
+  The list runs to the sheet's foot, with the room for the phone's strip after its
+  last row. Names wrap and are never cut; at a large text size a count stands
+  under its name.
   On an iPhone held sideways this sheet and the other prompts open sideways, where
   they turned the screen upright.
 - With no close button, the hold clock and the "Sales are closed" pill stand

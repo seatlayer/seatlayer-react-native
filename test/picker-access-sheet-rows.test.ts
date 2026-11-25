@@ -4,10 +4,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let windowHeight = 844;
+let windowText = 1;
 vi.mock('react-native', () => ({
   I18nManager: { isRTL: false }, Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
-  useWindowDimensions: () => ({ fontScale: 1, width: 390, height: windowHeight }),
+  useWindowDimensions: () => ({ fontScale: windowText, width: 390, height: windowHeight }),
 }));
 
 let scope: Record<string, any>;
@@ -21,6 +22,7 @@ import { SeatLayerPickerAccessibilityFilters } from '../src/picker/accessibility
 import {
   seatLayerPickerAccessSheetMaxHeight,
   seatLayerPickerAccessSheetScrollsWhole,
+  seatLayerPickerAccessSheetWholeHeight,
 } from '../src/picker/accessibilitySheet';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
@@ -170,11 +172,13 @@ describe('the accessibility sheet is bounded and scrolls inside the bound (§3.5
 });
 
 describe('a screen too short for the switches and the list', () => {
-  const whole = seatLayerPickerAccessSheetScrollsWhole;
+  const room = (screenHeight: number, bottomInset: number, switches: number, fontScale: number, screenWidth = 390) =>
+    ({ screenWidth, screenHeight, topInset: 0, bottomInset, switches, fontScale });
+  const whole = (...of: Parameters<typeof room>) => seatLayerPickerAccessSheetScrollsWhole(room(...of));
 
   it('is a phone held sideways, at any text size', () => {
     for (const [height, inset] of [[375, 0], [390, 21], [412, 24]] as const) {
-      for (const text of [1, 1.3, 2]) expect(whole(height, inset, 2, text)).toBe(true);
+      for (const text of [1, 1.3, 2]) expect(whole(height, inset, 2, text, height * 2)).toBe(true);
     }
   });
 
@@ -184,6 +188,37 @@ describe('a screen too short for the switches and the list', () => {
     }
     // A text size the platform could not say counts as 1.
     expect(whole(844, 34, 2, Number.NaN)).toBe(false);
+  });
+
+  it('cuts a row in half there, so a list that runs on is seen to', () => {
+    // Title 88, two switches 100, the group's heading 38, then rows of 50.
+    for (const height of [375, 390, 412]) {
+      expect(seatLayerPickerAccessSheetWholeHeight(room(height, 0, 2, 1, height * 2))).toBe(88 + 100 + 38 + 75);
+    }
+    // Never over the status bar, however large the words.
+    expect(seatLayerPickerAccessSheetWholeHeight({ ...room(375, 0, 2, 3, 667), topInset: 20 })).toBe(375 - 20 - 44);
+  });
+
+  it('runs the list on to the foot of the sheet, with the room after its last row', async () => {
+    setup();
+    const renderer = await openSheet();
+    expect(styleOf(renderer.root.findByType('ScrollView' as any).parent!).paddingBottom).toBe(0);
+    expect(renderer.root.findByType('ScrollView' as any).props.contentContainerStyle.paddingBottom).toBeGreaterThanOrEqual(24);
+  });
+
+  it('never cuts a name, and stands a count under it at a large text size', async () => {
+    const countOf = (renderer: ReactTestRenderer) => {
+      const name = row(renderer, 'wheelchair').findAllByType('Text' as any);
+      for (const text of name) expect(text.props.numberOfLines).toBeUndefined();
+      return name[1]!.parent!;
+    };
+    setup();
+    expect(styleOf(countOf(await openSheet()))).toEqual(expect.objectContaining({ alignItems: 'flex-end', minWidth: 68 }));
+    windowText = 2;
+    try {
+      setup();
+      expect(styleOf(countOf(await openSheet())).alignItems).toBe('flex-start');
+    } finally { windowText = 1; }
   });
 
   it('scrolls the switches with the list under the title', async () => {
