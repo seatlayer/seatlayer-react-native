@@ -232,6 +232,17 @@ export interface GAArea {
   price?: number;
   currency?: string;
   tiers?: CategoryTier[];
+  /**
+   * How a standing area is sold when it is one box for one party: `whole` takes
+   * all its places, `variable` a party from `minOccupancy` to `maxOccupancy`.
+   * Omitted for an area sold per person.
+   */
+  bookingMode?: string | (string & {});
+  minOccupancy?: number;
+  maxOccupancy?: number;
+  /** The area's wheelchair places, and how many of them are free. */
+  wheelchairPlaces?: number;
+  wheelchairAvailable?: number;
 }
 
 export interface FloorInfo {

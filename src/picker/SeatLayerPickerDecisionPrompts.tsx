@@ -40,6 +40,7 @@ import {
   type SeatLayerPickerDecisionScope,
   type SeatLayerPickerTableRemovalOperation,
 } from './decisionPrompts';
+import { isRefusedGAHold } from './generalAdmissionAmounts';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
@@ -135,7 +136,13 @@ function useCoordinator(): Readonly<{
   const committedScope = useRef<SeatLayerPickerScopeValue>(scope);
   useLayoutEffect(() => { committedScope.current = scope; }, [scope]);
   const coordinatorRef = useRef<SeatLayerPickerDecisionCoordinator | undefined>(undefined);
-  if (!coordinatorRef.current) coordinatorRef.current = new SeatLayerPickerDecisionCoordinator(() => decisionScope(committedScope.current));
+  if (!coordinatorRef.current) coordinatorRef.current = new SeatLayerPickerDecisionCoordinator(
+    () => decisionScope(committedScope.current),
+    (error) => {
+      const { reportError, strings } = committedScope.current;
+      reportError(Object.assign(error as Error, { buyerMessage: strings.translate('seatsJustTaken') }));
+    },
+  );
   const coordinator = coordinatorRef.current;
   const state = useSyncExternalStore(coordinator.subscribe, coordinator.getState, coordinator.getState);
   useLayoutEffect(() => {
@@ -375,7 +382,7 @@ function ModalPrompt({
         <Text style={[stylesNative.subtitle, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>{subtitle}</Text>
         <Quantity value={decision.quantity} minimum={decision.minimum} maximum={decision.maximum} onChange={setQuantity} disabled={inFlight} label={scope.strings.translate(decision.kind === 'table' ? 'chooseTableGuests' : 'chooseTickets')} scope={scope} styles={styles} />
         {decision.kind === 'ga' && (decision.area.tiers?.length ?? 0) > 0 ? <ScrollView style={stylesNative.tierScroll} contentContainerStyle={stylesNative.tierScrollContent}><TierChoices decision={decision} value={tierId ?? decision.tierId} onChange={setTierId} disabled={inFlight} scope={scope} styles={styles} /></ScrollView> : null}
-        {state.error ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{scope.strings.translate('errorMessage')}</Text> : null}
+        {state.error ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{scope.strings.translate(isRefusedGAHold(state.error) ? 'seatsJustTaken' : 'errorMessage')}</Text> : null}
         <View style={stylesNative.actions}>
           <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeSeat')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
           <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate('confirmTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />

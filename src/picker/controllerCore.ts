@@ -7,6 +7,7 @@ import type { SeatLayerConfiguration } from '../types';
 import type { SeatLayerPickerMapTheme, SeatLayerThemeMode } from './theme';
 import { decodeSeatLayerPickerCheckoutHandoff, decodeSeatLayerPickerSnapshot, decodeSeatLayerSeatView } from './decode';
 import { seatLayerAllFloors } from './models';
+import { refusedGAHold } from './generalAdmissionAmounts';
 import { sameSeatView } from './seat-view';
 import type {
   SeatLayerPickerBridgeOptions,
@@ -517,7 +518,7 @@ export class SeatLayerPickerControllerCore {
         : {}),
       ...(options.ttlMs === undefined ? {} : { ttlMs: options.ttlMs }),
     };
-    return this.guard(error, () => this.mutation('picker.holdGA', payload));
+    return this.guard(error, () => this.mutation('picker.holdGA', payload, refusedGAHold));
   }
   resumeHold(holdId: string): Promise<SeatLayerPickerSnapshot | undefined> {
     return this.guard(
@@ -640,11 +641,16 @@ export class SeatLayerPickerControllerCore {
   protected mutation(
     command: string,
     payload?: JsonValue,
+    refusal?: (result: JsonValue | undefined) => SeatLayerError | undefined,
   ): Promise<SeatLayerPickerSnapshot | undefined> {
     if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
-    return this.serial(async () =>
-      this.applyMutationResult(await this.command(command, payload))
-    );
+    return this.serial(async () => {
+      const result = await this.command(command, payload);
+      const snapshot = await this.applyMutationResult(result);
+      const refused = refusal?.(result);
+      if (refused) throw refused;
+      return snapshot;
+    });
   }
   private optionalSurface(
     capability: string,
