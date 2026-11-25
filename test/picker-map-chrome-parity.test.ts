@@ -286,7 +286,8 @@ describe('3.5 map corner controls', () => {
       const row = renderer.root.findByType('AccessibleStepper' as never).parent!;
       expect(row.props.style).toMatchObject({
         flexDirection: 'row',
-        gap: seatLayerPickerTokens.size.accessStepGap,
+        // The disc's bed is part of the gap: it stands in the middle of 44.
+        gap: seatLayerPickerTokens.size.accessStepGap - 4,
       });
     }
   });

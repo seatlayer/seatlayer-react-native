@@ -402,6 +402,7 @@ export function SeatLayerPickerAccessibilityFilters(
         accessibilityLabel={label}
         accessibilityState={{ disabled: scope.isBusy }}
         disabled={scope.isBusy}
+        hitSlop={props.compact ? compactReach : undefined}
         onPress={openPrompt}
         style={({ pressed }) => [
           props.compact ? styles.control : styles.wideControl,
@@ -469,6 +470,9 @@ export function SeatLayerPickerAccessibilityFilters(
 
 /** The line every floating map disc is drawn with. */
 const discLine = 1;
+
+/** The compact disc is drawn smaller than a finger's target. */
+const compactReach = (size.minimumHitTarget - size.accessibilityControlSize) / 2;
 
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { width: size.accessibilityControlSize, height: size.accessibilityControlSize },

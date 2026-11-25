@@ -152,10 +152,10 @@ export function seatLayerPickerMapCanStepOut(map: MapCameraReading): boolean {
 }
 
 /**
- * §3.5, web 0.84.0: `+` RETIRES rather than dims once the buyer is among the
- * seats or at the zoom ceiling — a disc that does nothing is the broken-map
- * reading. `canZoomIn` is present-only, so only an explicit `false` retires it;
- * an absent reading means the engine cannot say, which is not a ceiling.
+ * §3.5: `+` keeps its place and dims once the buyer is among the seats or at
+ * the zoom ceiling. `canZoomIn` is present-only, so only an explicit `false`
+ * dims it; an absent reading means the engine cannot say, which is not a
+ * ceiling.
  */
 export function seatLayerPickerMapZoomInRetired(map: MapCameraReading): boolean {
   return map.rung === 'seats' || map.canZoomIn === false;
@@ -258,9 +258,8 @@ export function SeatLayerMapControls(props: SeatLayerMapControlsProps): React.Re
   // sometimes worked.
   const zoomInSlotAvailable = snapshot !== undefined && buyerView === 'map' && compact &&
     props.showStepOutControl !== false && supports('picker.zoomIn', ['zoom']);
-  // A retired `+` KEEPS ITS SLOT (web 0.84.1): the column is anchored at its
-  // foot, so a disc that left the tree moved the accessibility disc that heads
-  // it under the thumb already reaching for that disc.
+  // It dims in its place: a disc that left would move, or leave a gap under,
+  // the accessibility disc that heads the column.
   const zoomInRetired = snapshot !== undefined &&
     seatLayerPickerMapZoomInRetired(snapshot.map);
   // The phone's whole-venue disc. The wide layout draws NO fit control of its
@@ -505,11 +504,12 @@ function SeatLayerMapControlsView({
     <View style={{
       alignItems: 'center',
       flexDirection: 'row',
-      gap: seatLayerPickerTokens.size.accessStepGap,
+      gap: seatLayerPickerTokens.size.accessStepGap - discBed,
       justifyContent: 'flex-end',
     }}>
       {accessibleStepper}
-      {accessibilityControl}
+      {/* Over the others: in the middle of a target as wide as theirs. */}
+      <View style={{ alignItems: 'center', minWidth: target }}>{accessibilityControl}</View>
     </View>
   );
   if (!compact) {
@@ -535,22 +535,14 @@ function SeatLayerMapControlsView({
   // the column and its foot have the same reach and the token gap is measured
   // between the DISCS. The anchor takes the reach back on both axes: the
   // region's inset is measured to the disc, not to the target around it.
-  const member = (child: ReactNode, first: boolean, hidden = false) => (
+  const member = (child: ReactNode, first: boolean) => (
     <View
-      // A RETIRED DISC KEEPS ITS SLOT, NOT ITS VOICE (§3.5). The box stays so
-      // the column does not shuffle under a thumb already reaching for the
-      // disc that heads it — but a control drawn at nothing is a control that
-      // is not there, and assistive technology must be told so rather than
-      // offered an invisible, disabled button in the corner of the map.
-      accessibilityElementsHidden={hidden ? true : undefined}
-      importantForAccessibility={hidden ? 'no-hide-descendants' : undefined}
-      pointerEvents={hidden ? 'none' : 'box-none'}
+      pointerEvents="box-none"
       style={{
         alignItems: 'flex-end',
         justifyContent: 'center',
         marginTop: first ? 0 : zoomColumnGap - discBed * 2,
         minHeight: target,
-        opacity: hidden ? 0 : 1,
       }}
     >
       {child}
@@ -559,7 +551,7 @@ function SeatLayerMapControlsView({
   const columnMembers: ReactNode[] = [];
   if (onMap && head !== null) columnMembers.push(member(head, columnMembers.length === 0));
   if (onMap && zoomInSlotAvailable) {
-    columnMembers.push(member(phoneZoomIn, columnMembers.length === 0, zoomInRetired));
+    columnMembers.push(member(phoneZoomIn, columnMembers.length === 0));
   }
   if (onMap && wholeVenueAvailable) {
     columnMembers.push(member(wholeVenue, columnMembers.length === 0));
