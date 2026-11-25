@@ -37,6 +37,43 @@ stay; the changes below are the ones an app or a buyer can notice.
   `SeatLayerPickerController.holdGA` rejects with `hold_unavailable`, where it
   resolved as if they were held.
 
+**Words and languages**
+
+- 43 languages (Hindi, Indonesian, Korean, Malay, Thai and Vietnamese are new)
+  and 233 sentences, the hosted map's own. Counted sentences use every plural
+  form their language has.
+- A refused action says why: the seats that were taken, a type that is sold out,
+  a limit and its number, no connection, a pause for maintenance, a private
+  event's access. An error that carries its own `buyerMessage` is still shown as
+  it is, and the error itself still reaches `onError` unchanged. An
+  `errorMessage` override no longer reaches refused actions; it stands under the
+  title when the map did not load.
+- The error line shows its whole text, scrolls when it is very long, and closes
+  with a × ("Dismiss error").
+- When the map did not load, the buyer reads "The seat map didn’t load" and
+  "Check your connection and try again." over a filled Try again button.
+- "Securing your seats…" and "Seats secured. Opening checkout…" stand on the
+  checkout button without a spinner. An `openingCheckout` override is still used
+  unless `seatsSecuredOpeningCheckout` is given.
+- A table prompt says "Select table", or "Update table" for one in the cart. The
+  3D venue says "Show whole venue", and the seat buttons "View from this seat"
+  and "See it in 3D". Overrides of `confirmTable`, `chooseTableGuests`,
+  `fitVenue` and `removeSeat` no longer reach these places: use `selectTable` /
+  `updateTable`, `chooseGuestsCopy`, `fitWholeVenue` and `removeWord`.
+
+**Money**
+
+- Amounts have the decimals of their currency and a thousands mark, in the
+  picker's language: `KWD 12.625`, `KWD 12,454.500`, `₹125,000`, `1.234,50 €`.
+  Whole amounts still have no decimals. `pricing.formatter` is still used first.
+
+**Colours**
+
+- The text on the accent colour is white wherever white can be read on it, and
+  a near-black (`#1A1200`) on pale accents; it was black on many mid-tone
+  accents. The event's own `accentInk` is used where it can be read, with the
+  app's accent too. An app's `onAccent` is used as before.
+
 **When the system closes the map's page (low memory)**
 
 - The picker loads the map again by itself, when the app is in front. A hold
