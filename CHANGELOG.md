@@ -62,6 +62,7 @@ stay; the changes below are the ones an app or a buyer can notice.
 - The accessibility sheet starts with the two map switches, and the kinds of
   seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
   of `viewGroupTitle` changes nothing now.
+  Held sideways, all of it scrolls under the title: the list had no room left.
 - With no close button, the hold clock and the "Sales are closed" pill stand
   eight points clear of the header's edge.
 - In the 3D venue the status bar stands on the dark ground its light text is

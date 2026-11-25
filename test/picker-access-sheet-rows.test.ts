@@ -3,10 +3,11 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+let windowHeight = 844;
 vi.mock('react-native', () => ({
   I18nManager: { isRTL: false }, Image: 'Image', Modal: 'Modal', Pressable: 'Pressable', ScrollView: 'ScrollView', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, hairlineWidth: 1 },
-  useWindowDimensions: () => ({ width: 390, height: 844 }),
+  useWindowDimensions: () => ({ fontScale: 1, width: 390, height: windowHeight }),
 }));
 
 let scope: Record<string, any>;
@@ -19,6 +20,7 @@ vi.mock('../src/picker/SeatLayerPickerScope', () => ({
 import { SeatLayerPickerAccessibilityFilters } from '../src/picker/accessibility';
 import {
   seatLayerPickerAccessSheetMaxHeight,
+  seatLayerPickerAccessSheetScrollsWhole,
 } from '../src/picker/accessibilitySheet';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
@@ -164,6 +166,39 @@ describe('the accessibility sheet is bounded and scrolls inside the bound (§3.5
     expect(list.findAllByProps({
       accessibilityRole: 'switch', accessibilityLabel: english.colorblindSafe,
     })).toHaveLength(0);
+  });
+});
+
+describe('a screen too short for the switches and the list', () => {
+  const whole = seatLayerPickerAccessSheetScrollsWhole;
+
+  it('is a phone held sideways, at any text size', () => {
+    for (const [height, inset] of [[375, 0], [390, 21], [412, 24]] as const) {
+      for (const text of [1, 1.3, 2]) expect(whole(height, inset, 2, text)).toBe(true);
+    }
+  });
+
+  it('is not a phone held upright', () => {
+    for (const [height, inset] of [[568, 0], [667, 0], [740, 24], [844, 34], [932, 34]] as const) {
+      expect(whole(height, inset, 2, 1)).toBe(false);
+    }
+    // A text size the platform could not say counts as 1.
+    expect(whole(844, 34, 2, Number.NaN)).toBe(false);
+  });
+
+  it('scrolls the switches with the list under the title', async () => {
+    windowHeight = 390;
+    try {
+      setup();
+      const renderer = await openSheet();
+      const list = renderer.root.findByType('ScrollView' as any);
+      for (const accessibilityLabel of ['wheelchair', english.colorblindSafe]) {
+        expect(list.findAllByProps({ accessibilityRole: 'switch', accessibilityLabel })).toHaveLength(1);
+      }
+      expect(list.findAllByProps({ accessibilityRole: 'header' })).toHaveLength(1);
+    } finally {
+      windowHeight = 844;
+    }
   });
 });
 

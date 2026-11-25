@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   type GestureResponderEvent, I18nManager, Pressable, ScrollView,
-  StyleSheet, Text, View,
+  StyleSheet, Text, useWindowDimensions, View,
 } from "react-native";
 
 import { SeatLayerPickerAccessIcon } from "./accessibilityIcon";
@@ -17,6 +17,15 @@ import { seatLayerPickerLineWidth } from './lineWidth';
 
 const size = seatLayerPickerTokens.size;
 const radius = seatLayerPickerTokens.radius;
+
+/** One height for every row, whatever it carries. */
+const rowHeight = 50;
+const headingFontSize = 20;
+const headingPadTop = 8;
+const groupTitleFontSize = 11;
+const groupTitlePadTop = 18;
+const groupTitlePadBottom = 4;
+const sheetPadBottom = 20;
 
 /**
  * One row of the accessibility sheet. `count` is PRESENT-ONLY: a provision the
@@ -89,6 +98,26 @@ export function seatLayerPickerAccessSheetMaxHeight(screenHeight: number): numbe
 }
 
 /**
+ * Whether the switches scroll with the list.
+ *
+ * On a screen too short for both, a sideways phone most of all, the list had no
+ * room left under what stands over it. There, all of it scrolls under the title.
+ */
+export function seatLayerPickerAccessSheetScrollsWhole(
+  screenHeight: number,
+  bottomInset: number,
+  switches: number,
+  fontScale: number,
+): boolean {
+  const scale = Math.max(1, Number.isFinite(fontScale) ? fontScale : 1);
+  const row = Math.max(rowHeight, size.accessRowLabelFontSize * 1.3 * scale);
+  const over = size.minimumHitTarget + Math.max(size.minimumHitTarget, headingFontSize * 1.25 * scale + headingPadTop)
+    + switches * row + groupTitleFontSize * 1.3 * scale + groupTitlePadTop + groupTitlePadBottom
+    + bottomInset + sheetPadBottom;
+  return seatLayerPickerAccessSheetMaxHeight(screenHeight) - over < row * 2;
+}
+
+/**
  * The sheet applies as it is flipped: there is no Apply step and no Cancel.
  * A switch IS the action, so staging the flips would ask twice for one
  * decision — and the drag handle, the gesture that closes every other sheet,
@@ -104,6 +133,30 @@ export function SeatLayerPickerAccessibilitySheet(
     onToggle: props.onToggle,
     onJump: props.onJump,
   };
+  const window = useWindowDimensions();
+  const scrollsWhole = seatLayerPickerAccessSheetScrollsWhole(
+    props.screenHeight, insets.bottom, props.switchRows.length, window.fontScale,
+  );
+  const over = (
+    <>
+      {props.switchRows.map((row) => (
+        <AccessRow key={row.key} row={row} {...rowProps} />
+      ))}
+      {props.needRows.length > 0
+        ? (
+          <Text
+            accessibilityRole="header"
+            style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, {
+              color: props.theme.colors.mutedText,
+              fontFamily: props.theme.fontFamily,
+            }]}
+          >
+            {props.needsTitle}
+          </Text>
+        )
+        : null}
+    </>
+  );
   return (
     <SeatLayerPickerPromptModal visible={props.visible}>
       <View
@@ -140,7 +193,7 @@ export function SeatLayerPickerAccessibilitySheet(
                 maxHeight: seatLayerPickerAccessSheetMaxHeight(props.screenHeight),
                 backgroundColor: props.theme.colors.surface,
                 borderColor: props.theme.colors.divider,
-                paddingBottom: insets.bottom + 20,
+                paddingBottom: insets.bottom + sheetPadBottom,
               },
               props.slots.accessibilityModalContainer,
             ]}
@@ -169,31 +222,20 @@ export function SeatLayerPickerAccessibilitySheet(
             </Text>
             {/* The two map switches come first and the provisions sit under
                 their own heading, so the switches never read as two more
-                provisions at the foot of the list. Only the list scrolls. */}
-            {props.switchRows.map((row) => (
-              <AccessRow key={row.key} row={row} {...rowProps} />
-            ))}
-            {props.needRows.length > 0
+                provisions at the foot of the list. Only the list scrolls, where
+                the screen has room for it. */}
+            {scrollsWhole ? null : over}
+            {props.needRows.length > 0 || scrollsWhole
               ? (
-                <>
-                  <Text
-                    accessibilityRole="header"
-                    style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, {
-                      color: props.theme.colors.mutedText,
-                      fontFamily: props.theme.fontFamily,
-                    }]}
-                  >
-                    {props.needsTitle}
-                  </Text>
-                  <ScrollView
-                    contentContainerStyle={styles.list}
-                    style={styles.listBox}
-                  >
-                    {props.needRows.map((row) => (
-                      <AccessRow key={row.key} row={row} {...rowProps} />
-                    ))}
-                  </ScrollView>
-                </>
+                <ScrollView
+                  contentContainerStyle={styles.list}
+                  style={styles.listBox}
+                >
+                  {scrollsWhole ? over : null}
+                  {props.needRows.map((row) => (
+                    <AccessRow key={row.key} row={row} {...rowProps} />
+                  ))}
+                </ScrollView>
               )
               : null}
           </Pressable>
@@ -227,8 +269,6 @@ function AccessRowGlyph(props: Readonly<{
   return <SeatLayerPickerAccessIcon color={props.color} size={props.size} variant="iso" />;
 }
 
-/** One height for every row, whatever it carries. */
-const rowHeight = 50;
 /** The count column, right-aligned, wide enough for "999 free". */
 const countColumn = 68;
 /** The ⓘ column. */
@@ -491,17 +531,17 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     height: size.sheetGrabberHeight,
     borderRadius: radius.pill,
   },
-  heading: { fontSize: 20, fontWeight: "800", minHeight: size.minimumHitTarget, paddingTop: 8 },
+  heading: { fontSize: headingFontSize, fontWeight: "800", minHeight: size.minimumHitTarget, paddingTop: headingPadTop },
   listBox: { flexGrow: 0, flexShrink: 1 },
   list: { paddingBottom: 4 },
   groupTitle: {
-    fontSize: 11,
+    fontSize: groupTitleFontSize,
     fontWeight: "700",
-    letterSpacing: 11 * size.accessGroupHeadingTracking,
-    paddingBottom: 4,
+    letterSpacing: groupTitleFontSize * size.accessGroupHeadingTracking,
+    paddingBottom: groupTitlePadBottom,
     paddingHorizontal: 8,
   },
-  groupTitleUnder: { paddingTop: 18 },
+  groupTitleUnder: { paddingTop: groupTitlePadTop },
   rowWrap: { alignSelf: "stretch" },
   row: {
     minHeight: rowHeight,
