@@ -177,6 +177,116 @@ describe('a page the system ended', () => {
     picker.dispose();
   });
 
+  describe('when nobody answers the question for the hold', () => {
+    const lost = { code: 'command_failed', message: 'Failed to fetch' };
+    const resumes = (transport: Transport) => transport.commands().filter((name) => name === 'picker.resumeHold').length;
+    async function asked(): Promise<{ picker: SeatLayerPickerController; page: Transport; booked: ReturnType<typeof vi.fn> }> {
+      const picker = new SeatLayerPickerController();
+      await handOff(picker, await start(picker));
+      const booked = vi.fn();
+      picker.subscribeBooked(booked);
+      picker.pageLost();
+      await picker.recoverLostPage(0);
+      const page = await start(picker, { page: 'page-2' });
+      vi.useFakeTimers();
+      return { picker, page, booked };
+    }
+
+    it('asks once more after two seconds, and has the hold and its clock again', async () => {
+      const { picker, page, booked } = await asked();
+      answer(picker, page, 'err', lost);
+      await vi.advanceTimersByTimeAsync(1_900);
+      expect(resumes(page)).toBe(1);
+      expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+      await vi.advanceTimersByTimeAsync(200);
+      expect(resumes(page)).toBe(2);
+      answer(picker, page, 'res', { snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }, 'page-2') });
+      await flush();
+      expect(picker.getSnapshot()?.hold).toMatchObject({ active: true, expiresAt: 9_000 });
+      expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+      push(picker, 3, { active: false }, 'page-2');
+      expect(booked).toHaveBeenCalledTimes(1);
+      expect(vi.getTimerCount()).toBe(0);
+      picker.dispose();
+    });
+
+    it('asks once more only, and then forgets the hold', async () => {
+      const { picker, page } = await asked();
+      answer(picker, page, 'err', lost);
+      await vi.advanceTimersByTimeAsync(2_100);
+      answer(picker, page, 'err', lost);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(resumes(page)).toBe(2);
+      expect(picker.getCheckoutHandoff()).toBeUndefined();
+      picker.dispose();
+    });
+
+    it('takes the server\'s refusal as final', async () => {
+      const { picker, page } = await asked();
+      answer(picker, page, 'err', { code: 'expired', message: 'hold_not_active', details: { status: 409, reason: 'expired' } });
+      await flush();
+      expect(picker.getCheckoutHandoff()).toBeUndefined();
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(resumes(page)).toBe(1);
+      picker.dispose();
+    });
+
+    it('asks nothing after the picker is gone', async () => {
+      const { picker, page } = await asked();
+      answer(picker, page, 'err', lost);
+      await flush();
+      expect(vi.getTimerCount()).toBe(1);
+      picker.dispose();
+      expect(vi.getTimerCount()).toBe(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(resumes(page)).toBe(1);
+    });
+
+    it('leaves the question to the next page when this one ends too', async () => {
+      const { picker, page, booked } = await asked();
+      answer(picker, page, 'err', lost);
+      await flush();
+      picker.pageLost();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(resumes(page)).toBe(1);
+      await picker.recoverLostPage(1);
+      expect(vi.getTimerCount()).toBe(0);
+      const third = await start(picker, { page: 'page-3' });
+      expect(resumes(third)).toBe(1);
+      answer(picker, third, 'res', { snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }, 'page-3') });
+      await flush();
+      expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+      expect(booked).not.toHaveBeenCalled();
+      picker.dispose();
+    });
+
+    it('leaves it to the next page when this one ends while it is asked again', async () => {
+      const { picker, page } = await asked();
+      answer(picker, page, 'err', lost);
+      await vi.advanceTimersByTimeAsync(2_100);
+      expect(resumes(page)).toBe(2);
+      picker.pageLost();
+      await flush();
+      await picker.recoverLostPage(1);
+      const third = await start(picker, { page: 'page-3' });
+      expect(resumes(third)).toBe(1);
+      expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+      picker.dispose();
+    });
+
+    it('does not replace a hold the buyer made meanwhile', async () => {
+      const { picker, page, booked } = await asked();
+      answer(picker, page, 'err', lost);
+      await flush();
+      push(picker, 2, { active: true, owner: 'picker' }, 'page-2');
+      await vi.advanceTimersByTimeAsync(2_100);
+      expect(resumes(page)).toBe(1);
+      push(picker, 3, { active: false }, 'page-2');
+      expect(booked).not.toHaveBeenCalled();
+      picker.dispose();
+    });
+  });
+
   it('asks for the host\'s first hold again without failing the page when it is gone', async () => {
     const picker = new SeatLayerPickerController();
     const first = await start(picker, { config: { initialHoldId: 'hold-1' }, hold: { active: true, owner: 'host' } });

@@ -1,3 +1,5 @@
+import { SeatLayerError } from '../errors';
+
 /** Two pages the system ended inside this window are replaced; a third is not. */
 export const seatLayerPickerPageRecoveryWindowMs = 60_000;
 export const seatLayerPickerPageRecoveryLimit = 2;
@@ -25,4 +27,16 @@ export class SeatLayerPickerPageRecovery {
 export interface SeatLayerPickerReloadHold {
   readonly event: string;
   readonly holdId: string | undefined;
+}
+
+/** How long after a resume nobody answered it is asked once more. */
+export const seatLayerPickerResumeRetryMs = 2_000;
+
+/** A failure the server did not answer: no network, a time-out, a lost page. */
+export function seatLayerPickerUnanswered(error: unknown): boolean {
+  if (!(error instanceof SeatLayerError)) return false;
+  if (error.code === 'sl_timeout' || error.code === 'sl_transport') return true;
+  // The page gives its own code to a request that failed on the way; whatever
+  // the server answered carries its status.
+  return error.code === 'command_failed' && typeof error.details?.meta?.status !== 'number';
 }

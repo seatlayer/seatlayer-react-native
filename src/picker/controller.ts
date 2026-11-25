@@ -10,7 +10,12 @@ import {
 } from './availability';
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
-import { SeatLayerPickerPageRecovery, type SeatLayerPickerReloadHold } from './pageRecovery';
+import {
+  SeatLayerPickerPageRecovery,
+  seatLayerPickerResumeRetryMs,
+  seatLayerPickerUnanswered,
+  type SeatLayerPickerReloadHold,
+} from './pageRecovery';
 import {
   SeatLayerPickerBookedDetector,
   seatLayerPickerHoldOwnershipStore,
@@ -95,6 +100,12 @@ export interface SeatLayerPickerLifecycleResult {
   readonly outcome?: SeatLayerPickerAvailabilityOutcome;
 }
 
+/** A hold asked for again on a replaced page, until the answer is final. */
+interface SeatLayerPickerResume {
+  readonly holdId: string;
+  timer?: ReturnType<typeof setTimeout> | undefined;
+}
+
 /** Public picker controller; recovery additions retain the original controller identity. */
 export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private reloadGenerationValue = 0;
@@ -103,6 +114,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private bootEvent: string | undefined;
   private bootHoldId: string | undefined;
   private reloadHold: SeatLayerPickerReloadHold | undefined;
+  private resuming: SeatLayerPickerResume | undefined;
   private readonly reloadListeners = new Set<() => void>();
   private availabilityRefreshFlight: Promise<SeatLayerPickerLifecycleResult | undefined> | undefined;
   private readonly chartLoads = new SeatLayerPickerChartLoadSubscriptions(
@@ -213,6 +225,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     config: JsonObject | undefined,
   ): JsonObject | undefined {
     this.bootEvent = configuration.event;
+    this.forgetResume();
     const { initialHoldId, ...rest } = config ?? {};
     if (this.reloadHold?.event !== configuration.event) {
       this.reloadHold = undefined;
@@ -229,20 +242,60 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   }
 
   private resumeAfterReload(holdId: string): void {
-    void this.resumeHold(holdId).then(
-      (snapshot) => { if (snapshot?.hold.active !== true) this.booked.released(); },
-      () => this.booked.released(),
-    );
+    const resume: SeatLayerPickerResume = { holdId };
+    this.resuming = resume;
+    const attempt = (last: boolean): void => {
+      const pending = (): boolean => this.resuming === resume && !this.disposed;
+      void this.serial(async () => {
+        // A hold the buyer made while this one waited is the buyer's.
+        if (!pending() || this.getSnapshot()?.hold.active === true) return false;
+        const snapshot = await this.applyMutationResult(
+          await this.command('picker.resumeHold', { holdId }),
+        );
+        return snapshot?.hold.active === true;
+      }).then(
+        (restored) => { if (pending()) this.endResume(restored); },
+        (error: unknown) => {
+          // A page that is gone leaves the hold to the page that replaces it.
+          if (!pending() || !this.mapController.isReady) return;
+          if (last || !seatLayerPickerUnanswered(error)) {
+            this.endResume(false);
+            return;
+          }
+          resume.timer = setTimeout(() => {
+            resume.timer = undefined;
+            if (pending() && this.mapController.isReady) attempt(true);
+          }, seatLayerPickerResumeRetryMs);
+        },
+      );
+    };
+    attempt(false);
+  }
+
+  /** The answer is final: forgets the hold unless the page has it again. */
+  private endResume(restored: boolean): void {
+    const holdId = this.resuming?.holdId;
+    this.forgetResume();
+    const handoff = this.booked.pendingHandoff;
+    const another = handoff !== undefined && handoff.holdId !== holdId;
+    if (!restored && !another) this.booked.released();
+  }
+
+  private forgetResume(): void {
+    if (this.resuming?.timer !== undefined) clearTimeout(this.resuming.timer);
+    this.resuming = undefined;
   }
 
   private rememberHoldForReload(): void {
+    const resumed = this.resuming?.holdId;
+    this.forgetResume();
     const snapshot = this.getSnapshot();
-    if (snapshot === undefined || this.bootEvent === undefined) return;
+    if (this.bootEvent === undefined || (snapshot === undefined && resumed === undefined)) return;
     this.reloadHold = {
       event: this.bootEvent,
-      holdId: snapshot.hold.active
+      holdId: snapshot?.hold.active === true
         ? this.booked.pendingHandoff?.holdId ?? this.bootHoldId
-        : undefined,
+        : resumed,
     };
   }
 
@@ -269,6 +322,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   }
 
   override dispose(): void {
+    this.forgetResume();
     this.unsubscribeHoldExpiry();
     this.unsubscribeBookedWatch();
     this.bookedListeners.clear();
