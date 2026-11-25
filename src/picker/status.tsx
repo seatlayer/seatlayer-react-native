@@ -153,6 +153,7 @@ export function SeatLayerPickerLoadingView(
 export function SeatLayerPickerEmptyStatus({
   message,
   slots: componentSlots,
+  strings,
   style,
   theme,
   themeStyles,
@@ -160,7 +161,7 @@ export function SeatLayerPickerEmptyStatus({
   const slots = resolveSeatLayerPickerStyles(themeStyles, componentSlots);
   const copy = typeof message === 'string' && message.trim()
     ? message.trim()
-    : 'No selectable seats are currently available.';
+    : strings.translate("noSelectableSeats");
   return <View
     accessibilityLiveRegion="polite"
     style={[styles.root, slots.statusContainer, sanitizeSeatLayerPickerStyle(style)]}

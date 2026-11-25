@@ -581,8 +581,8 @@ export function SeatLayerPickerAdaptiveLayout({
       showOverviewControl={plan.options.chrome.overview}
       showZoomControls={plan.options.chrome.zoom}
       showZoomToFitControl={plan.options.chrome.fit}
-      zoomInLabel="Zoom in"
-      zoomOutLabel="Zoom out"
+      zoomInLabel={scope.strings.translate('zoomIn')}
+      zoomOutLabel={scope.strings.translate('zoomOut')}
       // §3.5, 0.9.1: the accessibility disc HEADS the column. It used to be
       // anchored bottom-left on its own, which put two ways to reach the same
       // filter on the same map once the column grew one.

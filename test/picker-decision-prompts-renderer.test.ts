@@ -249,11 +249,11 @@ describe('picker decision prompt renderer', () => {
     const runtime = setup(value); const first = createSeatLayerPickerTableCandidate(scope as never, 'table', 1)!;
     const replacement = createSeatLayerPickerTableCandidate(scope as never, 'table-b', 1)!; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTablePrompt, { candidate: first })); });
-    const staleConfirm = renderer.root.findByProps({ accessibilityLabel: 'confirmTable' }).props.onPress;
+    const staleConfirm = renderer.root.findByProps({ accessibilityLabel: 'selectTable' }).props.onPress;
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerTablePrompt, { candidate: replacement })); await Promise.resolve(); });
     await act(async () => { staleConfirm(); await Promise.resolve(); });
     expect(runtime.commands).toEqual([]);
-    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'confirmTable' }).props.onPress(); await Promise.resolve(); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'selectTable' }).props.onPress(); await Promise.resolve(); });
     expect(runtime.commands).toEqual([['Table B', 2]]);
   });
 
@@ -323,7 +323,7 @@ describe('picker decision prompt renderer', () => {
     setup(); const candidate = createSeatLayerPickerTableCandidate(scope as never, 'table', 1)!; let removed = 0; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTablePrompt, { candidate, onRemoveTable: async () => { removed += 1; } })); });
     scope.readOnly = true;
-    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'removeSeat' }).props.onPress(); await Promise.resolve(); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'removeWord' }).props.onPress(); await Promise.resolve(); });
     expect(removed).toBe(0);
   });
 });
