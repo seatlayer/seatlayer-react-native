@@ -419,7 +419,7 @@ function SeatLayerPriceLegendView({
             const money = seatLayerPickerLegendChipText(
               category,
               (amount) => formatSeatLayerPickerMoney(
-                amount, currency, moneyFormatter, onFormatterError,
+                amount, currency, moneyFormatter, onFormatterError, strings.locale,
               ),
             );
             const soldOut = seatLayerPickerLegendSoldOut(category);
