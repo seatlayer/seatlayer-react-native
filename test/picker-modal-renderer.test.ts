@@ -3,12 +3,13 @@ import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+let screen = { width: 700, height: 900 };
 vi.mock('react-native', () => ({
   Modal: 'Modal',
   Pressable: 'Pressable',
   SafeAreaView: 'SafeAreaView',
   View: 'View',
-  useWindowDimensions: () => ({ width: 700, height: 900 }),
+  useWindowDimensions: () => screen,
   // The picker root reads the platform's Bold Text setting (§4.10); a mock
   // without it takes the whole composition down.
   AccessibilityInfo: {
@@ -349,5 +350,25 @@ describe('picker modal renderer', () => {
     });
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-modal-barrier' })).toHaveLength(0);
     expect(renderer.root.findAllByType('SafeAreaView' as any)).toHaveLength(1);
+  });
+
+  it('may be held every way, or the ways an app names', async () => {
+    setup();
+    const all = ['portrait', 'portrait-upside-down', 'landscape', 'landscape-left', 'landscape-right'];
+    expect(modal(await render()).props.supportedOrientations).toEqual(all);
+    expect(modal(await render({ supportedOrientations: ['portrait'] })).props.supportedOrientations).toEqual(['portrait']);
+    expect(modal(await render({ supportedOrientations: [] })).props.supportedOrientations).toEqual(all);
+  });
+
+  it('keeps its content when a phone is turned', async () => {
+    setup();
+    screen = { width: 390, height: 844 };
+    const renderer = await render();
+    const before = adaptive(renderer);
+    screen = { width: 844, height: 390 };
+    await act(async () => { renderer.update(React.createElement(SeatLayerPickerModal, modalProps())); });
+    expect(adaptive(renderer)).toBe(before);
+    expect(modal(renderer).props.presentationStyle).toBe('fullScreen');
+    screen = { width: 700, height: 900 };
   });
 });

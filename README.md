@@ -226,6 +226,8 @@ import { SeatLayerPicker } from '@seatlayer/react-native';
 
 Use `SeatLayerPickerModal` for a controlled dialog or full-screen presentation.
 It uses the same scope, snapshot, and back ladder as the in-page picker.
+On iOS it turns in every way your app supports; `supportedOrientations` names
+other ways.
 
 ```tsx
 import { SeatLayerPickerModal } from '@seatlayer/react-native';
