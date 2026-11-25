@@ -99,11 +99,11 @@ describe('picker theme runtime boundary', () => {
   });
 
   it('accepts composable RN colors and ignores transparent or unsupported brand candidates', () => {
-    expect(deriveSeatLayerPickerOnAccent('#fff', '#123456')).toBe('#000000');
+    expect(deriveSeatLayerPickerOnAccent('#fff', '#123456')).toBe('#1A1200');
     expect(deriveSeatLayerPickerOnAccent('#000f', '#123456')).toBe('#FFFFFF');
-    expect(deriveSeatLayerPickerOnAccent('#ffffff80', '#123456')).toBe('#000000');
+    expect(deriveSeatLayerPickerOnAccent('#ffffff80', '#123456')).toBe('#1A1200');
     expect(deriveSeatLayerPickerOnAccent('rgb(0, 0, 0)', '#123456')).toBe('#FFFFFF');
-    expect(deriveSeatLayerPickerOnAccent('rgb(255, 255, 0)', '#123456')).toBe('#000000');
+    expect(deriveSeatLayerPickerOnAccent('rgb(255, 255, 0)', '#123456')).toBe('#1A1200');
     expect(resolveSeatLayerPickerTheme({
       theme: { colors: { accent: 'named-colour' } },
       organizerBranding: { accent: '#102030' },

@@ -305,7 +305,6 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
         justifyContent: 'center',
         paddingHorizontal: 12,
       }, styles.continueButton, sanitizeSeatLayerPickerStyle(props.style)]}>
-        {cta.busy ? <Spinner color={disabled ? theme.colors.mutedText : theme.colors.onAccent} /> : null}
         <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('sheet')} numberOfLines={1} ellipsizeMode="tail" style={[{
           color: disabled ? theme.colors.mutedText : theme.colors.onAccent,
           flexShrink: 1,
@@ -316,28 +315,6 @@ export function SeatLayerBookButton(props: SeatLayerBookButtonProps): React.Reac
       </View>
     </Pressable>
   );
-}
-
-function Spinner({ color }: Readonly<{ color: string }>): React.ReactElement {
-  const spin = useRef(new Animated.Value(0)).current;
-  const reducedMotion = useSeatLayerPickerReducedMotion();
-  useEffect(() => {
-    if (reducedMotion) return undefined;
-    const loop = Animated.loop(Animated.timing(spin, {
-      duration: 900, easing: Easing.linear, toValue: 1, useNativeDriver: true,
-    }));
-    loop.start();
-    return () => loop.stop();
-  }, [reducedMotion, spin]);
-  return <Animated.View accessible={false} testID="seatlayer-cart-checkout-spinner" style={{
-    borderColor: color,
-    borderRadius: 8,
-    borderTopColor: 'transparent',
-    borderWidth: 2,
-    height: 16,
-    transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }],
-    width: 16,
-  }} />;
 }
 
 /** A real bottom sheet: the finger moves it, and a spring puts it down. */

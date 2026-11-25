@@ -211,8 +211,8 @@ describe('picker theme', () => {
       brand: 'sunshine',
       brands: { sunshine: { colors: { accent: '#FFFF00' } } },
     });
-    expect(theme.colors.onAccent).toBe('#000000');
-    expect(theme.roles.primaryAction.foreground).toBe('#000000');
+    expect(theme.colors.onAccent).toBe('#1A1200');
+    expect(theme.roles.primaryAction.foreground).toBe('#1A1200');
     expect(deriveSeatLayerPickerOnAccent('#000066', '#111111')).toBe('#FFFFFF');
   });
 
@@ -241,9 +241,9 @@ describe('picker theme', () => {
       theme: { colors: { accent: '#FFFF00', onAccent: '#101010' } },
       organizerBranding: { accent: '#000066', accentInk: '#FFFFFF' },
     });
-    expect(derived.colors.onAccent).toBe('#000000');
+    expect(derived.colors.onAccent).toBe('#1A1200');
     expect(explicit.colors.onAccent).toBe('#101010');
-    expect(derived.roles.primaryAction.foreground).toBe('#000000');
+    expect(derived.roles.primaryAction.foreground).toBe('#1A1200');
   });
 
   it('applies authored accent ink by precedence without borrowing a lower pairing', () => {
@@ -265,8 +265,19 @@ describe('picker theme', () => {
     });
     expect(hostInk.colors.onAccent).toBe('#AABBCC');
     expect(brandInk.colors.onAccent).toBe('#102030');
-    expect(hostAccent.colors.onAccent).toBe('#000000');
+    expect(hostAccent.colors.onAccent).toBe('#1A1200');
     expect(organizerPair.colors).toMatchObject({ accent: '#224488', onAccent: '#F0F0F0' });
+  });
+
+  it('keeps the organizer’s ink only where it can be read, and white wherever white can', () => {
+    const ink = (accent: string, accentInk?: string, host = {}) => resolveSeatLayerPickerTheme({
+      theme: { colors: host }, organizerBranding: { accent, ...(accentInk ? { accentInk } : {}) },
+    }).colors.onAccent;
+    expect(ink('#E54558', '#FFE8EC')).toBe('#FFE8EC');
+    expect(ink('#FFD400', '#FFFFFF')).toBe('#1A1200');
+    expect(ink('#224488', '#FFE8EC', { accent: '#114422' })).toBe('#FFE8EC');
+    expect(ink('#E54558')).toBe('#FFFFFF');
+    expect(ink('#FFD400')).toBe('#1A1200');
   });
 
   it('applies explicit, brand, organizer, and generated visual precedence coherently', () => {

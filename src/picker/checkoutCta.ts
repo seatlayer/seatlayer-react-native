@@ -101,7 +101,7 @@ export function seatLayerCheckoutCtaState(
 
   // 4. and 5. Work the buyer has already asked for.
   if (input.creatingHold === true) return reason(strings.translate('securingSeats'), true);
-  if (input.handoffInFlight === true) return reason(strings.translate('openingCheckout'), true);
+  if (input.handoffInFlight === true) return reason(strings.translate('seatsSecuredOpeningCheckout'), true);
 
   // 6. A selection the event's own rules reject. `required` is 0 for a rule
   //    about the SHAPE of a selection rather than its size, where

@@ -232,15 +232,25 @@ function composableSeatLayerPickerColor(value: unknown): string | undefined {
   return parsed !== undefined && parsed.alpha > 0 ? source : undefined;
 }
 
-/** Returns the black or white foreground with the higher contrast against an RN colour. */
+/** The contrast a label on the accent has to clear: every one of them is large or bold text. */
+const onAccentContrastFloor = 3;
+
+/** The ink where white cannot be read: a warm near-black, the one the map's own chips carry. */
+const darkOnAccent = '#1A1200';
+
+function contrastOf(left: string, right: string): number {
+  const [a, b] = [parseSeatLayerPickerColor(left), parseSeatLayerPickerColor(right)];
+  if (!a || !b || a.alpha <= 0 || b.alpha <= 0) return 0;
+  const [first, second] = [relativeLuminance(a), relativeLuminance(b)];
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
+/** White on a React Native colour wherever white can be read on it, or a near-black. */
 export function deriveSeatLayerPickerOnAccent(accent: string, fallback: string): string {
   const safeFallback = composableSeatLayerPickerColor(fallback) ?? '#FFFFFF';
   const rgb = parseSeatLayerPickerColor(accent);
   if (!rgb || rgb.alpha <= 0) return safeFallback;
-  const luminance = relativeLuminance(rgb);
-  const whiteContrast = 1.05 / (luminance + 0.05);
-  const blackContrast = (luminance + 0.05) / 0.05;
-  return whiteContrast >= blackContrast ? '#FFFFFF' : '#000000';
+  return contrastOf('#FFFFFF', accent) >= onAccentContrastFloor ? '#FFFFFF' : darkOnAccent;
 }
 
 function definedColorEntries(source: unknown): Partial<SeatLayerPickerColorTokens> {
@@ -556,16 +566,20 @@ export function resolveSeatLayerPickerTheme(
   };
   const hostColors = definedColorEntries(ownDataValue(theme, 'colors'));
   const organizerColorsLayer = organizerColors(organizer);
-  const colorLayers = [hostColors, selectedColors, organizerColorsLayer];
-  const authoredAccent = highestAuthoredColor(colorLayers, 'accent');
-  const authoredInk = highestAuthoredColor(colorLayers, 'onAccent');
+  const authoredAccent = highestAuthoredColor([hostColors, selectedColors, organizerColorsLayer], 'accent');
+  const authoredInk = highestAuthoredColor([hostColors, selectedColors], 'onAccent');
   const accent = authoredAccent?.value ?? base.accent;
+  // The app's ink stands with its accent. The organizer's was chosen against
+  // the organizer's accent, so it stays only where it can be read on this one.
+  const organizerInk = organizerColorsLayer.onAccent;
   const onAccent = authoredInk !== undefined
     && (authoredAccent === undefined || authoredInk.index <= authoredAccent.index)
     ? authoredInk.value
-    : authoredAccent === undefined
-      ? base.onAccent
-      : deriveSeatLayerPickerOnAccent(accent, base.onAccent);
+    : organizerInk !== undefined && contrastOf(organizerInk, accent) >= onAccentContrastFloor
+      ? organizerInk
+      : authoredAccent === undefined
+        ? base.onAccent
+        : deriveSeatLayerPickerOnAccent(accent, base.onAccent);
   // A mode owns the ground and never the brand. The ground roles resolve host,
   // then the selected brand, then the resolved mode's preset, and only then the
   // organizer — so a chart saved against a dark canvas cannot paint the picker's

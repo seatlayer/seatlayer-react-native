@@ -242,11 +242,19 @@ function keyCandidates(key: string, locale: SeatLayerPickerLocale | null | undef
   return [...new Set([`${key}.${seatLayerPickerPluralCategory(locale, count)}`, `${key}.other`, key])];
 }
 
+/** Wording an app gave a sentence that a newer one has taken the place of. */
+const replacedSentences: Readonly<Record<string, string>> = {
+  seatsSecuredOpeningCheckout: 'openingCheckout',
+};
+
 /** Wording may also be given under the `…One` and `…Other` names of the English strings. */
 function overrideCandidates(candidates: readonly string[]): readonly string[] {
   return candidates.flatMap((candidate) => {
     const form = /^(.+)\.(one|other)$/.exec(candidate);
-    return form ? [candidate, `${form[1]}${form[2] === 'one' ? 'One' : 'Other'}`] : [candidate];
+    return form
+      ? [candidate, `${form[1]}${form[2] === 'one' ? 'One' : 'Other'}`]
+      : [candidate, ...(Object.prototype.hasOwnProperty.call(replacedSentences, candidate)
+        ? [replacedSentences[candidate] as string] : [])];
   });
 }
 
