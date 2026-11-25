@@ -24,6 +24,7 @@ import {
   SeatLayerMapControls,
   seatLayerPickerMapCanStepBack,
   seatLayerPickerMapCanStepOut,
+  seatLayerMapDiscsPerColumn,
   seatLayerPickerMapZoomInRetired,
   seatLayerPickerMapControlsEdgeInset,
   seatLayerPickerMapControlsDiscBed,
@@ -91,6 +92,27 @@ async function render(props: object = {}): Promise<ReactTestRenderer> {
   });
   return renderer;
 }
+
+describe('how many discs one column has room for', () => {
+  const discs = (mapHeight: number | undefined, viewControl = true, bottom = 12) =>
+    seatLayerMapDiscsPerColumn({ mapHeight, bottom, viewControl, discSize: 36 });
+
+  it('keeps one column while its head stands under the Map/3D control', () => {
+    expect(discs(undefined)).toBe(Number.POSITIVE_INFINITY);
+    // 12 under, three discs of 36 with 6 between, 12 over, and the control.
+    expect(discs(188)).toBe(3);
+    expect(discs(187)).toBe(2);
+    expect(discs(146)).toBe(2);
+    expect(discs(104)).toBe(1);
+    expect(discs(103)).toBe(0);
+  });
+
+  it('has the whole height where there is no such control', () => {
+    expect(discs(144, false)).toBe(3);
+    expect(discs(59, false)).toBe(0);
+    expect(discs(188, true, 60)).toBe(1);
+  });
+});
 
 describe('3.5 map corner controls', () => {
   it('insets every floating control by size.mapAnchorInset', () => {
@@ -286,7 +308,8 @@ describe('3.5 map corner controls', () => {
       const row = renderer.root.findByType('AccessibleStepper' as never).parent!;
       expect(row.props.style).toMatchObject({
         flexDirection: 'row',
-        gap: seatLayerPickerTokens.size.accessStepGap,
+        // The disc's bed is part of the gap: it stands in the middle of 44.
+        gap: seatLayerPickerTokens.size.accessStepGap - 4,
       });
     }
   });

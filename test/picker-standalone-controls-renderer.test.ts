@@ -125,52 +125,62 @@ describe('standalone picker controls', () => {
     expect(runtime.commands.overview).toHaveBeenCalledOnce();
   });
 
-  it('retires + at the ceiling and among the seats, keeping its slot', async () => {
-    // A disc that does nothing is the broken-map reading, so `+` goes; the
-    // column is anchored at its FOOT, so the slot stays or the accessibility
-    // disc above it moves under the thumb reaching for it.
+  it('keeps + in its place and dims it at the ceiling and among the seats', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
     await act(async () => {
       renderer = create(React.createElement(SeatLayerMapControls, compactControls));
     });
-    const live = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' });
-    expect(live.props.accessibilityState.disabled).toBe(false);
+    expect(renderer.root.findByProps({ accessibilityLabel: 'zoomIn' }).props.accessibilityState.disabled)
+      .toBe(false);
 
     for (const camera of [{ canZoomIn: false }, { rung: 'seats' }]) {
       runtime.update({ map: camera });
       await act(async () => {
         renderer.update(React.createElement(SeatLayerMapControls, compactControls));
       });
-      const retired = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' });
-      expect(retired.props.accessibilityState.disabled).toBe(true);
-      expect(retired.props.disabled).toBe(true);
-      // THE SLOT STAYS. It is drawn away and takes no presses, but it still
-      // occupies its target, so the disc above it does not move.
-      const slot = renderer.root.findAllByType('View' as never).find((node) => {
-        const style = node.props.style;
-        return typeof style === 'object' && style !== null && !Array.isArray(style) &&
-          (style as Record<string, unknown>).opacity === 0 &&
-          (style as Record<string, unknown>).minHeight === 44;
-      });
-      expect(slot).toBeDefined();
-      expect(slot?.props.pointerEvents).toBe('none');
-      // AND IT IS SILENT. A slot drawn at nothing that still answered the
-      // rotor was an invisible disabled button in the corner of the map.
-      expect(slot?.props.accessibilityElementsHidden).toBe(true);
-      expect(slot?.props.importantForAccessibility).toBe('no-hide-descendants');
-      // The other disc is a different question and is unaffected by it: it
-      // keeps its slot AND its voice.
-      expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' }))
-        .toHaveLength(1);
-      const living = renderer.root.findAllByType('View' as never).find((node) => {
-        const style = node.props.style;
-        return typeof style === 'object' && style !== null && !Array.isArray(style) &&
-          (style as Record<string, unknown>).opacity === 1 &&
-          (style as Record<string, unknown>).minHeight === 44;
-      });
-      expect(living?.props.accessibilityElementsHidden).toBeUndefined();
+      const dimmed = renderer.root.findByProps({ accessibilityLabel: 'zoomIn' });
+      expect(dimmed.props.accessibilityState.disabled).toBe(true);
+      expect(dimmed.props.disabled).toBe(true);
+      // Drawn, and said: nothing over it hides it from the eye or the ear.
+      const slots = renderer.root.findAllByType('View' as never)
+        .filter((node) => node.props.style?.minHeight === 44);
+      expect(slots.length).toBeGreaterThan(1);
+      for (const slot of slots) {
+        expect(slot.props.style.opacity ?? 1).toBe(1);
+        expect(slot.props.accessibilityElementsHidden).toBeUndefined();
+        expect(slot.props.importantForAccessibility).toBeUndefined();
+      }
+      // The other disc is a different question and is unaffected by it.
+      expect(renderer.root.findByProps({ accessibilityLabel: 'fitWholeVenue' })
+        .props.accessibilityState.disabled).toBe(false);
       runtime.update({ map: { canZoomIn: true, rung: 'sections' } });
     }
+  });
+
+  it('flows the discs into a second column on a map too short for one', async () => {
+    setup(); let renderer!: ReactTestRenderer;
+    await act(async () => {
+      renderer = create(React.createElement(SeatLayerMapControls, compactControls));
+    });
+    const columns = () => renderer.root.findAllByType('View' as never)
+      .filter((node) => node.props.style?.alignItems === 'flex-end' && node.props.style.minHeight === undefined
+        && node.props.style.position === undefined && node.props.style.flexDirection === undefined)
+      .map((node) => node.findAll((inner) => ['zoomIn', 'fitWholeVenue'].includes(inner.props.accessibilityLabel)
+        && inner.props.accessibilityRole === 'button').map((inner) => inner.props.accessibilityLabel));
+    const layout = async (height: number) => {
+      const surface = renderer.root.findAll((node) => (node.type as unknown) === 'View'
+        && typeof node.props.onLayout === 'function')[0]!;
+      await act(async () => { surface.props.onLayout({ nativeEvent: { layout: { height } } }); });
+    };
+    await layout(600);
+    expect(columns().length).toBe(1);
+    await layout(70);
+    expect(columns().length).toBeGreaterThan(1);
+    // The foot of the column stays in the corner, the rest goes beside it.
+    const all = columns();
+    expect(all[all.length - 1]).toContain('fitWholeVenue');
+    await layout(50);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'fitWholeVenue' })).toHaveLength(0);
   });
 
   it('never reads an ABSENT camera field as a ceiling', async () => {

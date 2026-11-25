@@ -67,24 +67,7 @@
     "430": 1
   },
   "Display options: outside the safe area": {
-    "667x375": 2,
-    "844x390": 2,
-    "915x412": 6
-  },
-  "Display options: touch area under 44": {
-    "320": 48,
-    "360": 48,
-    "375": 48,
-    "390": 48,
-    "393": 48,
-    "412": 48,
-    "430": 48,
-    "667x375": 32,
-    "844x390": 32,
-    "915x412": 32
-  },
-  "Display options: under Gallery tables, €70": {
-    "320": 3
+    "915x412": 1
   },
   "Dress Circle · C-6, C-7, C-8, C-9, C-10,: text ends in …": {
     "320": 7,
@@ -173,22 +156,8 @@
     "844x390": 34,
     "915x412": 34
   },
-  "Interactive 3D venue view: under Display options": {
-    "320": 2,
-    "667x375": 1,
-    "844x390": 2,
-    "915x412": 1
-  },
   "Interactive 3D venue view: under Remove seat Guest Tables 1": {
     "915x412": 2
-  },
-  "Interactive 3D venue view: under Show whole venue": {
-    "667x375": 4,
-    "844x390": 4,
-    "915x412": 2
-  },
-  "Interactive 3D venue view: under Zoom in": {
-    "320": 3
   },
   "Map: cut at the top or bottom": {
     "667x375": 2,
@@ -219,9 +188,6 @@
     "844x390": 2,
     "915x412": 4
   },
-  "Zoom in: outside the safe area": {
-    "915x412": 1
-  },
   "إضافة مقعد: text ends in …": {
     "320": 2
   },
@@ -239,21 +205,8 @@
   "المقعد السابق: outside the safe area": {
     "320": 1
   },
-  "خيارات العرض: touch area under 44": {
-    "320": 48,
-    "390": 48
-  },
-  "خيارات العرض: under Sponsor tables, ‏130 €": {
-    "320": 5
-  },
   "عرض تفاعلي ثلاثي الأبعاد للمكان: touch area under 44": {
     "320": 51,
     "390": 51
-  },
-  "عرض تفاعلي ثلاثي الأبعاد للمكان: under تكبير": {
-    "320": 5
-  },
-  "عرض تفاعلي ثلاثي الأبعاد للمكان: under خيارات العرض": {
-    "320": 1
   }
 }

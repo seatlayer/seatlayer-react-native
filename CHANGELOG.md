@@ -41,6 +41,12 @@ stay; the changes below are the ones an app or a buyer can notice.
   - An app's own `checkoutBar` part keeps the full width, under the words.
     `SeatLayerBookButton` placed anywhere else looks as it did.
 - While a seat card asks, the row is faded and takes no press.
+- On a phone the map's + stays in its place and dims when there is nothing more to
+  zoom in to, where it left a gap between the other two buttons. The accessibility
+  button stands over the others, 4 points further in, and is pressed over 44
+  points.
+- On a map too short for one column of them, as sideways with the list open,
+  these buttons stand beside one another, and are never over Map/3D.
 - When sales close, a buyer who holds seats can still continue to checkout. With
   no seats held the row says "Sales are closed" and the event's date, and has no
   button. `snapshot.event.startsAtLabel` carries that date.
