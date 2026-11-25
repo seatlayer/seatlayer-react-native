@@ -140,6 +140,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   shortened; a screen reader hears the whole line. At a large text size on a
   narrow phone the worded button stands over the arrows, which went off the sides
   of the screen.
+- In the 3D view "Back to venue" takes the line under the Map / 3D control where
+  the two do not fit side by side; it was drawn over the control. Its label may
+  take two lines.
 
 **Words and languages**
 

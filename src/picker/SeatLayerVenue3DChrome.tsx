@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useContext, useLayoutEffect, useMemo, useRef } from 'react';
 import {
   Animated,
   Easing,
@@ -43,6 +43,7 @@ import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLa
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBold } from './boldText';
+import { SeatLayerVenue3DBackSizeContext } from './venue3DBackSize';
 
 type VenueSlots = Pick<
   SeatLayerPickerStyles,
@@ -220,7 +221,7 @@ function VenueButton({
       },
     ]}>
       <Icon color={glass.ink} kind={kind} rtl={rtl} />
-      {labelled ? <Text numberOfLines={kind === 'back' ? 1 : undefined} style={[styles.buttonText, { color: glass.ink, fontFamily: theme.fontFamily, fontSize: kind === 'back' ? size.immersiveBackFontSize : size.immersiveNavChipFontSize }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
+      {labelled ? <Text numberOfLines={kind === 'back' ? 2 : undefined} style={[styles.buttonText, { color: glass.ink, fontFamily: theme.fontFamily, fontSize: kind === 'back' ? size.immersiveBackFontSize : size.immersiveNavChipFontSize }, slots?.immersiveChromeButtonText]}>{label}</Text> : null}
     </View>
   </Pressable>;
 }
@@ -230,12 +231,17 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
   const rtl = I18nManager.isRTL;
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   const { fontScale, width } = useWindowDimensions();
+  const onBackSize = useContext(SeatLayerVenue3DBackSizeContext);
   const primaryAbove = width < deckWidth + deckLetters * fontScale;
   const primary = !props.targeted || props.primaryVisible
     ? <VenueButton enabled={!props.disabled} kind={props.targeted ? 'seatView' : 'fit'} label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} />
     : null;
   return <View pointerEvents="box-none" style={[styles.root, slots?.immersiveChromeContainer, sanitizeSeatLayerPickerStyle(props.style), styles.rootSafety]}>
-    <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset }]}>
+    <View onLayout={(event) => {
+      const { height, width: drawn } = event.nativeEvent.layout;
+      if (!Number.isFinite(drawn) || !Number.isFinite(height)) return;
+      onBackSize?.({ height, width: drawn });
+    }} pointerEvents="box-none" style={[styles.backRail, { top: props.topInset }]}>
       {props.backVisible ? <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} /> : null}
       {props.navigationLabel && props.onNavigation ? <VenueButton enabled={!props.disabled && props.navigationEnabled === true} kind="navigation" label={props.navigationLabel} onPress={props.onNavigation} rtl={rtl} slots={slots} theme={props.theme} /> : null}
     </View>
@@ -419,7 +425,7 @@ export const SeatLayerVenue3D = SeatLayerVenue3DChrome;
 
 const styles = {
   animatedRoot: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
-  backRail: { flexDirection: 'row', gap: 8, position: 'absolute', start: 10 } as ViewStyle,
+  backRail: { flexDirection: 'row', gap: 8, maxWidth: '94%', position: 'absolute', start: 10 } as ViewStyle,
   button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
   buttonText: { flexShrink: 1, fontSize: size.immersiveNavChipFontSize, fontWeight: seatLayerPickerBold(800) } as TextStyle,
   caption: { borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, marginBottom: 8, maxWidth: '90%', paddingHorizontal: 12, paddingVertical: 7 } as ViewStyle,

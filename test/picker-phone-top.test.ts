@@ -10,7 +10,7 @@ import { planSeatLayerPickerPhoneTop } from '../src/picker/phoneTop';
 const phone = {
   backPillDrawn: false, badgeCleared: false, controls: true, floorStripVisible: true, immersiveTopInset: 12,
   ownFloorStrip: false, testBadgeVisible: true, viewModeVisible: true,
-  sideways: true, mapWidth: 844, badgeWidth: 85, viewModeWidth: 87, floorWidth: 395,
+  sideways: true, mapWidth: 844, badgeWidth: 85, viewModeWidth: 87, back: undefined, floorWidth: 395,
 };
 
 describe('the top of a phone map with level chips', () => {
@@ -41,5 +41,32 @@ describe('the top of a phone map with level chips', () => {
     }
     expect(planSeatLayerPickerPhoneTop({ ...phone, ownFloorStrip: true }).floorRail)
       .toEqual({ paddingStart: 0, paddingEnd: 0, top: 56 });
+  });
+});
+
+describe('the way back of the 3D scene beside Map / 3D', () => {
+  const scene = {
+    ...phone, backPillDrawn: true, badgeCleared: true, floorStripVisible: false, floorWidth: undefined,
+    mapWidth: 320, sideways: false, viewModeWidth: 120,
+  };
+  const plan = (width: number, height = 44) =>
+    planSeatLayerPickerPhoneTop({ ...scene, back: { height, width } });
+
+  it('shares the line where both fit, and takes the line under it where not', () => {
+    // 10 + 170 + 8 + 120 + 12 = 320.
+    expect(plan(170)).toMatchObject({ backTop: 12, badgeTop: 56 });
+    expect(plan(171)).toMatchObject({ backTop: 56, badgeTop: 100 });
+  });
+
+  it('keeps the badge and the map clear of a taller one', () => {
+    expect(plan(240, 60)).toMatchObject({ backTop: 56, badgeTop: 116, topHeight: 142 });
+  });
+
+  it('stays on the line without the control, and until both are measured', () => {
+    for (const other of [
+      { back: undefined }, { viewModeWidth: undefined }, { viewModeVisible: false }, { mapWidth: 0 },
+    ]) {
+      expect(planSeatLayerPickerPhoneTop({ ...scene, back: { height: 44, width: 300 }, ...other }).backTop).toBe(12);
+    }
   });
 });

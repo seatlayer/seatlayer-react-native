@@ -4,6 +4,9 @@ import { seatLayerPickerTestModeIndicatorCompactHeight } from './testModeIndicat
 import { seatLayerPickerTokens } from './tokens.g';
 
 const size = seatLayerPickerTokens.size;
+/** The way back's own start, and the least air between it and the Map/3D control. */
+const backStart = 10;
+const backGap = 8;
 
 /** How tall the level chips' pill is drawn. */
 const seatLayerFloorStripHeight = size.floorChipHeight + size.floorRailPadding * 2;
@@ -26,8 +29,12 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
   /** As drawn; undefined until it is measured. */
   badgeWidth: number | undefined;
   viewModeWidth: number | undefined;
+  /** The scene's way back, with anything on its line; undefined until measured. */
+  back: Readonly<{ width: number; height: number }> | undefined;
   floorWidth: number | undefined;
 }>): Readonly<{
+  /** Where the scene's way back stands. */
+  backTop: number;
   badgeTop: number;
   floorBottom: number | undefined;
   /** The room the chips leave at the map's start and end. */
@@ -50,23 +57,32 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
     && start + floorWidth + end <= input.mapWidth;
   const middle = Math.max(start, end);
   const centred = floorWidth + middle * 2 <= input.mapWidth;
+  // The way back shares the top line with the Map/3D control, and takes the line
+  // under it where the two are wider than the map.
+  const lineBelow = seatLayerPickerMapControlsRailTop + size.viewModeControlHeight + size.mapAnchorGap;
+  const backTop = input.back !== undefined && input.viewModeVisible && input.viewModeWidth !== undefined
+    && input.mapWidth > 0 && backStart + input.back.width + backGap + input.viewModeWidth + edge > input.mapWidth
+    ? Math.max(input.immersiveTopInset, lineBelow) : input.immersiveTopInset;
+  // Two lines of a long label in a large text make it taller.
+  const backHeight = Math.max(size.immersiveBackPillHeight, input.back?.height ?? 0);
   const chipsTop = oneLine
     ? seatLayerPickerMapControlsRailTop + (size.viewModeControlHeight - seatLayerFloorStripHeight) / 2
     : input.controls
-      ? seatLayerPickerMapControlsRailTop + size.viewModeControlHeight + size.mapAnchorGap
+      ? lineBelow
       : seatLayerPickerMapControlsRailTop;
   const chipsEnd = chipsTop + seatLayerFloorStripHeight;
   const topRailHeight = input.backPillDrawn
-    ? input.immersiveTopInset + size.minimumHitTarget
+    ? backTop + Math.max(size.minimumHitTarget, backHeight)
     : Math.max(topControlsHeight, input.floorStripVisible ? chipsEnd : 0);
   // The badge shares the map's top line with the Map/3D control. The level
   // chips, or the scene's way back, push it one line down.
   const badgeTop = input.badgeCleared
-    ? size.immersiveBackPillHeight + size.mapAnchorGap
+    ? backHeight + size.mapAnchorGap + backTop - input.immersiveTopInset
     : input.floorStripVisible && !oneLine
       ? chipsEnd + size.mapAnchorGap
       : seatLayerPickerMapControlsRailTop;
   return {
+    backTop,
     badgeTop,
     floorBottom: input.floorStripVisible && !oneLine ? chipsEnd : undefined,
     floorRail: {
