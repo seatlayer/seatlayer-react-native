@@ -97,6 +97,45 @@ describe('picker decision prompt renderer', () => {
     expect(calls).toEqual(['latest']);
   });
 
+  it('opens a box at its smallest party and steps inside its range', async () => {
+    setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'Box 1', available: 4, bookingMode: 'variable', minOccupancy: 2, maxOccupancy: 4 }] }));
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
+    const value = () => renderer.root.findByProps({ accessibilityRole: 'adjustable' }).props.accessibilityValue;
+    expect(value()).toEqual({ min: 2, max: 4, now: 2 });
+    expect(renderer.root.findByProps({ accessibilityLabel: 'fewerTickets' }).props.disabled).toBe(true);
+    for (let press = 0; press < 3; press += 1) {
+      await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'moreTickets' }).props.onPress(); });
+    }
+    expect(value().now).toBe(4);
+  });
+
+  const refused = () => Object.assign(new Error('refused'), { code: 'hold_unavailable' });
+
+  it('says the places were taken and keeps the prompt while the area has others', async () => {
+    const runtime = setup(); let renderer!: ReactTestRenderer;
+    scope.reportError = vi.fn();
+    runtime.controller.holdGA = async () => { throw refused(); };
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'addTickets' }).props.onPress(); await Promise.resolve(); });
+    expect(renderer.root.findAllByType('Text' as any).map((node) => node.props.children)).toContain('seatsJustTaken');
+    expect(scope.reportError).not.toHaveBeenCalled();
+  });
+
+  it('says it outside the prompt when the area has gone with the refusal', async () => {
+    const runtime = setup(); let renderer!: ReactTestRenderer;
+    const report = vi.fn();
+    scope.reportError = report;
+    runtime.controller.holdGA = async () => {
+      runtime.setSnapshot(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 0 }] }));
+      throw refused();
+    };
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
+    await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'addTickets' }).props.onPress(); await Promise.resolve(); });
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls[0]![0]).toMatchObject({ code: 'hold_unavailable', buyerMessage: 'seatsJustTaken' });
+  });
+
   it('lets the shared back ladder retire only its lease and blocks a competing table prompt', async () => {
     const runtime = setup(); const table = createSeatLayerPickerTableCandidate(scope as never, 'table', 2)!; let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(React.Fragment, undefined, React.createElement(SeatLayerPickerGAPrompt), React.createElement(SeatLayerPickerTablePrompt, { candidate: table }))); });

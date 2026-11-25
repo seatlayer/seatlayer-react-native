@@ -316,7 +316,10 @@ export function SeatLayerVenue3DChrome(props: SeatLayerVenue3DChromeProps): Reac
     });
     run();
   };
-  const navigationAvailable = canChangeNavigationMode(scope.controller, snapshot);
+  // With the `map` gestures the fingers already move and turn the venue, so the
+  // mode control is drawn for the earlier gestures alone.
+  const navigationAvailable = scope.bridgeConfig?.touchNavigation3D === 'classic' &&
+    canChangeNavigationMode(scope.controller, snapshot);
   const seatViewAvailable = seats.targetSeatId !== undefined && snapshot.capabilities.includes('seatView') &&
     supportsSeatLayerPickerSurface(scope.controller, ['native-chrome-contract-v1', 'seat-view-v1'], ['picker.openSeatView']);
   const moving = snapshot.map.view3DNavigationMode === 'pan';

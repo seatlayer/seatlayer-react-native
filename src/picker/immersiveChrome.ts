@@ -129,6 +129,17 @@ export function seatLayerVenue3DNeighbours(snapshot: SeatLayerPickerSnapshot | u
   });
 }
 
+/**
+ * Whether anything stands in the 3D scene's top corner: the way back from a
+ * seat, or the control the earlier gestures need.
+ */
+export function seatLayerVenue3DCornerTaken(
+  snapshot: SeatLayerPickerSnapshot | undefined,
+  config: Readonly<{ touchNavigation3D?: unknown }> | undefined,
+): boolean {
+  return snapshot?.map.view3DTargetSeatId !== undefined || config?.touchNavigation3D === 'classic';
+}
+
 /** True while 3D is below its whole-venue camera, even before a seat is selected. */
 export function seatLayerVenue3DHasFocusedView(
   snapshot: SeatLayerPickerSnapshot | undefined,

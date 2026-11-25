@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, useWindowDimensions, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
 
 import { canRenderSeatLayerPickerAccessibilityFilters, SeatLayerPickerAccessibilityFilters } from './accessibility';
 import {
@@ -77,6 +77,8 @@ import { seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { chartSeatLayerPickerColor } from './chartColor';
 import { renderSeatLayerPickerAdaptivePart as part } from './adaptiveParts';
 import { seatLayerPickerAdaptiveStyles as styles } from './adaptiveStyles';
+import { seatLayerVenue3DCornerTaken } from './immersiveChrome';
+import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerAdaptiveChromeEligibility } from './adaptiveChromeEligibility';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 import type { SelectedSeat } from '../types';
@@ -202,9 +204,11 @@ export function SeatLayerPickerAdaptiveLayout({
     () => resolveSeatLayerPickerAdaptiveSafeLayout(bounds, safeAreaInsets),
     [bounds, safeAreaInsets],
   );
+  const windowSize = useWindowDimensions();
+  const shortestSide = Math.min(windowSize.width, windowSize.height);
   const plan = useMemo(
-    () => planSeatLayerPickerAdaptiveLayout(safeLayout.usableWidth, options),
-    [options, safeLayout.usableWidth],
+    () => planSeatLayerPickerAdaptiveLayout(safeLayout.usableWidth, options, shortestSide),
+    [options, safeLayout.usableWidth, shortestSide],
   );
   const wide = plan.layout === 'wide';
   const openingKey = seatLayerPickerPendingCandidateEpochFor({
@@ -313,7 +317,8 @@ export function SeatLayerPickerAdaptiveLayout({
   // the chip a rung below the control it is drawn beside. Its LEFT is still the
   // corner inset. Only the immersive scene's back pill, which owns that corner,
   // pushes it down.
-  const badgeTop = backPillDrawn
+  const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
+  const badgeTop = badgeCleared
     ? seatLayerPickerTokens.size.immersiveBackPillHeight + seatLayerPickerTokens.size.mapAnchorGap
     : seatLayerPickerMapControlsRailTop;
   const topHeight = Math.max(
@@ -687,7 +692,9 @@ export function SeatLayerPickerAdaptiveLayout({
       {presentationActive && plan.options.haptics && hapticAdapter ? <SeatLayerPickerHaptics adapter={hapticAdapter} /> : null}
       {presentationActive ? <SeatLayerPickerScopeBackHandler /> : null}
       <View style={[styles.safeAreaContent, {
-        backgroundColor: scope.resolvedTheme.colors.surface,
+        // The status bar stands on this, so it follows the 3D venue as the bar's
+        // own ink does; on the panel's colour the clock was light on light.
+        backgroundColor: resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, snapshot).colors.surface,
         paddingBottom: wide ? safeLayout.insets.bottom : 0,
         paddingEnd: safeLayout.insets.right,
         paddingStart: safeLayout.insets.left,
@@ -728,7 +735,7 @@ export function SeatLayerPickerAdaptiveLayout({
               way, so lifting it out of the overlay stack paints identically. */}
           {dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail} {...underDialog(decisionUp)}>{dock}</View>}
           {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays} {...underDialog(decisionUp)}>
-            {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: venueMode && venueVisible ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
+            {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: badgeCleared ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
             <View pointerEvents="box-none" style={styles.wideFloorSelectorRail}>{floorSelector}</View>
           </View> : null}

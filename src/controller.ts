@@ -169,7 +169,7 @@ export class SeatLayerController {
     this.client = client;
 
     const promise = new Promise<ReadyInfo>((resolve, reject) => {
-      const timeoutMs = configuration.handshakeTimeoutMs ?? 30_000;
+      const timeoutMs = configuration.handshakeTimeoutMs ?? 45_000;
       const startedAt = this.handshakeClock();
       const timer = setTimeout(() => {
         this.finishHandshake(
@@ -198,6 +198,14 @@ export class SeatLayerController {
 
   failWithTransport(detail: string, cause?: unknown): void {
     this.finishHandshake(SeatLayerError.transport(detail, cause));
+  }
+
+  /** @internal The system ended the page; every call waiting on it is refused. */
+  pageLost(): void {
+    const error = SeatLayerError.transport('The system closed the SeatLayer page.');
+    const pending = this.handshake !== undefined;
+    this.disconnect(error);
+    if (!pending) this.events.emit('error', error);
   }
 
   disconnect(

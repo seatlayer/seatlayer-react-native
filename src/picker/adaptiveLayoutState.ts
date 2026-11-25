@@ -15,10 +15,11 @@ export interface SeatLayerPickerAdaptivePlan {
 export function planSeatLayerPickerAdaptiveLayout(
   width: unknown,
   options: SeatLayerPickerOptions | unknown,
+  shortestSide?: number,
 ): SeatLayerPickerAdaptivePlan {
   const measuredWidth = typeof width === 'number' && Number.isFinite(width) ? width : undefined;
-  const resolved = resolveSeatLayerPickerOptions(options, measuredWidth);
-  const layout = resolveSeatLayerPickerLayoutMode(resolved.layout, measuredWidth);
+  const resolved = resolveSeatLayerPickerOptions(options, measuredWidth, shortestSide);
+  const layout = resolveSeatLayerPickerLayoutMode(resolved.layout, measuredWidth, shortestSide);
   return Object.freeze({ layout, options: resolved, sideRailWidth: 360 });
 }
 

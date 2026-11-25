@@ -211,6 +211,10 @@ describe('standalone picker controls', () => {
 
     runtime.update({ map: { buyerView: 'venue3d', view3DNavigationMode: 'orbit' } });
     await act(async () => { renderer.update(React.createElement(SeatLayerPicker3DNavigationModeButton)); });
+    expect(renderer.toJSON()).toBeNull();
+
+    scope = { ...scope, bridgeConfig: { touchNavigation3D: 'classic' } };
+    await act(async () => { renderer.update(React.createElement(SeatLayerPicker3DNavigationModeButton, { style: {} })); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'rotateVenue' }).props.onPress(); });
     expect(runtime.commands.setVenue3DNavigationMode).toHaveBeenCalledWith('pan');
 

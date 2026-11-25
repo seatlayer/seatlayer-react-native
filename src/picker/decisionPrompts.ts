@@ -1,6 +1,7 @@
 import type { CategoryTier, GAArea, SeatCommercialAttributes, SelectedSeat } from '../types';
 
 import type { SeatLayerPickerController } from './controller';
+import { isRefusedGAHold, projectSeatLayerPickerGAAmounts } from './generalAdmissionAmounts';
 import type { SeatLayerPickerSnapshot } from './models';
 
 export type SeatLayerPickerDecisionKind = 'ga' | 'table' | 'tier';
@@ -179,6 +180,11 @@ function copyArea(area: Readonly<GAArea>): SeatLayerPickerDecisionArea {
     ...(area.currency === undefined ? {} : { currency: area.currency }),
     ...(area.price === undefined ? {} : { price: area.price }),
     ...(area.tiers === undefined ? {} : { tiers: Object.freeze(area.tiers.map(copyTier)) }),
+    ...(area.bookingMode === undefined ? {} : { bookingMode: area.bookingMode }),
+    ...(area.minOccupancy === undefined ? {} : { minOccupancy: area.minOccupancy }),
+    ...(area.maxOccupancy === undefined ? {} : { maxOccupancy: area.maxOccupancy }),
+    ...(area.wheelchairPlaces === undefined ? {} : { wheelchairPlaces: area.wheelchairPlaces }),
+    ...(area.wheelchairAvailable === undefined ? {} : { wheelchairAvailable: area.wheelchairAvailable }),
   });
 }
 
@@ -236,17 +242,17 @@ export function projectSeatLayerPickerDecision(
     if (!area || !feature(snapshot, 'ga') || !supports(next.controller, 'ga', 'picker.holdGA', 'ga.click')) return undefined;
     const remaining = positiveInteger(snapshot.maxSelection) && nonNegativeInteger(snapshot.ticketCount)
       ? Math.max(0, snapshot.maxSelection - snapshot.ticketCount) : 0;
-    const advertisedAvailable = area.available === undefined ? undefined
-      : nonNegativeInteger(area.available) ? area.available : 0;
-    const maximum = advertisedAvailable === undefined ? remaining : Math.min(remaining, advertisedAvailable);
-    if (maximum < 1) return undefined;
+    const amounts = projectSeatLayerPickerGAAmounts(
+      area, remaining, snapshot.map.accessibilityFilter.includes('wheelchair'),
+    );
+    if (!amounts) return undefined;
     const tiers = area.tiers ?? [];
     const requested = typeof tierId === 'string' ? tierId : undefined;
     if (strictTier && requested !== undefined && !tiers.some((tier) => tier.id === requested)) return undefined;
     const resolvedTier = tiers.length === 0 ? undefined
       : requested !== undefined && tiers.some((tier) => tier.id === requested) ? requested : tiers[0]!.id;
-    return Object.freeze({ kind: 'ga', area: copyArea(area), minimum: 1, maximum,
-      available: advertisedAvailable ?? 0, quantity: clamp(quantity, 1, maximum, 1), tierId: resolvedTier });
+    return Object.freeze({ kind: 'ga', area: copyArea(area), ...amounts,
+      quantity: clamp(quantity, amounts.minimum, amounts.maximum, amounts.minimum), tierId: resolvedTier });
   }
   const seat = selected(snapshot, candidate.id);
   if (!seat) return undefined;
@@ -277,7 +283,11 @@ export class SeatLayerPickerDecisionCoordinator {
   private readonly listeners = new Set<() => void>();
   private generation = 0;
   private flight: Readonly<{ generation: number; candidate: SeatLayerPickerDecisionCandidate }> | undefined;
-  constructor(private readonly scope: () => SeatLayerPickerDecisionScope) {}
+  constructor(
+    private readonly scope: () => SeatLayerPickerDecisionScope,
+    /** A refusal whose area is gone too, so no prompt is left to say it in. */
+    private readonly onRefusedWithoutPrompt?: (error: unknown) => void,
+  ) {}
   getState = (): SeatLayerPickerDecisionState => this.state;
   subscribe = (listener: () => void): (() => void) => { this.listeners.add(listener); return () => this.listeners.delete(listener); };
   open(candidate: SeatLayerPickerDecisionCandidate): boolean {
@@ -314,6 +324,8 @@ export class SeatLayerPickerDecisionCoordinator {
       return decision;
     } catch (error) {
       const after = live(this.scope());
+      if (isRefusedGAHold(error) && current(after, candidate) &&
+        projectSeatLayerPickerDecision(after, candidate) === undefined) this.onRefusedWithoutPrompt?.(error);
       if (!this.owns(flight) || !current(after, candidate)) return undefined;
       if (!currentGAClick(after, candidate)) {
         this.set(initialSeatLayerPickerDecisionState);

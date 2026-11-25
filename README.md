@@ -277,6 +277,9 @@ The customization layers have distinct ownership:
 
 - `options` controls session behaviour and which ready-made parts are visible.
   `options.max3DSeats`: 3D opens for venues up to 60,000 seats; on a touch screen the default is 30,000 unless you set this option.
+  `options.enable3DCrowd: false` removes the standing crowd from 3D, and
+  `options.touchNavigation3D: 'classic'` keeps the earlier 3D gestures with their
+  Rotate / Move control.
 - `themeMode` and `themeOptions` map app colours, typography, radii, logos, and
   map colours into one resolved theme.
 - `locale` selects generated native wording; `strings` overrides any individual
@@ -523,7 +526,7 @@ and use `buyerAccessTokenProvider`; buyer access tokens stay in memory and are
 never placed in a page URL, a React key or an event payload.
 
 Your code never touches the map directly. It works through a typed TypeScript
-controller whose contract matches the Web, iOS and Flutter SDKs: every command gets one answer, or a timeout error after 15 seconds.
+controller whose contract matches the Web, iOS and Flutter SDKs: every command gets one answer, or a timeout error after 15 seconds (45 seconds for a command that can place a hold).
 
 **Prepare the picker in advance (optional).** `SeatLayerRuntimePrewarm` fetches
 the venue map files before the picker opens. The result expires after a short
@@ -575,7 +578,9 @@ event never crashes an older app.
 - Use a fixed-height or full-screen parent; do not put the map inside a vertical
   `ScrollView`. The canvas owns pan and pinch for map navigation.
 - Keep `configuration` stable with `useMemo`.
-- Change `reloadKey` to reload the map on purpose.
+- Change `reloadKey` to reload the map on purpose. When the system closes the
+  map's page (low memory), the picker reloads it by itself; a `SeatLayerView`
+  reports an `sl_transport` error, and a new `reloadKey` loads it again.
 - `useSeatLayerController` disposes the controller automatically on unmount.
 - Persist an open `holdId` and call `resumeHold` after app restoration.
 

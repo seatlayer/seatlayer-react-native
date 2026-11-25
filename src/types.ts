@@ -1,6 +1,6 @@
 import type { JsonObject, JsonValue } from './json';
 export const seatLayerSdkVersion = '0.4.0';
-export const seatLayerHostedWebVersion = '0.84.1';
+export const seatLayerHostedWebVersion = '1.0.3';
 /** @deprecated Production uses the hosted runtime; use seatLayerHostedWebVersion. */
 export const seatLayerBundledWebVersion = seatLayerHostedWebVersion;
 export const seatLayerMobileOrigin = 'https://cdn.seatlayer.io';
@@ -36,9 +36,12 @@ export interface SeatLayerConfiguration {
   initialView?: SeatLayerViewMode;
   /** Leave false when the app renders its own touch-friendly seat sheet. */
   showsWebSeatTooltip?: boolean;
-  /** Native command deadline. Defaults to 15 seconds. */
+  /**
+   * Native command deadline. Defaults to 15 seconds. A command that can place a
+   * hold waits at least 45 seconds, longer than the page waits for the server.
+   */
   commandTimeoutMs?: number;
-  /** Handshake deadline. Defaults to 30 seconds. */
+  /** Handshake deadline. Defaults to 45 seconds. */
   handshakeTimeoutMs?: number;
   /** Free-form, non-secret host diagnostics. */
   hostInfo?: Record<string, string>;
@@ -229,6 +232,17 @@ export interface GAArea {
   price?: number;
   currency?: string;
   tiers?: CategoryTier[];
+  /**
+   * How a standing area is sold when it is one box for one party: `whole` takes
+   * all its places, `variable` a party from `minOccupancy` to `maxOccupancy`.
+   * Omitted for an area sold per person.
+   */
+  bookingMode?: string | (string & {});
+  minOccupancy?: number;
+  maxOccupancy?: number;
+  /** The area's wheelchair places, and how many of them are free. */
+  wheelchairPlaces?: number;
+  wheelchairAvailable?: number;
 }
 
 export interface FloorInfo {

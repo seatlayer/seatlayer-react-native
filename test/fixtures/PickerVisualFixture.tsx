@@ -488,6 +488,7 @@ function fixtureScope(
   filterValidation?: FixtureFilterValidation,
   immersiveValidation?: FixtureImmersiveValidation,
   rtl = scenario === 'rtl',
+  touchNavigation3D?: 'map' | 'classic',
 ): SeatLayerPickerScopeValue {
   const snapshot = fixtureSnapshot(
     scenario,
@@ -577,6 +578,7 @@ function fixtureScope(
     scenario === 'hold-lapse' || scenario === 'action-error';
   const overview = snapshot.map.rung !== 'seats';
   const ready = scenario !== 'loading' && scenario !== 'error';
+  const bridgeConfig: SeatLayerPickerScopeValue['bridgeConfig'] = Object.freeze({ ...(touchNavigation3D === undefined ? {} : { touchNavigation3D }) });
   const pendingSeat = scenario === 'confirmation' || (scenario === 'seat-tier' && tierValidation?.pending)
     ? snapshot.selection[0] ?? null
     : null;
@@ -584,7 +586,7 @@ function fixtureScope(
     controller,
     snapshot,
     configuration: Object.freeze({ event: 'visual-fixture', currency: 'EUR' }),
-    bridgeConfig: Object.freeze({}),
+    bridgeConfig,
     themeMode: mode,
     resolvedTheme: theme,
     styles: Object.freeze({}),
@@ -672,22 +674,26 @@ export function SeatLayerPickerVisualFixture({
   device,
   mode,
   scenario = 'cart-expanded',
+  touchNavigation3D,
 }: Readonly<{
   device?: SeatLayerVisualFixtureDevice;
   mode: SeatLayerVisualFixtureMode;
   scenario?: SeatLayerVisualFixtureScenario;
+  touchNavigation3D?: 'map' | 'classic';
 }>): React.ReactElement {
-  return <SeatLayerPickerVisualFixtureSession key={`${mode}:${scenario}`} device={device} mode={mode} scenario={scenario} />;
+  return <SeatLayerPickerVisualFixtureSession key={`${mode}:${scenario}`} device={device} mode={mode} scenario={scenario} touchNavigation3D={touchNavigation3D} />;
 }
 
 function SeatLayerPickerVisualFixtureSession({
   device,
   mode,
   scenario,
+  touchNavigation3D,
 }: Readonly<{
   device?: SeatLayerVisualFixtureDevice;
   mode: SeatLayerVisualFixtureMode;
   scenario: SeatLayerVisualFixtureScenario;
+  touchNavigation3D?: 'map' | 'classic';
 }>): React.ReactElement {
   const selectedTierRef = useRef<'adult' | 'child'>('adult');
   const [tierPending, setTierPending] = useState(true);
@@ -827,8 +833,8 @@ function SeatLayerPickerVisualFixtureSession({
     ],
   );
   const baseScope = useMemo(
-    () => fixtureScope(mode, scenario, tierValidation, filterValidation, immersiveValidation, device?.rtl),
-    [device, filterValidation, immersiveValidation, mode, scenario, tierValidation],
+    () => fixtureScope(mode, scenario, tierValidation, filterValidation, immersiveValidation, device?.rtl, touchNavigation3D),
+    [device, touchNavigation3D, filterValidation, immersiveValidation, mode, scenario, tierValidation],
   );
   const [presentation, setPresentationState] = useState<SeatLayerPickerPresentationState>(baseScope.presentation);
   const promptOwnership = useRef(new SeatLayerPickerPromptOwnership());

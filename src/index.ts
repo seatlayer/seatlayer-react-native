@@ -52,6 +52,7 @@ export type { SeatLayerPickerModalPresentation } from './picker/modalPresentatio
 
 // Ready-made customization.
 export type {
+  SeatLayer3DTouchNavigation,
   SeatLayerPickerBehaviorOptions,
   SeatLayerPickerChromeOptions,
   SeatLayerPickerLayoutMode,

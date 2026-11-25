@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
+import { AppState, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { SeatLayerRenderer } from '../SeatLayerRenderer';
 import type { JsonObject } from '../json';
@@ -37,6 +37,8 @@ function PickerChartInstance({
 }: SeatLayerPickerChartProps): React.ReactElement {
   const scope = useSeatLayerPickerScope();
   const bootRef = useRef<SeatLayerPickerChartBootResult | undefined>(undefined);
+  const lostError = scope.controller.getPageLostError?.();
+  if (lostError !== undefined) return <PickerChartBootError scope={scope} style={style} error={lostError} />;
   if (bootRef.current === undefined) {
     bootRef.current = tryCreateSeatLayerPickerChartBoot(
       scope.configuration,
@@ -138,6 +140,29 @@ function PickerChartReady({
     ).catch(scope.reportError);
   }, [desiredThemeKey, scope.controller, scope.isReady, scope.reportError]);
 
+  const awaitingActiveRef = useRef<{ remove(): void } | undefined>(undefined);
+  useEffect(() => () => awaitingActiveRef.current?.remove(), []);
+  // The system mostly ends a page of an app in the background. Reloading it
+  // there would only be ended again, so the reload waits for the buyer.
+  const recoverPage = (): void => {
+    void scope.controller.recoverLostPage().catch(scope.reportError);
+  };
+  const pageLost = (): void => {
+    scope.controller.pageLost();
+    awaitingActiveRef.current?.remove();
+    awaitingActiveRef.current = undefined;
+    if ((AppState.currentState ?? 'active') === 'active') {
+      recoverPage();
+      return;
+    }
+    awaitingActiveRef.current = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      awaitingActiveRef.current?.remove();
+      awaitingActiveRef.current = undefined;
+      recoverPage();
+    });
+  };
+
   return (
     // 2.4: the map surface's own rectangle. Every piece of chrome standing on
     // it reports its rect measured from this view's top-left, which is the
@@ -165,6 +190,7 @@ function PickerChartReady({
           invokeSeatLayerPickerCallback(onReady, info, scope.reportError);
         }}
         onLoadError={scope.reportError}
+        onPageLost={pageLost}
         onUnmount={() => disconnectSeatLayerPickerChartRenderer(scope.controller)}
       />
     </View>

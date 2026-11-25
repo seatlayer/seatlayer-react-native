@@ -278,6 +278,18 @@ export function decodeBestAvailable(
   return { ...hold, labels: strings(asObject(value)?.labels) };
 }
 
+function integers(
+  object: ReturnType<typeof asObject>,
+  keys: readonly string[],
+): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const key of keys) {
+    const value = asInteger(object?.[key]);
+    if (value !== undefined) result[key] = value;
+  }
+  return result;
+}
+
 export function decodeGAArea(value: unknown): GAArea | undefined {
   const object = asObject(value);
   const id = asString(object?.id);
@@ -306,6 +318,12 @@ export function decodeGAArea(value: unknown): GAArea | undefined {
       ? {}
       : { currency: asString(object?.currency) }),
     ...(object?.tiers === undefined || object?.tiers === null ? {} : { tiers }),
+    ...(asString(object?.bookingMode) === undefined
+      ? {}
+      : { bookingMode: asString(object?.bookingMode) }),
+    ...integers(object, [
+      'minOccupancy', 'maxOccupancy', 'wheelchairPlaces', 'wheelchairAvailable',
+    ]),
   } as GAArea;
 }
 

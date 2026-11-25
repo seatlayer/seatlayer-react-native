@@ -2,10 +2,10 @@ import React, { useEffect } from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn() }));
+const state = vi.hoisted(() => ({ width: 320, height: undefined as number | undefined, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn() }));
 
 vi.mock('react-native', () => ({
-  View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width }),
+  View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width, height: state.height }),
   StatusBar: 'StatusBar',
   AccessibilityInfo: { isReduceMotionEnabled: () => Promise.resolve(false), addEventListener: () => ({ remove: () => undefined }) },
 }));
@@ -66,6 +66,7 @@ import {
   seatLayerPickerPendingCandidateEpochFor,
 } from '../src/picker/adaptiveLayoutState';
 import { seatLayerPickerAdaptiveUnlockDelay } from '../src/picker/adaptiveInteraction';
+import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 import { resolveSeatLayerPickerAdaptiveSafeLayout } from '../src/picker/adaptiveSafeLayout';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -81,7 +82,7 @@ function scope(overrides: Record<string, unknown> = {}): any {
     },
     sessionId: 1, snapshot: undefined, pendingSeat: null, isReady: true, error: undefined, readOnly: false,
     presentation: { prompt: null, sheet: 'collapsed' }, setPresentation: (event: unknown) => calls.push(event),
-    claimViewportInsetBand: () => lease, reportError: vi.fn(), resolvedTheme: { colors: { background: '#f6f7fb', surface: '#fff' } }, styles: {}, strings: { translate: (key: string) => key },
+    claimViewportInsetBand: () => lease, reportError: vi.fn(), resolvedTheme: { colors: { background: '#f6f7fb', surface: '#fff' }, roles: {} }, styles: {}, strings: { translate: (key: string) => key },
     confirmPending: vi.fn(), calls, lease, ...overrides,
   };
 }
@@ -121,6 +122,45 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findAllByType('haptics' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('back-handler' as any)).toHaveLength(0);
     await act(async () => { tree.unmount(); });
+  });
+
+  it('keeps the phone layout when a phone is held sideways', async () => {
+    const layoutOf = async (width: number, height: number, options?: object) => {
+      state.width = width;
+      state.height = height;
+      state.scope = scope();
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, options }));
+      });
+      await act(async () => { measure(tree, width, height); });
+      const wide = tree.root.findAllByProps({ testID: 'seatlayer-adaptive-wide' }).length > 0;
+      await act(async () => { tree.unmount(); });
+      return wide ? 'wide' : 'phone';
+    };
+    expect(await layoutOf(915, 412)).toBe('phone');
+    expect(await layoutOf(1280, 800)).toBe('wide');
+    expect(await layoutOf(915, 412, { layout: 'wide' })).toBe('wide');
+    state.height = undefined;
+  });
+
+  it('stands the status bar on the ground its ink is chosen for', async () => {
+    state.width = 320;
+    const ground = async (buyerView: string) => {
+      state.scope = scope({ snapshot: {
+        categories: [], capabilities: ['venue3d'], event: { mode: 'live' }, sections: [],
+        map: { floors: [], buyerView, rung: 'sections' },
+      } });
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout }));
+      });
+      const style = [tree.root.findByProps({ testID: 'seatlayer-adaptive-safe-content' }).props.style].flat();
+      await act(async () => { tree.unmount(); });
+      return style.find((entry) => entry?.backgroundColor !== undefined).backgroundColor;
+    };
+    expect(await ground('map')).toBe('#fff');
+    expect(await ground('venue3d')).toBe(seatLayerPickerTokens.color.dark.surface);
   });
 
   it('resolves generated phone/wide breakpoints and status interaction precedence', () => {
@@ -318,7 +358,7 @@ describe('adaptive picker composition', () => {
     state.width = 320;
     const first = scope({ isReady: false, snapshot: {
       categories: [{}], capabilities: ['venue3d'], sections: [{ id: 's1', label: 'One' }],
-      map: { floors: [{}, {}], buyerView: 'venue3d', rung: 'seats', focusedSectionId: 's1' }, event: { mode: 'test' },
+      map: { floors: [{}, {}], buyerView: 'venue3d', rung: 'seats', focusedSectionId: 's1', view3DTargetSeatId: 'a' }, event: { mode: 'test' },
     } });
     state.scope = first;
     let tree!: TestRenderer.ReactTestRenderer;
@@ -1053,9 +1093,30 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('lets the test badge stand on the top line of a 3D scene with nothing else there', async () => {
+    const badgeTop = async (map: object, bridgeConfig?: object, layout?: string) => {
+      state.scope = scope({ bridgeConfig, snapshot: {
+        categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, sections: [],
+        map: { floors: [], buyerView: 'venue3d', ...map },
+      } });
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
+        onCheckout: checkout, ...(layout === undefined ? {} : { options: { layout } }),
+      })); });
+      const top = tree.root.findByType('test-badge' as any).parent?.props.style[1].top;
+      await act(async () => { tree.unmount(); });
+      return top;
+    };
+    expect(await badgeTop({})).toBe(8);
+    expect(await badgeTop({ view3DTargetSeatId: 'a' })).toBe(56);
+    expect(await badgeTop({}, { touchNavigation3D: 'classic' })).toBe(56);
+    expect(await badgeTop({}, undefined, 'wide')).toBe(12);
+    expect(await badgeTop({ view3DTargetSeatId: 'a' }, undefined, 'wide')).toBe(62);
+  });
+
   it('uses the venue back-target offset for a wide test badge without map framing', async () => {
     const current = scope({
-      snapshot: { categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, map: { floors: [], buyerView: 'venue3d' } },
+      snapshot: { categories: [], capabilities: ['venue3d'], event: { mode: 'test' }, map: { floors: [], buyerView: 'venue3d', view3DTargetSeatId: 'a' } },
     });
     state.scope = current;
     let tree!: TestRenderer.ReactTestRenderer;

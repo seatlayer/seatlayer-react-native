@@ -47,15 +47,14 @@ export interface SeatLayerPickerCompletedCart {
  * SEATS ADDED AFTER CHECKOUT (Flutter 0.9.1).
  *
  * A runtime with a live hold reports the HOLD's lines as the cart and drops a
- * seat the buyer has selected since (runtime ≤ 0.84.1 on the CDN): back from
+ * seat the buyer has selected since (runtime ≤ 0.84.1): back from
  * checkout, every new seat was drawn selected on the map and missing from the
  * cart, so the tray said one ticket while the map showed two. The seat is a
  * fact the same snapshot still carries, so the cart is completed from it here.
  *
- * The runtime's own fix — listing those seats in its snapshot — is on the
- * runtime's main branch after the 0.84.1 tag. This stays correct either way:
- * a runtime that reports the seat reports it under the same label, so nothing
- * is added twice.
+ * Later runtimes list those seats in their snapshot. This stays correct either
+ * way: a runtime that reports the seat reports it under the same label, so
+ * nothing is added twice.
  */
 export function completeSeatLayerPickerCartLines(
   reported: readonly SeatLayerPickerCartLine[],

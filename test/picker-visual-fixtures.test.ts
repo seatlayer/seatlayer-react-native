@@ -235,7 +235,9 @@ describe('deterministic native picker visual fixtures', () => {
   });
 
   it('retains the RN cart and 3D target across navigation, panorama, and map switches', async () => {
-    const tree = await render(React.createElement(SeatLayerPickerVisualFixture, { mode: 'dark', scenario: 'venue-3d' }));
+    const tree = await render(React.createElement(SeatLayerPickerVisualFixture, {
+      mode: 'dark', scenario: 'venue-3d', touchNavigation3D: 'classic',
+    }));
     expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)
       .toContain('cart retained guest-t22-1, guest-t22-2, guest-t22-3');
 

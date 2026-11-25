@@ -70,7 +70,8 @@ function actionAvailable(scope: SeatLayerPickerScopeValue, action: MapAction): b
       snapshot.capabilities.includes('venue3d') && supports(scope, 'venue-3d-v1', 'picker.setBuyerView');
   }
   if (action === 'navigation') {
-    return map.buyerView === 'venue3d' && snapshot.capabilities.includes('venue3d') &&
+    return scope.bridgeConfig?.touchNavigation3D === 'classic' &&
+      map.buyerView === 'venue3d' && snapshot.capabilities.includes('venue3d') &&
       supports(scope, 'venue-3d-controls-v1', 'picker.setVenue3DNavigationMode');
   }
   return map.buyerView === 'map' && supports(scope, 'colorblind-safe', 'picker.setColorblindSafe');
