@@ -25,6 +25,7 @@ describe('picker money formatting', () => {
       formatSeatLayerPickerCompactMoney(amount, currency, locale).replaceAll('\u00A0', ' ');
     expect(inLocale('de', 1234.5, 'EUR')).toBe('1.234,50 €');
     expect(inLocale('hi', 125000, 'INR')).toBe('₹1,25,000');
+    expect(inLocale('ar', 12454.5, 'KWD')).toContain('12,454.500');
     expect(inLocale('not a locale', 12454.5, 'KWD')).toBe('KWD 12,454.500');
   });
 

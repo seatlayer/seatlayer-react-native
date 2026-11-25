@@ -61,6 +61,8 @@ function numberFormat(locale: string, currency: string, digits: number): Intl.Nu
       currency,
       minimumFractionDigits: digits,
       maximumFractionDigits: digits,
+      // Engines differ in the digits they give Arabic; the map writes 0 to 9.
+      ...(locale.toLowerCase() === 'ar' ? { numberingSystem: 'latn' } : {}),
     });
   } catch {
     // No number formats in this engine, or a code or a language it does not take.
