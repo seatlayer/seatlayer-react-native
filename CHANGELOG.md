@@ -71,6 +71,9 @@ stay; the changes below are the ones an app or a buyer can notice.
 - `SeatLayerMapControls` takes `topInset`, the room something else needs at the top
   of the map. The column of map buttons stays under it, and makes a second column
   where it would not fit.
+- The marks beside the kinds of seat in the accessibility sheet and beside the
+  notes on the seat card are drawn without `react-native-svg` too. Without it they
+  were missing. An app that installs its own renderer keeps it.
 - The accessibility sheet starts with the two map switches, and the kinds of
   seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
   of `viewGroupTitle` changes nothing now.
