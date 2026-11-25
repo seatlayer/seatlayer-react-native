@@ -341,6 +341,41 @@ It changes presentation only. Runtime selection, hold totals, and the trusted
 server checkout remain authoritative; the SDK never recalculates inventory
 prices from display text.
 
+**Your own prices.** Show the prices your backend charges on the price list, the
+seat card and the cart, by category and by single seat:
+
+```tsx
+options={{
+  pricing: {
+    categories: { stalls: { base: 45, tiers: { child: 20 } } },
+    objects: {
+      'A-12': 60,
+      'A-13': { tiers: { adult: 60, child: 30 } },
+    },
+  },
+}}
+```
+
+A seat's own price wins over its category's. A new value reaches the open map, as
+does `controller.setPricing(pricing)`. These prices are for display: charge from
+your server.
+
+**After your server has booked**, tell the picker: the map shows the seats booked
+and the hold clock stops.
+
+```ts
+await bookOnYourBackend(handoff.holdId);
+await controller.markBooked({ holdId: handoff.holdId });
+```
+
+It answers false, and changes nothing, for another hold or no hold.
+
+**Levels.** `SelectedSeat.floorId` and `levelName` name a seat's level on a chart
+with two or more.
+
+**Telemetry.** `configuration={{ event, telemetry: false }}` stops the map page
+sending SeatLayer its load and error reports. `onChartLoad` is still called.
+
 ### 3. Compose a custom layout
 
 `SeatLayerPickerScope` owns one command controller and one latest immutable

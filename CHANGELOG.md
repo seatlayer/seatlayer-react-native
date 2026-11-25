@@ -20,6 +20,18 @@ stay; the changes below are the ones an app or a buyer can notice.
 - Seats with a price of their own, and events priced by tier and time, can be
   chosen and held.
 
+**For the app**
+
+- `options.pricing.categories` and `options.pricing.objects` show your own prices
+  by category, ticket type and seat. `controller.setPricing` changes them on the
+  open map.
+- `controller.markBooked({ holdId })`, after your server has booked: the map shows
+  the seats booked and the hold clock stops.
+- `SelectedSeat.floorId` and `SelectedSeat.levelName`, on a chart with two or more
+  levels.
+- `SeatLayerConfiguration.telemetry: false` stops the map page sending SeatLayer
+  its load and error reports.
+
 **The picker**
 
 - A phone held sideways keeps the phone layout. The wide layout needs a window

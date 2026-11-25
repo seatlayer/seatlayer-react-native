@@ -1,5 +1,6 @@
 import { seatLayerPickerTokens } from './tokens.g';
 import type { SeatLayerPickerMoneyFormatter } from './format';
+import { resolveSeatLayerHostPrices, type SeatLayerHostPrices } from './hostPricing';
 
 export type { SeatLayerPickerMoneyFormatter } from './format';
 
@@ -7,8 +8,11 @@ export type SeatLayerPickerLayoutMode = 'adaptive' | 'phone' | 'wide' | (string 
 export type SeatLayerPickerResolvedLayoutMode = 'phone' | 'wide';
 type SeatLayerPickerKnownLayoutMode = 'adaptive' | SeatLayerPickerResolvedLayoutMode;
 
-/** Native-chrome money presentation. Runtime inventory and totals remain authoritative. */
-export interface SeatLayerPickerPricing {
+/**
+ * The app's own prices and money writing, both for display: the hold is priced
+ * by the server.
+ */
+export interface SeatLayerPickerPricing extends SeatLayerHostPrices {
   readonly formatter?: SeatLayerPickerMoneyFormatter;
 }
 
@@ -120,7 +124,7 @@ export interface SeatLayerPickerOptions extends SeatLayerPickerBehaviorOptions {
   readonly chrome?: SeatLayerPickerChromeOptions;
   /** BCP 47 language tags offered by the runtime language control. */
   readonly languages?: readonly string[];
-  /** Global money formatting for native chrome; runtime amounts remain authoritative. */
+  /** The app's own prices and money writing. A new value reaches the open map. */
   readonly pricing?: SeatLayerPickerPricing;
 }
 
@@ -272,9 +276,9 @@ function safeOwnStrings(value: unknown, maximum = 64): readonly string[] {
 export function resolveSeatLayerPickerPricing(input: SeatLayerPickerPricing | unknown): SeatLayerPickerPricing | undefined {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return undefined;
   const formatter = ownData(input, 'formatter');
-  return typeof formatter === 'function'
-    ? Object.freeze({ formatter: formatter as SeatLayerPickerMoneyFormatter })
-    : undefined;
+  const prices = resolveSeatLayerHostPrices(input);
+  if (typeof formatter !== 'function') return prices;
+  return Object.freeze({ ...prices, formatter: formatter as SeatLayerPickerMoneyFormatter });
 }
 
 function knownLayout(value: unknown): SeatLayerPickerKnownLayoutMode {

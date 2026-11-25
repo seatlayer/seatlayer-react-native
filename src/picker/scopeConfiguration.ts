@@ -145,6 +145,7 @@ export function freezeSeatLayerPickerConfiguration(configuration: SeatLayerConfi
   const currency = optionalString(record, 'currency');
   const colorblindSafe = optionalBoolean(record, 'colorblindSafe');
   const initialView = optionalString(record, 'initialView');
+  const telemetry = optionalBoolean(record, 'telemetry');
   const showsWebSeatTooltip = optionalBoolean(record, 'showsWebSeatTooltip');
   const commandTimeoutMs = positiveInteger(record, 'commandTimeoutMs');
   const handshakeTimeoutMs = positiveInteger(record, 'handshakeTimeoutMs');
@@ -170,6 +171,7 @@ export function freezeSeatLayerPickerConfiguration(configuration: SeatLayerConfi
     ...(currency === undefined ? {} : { currency }),
     ...(colorblindSafe === undefined ? {} : { colorblindSafe }),
     ...(initialView === undefined ? {} : { initialView }),
+    ...(telemetry === undefined ? {} : { telemetry }),
     ...(showsWebSeatTooltip === undefined ? {} : { showsWebSeatTooltip }),
     ...(commandTimeoutMs === undefined ? {} : { commandTimeoutMs }),
     ...(handshakeTimeoutMs === undefined ? {} : { handshakeTimeoutMs }),

@@ -520,6 +520,7 @@ export class SeatLayerController {
       currency: configuration.currency,
       colorblindSafe: configuration.colorblindSafe,
       initialView: configuration.initialView,
+      telemetry: configuration.telemetry,
     });
     const host: JsonObject = {
       platform: 'react-native',

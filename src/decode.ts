@@ -119,6 +119,8 @@ function decodeSelectedSeatStrings(
     'sectionLabel',
     'rowLabel',
     'seatNumber',
+    'floorId',
+    'levelName',
     'currency',
     'bookingMode',
     'wheelchairSpaceType',
