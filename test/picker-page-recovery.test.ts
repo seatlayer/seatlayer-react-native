@@ -150,6 +150,33 @@ describe('a page the system ended', () => {
     picker.dispose();
   });
 
+  it('shows the map again, with nothing in the cart and no error, when the buyer paid meanwhile', async () => {
+    const picker = new SeatLayerPickerController();
+    const first = await start(picker);
+    await handOff(picker, first);
+    const booked = vi.fn();
+    const failed = vi.fn();
+    picker.subscribeBooked(booked);
+    picker.mapController.on('error', failed);
+    picker.pageLost();
+    await picker.recoverLostPage(0);
+    failed.mockClear();
+    const second = await start(picker, { page: 'page-2' });
+    // A sold hold is answered as one that is not active any more.
+    answer(picker, second, 'err', { code: 'hold_not_active', message: 'booked' });
+    await flush();
+
+    expect(picker.mapController.isReady).toBe(true);
+    expect(picker.getPageLostError()).toBeUndefined();
+    expect(failed).not.toHaveBeenCalled();
+    expect(picker.getSnapshot()).toMatchObject({ sessionId: 'page-2', hold: { active: false }, cartLines: [], cartTotal: 0 });
+    expect(second.commands()).toEqual(['picker.resumeHold']);
+    // The sale is the checkout's to report: this page never saw the hold.
+    expect(booked).not.toHaveBeenCalled();
+    expect(picker.getBookedHandoff()).toBeUndefined();
+    picker.dispose();
+  });
+
   it('asks for the host\'s first hold again without failing the page when it is gone', async () => {
     const picker = new SeatLayerPickerController();
     const first = await start(picker, { config: { initialHoldId: 'hold-1' }, hold: { active: true, owner: 'host' } });

@@ -47,6 +47,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   `reloadKey` to load the map again.
 - A reload, automatic or with `retry()`, no longer reports a handed-off hold as
   booked when the new page has not taken it up yet.
+- A hold paid for while the map's page was closed is not reported with
+  `onBooked`: take the sale from your own checkout. The picker opens with an
+  empty cart and shows the seats as taken.
 
 **Time limits**
 
