@@ -300,7 +300,7 @@ export function SeatLayerPickerAdaptiveLayout({
   const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const backPillDrawn = venueMode && venueVisible;
   const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
-  const { badgeTop, floorTop, topHeight } = planSeatLayerPickerPhoneTop({
+  const { badgeTop, floorBottom, floorTop, topHeight } = planSeatLayerPickerPhoneTop({
     backPillDrawn, badgeCleared, floorStripVisible, immersiveTopInset, testBadgeVisible,
     ownFloorStrip: builders?.floorStrip !== undefined,
     controls: phoneControls.left || phoneControls.right,
@@ -558,6 +558,7 @@ export function SeatLayerPickerAdaptiveLayout({
     (chromeEligibility.mapControls || accessibilityVisible)
     ? part(builders, scope, 'mapControls', <SeatLayerMapControls
       compact={!wide}
+      topInset={wide ? undefined : floorBottom}
       enable3D={plan.options.enable3D && plan.options.chrome.map3D}
       showAccessibilityControl
       showOverviewControl={plan.options.chrome.overview}

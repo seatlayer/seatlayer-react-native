@@ -64,6 +64,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   bottom corner is drawn only with `chrome.floorStrip: false` or where an app
   draws its own `floorStrip` part. `SeatLayerFloorStrip` draws that pill
   everywhere, where each level was a chip of its own.
+- `SeatLayerMapControls` takes `topInset`, the room something else needs at the top
+  of the map. The column of map buttons stays under it, and makes a second column
+  where it would not fit.
 - The accessibility sheet starts with the two map switches, and the kinds of
   seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
   of `viewGroupTitle` changes nothing now.

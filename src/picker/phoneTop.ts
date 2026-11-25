@@ -19,7 +19,7 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
   ownFloorStrip: boolean;
   immersiveTopInset: number;
   testBadgeVisible: boolean;
-}>): Readonly<{ badgeTop: number; floorTop: number; topHeight: number }> {
+}>): Readonly<{ badgeTop: number; floorBottom: number | undefined; floorTop: number; topHeight: number }> {
   const topControlsHeight = input.controls
     ? seatLayerPickerMapControlsEdgeInset + seatLayerPickerPhoneChromeTop : 0;
   // The level chips take the map's top line, or the line under the Map/3D
@@ -40,6 +40,7 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
       : seatLayerPickerMapControlsRailTop;
   return {
     badgeTop,
+    floorBottom: input.floorStripVisible ? chipsEnd : undefined,
     floorTop: chipsTop - (input.ownFloorStrip ? 0 : (size.minimumHitTarget - seatLayerFloorStripHeight) / 2),
     topHeight: Math.max(
       topRailHeight,

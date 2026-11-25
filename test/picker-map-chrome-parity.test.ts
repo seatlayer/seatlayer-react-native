@@ -107,6 +107,12 @@ describe('how many discs one column has room for', () => {
     expect(discs(103)).toBe(0);
   });
 
+  it('stands under what is drawn at the top of the map, as the level chips', () => {
+    const under = (mapHeight: number) =>
+      seatLayerMapDiscsPerColumn({ mapHeight, bottom: 12, viewControl: true, topInset: 88, discSize: 36 });
+    expect([under(232), under(231), under(147)]).toEqual([3, 2, 0]);
+  });
+
   it('has the whole height where there is no such control', () => {
     expect(discs(144, false)).toBe(3);
     expect(discs(59, false)).toBe(0);
