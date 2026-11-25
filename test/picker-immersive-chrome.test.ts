@@ -41,6 +41,7 @@ import {
   seatLayerVenue3DCaption,
   seatLayerVenue3DNeighbours,
 } from '../src/picker/immersiveChrome';
+import { translateSeatLayerPickerString } from '../src/picker/locale';
 import { SeatLayerSeatPanoramaChromeView } from '../src/picker/SeatLayerSeatPanoramaChrome';
 import { SeatLayerVenue3DChromeView } from '../src/picker/SeatLayerVenue3DChrome';
 import { resolveSeatLayerPickerMapChromeTheme } from '../src/picker/mapChromeTheme';
@@ -149,6 +150,18 @@ describe('immersive venue and panorama chrome', () => {
     expect(seatLayerVenue3DCaption(snapshot().selection[1], undefined, translate, 'VIEW')).toBe('Stalls · ROW(A) · SEAT(2) · VIEW');
     expect(translate).toHaveBeenCalledWith('rowIdentity', { values: { row: 'A' } });
     expect(translate).toHaveBeenCalledWith('seatNumberIdentity', { values: { seat: '2' } });
+  });
+
+  it('reads the caption in the order of the buyer\'s language when the section is named in Latin letters', () => {
+    const words = (locale: string) => (key: string, options?: { values?: Record<string, string> }) =>
+      translateSeatLayerPickerString(key, { locale, ...options });
+    const caption = (locale: string) => seatLayerVenue3DCaption(
+      snapshot().selection[1], undefined, words(locale), words(locale)('viewFromYourSeat'),
+    );
+    expect(caption('en')).toBe('Stalls · Row A · Seat 2 · view from your seat');
+    expect(caption('ar')).toMatch(/^\u200fStalls · الصف A · المقعد 2 · /);
+    expect(caption('he')).toMatch(/^\u200fStalls · שורה A · מושב 2 · /);
+    expect(caption('ku')).toMatch(/^Stalls · Rêza A · Cihê 2 · /);
   });
 
   it('quarantines retained immersive work across controller, scope, and runtime-session replacement', () => {

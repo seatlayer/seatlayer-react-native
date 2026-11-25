@@ -239,6 +239,16 @@ export async function dispatchSeatLayerVenue3DBackOverride(
   await onBackToVenue();
 }
 
+/** Hebrew and Arabic script, and Arabic presentation forms. */
+const rightToLeft = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
+
+/**
+ * The seat by name and the words of the view, on one line.
+ *
+ * A line takes its reading order from its first letter, and the first letter is
+ * the section's own. The mark in front gives it the order of the buyer's
+ * language, so a section named in Latin letters does not turn the line around.
+ */
 export function seatLayerVenue3DCaption(
   seat: SelectedSeat | undefined,
   sectionId: string | undefined,
@@ -250,7 +260,8 @@ export function seatLayerVenue3DCaption(
   const parts = [wording(identity), wording(viewFromYourSeat)]
     .filter((part): part is string => part !== undefined)
     .join(' · ');
-  return parts || undefined;
+  if (!parts) return undefined;
+  return rightToLeft.test(viewFromYourSeat) ? `\u200f${parts}` : parts;
 }
 
 export function seatLayerImmersiveDuration(reducedMotion: boolean): number {

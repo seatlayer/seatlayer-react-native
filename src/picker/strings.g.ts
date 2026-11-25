@@ -1,5 +1,5 @@
 // This file is generated. Do not edit by hand.
-// Canonical locale input SHA-256: d65ed6904e176d1e880bf7c8fdacac8e9f517dd3aa17184b5a40ae3d98b5b987
+// Canonical locale input SHA-256: ad02793347c18db60e612da45949dae4500a01dfac9f6ec98fc2e6199803fa35
 
 import { arWords } from './locales/ar.g';
 import { beWords } from './locales/be.g';
@@ -45,7 +45,7 @@ import { viWords } from './locales/vi.g';
 import { zhHansWords } from './locales/zh-Hans.g';
 import { zhHantWords } from './locales/zh-Hant.g';
 
-export const seatLayerPickerLocaleSourceSha256 = 'd65ed6904e176d1e880bf7c8fdacac8e9f517dd3aa17184b5a40ae3d98b5b987' as const;
+export const seatLayerPickerLocaleSourceSha256 = 'ad02793347c18db60e612da45949dae4500a01dfac9f6ec98fc2e6199803fa35' as const;
 
 /** One language is built when it is first asked for. */
 export const seatLayerPickerLocaleSources = {

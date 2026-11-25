@@ -141,6 +141,10 @@ stay; the changes below are the ones an app or a buyer can notice.
 - 43 languages (Hindi, Indonesian, Korean, Malay, Thai and Vietnamese are new)
   with the hosted map's own sentences. Counted sentences use every plural
   form their language has.
+- The caption in the 3D view names the row and the seat in the buyer's language,
+  where it said "Row" and "Seat" in every language. Overrides of `rowIdentity` and
+  `seatNumberIdentity` are still used. In Arabic, Hebrew and Persian the line reads from
+  the right when the section's name is in Latin letters.
 - A refused action says why: the seats that were taken, a type that is sold out,
   a limit and its number, no connection, a pause for maintenance, a private
   event's access. An error that carries its own `buyerMessage` is still shown as
