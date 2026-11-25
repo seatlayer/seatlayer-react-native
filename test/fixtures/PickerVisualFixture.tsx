@@ -77,6 +77,7 @@ export const seatLayerVisualFixtureScenarios = Object.freeze([
   'sales-closed',
   'sales-closed-held',
   'sold-out',
+  'price-gone',
   'hold-lapse',
   'action-error',
   'empty',
@@ -381,6 +382,9 @@ function fixtureSnapshot(
       ? Object.freeze([fixtureGoldCategory, fixtureSilverCategory])
       : scenario === 'seat-tier'
       ? Object.freeze([fixtureGoldCategory])
+      : scenario === 'price-gone'
+      ? Object.freeze(fixtureCategories.map((category, index) =>
+        Object.freeze({ ...category, free: index < 2 ? 0 : category.available })))
       : scenario === 'empty' || scenario === 'sold-out'
       ? Object.freeze(fixtureCategories.map((category) => Object.freeze({ ...category, available: 0 })))
       : fixtureCategories,
@@ -435,7 +439,7 @@ function fixtureSnapshot(
       hideLimitedView: filters?.limited ?? false,
       canZoomIn: true,
       canZoomOut: true,
-      categoryFilter: Object.freeze(filters?.categoryKeys ?? []),
+      categoryFilter: Object.freeze(filters?.categoryKeys ?? (scenario === 'price-gone' ? ['sponsor'] : [])),
       accessibilityFilter: scenario === 'filters'
         ? Object.freeze(filters?.accessKeys ?? [])
         : scenario === 'accessibility'
