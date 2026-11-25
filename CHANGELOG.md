@@ -17,7 +17,6 @@ stay; the changes below are the ones an app or a buyer can notice.
 - In a seat's 3D view, a map 560 points or wider shows a small plan of where the
   seat is.
 - `setViewMode('iso')` and `setViewMode('perspective')` show the flat map.
-- The map no longer draws a "Powered by SeatLayer" badge of its own.
 - Seats with a price of their own, and events priced by tier and time, can be
   chosen and held.
 
@@ -26,6 +25,11 @@ stay; the changes below are the ones an app or a buyer can notice.
 - A phone held sideways keeps the phone layout. The wide layout needs a window
   whose shorter side is at least 600 points, besides the width it needed before.
   `options.layout: 'wide'` is still honoured.
+- "Powered by SeatLayer" is no longer drawn, on the map or under the cart.
+  `SeatLayerPickerAttribution` is deprecated and draws nothing; its style slots
+  change nothing.
+- The checkout button keeps 12 points from the edge on a phone with no safe area
+  at its foot.
 - In the 3D venue the status bar stands on the dark ground its light text is
   chosen for.
 - A standing area sold as one box offers only the party sizes it is sold in, and

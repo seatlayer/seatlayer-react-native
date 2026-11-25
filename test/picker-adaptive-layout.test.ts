@@ -41,7 +41,6 @@ vi.mock('../src/picker/actionError', () => ({ SeatLayerPickerActionError: 'actio
 vi.mock('../src/picker/status', () => ({
   SeatLayerPickerEmptyView: 'empty', SeatLayerPickerErrorView: 'error', SeatLayerPickerLoadingView: 'loading', SeatLayerPickerTestModeIndicator: 'test-badge',
 }));
-vi.mock('../src/picker/attribution', () => ({ SeatLayerPickerAttribution: 'attribution' }));
 vi.mock('../src/picker/systemStatusBar', () => ({ SeatLayerPickerSystemStatusBar: 'system-bars' }));
 vi.mock('../src/picker/scopeBackHandler', () => ({ SeatLayerPickerScopeBackHandler: 'back-handler' }));
 vi.mock('../src/picker/SeatLayerDockBar', () => ({ SeatLayerDockBar: 'dock' }));
@@ -185,7 +184,7 @@ describe('adaptive picker composition', () => {
       .not.toBe(seatLayerPickerPendingCandidateEpochFor({ id: 'A', controller, scopeSessionId: 2, runtimeSessionId: 'two' }));
   });
 
-  it('blocks a proven-empty map and removes impossible ticket actions while retaining attribution', async () => {
+  it('blocks a proven-empty map and removes impossible ticket actions', async () => {
     state.width = 320;
     const current = scope({
       snapshot: {
@@ -202,7 +201,6 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findAllByType('empty' as any)).toHaveLength(1);
     expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
     expect(tree.root.findAllByType('checkout' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('attribution' as any)).toHaveLength(1);
     expect(current.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
     await act(async () => { tree.unmount(); });
   });
@@ -265,12 +263,12 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
-  it('renders the fixed wide rail without a phone inset and retains mandatory attribution through builder failures', async () => {
+  it('renders the fixed wide rail without a phone inset and survives builder failures', async () => {
     state.width = 920;
     state.scope = scope({ snapshot: { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' } } });
     const onSeatRemoved = vi.fn();
     const onSectionFocused = vi.fn();
-    const builders = { header: () => { throw new Error('host builder'); }, map: () => React.createElement('replacement-map'), attribution: () => null } as any;
+    const builders = { header: () => { throw new Error('host builder'); }, map: () => React.createElement('replacement-map') } as any;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, {
       builders, onCheckout: checkout, onSeatRemoved, onSectionFocused,
@@ -282,9 +280,6 @@ describe('adaptive picker composition', () => {
     expect(tree.root.findAllByType('replacement-map' as any)).toHaveLength(1);
     expect(tree.root.findByType('controls' as any).props.reserveInset).toBe(false);
     expect(tree.root.findAllByType('header' as any)).toHaveLength(1);
-    expect(tree.root.findAllByType('attribution' as any)).toHaveLength(1);
-    expect(tree.root.findByProps({ testID: 'seatlayer-wide-attribution' }).props.style)
-      .toMatchObject({ alignItems: 'flex-end', paddingEnd: 8 });
     expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
     const cartList = tree.root.findByType('cart-list' as any);
     cartList.props.onSeatRemoved({ label: 'Seat A' });
@@ -658,7 +653,6 @@ describe('adaptive picker composition', () => {
       onCheckout: checkout, builders: { cartSheet: () => false },
     })); });
     expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('attribution' as any)).toHaveLength(1);
     await act(async () => { tree.unmount(); });
   });
 

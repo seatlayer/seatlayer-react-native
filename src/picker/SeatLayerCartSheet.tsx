@@ -20,7 +20,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { SeatLayerPickerAttribution } from './attribution';
 import { SeatLayerPickerActionError } from './actionError';
 import { SeatLayerPickerSalesClosedStatement } from './SeatLayerPickerAccessPanel';
 import { SeatLayerBestSeatsForm } from './SeatLayerBestSeatsForm';
@@ -337,14 +336,15 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
     props.safeAreaInsets === undefined ? { bottom: props.safeAreaBottomInset } : props.safeAreaInsets,
     window,
   );
-  const inset = reserve ? safeInsets.bottom : 0;
+  // A phone that takes no room at its foot still keeps the button off the
+  // glass's edge.
+  const inset = reserve ? Math.max(safeInsets.bottom, seatLayerPickerTokens.size.footMinInset) : 0;
   const runtimeSession = scope.snapshot?.sessionId;
   const projection = useMemo(
     () => projectSeatLayerCartSheet(scope.snapshot, scope.pendingSeat),
     [scope.pendingSeat, scope.snapshot],
   );
   const hasTickets = projection.confirmed.items.length > 0;
-  const attributionRequired = scope.snapshot?.branding.attributionRequired === true;
   // The handle leaves while a confirm card is up: the disc sat half under the
   // card's scrim, and the card is the only question on the screen until it is
   // answered.
@@ -617,7 +617,6 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
         <View onLayout={(event) => setFootHeight(event.nativeEvent.layout.height)}>
           <SeatLayerSheetFoot
             actionError={actionError}
-            attribution={attributionRequired ? <SeatLayerPickerAttribution compact /> : null}
             checkoutBar={checkoutBar}
             collapsed={!props.expanded}
             divider={props.expanded && hasTickets}

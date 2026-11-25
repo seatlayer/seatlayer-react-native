@@ -12,7 +12,6 @@ let scope: Record<string, any>;
 vi.mock("../src/picker/SeatLayerPickerScope", () => ({ useSeatLayerPickerScope: () => scope }));
 
 import { SeatLayerPickerActionError } from "../src/picker/actionError";
-import { SeatLayerPickerAttribution } from "../src/picker/attribution";
 import {
   SeatLayerPickerEmptyStatus,
   SeatLayerPickerErrorStatus,
@@ -188,18 +187,10 @@ describe("picker status chrome", () => {
     expect(errors).toHaveLength(0);
   });
 
-  it("keeps required attribution unsuppressible and gates the test badge by event and native chrome", async () => {
+  it("gates the test badge by event and native chrome", async () => {
     let renderer!: ReactTestRenderer;
     scope.controller.mapController.supportsPickerCapability = () => false;
     scope.snapshot = snapshot("test", true);
-    await act(async () => {
-      renderer = create(React.createElement(SeatLayerPickerAttribution, {
-        visible: false, style: { opacity: 0 }, slots: { attributionText: { color: "#000" } },
-      }));
-    });
-    const attribution = renderer.root.findByProps({ accessibilityLabel: "Powered by SeatLayer" });
-    expect(attribution).toBeTruthy();
-    expect(attribution.props.style).toEqual(expect.objectContaining({ opacity: 0.72 }));
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerTestModeIndicator, { compact: true })); });
     expect(renderer.toJSON()).toBeNull();
     scope.controller.mapController.supportsPickerCapability = (value: string) => value === "native-chrome-contract-v1";

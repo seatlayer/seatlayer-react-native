@@ -33,7 +33,6 @@ export interface SeatLayerSheetFootProps {
   readonly holdLapse?: ReactNode;
   readonly actionError?: ReactNode;
   readonly checkoutBar?: ReactNode;
-  readonly attribution?: ReactNode;
   /** Opens the cards; null while there is nothing folded away to open. */
   readonly onOpenCart?: (() => void) | undefined;
   readonly collapsed: boolean;
@@ -68,21 +67,6 @@ export function SeatLayerSheetFoot(props: SeatLayerSheetFootProps): React.ReactE
       />
       <View style={{ height: seatLayerPickerTokens.size.footTotalGap }} />
       {props.checkoutBar}
-      {/* Centred, not trailing: at the foot of a phone the trailing edge is the
-          display's rounded corner, and a credit tucked into it lost its last
-          letters behind the glass. */}
-      {props.attribution === undefined || props.attribution === null
-        ? null
-        : (
-          <View
-            testID="seatlayer-cart-attribution-foot"
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: seatLayerPickerTokens.size.attributionHeight,
-            }}
-          >{props.attribution}</View>
-        )}
     </View>
   );
 }

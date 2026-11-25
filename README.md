@@ -390,7 +390,7 @@ or scoped actions.
 
 The same scope also supports standalone confirmation and seat-view actions,
 best seats, section navigation, floor selection, GA/table prompts, dense cart
-lists, hold-lapse recovery, loading/error/empty states, attribution, venue 3D,
+lists, hold-lapse recovery, loading/error/empty states, venue 3D,
 and panorama chrome. Custom ticket trays can reuse the exported
 `resolveSeatLayerTicketLines` helper instead of reimplementing the ticket-line
 rules: it turns cart items into lines with their section, row, seat, category,

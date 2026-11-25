@@ -40,7 +40,6 @@ vi.mock('../src/picker/actionError', () => ({ SeatLayerPickerActionError: 'actio
 vi.mock('../src/picker/status', () => ({
   SeatLayerPickerEmptyView: 'empty', SeatLayerPickerErrorView: 'error', SeatLayerPickerLoadingView: 'loading', SeatLayerPickerTestModeIndicator: 'test-badge',
 }));
-vi.mock('../src/picker/attribution', () => ({ SeatLayerPickerAttribution: 'attribution' }));
 vi.mock('../src/picker/systemStatusBar', () => ({ SeatLayerPickerSystemStatusBar: 'system-bars' }));
 vi.mock('../src/picker/scopeBackHandler', () => ({ SeatLayerPickerScopeBackHandler: 'back-handler' }));
 vi.mock('../src/picker/SeatLayerDockBar', () => ({ SeatLayerDockBar: 'dock' }));
