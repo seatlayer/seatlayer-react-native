@@ -12,6 +12,21 @@ export async function openCell(page: Page, cell: Cell): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page.clock.runFor(5_000);
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  await settle(page);
+}
+
+/** Layout events arrive in real time, each may draw again, and the cart row
+ *  draws its words once unseen to measure them. */
+async function settle(page: Page): Promise<void> {
+  const read = () => page.evaluate(() => document.getElementById('root')?.innerHTML ?? '');
+  let before = await read();
+  for (let round = 0; round < 40; round += 1) {
+    await page.waitForTimeout(20);
+    await page.clock.runFor(100);
+    const after = await read();
+    if (after === before && !after.includes('seatlayer-cart-ruler')) return;
+    before = after;
+  }
 }
 
 /** The picker reads the time, and nothing in a picture may depend on it. */

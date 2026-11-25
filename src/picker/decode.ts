@@ -436,7 +436,7 @@ export function decodeSeatLayerPickerSnapshot(
       name: asString(event?.name) ?? key,
       mode: asString(event?.mode) ?? 'live',
       currency: asString(event?.currency) ?? 'USD',
-      ...optionalStrings(event, ['venue', 'timezone', 'locale', 'posterUrl']),
+      ...optionalStrings(event, ['venue', 'timezone', 'locale', 'posterUrl', 'startsAtLabel']),
       ...(asFiniteNumber(event?.startsAt) === undefined
         ? {}
         : { startsAt: asFiniteNumber(event?.startsAt) }),

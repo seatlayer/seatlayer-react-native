@@ -78,8 +78,9 @@ export function seatLayerCheckoutCtaState(
   const reason = (label: string, busy = false): SeatLayerCheckoutCtaState =>
     state(label, false, { busy, statesReason: true });
 
-  // 1. Nothing else is worth saying about an event that has stopped selling.
-  if (snapshot?.event.salesClosed === true) return reason(strings.translate('salesClosedCta'));
+  // 1. Nothing else is worth saying about an event that has stopped selling,
+  //    except to a buyer who still holds seats in it: they may pay for them.
+  if (snapshot?.event.salesClosed === true && !holdActive) return reason(strings.translate('salesClosedCta'));
 
   // 2. A prompt the buyer has not answered.
   if (input.generalAdmissionPending === true) return reason(strings.translate('confirmYourTickets'));

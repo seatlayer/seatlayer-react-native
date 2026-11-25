@@ -180,21 +180,11 @@ describe('cart checkout renderer', () => {
     expect(handle.props.accessibilityRole).toBe('button');
     expect(handle.props.accessibilityLabel).toBe('expandCart');
     expect(handle.props.accessibilityState).toMatchObject({ expanded: false });
-    // The disc STRADDLES the sheet's own top edge: half over the map, half in
-    // the sheet, and nothing drawn under it.
-    const band = renderer.root.findByProps({ testID: 'seatlayer-cart-handle-band' });
-    expect(band.props.style).toMatchObject({
-      position: 'absolute', top: -seatLayerPickerTokens.size.sheetHandleOverhang,
-    });
-    expect(band.props.style.height)
-      .toBe(seatLayerPickerTokens.size.sheetHandleOverhang + seatLayerPickerTokens.size.sheetHeadHeight);
-    expect(handle.props.style({ pressed: false })).toMatchObject({
-      borderRadius: seatLayerPickerTokens.radius.pill,
-      height: seatLayerPickerTokens.size.sheetHandleHeight,
-      width: seatLayerPickerTokens.size.sheetHandleWidth,
-    });
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-head-strip' }).props.style)
-      .toEqual({ height: seatLayerPickerTokens.size.sheetHeadHeight });
+    // In the row: drawn at 28, pressed over 44, and no part of it over the map.
+    expect(handle.props.style({ pressed: false })).toMatchObject({ height: 44, margin: -8, width: 44 });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-handle-disc' }).props.style)
+      .toMatchObject({ height: 28, width: 28 });
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-head-strip' })).toHaveLength(0);
     // PORTS MUST NOT REINTRODUCE A PEEK BAR: there is no second summary and no
     // second Continue anywhere on the collapsed sheet.
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-continue-pill' })).toHaveLength(0);
@@ -219,9 +209,11 @@ describe('cart checkout renderer', () => {
         expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
       }));
     });
-    // The disc sat half under the card's scrim, and the card is the only
-    // question on the screen until it is answered.
+    // The card is the only question on the screen until it is answered.
     expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-handle' })).toHaveLength(0);
+    const row = renderer.root.findByProps({ testID: 'seatlayer-cart-row' });
+    expect(row.props.pointerEvents).toBe('none');
+    expect(row.props.style.opacity).toBe(.58);
   });
 
   it('draws the whole foot collapsed: the total line, the seats it holds, and the button', async () => {
@@ -234,21 +226,15 @@ describe('cart checkout renderer', () => {
     expect(total.props.accessibilityLabel).toBe('ticketCount, $20');
     expect(total.props.accessibilityLiveRegion).toBe('polite');
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-foot-total' }).props.children).toBe('$20');
-    // Under the count, the seats held — and the line opens the cards.
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-seats-line' }).props.children)
-      .toBe('A \u00b7 1');
-    expect(total.props.accessibilityRole).toBe('button');
+    // Under the count, the seats, and the words open the cards as the circle does.
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-seats-line' }).props.children).toBe('A-1');
+    expect(total.props.accessibilityRole).toBe('text');
     // A buyer with seats already held can SEE the button that takes their
     // money: the foot that carries it is never hidden at peek.
     expect(renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' }).props.accessibilityLabel)
       .toBe('continueToCheckout');
-    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-foot' }).props.style)
-      .toMatchObject({
-        borderTopWidth: 0,
-        paddingBottom: seatLayerPickerTokens.size.footPadBottom,
-        paddingHorizontal: seatLayerPickerTokens.size.footPadX,
-        paddingTop: seatLayerPickerTokens.size.footPadTop,
-      });
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-row' }).props.style)
+      .toMatchObject({ paddingHorizontal: 12, paddingTop: 10 });
   });
 
   it('says "No seats selected" on an empty cart and offers the finder on the same button', async () => {
@@ -339,7 +325,7 @@ describe('cart checkout renderer', () => {
     expect(renderer.root.findAllByProps({ accessibilityLabel: 'poweredBy' })).toHaveLength(0);
   });
 
-  it('keeps the button off the edge where the phone takes no room at its foot', async () => {
+  it('keeps 10 under the row, or the phone\'s own bottom strip where that is more', async () => {
     setup();
     const paddings = async (insetBottom: number, reserveBottomInset = true) => {
       const renderer = await render(React.createElement(SeatLayerCartSheet, {
@@ -347,12 +333,94 @@ describe('cart checkout renderer', () => {
         reserveBottomInset, safeAreaBottomInset: insetBottom,
       }));
       return renderer.root.findAll((node) => Array.isArray(node.props.style)
-        && node.props.style[0]?.borderTopLeftRadius === seatLayerPickerTokens.radius.sheet)
+        && node.props.style[0]?.borderTopWidth === 1 && node.props.style[0]?.paddingBottom !== undefined)
         .map((node) => node.props.style[0].paddingBottom)[0];
     };
-    expect(await paddings(0)).toBe(seatLayerPickerTokens.size.footMinInset);
+    expect(await paddings(0)).toBe(10);
+    expect(await paddings(6)).toBe(10);
+    expect(await paddings(24)).toBe(24);
     expect(await paddings(34)).toBe(34);
-    expect(await paddings(0, false)).toBe(0);
+    expect(await paddings(0, false)).toBe(10);
+    // The app keeps the strip itself: the row keeps its own room only.
+    expect(await paddings(34, false)).toBe(10);
+  });
+
+  it('says a closed sale once, with its date and no button, and keeps the way on for held seats', async () => {
+    const runtime = setup();
+    runtime.snapshot.event = { salesClosed: true, startsAtLabel: 'Sat 27 Aug 2027, 19:30' };
+    runtime.snapshot.hold = { active: false, owner: 'picker' };
+    const sheet = () => React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
+    });
+    let renderer = await render(sheet());
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-checkout' })).toHaveLength(0);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-count' }).props.children).toBe('salesClosed');
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-seats-line' }).props.children)
+      .toBe('Sat 27 Aug 2027, 19:30');
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-cart-handle' })).toHaveLength(1);
+    runtime.snapshot.hold = { active: true, owner: 'picker' };
+    renderer = await render(sheet());
+    const button = renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' });
+    expect(button.props.accessibilityLabel).toBe('continueToCheckout');
+    expect(button.props.disabled).toBe(false);
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-foot-total' }).props.children).toBe('$20');
+  });
+
+  it('offers no finder on a sold-out event', async () => {
+    const runtime = setup();
+    runtime.snapshot.cartLines = [];
+    runtime.snapshot.hold = { active: false, owner: 'picker' };
+    runtime.snapshot.generalAdmissionAreas = [];
+    runtime.snapshot.categories = [{ key: 'a', available: 0, notForSale: false }];
+    const renderer = await render(React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
+    }));
+    const button = renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' });
+    expect(button.props.accessibilityLabel).toBe('selectSeats');
+    expect(button.props.disabled).toBe(true);
+  });
+
+  it('secures first and hands over after, and only hands over a hold that is there', async () => {
+    const runtime = setup();
+    runtime.snapshot.hold = { active: false, owner: 'picker' };
+    let secured!: (value: unknown) => void;
+    runtime.controller.checkout = () => new Promise<any>((done) => { secured = done; });
+    const renderer = await render(React.createElement(SeatLayerBookButton, {
+      onCheckout: () => new Promise(() => {}),
+    }));
+    const label = () => renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' }).props.accessibilityLabel;
+    await act(async () => { renderer.root.findByProps({ testID: 'seatlayer-cart-checkout' }).props.onPress(); });
+    expect(label()).toBe('securingSeats');
+    await act(async () => { secured({ holdId: 'h', expiresAt: 2, currency: 'USD', lineItems: [], total: 20 }); });
+    expect(label()).toBe('seatsSecuredOpeningCheckout');
+  });
+
+  it('closes the list for a new seat, and not for another ticket of a place already there', async () => {
+    const runtime = setup();
+    const changes: boolean[] = [];
+    const line = { lineKey: 'one', label: 'A-1', objectId: 'one', quantity: 1, unitPrice: 20, currency: 'USD' };
+    const sheet = (lines: unknown[]) => {
+      scope = { ...scope, snapshot: { ...runtime.snapshot, cartLines: lines } };
+      return React.createElement(SeatLayerCartSheet, {
+        expanded: true, onExpandedChanged: (open: boolean) => { changes.push(open); }, onCheckout: () => {},
+      });
+    };
+    const renderer = await render(sheet([line]));
+    await act(async () => { renderer.update(sheet([{ ...line, quantity: 2 }])); });
+    expect(changes).toEqual([]);
+    await act(async () => { renderer.update(sheet([line, { ...line, lineKey: 'two', label: 'A-2', objectId: 'two' }])); });
+    expect(changes).toEqual([false]);
+  });
+
+  it('keeps an app\'s own checkout part at full width, under the words', async () => {
+    setup();
+    const renderer = await render(React.createElement(SeatLayerCartSheet, {
+      expanded: false, onExpandedChanged: () => {}, onCheckout: () => {},
+      checkoutBar: React.createElement('OwnBar', undefined, React.createElement(SeatLayerBookButton, { onCheckout: () => {} })),
+    }));
+    expect(renderer.root.findByProps({ testID: 'seatlayer-cart-row' }).props.style.flexDirection).toBe('column');
+    // Placed inside an app's part, the ready-made button has its own look.
+    expect(renderer.root.findAll(hasPaint).length).toBeGreaterThan(0);
   });
 
   it('keeps empty guidance semantic while its best-seats controls remain discoverable', async () => {

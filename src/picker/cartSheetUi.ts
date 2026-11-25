@@ -79,19 +79,6 @@ export function seatLayerCartSheetCeilings(
   });
 }
 
-/**
- * The seats a collapsed sheet lists under its count, in the runtime's own
- * inventory labels: `A-12` reads as `A · 12`, and the line opens the cards.
- */
-export function seatLayerCartSeatsLine(
-  lines: readonly Readonly<{ label?: string | null }>[],
-): string {
-  return lines
-    .map((line) => (line.label ?? '').trim().replace(/-/g, ' \u00b7 '))
-    .filter((label) => label.length > 0)
-    .join(',  ');
-}
-
 export function finiteNonNegative(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
 }

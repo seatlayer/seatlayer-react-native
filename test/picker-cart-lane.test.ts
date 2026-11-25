@@ -26,7 +26,7 @@ import {
   seatLayerSheetSettle,
   seatLayerSheetSpring,
 } from '../src/picker/sheetDrag';
-import { seatLayerCartSeatsLine, seatLayerCartSheetCeilings } from '../src/picker/cartSheetUi';
+import { seatLayerCartSheetCeilings } from '../src/picker/cartSheetUi';
 import { seatLayerPickerSeatNotes, seatLayerPickerSeatNoteSpoken } from '../src/picker/seatNotes';
 import { SeatLayerToastQueue, seatLayerToastActionHitBox, seatLayerToastCardLift, seatLayerToastDwellMs } from '../src/picker/toastQueue';
 import { seatLayerHeaderInitial } from '../src/picker/headerIdentity';
@@ -230,13 +230,6 @@ describe('§3.10.3 the empty cart has a door, not a dead button', () => {
 });
 
 describe('§3.9 the collapsed sheet says what it holds', () => {
-  it('lists the seats under the count in the runtime\'s own labels', () => {
-    expect(seatLayerCartSeatsLine([{ label: 'A-12' }, { label: 'A-13' }]))
-      .toBe('A \u00b7 12,  A \u00b7 13');
-    expect(seatLayerCartSeatsLine([{ label: '  ' }, { label: 'GA' }])).toBe('GA');
-    expect(seatLayerCartSeatsLine([])).toBe('');
-  });
-
   it('caps the cart on its own fraction, measuring the chrome rather than guessing it', () => {
     const filled = seatLayerCartSheetCeilings(800, 200, true);
     expect(filled.body).toBe(Math.min(

@@ -184,8 +184,11 @@ describe('adaptive picker composition', () => {
       .not.toBe(seatLayerPickerPendingCandidateEpochFor({ id: 'A', controller, scopeSessionId: 2, runtimeSessionId: 'two' }));
   });
 
-  it('blocks a proven-empty map and removes impossible ticket actions', async () => {
-    state.width = 320;
+  it.each([
+    { name: 'wide: no ticket actions', width: 920, empty: undefined, cart: 0 },
+    { name: 'phone: the sold-out statement over the map, and the row', width: 320, empty: 0, cart: 1 },
+  ])('blocks a proven-empty map ($name)', async ({ width, empty, cart }) => {
+    state.width = width;
     const current = scope({
       snapshot: {
         categories: [{ available: 0, notForSale: false }],
@@ -196,11 +199,11 @@ describe('adaptive picker composition', () => {
     state.scope = current;
     let tree!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout }));
+      tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout, options: { layout: width === 920 ? 'wide' : 'phone' } }));
     });
-    expect(tree.root.findAllByType('empty' as any)).toHaveLength(1);
-    expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(0);
-    expect(tree.root.findAllByType('checkout' as any)).toHaveLength(0);
+    if (empty !== undefined) expect(tree.root.findAllByType('empty' as any)).toHaveLength(empty);
+    expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(cart);
+    if (width === 920) expect(tree.root.findAllByType('checkout' as any)).toHaveLength(0);
     expect(current.controller.setInteractionEnabled).toHaveBeenCalledWith(false);
     await act(async () => { tree.unmount(); });
   });
