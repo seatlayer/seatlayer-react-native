@@ -441,7 +441,7 @@ describe('cart checkout renderer', () => {
     runtime.snapshot.cartLines = [];
     scope = { ...scope, error: { message: 'retry' } };
     const renderer = await render(React.createElement(SeatLayerCartSheet, { expanded: true, onExpandedChanged: () => {}, onCheckout: () => {} }));
-    expect(renderer.root.findAllByProps({ accessibilityLabel: 'close' }).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'dismissError' }).length).toBeGreaterThan(0);
   });
 
   it('keeps disabled best-seat controls truthful with 44 hit targets around 44 painted controls', async () => {

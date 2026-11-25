@@ -40,7 +40,7 @@ import {
   type SeatLayerPickerDecisionScope,
   type SeatLayerPickerTableRemovalOperation,
 } from './decisionPrompts';
-import { isRefusedGAHold } from './generalAdmissionAmounts';
+import { seatLayerPickerBuyerError } from './errorWords';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
@@ -138,10 +138,7 @@ function useCoordinator(): Readonly<{
   const coordinatorRef = useRef<SeatLayerPickerDecisionCoordinator | undefined>(undefined);
   if (!coordinatorRef.current) coordinatorRef.current = new SeatLayerPickerDecisionCoordinator(
     () => decisionScope(committedScope.current),
-    (error) => {
-      const { reportError, strings } = committedScope.current;
-      reportError(Object.assign(error as Error, { buyerMessage: strings.translate('seatsJustTaken') }));
-    },
+    (error) => { committedScope.current.reportError(error); },
   );
   const coordinator = coordinatorRef.current;
   const state = useSyncExternalStore(coordinator.subscribe, coordinator.getState, coordinator.getState);
@@ -376,6 +373,7 @@ function ModalPrompt({
   const subtitle = decision.kind === 'ga'
     ? scope.strings.translate('placesAvailable', { values: { count: decision.available }, count: decision.available })
     : scope.strings.translate('chooseGuestsCopy');
+  const refused = state.error ? seatLayerPickerBuyerError(state.error, scope.strings) : undefined;
   return <SeatLayerPickerPromptModal visible>
     <Pressable accessible={false} onPress={dismiss} style={[stylesNative.scrim, { backgroundColor: scope.resolvedTheme.colors.text, opacity: .42, paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} />
     <View accessibilityViewIsModal style={[stylesNative.modalLayer, { paddingTop: insets.top, paddingRight: insets.right, paddingBottom: insets.bottom, paddingLeft: insets.left }]} pointerEvents="box-none">
@@ -384,7 +382,7 @@ function ModalPrompt({
         <Text style={[stylesNative.subtitle, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>{subtitle}</Text>
         <Quantity value={decision.quantity} minimum={decision.minimum} maximum={decision.maximum} onChange={setQuantity} disabled={inFlight} guests={decision.kind === 'table'} label={scope.strings.translate(decision.kind === 'table' ? 'numberOfGuests' : 'chooseTickets')} scope={scope} styles={styles} />
         {decision.kind === 'ga' && (decision.area.tiers?.length ?? 0) > 0 ? <ScrollView style={stylesNative.tierScroll} contentContainerStyle={stylesNative.tierScrollContent}><TierChoices decision={decision} value={tierId ?? decision.tierId} onChange={setTierId} disabled={inFlight} scope={scope} styles={styles} /></ScrollView> : null}
-        {state.error ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{scope.strings.translate(isRefusedGAHold(state.error) ? 'seatsJustTaken' : 'errorMessage')}</Text> : null}
+        {refused ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{[refused.message, refused.detail].filter(Boolean).join(' ')}</Text> : null}
         <View style={stylesNative.actions}>
           <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeWord')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
           <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate(inCart ? 'updateTable' : 'selectTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />

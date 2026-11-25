@@ -1,13 +1,16 @@
 import React from "react";
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
 
+import { seatLayerPickerBuyerError } from './errorWords';
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import {
   resolveSeatLayerPickerStyles,
@@ -29,29 +32,24 @@ export interface SeatLayerPickerActionErrorProps {
   >;
 }
 
-function buyerMessage(error: unknown, fallback: string): string {
-  if (!error || typeof error !== "object") return fallback;
-  try {
-    const field = Object.getOwnPropertyDescriptor(error, "buyerMessage");
-    const value = field?.enumerable && "value" in field ? field.value : undefined;
-    return typeof value === "string" && value.trim() ? value.trim() : fallback;
-  } catch {
-    return fallback;
-  }
-}
+/** The share of the screen a long sentence may take before it scrolls. */
+const maxHeightFraction = 0.15;
+const minMaxHeight = 84;
 
 /** Inline command failure; it never replaces the pre-ready fatal-error surface. */
 export function SeatLayerPickerActionError(
   props: SeatLayerPickerActionErrorProps,
 ): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
+  const { height } = useWindowDimensions();
   const error = props.error ?? (scope.isReady ? scope.error : undefined);
   if (error === undefined) return null;
   const slots = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   // The current scoped command error is dismissible by default. An explicitly
   // supplied error is observational and must never clear unrelated scope state.
   const clearable = props.clearable !== false && scope.isReady && scope.error === error;
-  const label = buyerMessage(error, scope.strings.translate("errorMessage"));
+  const words = seatLayerPickerBuyerError(error, scope.strings);
+  const ink = { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily };
   return (
     <View
       accessibilityLiveRegion="polite"
@@ -65,23 +63,20 @@ export function SeatLayerPickerActionError(
         sanitizeSeatLayerPickerStyle(props.style),
       ]}
     >
-      <Text
-        numberOfLines={2}
-        style={[
-          styles.text,
-          {
-            color: scope.resolvedTheme.colors.error,
-            fontFamily: scope.resolvedTheme.fontFamily,
-          },
-          slots.errorText,
-        ]}
+      <ScrollView
+        alwaysBounceVertical={false}
+        contentContainerStyle={styles.column}
+        style={[styles.scroll, { maxHeight: Math.max(height * maxHeightFraction, minMaxHeight) }]}
       >
-        {label}
-      </Text>
+        <Text style={[styles.text, ink, slots.errorText]}>{words.message}</Text>
+        {words.detail === undefined
+          ? null
+          : <Text style={[styles.detail, ink, slots.errorText]}>{words.detail}</Text>}
+      </ScrollView>
       {!clearable ? null : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={scope.strings.translate("close")}
+          accessibilityLabel={scope.strings.translate("dismissError")}
           onPress={scope.clearError}
           style={styles.hit}
         >
@@ -92,7 +87,7 @@ export function SeatLayerPickerActionError(
               color: scope.resolvedTheme.colors.text,
               fontFamily: scope.resolvedTheme.fontFamily,
             }, slots.statusActionText]}>
-              {scope.strings.translate("close")}
+              {"\u00D7"}
             </Text>
           </View>
         </Pressable>
@@ -110,8 +105,11 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     borderWidth: seatLayerPickerLineWidth,
     paddingHorizontal: 10,
   },
-  text: { flex: 1, fontSize: 13, lineHeight: 18 },
+  scroll: { flex: 1, flexGrow: 1 },
+  column: { gap: 2, paddingVertical: 10 },
+  text: { fontSize: 13, fontWeight: "700", lineHeight: 18 },
+  detail: { fontSize: 13, lineHeight: 18 },
   hit: { minWidth: 44, minHeight: 44, justifyContent: "center" },
-  paint: { height: 40, paddingHorizontal: 8, justifyContent: "center" },
-  actionText: { fontSize: 13, fontWeight: "800" },
+  paint: { height: 40, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
+  actionText: { fontSize: 20, fontWeight: "600" },
 }));

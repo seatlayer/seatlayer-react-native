@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
+import { SeatLayerError } from '../src/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -110,7 +111,7 @@ describe('picker decision prompt renderer', () => {
     expect(value().now).toBe(4);
   });
 
-  const refused = () => Object.assign(new Error('refused'), { code: 'hold_unavailable' });
+  const refused = () => new SeatLayerError('hold_unavailable', 'refused');
 
   it('says the places were taken and keeps the prompt while the area has others', async () => {
     const runtime = setup(); let renderer!: ReactTestRenderer;
@@ -133,7 +134,7 @@ describe('picker decision prompt renderer', () => {
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
     await act(async () => { renderer.root.findByProps({ accessibilityLabel: 'addTickets' }).props.onPress(); await Promise.resolve(); });
     expect(report).toHaveBeenCalledTimes(1);
-    expect(report.mock.calls[0]![0]).toMatchObject({ code: 'hold_unavailable', buyerMessage: 'seatsJustTaken' });
+    expect(report.mock.calls[0]![0]).toMatchObject({ code: 'hold_unavailable' });
   });
 
   it('lets the shared back ladder retire only its lease and blocks a competing table prompt', async () => {

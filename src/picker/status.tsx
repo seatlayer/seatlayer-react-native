@@ -36,7 +36,7 @@ export {
   type SeatLayerPickerTestModeIndicatorViewProps,
 } from "./testModeIndicator";
 import { seatLayerPickerBoldStyles } from './boldText';
-import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerOwnBuyerMessage } from './errorWords';
 
 type StatusSlots = Pick<
   SeatLayerPickerStyles,
@@ -59,20 +59,6 @@ function safelyReport(
   try {
     callback?.(error);
   } catch { /* Reporting must not create a second failure. */ }
-}
-function safeBuyerMessage(value: unknown): string | undefined {
-  if (!value || (typeof value !== "object" && typeof value !== "function")) {
-    return undefined;
-  }
-  try {
-    const descriptor = Object.getOwnPropertyDescriptor(value, "buyerMessage");
-    const message = descriptor?.enumerable && "value" in descriptor
-      ? descriptor.value
-      : undefined;
-    return typeof message === "string" && message.trim() ? message.trim() : undefined;
-  } catch {
-    return undefined;
-  }
 }
 export interface SeatLayerPickerStatusProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -262,33 +248,32 @@ export function SeatLayerPickerErrorStatus({
       mounted.current = false;
     };
   }, []);
-  const message = safeBuyerMessage(error) ?? strings.translate("errorMessage");
+  const title = strings.translate("mapDidNotLoad");
+  // What the app says itself stands under the title, unless it is the title.
+  const own = [seatLayerPickerOwnBuyerMessage(error), strings.translate("errorMessage")]
+    .find((sentence) => sentence !== undefined && sentence !== title);
+  const line = [
+    styles.line,
+    { color: theme.colors.mutedText, fontFamily: theme.fontFamily },
+    slots.statusText,
+  ];
   return (
     <View
       accessibilityRole="none"
-      style={[styles.root, slots.statusContainer, slots.errorContainer, safeStyle]}
+      style={[styles.root, styles.failure, slots.statusContainer, slots.errorContainer, safeStyle]}
     >
-      <View
-        accessible={false}
-        style={styles.errorMark}
-      >
-        <View style={[styles.cloudPuffSmall, { backgroundColor: theme.colors.mutedText }]} />
-        <View style={[styles.cloudPuffLarge, { backgroundColor: theme.colors.mutedText }]} />
-        <View style={[styles.cloudBase, { backgroundColor: theme.colors.mutedText }]} />
-        <View
-          style={[styles.errorLine, { backgroundColor: theme.colors.mutedText }]}
-        />
-      </View>
       <Text accessibilityRole="alert"
         style={[
-          styles.text,
+          styles.title,
           { color: theme.colors.text, fontFamily: theme.fontFamily },
           slots.statusText,
           slots.errorText,
         ]}
       >
-        {message}
+        {title}
       </Text>
+      {own === undefined ? null : <Text style={line}>{own}</Text>}
+      <Text style={line}>{strings.translate("checkConnection")}</Text>
       {retry === undefined ? null : (
         <Pressable
           accessibilityRole="button"
@@ -299,18 +284,16 @@ export function SeatLayerPickerErrorStatus({
           style={({ pressed }) => [
             styles.retry,
             {
-              borderColor: theme.colors.divider,
-              backgroundColor: pressed
-                ? theme.colors.surface
-                : theme.colors.background,
+              backgroundColor: theme.colors.accent,
               borderRadius: seatLayerPickerTokens.radius.button,
+              opacity: pressed ? 0.85 : 1,
             },
             slots.statusAction,
           ]}
         >
           <Text
             style={[styles.retryText, {
-              color: theme.colors.text,
+              color: theme.colors.onAccent,
               fontFamily: theme.fontFamily,
             }, slots.statusActionText]}
           >
@@ -359,44 +342,9 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     padding: 28,
   },
   text: { textAlign: "center", fontSize: 15, lineHeight: 22 },
-  errorMark: {
-    width: 40,
-    height: 40,
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cloudPuffSmall: {
-    position: "absolute",
-    left: 8,
-    top: 15,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  cloudPuffLarge: {
-    position: "absolute",
-    left: 16,
-    top: 10,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-  },
-  cloudBase: {
-    position: "absolute",
-    left: 7,
-    bottom: 8,
-    width: 27,
-    height: 12,
-    borderRadius: 7,
-  },
-  errorLine: {
-    position: "absolute",
-    width: 42,
-    height: 2,
-    borderRadius: 1,
-    transform: [{ rotate: "-35deg" }],
-  },
+  failure: { gap: 10 },
+  title: { textAlign: "center", fontSize: 15, fontWeight: "800", lineHeight: 20 },
+  line: { textAlign: "center", fontSize: 13, fontWeight: "600", lineHeight: 18 },
   emptyMark: {
     alignItems: 'center',
     height: 40,
@@ -413,11 +361,11 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   emptySeatBase: { borderRadius: 2, height: 4, marginTop: 4, width: 36 },
   retry: {
-    minWidth: 128,
     minHeight: 44,
-    borderWidth: seatLayerPickerLineWidth,
+    marginTop: 6,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  retryText: { fontSize: 15, fontWeight: "800" },
+  retryText: { fontSize: 13, fontWeight: "700" },
 }));
