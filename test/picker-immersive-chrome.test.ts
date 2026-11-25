@@ -2,6 +2,8 @@ import React from 'react';
 import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
+const text = vi.hoisted(() => ({ scale: 1 }));
+
 vi.mock('react-native', () => ({
   AccessibilityInfo: {
     isReduceMotionEnabled: () => Promise.resolve(false),
@@ -15,6 +17,7 @@ vi.mock('react-native', () => ({
   Easing: { bezier: () => 'ease' },
   I18nManager: { isRTL: false },
   StyleSheet: { create: <T>(value: T) => value, flatten: (value: unknown) => value },
+  useWindowDimensions: () => ({ fontScale: text.scale, height: 568, scale: 2, width: 320 }),
   View: 'View', Text: 'Text', Pressable: 'Pressable',
 }));
 
@@ -235,16 +238,32 @@ describe('immersive venue and panorama chrome', () => {
     expect(renderer!.root.findAllByProps({ accessible: true })[0]?.props.accessibilityLabel).toBe('View from Stalls A2');
     const strip = renderer!.root.findAllByType('View' as any).find((node) =>
       Array.isArray(node.props.style) && node.props.style.some((style: unknown) =>
-        typeof style === 'object' && style !== null && (style as { gap?: number }).gap === 10,
+        typeof style === 'object' && style !== null && (style as { columnGap?: number }).columnGap === 10,
       ),
     );
     expect(strip?.props.style).toEqual(expect.arrayContaining([
-      expect.objectContaining({ alignSelf: 'stretch', gap: 10 }),
+      expect.objectContaining({ alignSelf: 'stretch', columnGap: 10, flexWrap: 'wrap' }),
     ]));
     expect(seatLayerImmersiveInsetPlan(true, 18, 20)).toEqual({ top: 62, bottom: 108 });
     expect(seatLayerImmersiveInsetPlan(false, 18, 20)).toBeUndefined();
     expect(seatLayerImmersiveDuration(true)).toBe(0);
     expect(seatLayerImmersiveDuration(false)).toBe(seatLayerPickerTokens.motion.duration.immersive);
+    act(() => renderer!.unmount());
+  });
+
+  it.each([[0.8, 90], [1, 90], [2, 180]])('keeps the whole title and room for it beside the badge at text size %s', (scale, room) => {
+    text.scale = scale;
+    let renderer: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(SeatLayerSeatPanoramaChromeView, {
+        bottomInset: 0, theme: resolveSeatLayerPickerImmersiveTheme(theme), topInset: 0,
+        view: { badge: 'Real view', generated: false, real: true, title: 'Guest Tables · T22 · Seat 1' },
+      }));
+    });
+    text.scale = 1;
+    const title = renderer!.root.findAllByType('Text' as any)[0]!;
+    expect(title.props.numberOfLines).toBeUndefined();
+    expect(title.parent!.props.style).toEqual(expect.arrayContaining([{ flexBasis: room }]));
     act(() => renderer!.unmount());
   });
 
