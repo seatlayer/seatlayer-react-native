@@ -88,6 +88,89 @@ function initConfig(transport: Transport): Record<string, unknown> {
 
 afterEach(() => vi.useRealTimers());
 
+describe('a page that is ready without a map', () => {
+  const unloaded = (access: object) => ({
+    ...snapshot(1, { active: false }),
+    event: { key: 'ev', name: 'ev' }, catalog: { categories: [], gaAreas: [] }, map: { floors: [] }, access,
+  });
+  async function open(access: object, changes: object = {}, pageError?: object) {
+    const map = new SeatLayerController();
+    const picker = new SeatLayerPickerController(map);
+    const errors: unknown[] = [];
+    map.on('error', (error) => errors.push(error));
+    const transport = new Transport();
+    const outcome = picker.beginHandshake(transport, { event: 'ev' }, { config: baseConfig })
+      .then(() => 'ready', (error: unknown) => error);
+    map.ingestRaw({
+      sl: 1, k: 'hello', t: 'hello',
+      p: {
+        protocol: { min: 2, max: 2 }, capabilities: [...profile.requiredCapabilities],
+        commands: [...profile.requiredCommands], events: ['sys.ready', 'picker.snapshot'],
+      },
+    });
+    if (pageError) map.ingestRaw({ sl: 1, k: 'evt', t: 'error', n: 1, p: pageError as JsonObject });
+    map.ingestRaw({
+      sl: 1, k: 'evt', t: 'sys.ready', n: 2, p: { protocol: 2, snapshot: { ...unloaded(access), ...changes } } as never,
+    });
+    const result = await outcome;
+    await flush();
+    return { errors, map, picker, result };
+  }
+
+  it('did not load, whether or not the session could be asked for', async () => {
+    for (const access of [{}, { status: 'public' }, { status: 'ready' }, { status: 'unavailable', reason: 'provider_failed' }]) {
+      const { errors, picker, result } = await open(access);
+      expect(result).toMatchObject({ code: 'sl_transport' });
+      expect(errors).toEqual([result]);
+      expect(picker.mapController.isReady).toBe(false);
+      expect(picker.getSnapshot()).toBeUndefined();
+    }
+  });
+
+  it("reports the page's own error, once", async () => {
+    const { errors, result } = await open({}, {}, { code: 'not_found', message: 'Not found', details: { status: 404 } });
+    expect(result).toMatchObject({ code: 'not_found' });
+    expect(errors).toEqual([result]);
+  });
+
+  it('leaves a refused session to its own telling, and a map that is there alone', async () => {
+    for (const reason of ['revoked', 'paused', 'invalid']) {
+      expect((await open({ status: 'unavailable', reason })).result).toBe('ready');
+    }
+    expect((await open({ status: 'expired' })).result).toBe('ready');
+    expect((await open({}, { event: { key: 'ev', name: 'Summer Night' } })).result).toBe('ready');
+    expect((await open({}, { map: { floors: [{ id: 'f', name: 'Floor' }] } })).result).toBe('ready');
+  });
+
+  it('keeps the hold to take up again until a page has a map', async () => {
+    const map = new SeatLayerController();
+    const picker = new SeatLayerPickerController(map);
+    const transport = await start(picker);
+    await handOff(picker, transport);
+    picker.pageLost();
+    await picker.recoverLostPage();
+    const offline = new Transport();
+    const failed = picker.beginHandshake(offline, { event: 'ev' }, { config: baseConfig }).catch(() => 'failed');
+    map.ingestRaw({
+      sl: 1, k: 'hello', t: 'hello',
+      p: {
+        protocol: { min: 2, max: 2 }, capabilities: [...profile.requiredCapabilities, 'hold-ownership-v1'],
+        commands: [...profile.requiredCommands, 'picker.resumeHold'], events: ['sys.ready'],
+      },
+    });
+    map.ingestRaw({
+      sl: 1, k: 'evt', t: 'sys.ready', n: 1,
+      p: { protocol: 2, snapshot: unloaded({ status: 'unavailable', reason: 'provider_failed' }) } as never,
+    });
+    expect(await failed).toBe('failed');
+    await picker.retry();
+    const online = await start(picker, { page: 'page-3' });
+    await flush();
+    expect(online.frames.filter((frame) => frame.type === 'picker.resumeHold')
+      .map((frame) => frame.payload)).toEqual([{ holdId: 'hold-9' }]);
+  });
+});
+
 describe('a page the system ended', () => {
   it('is replaced at once, without waiting for the page that is gone', async () => {
     const picker = new SeatLayerPickerController();

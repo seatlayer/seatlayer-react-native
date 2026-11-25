@@ -56,6 +56,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   with a × ("Dismiss error"). It goes when the buyer tries again.
 - When the map did not load, the buyer reads "The seat map didn’t load" and
   "Check your connection and try again." over a filled Try again button.
+- A picker opened with no network shows that view too, with Try again, where it
+  showed an access panel over an empty map. `onError` gets the failure and
+  `onReady` waits for a map.
 - "Securing your seats…" and "Seats secured. Opening checkout…" stand on the
   checkout button without a spinner. An `openingCheckout` override is still used
   unless `seatsSecuredOpeningCheckout` is given.
