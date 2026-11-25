@@ -1,5 +1,60 @@
 # Changelog
 
+## Unreleased
+
+The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.3`. Public names
+stay; the changes below are the ones an app or a buyer can notice.
+
+**The map**
+
+- A venue with several levels opens on its lowest level.
+- 3D touch: one finger moves the view, a pinch zooms, a two-finger twist turns
+  the venue and a two-finger drag tilts it. The Rotate / Move control is drawn
+  only with `options.touchNavigation3D: 'classic'`, which also keeps the earlier
+  gestures. The same holds for `SeatLayerPicker3DNavigationModeButton`.
+- The 3D venue draws a standing crowd. `options.enable3DCrowd: false` turns it
+  off.
+- In a seat's 3D view, a map 560 points or wider shows a small plan of where the
+  seat is.
+- `setViewMode('iso')` and `setViewMode('perspective')` show the flat map.
+- The map no longer draws a "Powered by SeatLayer" badge of its own.
+- Seats with a price of their own, and events priced by tier and time, can be
+  chosen and held.
+
+**The picker**
+
+- A phone held sideways keeps the phone layout. The wide layout needs a window
+  whose shorter side is at least 600 points, besides the width it needed before.
+  `options.layout: 'wide'` is still honoured.
+- In the 3D venue the status bar stands on the dark ground its light text is
+  chosen for.
+- A standing area sold as one box offers only the party sizes it is sold in, and
+  with the wheelchair filter on a standing area offers its wheelchair places.
+  `GAArea` carries `bookingMode`, `minOccupancy`, `maxOccupancy`,
+  `wheelchairPlaces` and `wheelchairAvailable`.
+- Standing places the map could not hold are refused: the buyer reads "One or
+  more seats were just taken. Please pick again.", and
+  `SeatLayerPickerController.holdGA` rejects with `hold_unavailable`, where it
+  resolved as if they were held.
+
+**When the system closes the map's page (low memory)**
+
+- The picker loads the map again by itself, when the app is in front. A hold
+  handed to checkout, or given as `initialHoldId`, is taken up again. Two
+  reloads within a minute are automatic; after that the buyer gets the error
+  view with Try again.
+- `SeatLayerView` reports an `sl_transport` error on the controller. Change
+  `reloadKey` to load the map again.
+- A reload, automatic or with `retry()`, no longer reports a handed-off hold as
+  booked when the new page has not taken it up yet.
+
+**Time limits**
+
+- The map has 45 seconds to start (`handshakeTimeoutMs`, was 30).
+- A command that can place a hold waits at least 45 seconds, longer than the map
+  waits for the server, so a hold that worked is not reported as failed. Other
+  commands keep `commandTimeoutMs`, 15 seconds by default.
+
 ## 0.4.0
 
 The hosted runtime moves to `seatlayer-js@0.84.1`, and the phone picker is
