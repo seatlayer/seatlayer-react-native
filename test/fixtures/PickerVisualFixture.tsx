@@ -487,6 +487,7 @@ function fixtureScope(
   }>,
   filterValidation?: FixtureFilterValidation,
   immersiveValidation?: FixtureImmersiveValidation,
+  rtl = scenario === 'rtl',
 ): SeatLayerPickerScopeValue {
   const snapshot = fixtureSnapshot(
     scenario,
@@ -590,7 +591,7 @@ function fixtureScope(
     pricing: undefined,
     formatMoney: (amount: number, currency: string) => `${currency === 'EUR' ? '€' : `${currency} `}${amount}`,
     strings: createSeatLayerPickerStringResolver({
-      locale: scenario === 'rtl' ? 'ar' : 'en',
+      locale: rtl ? 'ar' : 'en',
       ...(scenario === 'long-copy' ? { overrides: {
         accessibility: 'Accessibility, colour and visibility preferences',
         fitVenue: 'Fit the complete venue to the available screen',
@@ -660,21 +661,31 @@ export function parseSeatLayerVisualFixture(
   return Object.freeze({ mode, scenario: scenario as SeatLayerVisualFixtureScenario });
 }
 
+/** The screen a fixture fills, instead of its own fixed frame. */
+export interface SeatLayerVisualFixtureDevice {
+  readonly insets: Readonly<{ top: number; right: number; bottom: number; left: number }>;
+  readonly rtl?: boolean;
+}
+
 /** A fixed-size native-chrome screen. It intentionally replaces only the map builder. */
 export function SeatLayerPickerVisualFixture({
+  device,
   mode,
   scenario = 'cart-expanded',
 }: Readonly<{
+  device?: SeatLayerVisualFixtureDevice;
   mode: SeatLayerVisualFixtureMode;
   scenario?: SeatLayerVisualFixtureScenario;
 }>): React.ReactElement {
-  return <SeatLayerPickerVisualFixtureSession key={`${mode}:${scenario}`} mode={mode} scenario={scenario} />;
+  return <SeatLayerPickerVisualFixtureSession key={`${mode}:${scenario}`} device={device} mode={mode} scenario={scenario} />;
 }
 
 function SeatLayerPickerVisualFixtureSession({
+  device,
   mode,
   scenario,
 }: Readonly<{
+  device?: SeatLayerVisualFixtureDevice;
   mode: SeatLayerVisualFixtureMode;
   scenario: SeatLayerVisualFixtureScenario;
 }>): React.ReactElement {
@@ -816,8 +827,8 @@ function SeatLayerPickerVisualFixtureSession({
     ],
   );
   const baseScope = useMemo(
-    () => fixtureScope(mode, scenario, tierValidation, filterValidation, immersiveValidation),
-    [filterValidation, immersiveValidation, mode, scenario, tierValidation],
+    () => fixtureScope(mode, scenario, tierValidation, filterValidation, immersiveValidation, device?.rtl),
+    [device, filterValidation, immersiveValidation, mode, scenario, tierValidation],
   );
   const [presentation, setPresentationState] = useState<SeatLayerPickerPresentationState>(baseScope.presentation);
   const promptOwnership = useRef(new SeatLayerPickerPromptOwnership());
@@ -863,6 +874,7 @@ function SeatLayerPickerVisualFixtureSession({
     map: () => scenario === 'venue-3d' && immersiveValidation
       ? <FixtureImmersiveMapSurface
           onClosePanorama={immersiveValidation.closeSeatView}
+          evidence={device === undefined}
           state={immersiveValidation.state}
           theme={scope.resolvedTheme}
         />
@@ -884,30 +896,30 @@ function SeatLayerPickerVisualFixtureSession({
         </View>
       </View>,
     } : {}),
-  }), [immersiveValidation, scenario, scope.resolvedTheme]);
+  }), [device, immersiveValidation, scenario, scope.resolvedTheme]);
   const onCheckout = useCallback((handoff: SeatLayerPickerCheckoutHandoff) => {
     if (scenario === 'seat-tier') setCheckoutHandoff(handoff);
   }, [scenario]);
-  const wide = scenario === 'wide';
+  const wide = device === undefined && scenario === 'wide';
   const panelInitiallyCollapsed = baseScope.presentation.sheet !== 'expanded';
   return (
     <FixtureScopeProvider value={scope}>
       <View
         testID={`seatlayer-visual-fixture-${mode}-${scenario}`}
-        style={[wide ? styles.wideFrame : styles.frame, { backgroundColor: scope.resolvedTheme.colors.background }]}
+        style={[device ? styles.deviceFrame : wide ? styles.wideFrame : styles.frame, { backgroundColor: scope.resolvedTheme.colors.background }]}
       >
         <SeatLayerPickerAdaptiveLayout
           builders={builders}
           onCheckout={onCheckout}
           options={{
-            layout: wide ? 'wide' : 'phone',
+            layout: device ? 'adaptive' : wide ? 'wide' : 'phone',
             haptics: false,
             panelInitiallyCollapsed,
             enable3D: scenario !== 'filters',
           }}
-          safeAreaInsets={wide ? seatLayerVisualFixtureWideSafeAreaInsets : seatLayerVisualFixtureSafeAreaInsets}
+          safeAreaInsets={device ? device.insets : wide ? seatLayerVisualFixtureWideSafeAreaInsets : seatLayerVisualFixtureSafeAreaInsets}
         />
-        {scenario === 'filters' ? <FilterEvidence state={filterState} scope={scope} /> : null}
+        {device === undefined && scenario === 'filters' ? <FilterEvidence state={filterState} scope={scope} /> : null}
         {checkoutHandoff ? <TierCheckoutEvidence handoff={checkoutHandoff} scope={scope} /> : null}
       </View>
     </FixtureScopeProvider>
@@ -940,10 +952,12 @@ function FilterEvidence({ state, scope }: Readonly<{
 }
 
 function FixtureImmersiveMapSurface({
+  evidence,
   state,
   theme,
   onClosePanorama,
 }: Readonly<{
+  evidence: boolean;
   state: FixtureImmersiveState;
   theme: SeatLayerPickerScopeValue['resolvedTheme'];
   onClosePanorama: () => void;
@@ -966,7 +980,7 @@ function FixtureImmersiveMapSurface({
       >
         <Text style={styles.panoramaCloseText}>×  Close panorama</Text>
       </Pressable>
-    </> : <View
+    </> : !evidence ? null : <View
       accessible
       accessibilityLabel={`Immersive state · ${state.buyerView} · ${target} · ${state.navigationMode} · cart retained guest-t22-1, guest-t22-2, guest-t22-3`}
       pointerEvents="none"
@@ -1013,6 +1027,7 @@ export function SeatLayerPickerDarkVisualFixture(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
+  deviceFrame: { flex: 1, overflow: 'hidden' },
   frame: { alignSelf: 'center', height: seatLayerVisualFixtureHeight, overflow: 'hidden', width: seatLayerVisualFixtureWidth },
   wideFrame: { alignSelf: 'center', height: seatLayerVisualFixtureWideHeight, overflow: 'hidden', width: seatLayerVisualFixtureWideWidth },
   customControlsOwner: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },

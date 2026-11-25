@@ -5,3 +5,5 @@ example/.expo/
 example/.env.local
 .DS_Store
 *.tgz
+test/pictures/.build/
+test/pictures/.results/

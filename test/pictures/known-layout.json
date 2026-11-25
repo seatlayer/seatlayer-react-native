@@ -1,0 +1,182 @@
+{
+  "1 ticket, €95: touch area under 44": {
+    "320": 2,
+    "360": 2,
+    "375": 2,
+    "390": 2,
+    "393": 2,
+    "412": 2,
+    "430": 2,
+    "667x375": 2,
+    "844x390": 2
+  },
+  "3 tickets, €285: touch area under 44": {
+    "320": 1,
+    "360": 1,
+    "375": 1,
+    "390": 1,
+    "393": 1,
+    "412": 1,
+    "430": 1,
+    "667x375": 1,
+    "844x390": 1
+  },
+  "3D: cut at the top or bottom": {
+    "667x375": 2,
+    "844x390": 2
+  },
+  "Close seat selection: outside the safe area": {
+    "320": 1,
+    "360": 1,
+    "375": 1,
+    "390": 1,
+    "393": 1,
+    "412": 1
+  },
+  "Display options: outside the safe area": {
+    "667x375": 2,
+    "844x390": 2
+  },
+  "Display options: touch area under 44": {
+    "320": 78,
+    "360": 39,
+    "375": 39,
+    "390": 78,
+    "393": 39,
+    "412": 39,
+    "430": 39,
+    "667x375": 26,
+    "844x390": 26
+  },
+  "Display options: under Gallery tables, €70": {
+    "320": 2
+  },
+  "Display options: under Premium, €165": {
+    "320": 6
+  },
+  "Find 2 best seats: text ends in …": {
+    "320": 12
+  },
+  "Flat 2D map: touch area under 44": {
+    "320": 4,
+    "360": 2,
+    "375": 2,
+    "390": 4,
+    "393": 2,
+    "412": 2,
+    "430": 2,
+    "667x375": 2,
+    "844x390": 2,
+    "915x412": 2
+  },
+  "Flat 2D map: under Drag to rotate venue": {
+    "320": 1
+  },
+  "Flat 2D map: under العودة إلى المكان": {
+    "320": 1
+  },
+  "Guest Tables · Row T22 · Seat 2 · view f: text ends in …": {
+    "320": 3,
+    "360": 2,
+    "375": 2,
+    "390": 2,
+    "393": 2,
+    "412": 2,
+    "430": 1
+  },
+  "Guest Tables · Row T22 · Seat 2 · المنظر: text ends in …": {
+    "320": 2,
+    "390": 2
+  },
+  "Guest Tables · T22 · 1,  Guest Tables · : text ends in …": {
+    "320": 6,
+    "360": 3,
+    "375": 3,
+    "390": 6,
+    "393": 3,
+    "412": 3,
+    "430": 2
+  },
+  "Guest Tables: text ends in …": {
+    "915x412": 2
+  },
+  "Hold seats & checkout: cut at the top or bottom": {
+    "915x412": 2
+  },
+  "Hold seats & checkout: outside the safe area": {
+    "915x412": 2
+  },
+  "Interactive 3D venue view: touch area under 44": {
+    "320": 84,
+    "360": 42,
+    "375": 42,
+    "390": 84,
+    "393": 42,
+    "412": 42,
+    "430": 42,
+    "667x375": 28,
+    "844x390": 28,
+    "915x412": 28
+  },
+  "Interactive 3D venue view: under Display options": {
+    "320": 5,
+    "667x375": 1,
+    "844x390": 2
+  },
+  "Interactive 3D venue view: under Show whole venue": {
+    "667x375": 5,
+    "844x390": 5
+  },
+  "Interactive 3D venue view: under Zoom in": {
+    "320": 10,
+    "667x375": 1,
+    "844x390": 1
+  },
+  "Map: cut at the top or bottom": {
+    "667x375": 2,
+    "844x390": 2
+  },
+  "Powered by SeatLayer: cut at the top or bottom": {
+    "915x412": 2
+  },
+  "Previous seat: outside the safe area": {
+    "320": 2,
+    "360": 1,
+    "375": 1
+  },
+  "Recentre the view: outside the safe area": {
+    "320": 1,
+    "360": 1,
+    "375": 1
+  },
+  "Select seats: cut at the top or bottom": {
+    "915x412": 7
+  },
+  "Select seats: outside the safe area": {
+    "915x412": 14
+  },
+  "T24 · 7 · Premium: text ends in …": {
+    "320": 2
+  },
+  "T25 · 8 · Sponsor tables: text ends in …": {
+    "320": 4,
+    "360": 1,
+    "375": 1,
+    "390": 2
+  },
+  "Test mode: cut at the top or bottom": {
+    "667x375": 2,
+    "844x390": 2
+  },
+  "إعادة التمركز على المسرح: outside the safe area": {
+    "320": 1
+  },
+  "ابحث عن أفضل 2 مقعد: text ends in …": {
+    "320": 22,
+    "390": 2
+  },
+  "المشهد من هنا: cut at the top or bottom": {
+    "320": 1,
+    "390": 1
+  }
+}

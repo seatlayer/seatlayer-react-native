@@ -3,7 +3,11 @@
 1. Install Node.js 20.19.4 or newer and pnpm 11.10.
 2. Run `pnpm install`.
 3. Make focused changes with tests.
-4. Run `pnpm validate`.
+4. Run `pnpm validate`. For a change to the picker's look, also run
+   `pnpm pictures` (first `pnpm exec playwright install chromium`): it checks
+   the layout on every phone size. CI also compares the recorded pictures in
+   `test/pictures/recorded`; when one changes on purpose, take the new picture
+   from the failed run's `pictures` file.
 5. Open a pull request describing behavior, compatibility and verification.
 
 This is a public SDK repository. Do not add internal plans, handovers, audit or
