@@ -65,6 +65,9 @@ export interface SeatLayerPickerChromeOptions {
   readonly systemBars?: boolean;
 }
 
+/** How fingers move the 3D venue. */
+export type SeatLayer3DTouchNavigation = 'map' | 'classic';
+
 /** Session behaviour owned by the ready-made picker. */
 export interface SeatLayerPickerBehaviorOptions {
   readonly readOnly?: boolean;
@@ -75,6 +78,15 @@ export interface SeatLayerPickerBehaviorOptions {
   readonly holdTtlMs?: number;
   readonly initialHoldId?: string;
   readonly max3DSeats?: number;
+  /** Whether the 3D venue draws its standing crowd. Default true. */
+  readonly enable3DCrowd?: boolean;
+  /**
+   * How fingers move the 3D venue. Omitted takes the runtime's default, `map`:
+   * one finger moves the view, a pinch zooms, a two-finger twist turns the
+   * venue and a two-finger drag tilts it. `classic` keeps the earlier gestures
+   * and draws the Rotate / Move control they need.
+   */
+  readonly touchNavigation3D?: SeatLayer3DTouchNavigation;
   readonly hideEventDetails?: boolean;
   readonly panelInitiallyCollapsed?: boolean;
   readonly persistColorblindPreference?: boolean;
@@ -148,6 +160,8 @@ export interface SeatLayerPickerResolvedOptions {
   readonly holdTtlMs?: number;
   readonly initialHoldId?: string;
   readonly max3DSeats?: number;
+  readonly enable3DCrowd: boolean;
+  readonly touchNavigation3D?: SeatLayer3DTouchNavigation;
   readonly hideEventDetails: boolean;
   readonly panelInitiallyCollapsed: boolean;
   readonly persistColorblindPreference: boolean;
@@ -171,6 +185,8 @@ export type SeatLayerPickerRuntimeConfig = Readonly<{
   readonly enable3D: boolean;
   readonly enableSeatView: boolean;
   readonly max3DSeats?: number;
+  readonly enable3DCrowd?: false;
+  readonly touchNavigation3D?: SeatLayer3DTouchNavigation;
   readonly hideEventDetails: boolean;
   readonly panelCollapsed: boolean;
   readonly languages?: string[];
@@ -211,6 +227,10 @@ function validSeatLimit(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
     ? value
     : undefined;
+}
+
+function touchNavigation(value: unknown): SeatLayer3DTouchNavigation | undefined {
+  return value === 'map' || value === 'classic' ? value : undefined;
 }
 
 function validEventName(value: unknown): string | undefined {
@@ -261,15 +281,25 @@ function knownLayout(value: unknown): SeatLayerPickerKnownLayoutMode {
   return value === 'phone' || value === 'wide' || value === 'adaptive' ? value : 'adaptive';
 }
 
-/** Resolves an explicit layout, otherwise the generated wide threshold. */
+/** A window whose shorter side is below this is a phone, however it is held. */
+export const seatLayerPickerTabletShortestSide = 600;
+
+/**
+ * Resolves an explicit layout, otherwise the generated wide threshold.
+ *
+ * `shortestSide` is the window's shorter side. With it, a phone held sideways
+ * keeps the phone layout although its width passes the threshold.
+ */
 export function resolveSeatLayerPickerLayoutMode(
   mode: SeatLayerPickerLayoutMode | unknown = 'adaptive',
   width?: number,
+  shortestSide?: number,
 ): SeatLayerPickerResolvedLayoutMode {
   const requested = knownLayout(mode);
   if (requested === 'phone' || requested === 'wide') return requested;
   if (typeof width !== 'number' || !Number.isFinite(width) || width < 0) return 'phone';
   if (width < seatLayerPickerTokens.size.phoneBreakpoint) return 'phone';
+  if (typeof shortestSide === 'number' && shortestSide < seatLayerPickerTabletShortestSide) return 'phone';
   return width >= seatLayerPickerTokens.size.wideBreakpoint ? 'wide' : 'phone';
 }
 
@@ -309,9 +339,10 @@ export function resolveSeatLayerPickerChromeOptions(
 export function resolveSeatLayerPickerOptions(
   input: SeatLayerPickerOptions | unknown = {},
   width?: number,
+  shortestSide?: number,
 ): SeatLayerPickerResolvedOptions {
   const layout = knownLayout(ownData(input, 'layout'));
-  const resolvedLayout = resolveSeatLayerPickerLayoutMode(layout, width);
+  const resolvedLayout = resolveSeatLayerPickerLayoutMode(layout, width, shortestSide);
   const chrome = resolveSeatLayerPickerChromeOptions(ownData(input, 'chrome'), resolvedLayout);
   const resolved = {
     layout,
@@ -325,6 +356,8 @@ export function resolveSeatLayerPickerOptions(
     holdTtlMs: validDuration(ownData(input, 'holdTtlMs')),
     initialHoldId: validInitialHold(ownData(input, 'initialHoldId')),
     max3DSeats: validSeatLimit(ownData(input, 'max3DSeats')),
+    enable3DCrowd: booleanOr(ownData(input, 'enable3DCrowd'), true),
+    touchNavigation3D: touchNavigation(ownData(input, 'touchNavigation3D')),
     hideEventDetails: booleanOr(ownData(input, 'hideEventDetails'), false),
     panelInitiallyCollapsed: booleanOr(ownData(input, 'panelInitiallyCollapsed'), true),
     persistColorblindPreference: booleanOr(ownData(input, 'persistColorblindPreference'), true),
@@ -354,6 +387,8 @@ export function seatLayerPickerBridgeConfigFromOptions(
     enable3D: resolved.enable3D,
     enableSeatView: resolved.enableSeatView,
     ...(resolved.max3DSeats === undefined ? {} : { max3DSeats: resolved.max3DSeats }),
+    ...(resolved.enable3DCrowd ? {} : { enable3DCrowd: false as const }),
+    ...(resolved.touchNavigation3D === undefined ? {} : { touchNavigation3D: resolved.touchNavigation3D }),
     hideEventDetails: resolved.hideEventDetails,
     panelCollapsed: resolved.panelInitiallyCollapsed,
     ...(resolved.languages.length === 0 ? {} : { languages: [...resolved.languages] }),

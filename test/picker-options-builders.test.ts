@@ -87,6 +87,29 @@ describe('ready-made picker options and part builders', () => {
     expect(input.chrome.header).toBe(false);
   });
 
+  it('sends the 3D venue options only when the host set them', () => {
+    expect(resolveSeatLayerPickerOptions({})).toMatchObject({ enable3DCrowd: true, touchNavigation3D: undefined });
+    const plain = seatLayerPickerBridgeConfigFromOptions({ enable3DCrowd: true, touchNavigation3D: 'future' });
+    expect(plain).not.toHaveProperty('enable3DCrowd');
+    expect(plain).not.toHaveProperty('touchNavigation3D');
+    expect(seatLayerPickerBridgeConfigFromOptions({ enable3DCrowd: false, touchNavigation3D: 'classic' }))
+      .toMatchObject({ enable3DCrowd: false, touchNavigation3D: 'classic' });
+  });
+
+  it('keeps the phone layout on a phone held sideways', () => {
+    // 915 x 412: past the wide threshold, but a phone.
+    expect(resolveSeatLayerPickerLayoutMode('adaptive', 915, 412)).toBe('phone');
+    expect(resolveSeatLayerPickerLayoutMode('adaptive', 915, 599)).toBe('phone');
+    expect(resolveSeatLayerPickerLayoutMode('adaptive', 915, 600)).toBe('wide');
+    // Asked for by name, it is honoured on any window.
+    expect(resolveSeatLayerPickerLayoutMode('wide', 915, 412)).toBe('wide');
+    // Without a measured window the width decides alone, as before.
+    expect(resolveSeatLayerPickerLayoutMode('adaptive', 915, Number.NaN)).toBe('wide');
+    expect(resolveSeatLayerPickerOptions({}, 915, 412)).toMatchObject({
+      resolvedLayout: 'phone', chrome: { overview: false, zoom: false },
+    });
+  });
+
   it('accepts positive safe runtime limits without rewriting a host hold identity', () => {
     const resolved = resolveSeatLayerPickerOptions({
       holdTtlMs: Number.MAX_SAFE_INTEGER,

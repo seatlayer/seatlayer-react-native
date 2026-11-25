@@ -21,10 +21,7 @@ const snapshot = (revision = 1, extra: object = {}) => ({
 
 describe('runtime pin', () => {
   it('pins the newest published hosted runtime', () => {
-    // `cdn/versions.json` on the runtime's main lists 0.84.1 as `latest`, and
-    // the post-checkout cart-line fix is NOT in it — see the note on the
-    // cart-line test below.
-    expect(seatLayerHostedWebVersion).toBe('0.84.1');
+    expect(seatLayerHostedWebVersion).toBe('1.0.3');
   });
 });
 
@@ -104,10 +101,8 @@ describe('0.84 seat attributes reach the cart surface', () => {
 describe('cart lines for seats added after checkout', () => {
   it('renders every line the runtime sends, held lines and later taps alike', () => {
     // The runtime builds `cart.items` as "the hold's lines first, then every
-    // selected seat the hold does not cover yet" — packages/js/src/bridge/picker.ts,
-    // commit 5f03ef3, which lands AFTER the v0.84.1 tag. Pinned at 0.84.1 the
-    // second line does not arrive; the decode has always carried whatever the
-    // runtime sends, so nothing here has to change when 0.84.2 ships it.
+    // selected seat the hold does not cover yet". The decode carries whatever
+    // the runtime sends.
     const decoded = decodeSeatLayerPickerSnapshot(snapshot(8, {
       cart: {
         currency: 'USD',
