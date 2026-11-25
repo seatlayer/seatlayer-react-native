@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, I18nManager, StyleSheet, Text, View, type TextStyle } from 'react-native';
 
-import { seatLayerPickerTypeScaleClamp } from './a11y';
+import { seatLayerPickerClampedFontScale, seatLayerPickerTypeScaleClamp } from './a11y';
 import { seatLayerPickerBold } from './boldText';
 import { seatLayerCartBarSize as bar, seatLayerCartBarTotal } from './cartBarRule';
 import { useSeatLayerCartBarRuler } from './cartBarWidths';
@@ -132,7 +132,9 @@ export function SeatLayerCartBarWords({ landing: landingProp, room, style, summa
     >{summary.second}</Text>
   );
   return (
-    <View>
+    // iOS keeps the old measure of a line whose words stay when the text size
+    // changes under it, so the lines are made anew.
+    <View key={seatLayerPickerClampedFontScale(clamp)}>
       {ruler.box}
       {amount === null
         ? first
