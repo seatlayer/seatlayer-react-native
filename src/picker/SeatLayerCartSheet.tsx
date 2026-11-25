@@ -369,7 +369,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               onLayout={(event) => setCartNatural(event.nativeEvent.layout.height)}
               style={hasTickets
                 ? {
-                  paddingBottom: seatLayerPickerTokens.size.cartTrayPadBottom,
+                  paddingBottom: seatLayerCartBarSize.listPadBottom,
                   paddingTop: seatLayerPickerTokens.size.cartTrayPadTop,
                 }
                 : undefined}
@@ -381,8 +381,8 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
               onLayout={(event) => setExtrasNatural(event.nativeEvent.layout.height)}
               pointerEvents={props.expanded ? 'auto' : 'none'}
               style={props.expanded
-                ? { paddingBottom: seatLayerPickerTokens.size.cartTrayPadBottom, paddingTop: hasTickets ? 0 : seatLayerPickerTokens.size.cartTrayPadTop }
-                : { left: 0, opacity: 0, paddingBottom: seatLayerPickerTokens.size.cartTrayPadBottom, position: 'absolute', right: 0, top: 0 }}
+                ? { paddingBottom: seatLayerCartBarSize.listPadBottom, paddingTop: hasTickets ? 0 : seatLayerPickerTokens.size.cartTrayPadTop }
+                : { left: 0, opacity: 0, paddingBottom: seatLayerCartBarSize.listPadBottom, position: 'absolute', right: 0, top: 0 }}
               testID="seatlayer-cart-extras"
             >
               {salesClosed}

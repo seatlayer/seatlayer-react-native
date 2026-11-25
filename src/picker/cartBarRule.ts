@@ -34,6 +34,8 @@ export const seatLayerCartBarSize = Object.freeze({
   askingOpacity: .58,
   /** The cards, or the best-seats form, over the row. */
   listMaxHeight: 240,
+  /** Under the last card, over the line. */
+  listPadBottom: 10,
 });
 
 /** The button's letters, the largest that fits first. */

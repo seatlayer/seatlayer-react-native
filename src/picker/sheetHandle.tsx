@@ -71,17 +71,19 @@ export function SeatLayerSheetHandle(props: SeatLayerSheetHandleProps): React.Re
             width: bar.chevron,
           }}
         >
-          <View style={{
-            borderColor: theme.colors.text,
-            borderLeftWidth: stroke,
-            borderTopLeftRadius: stroke / 2,
-            borderTopWidth: stroke,
-            height: arm,
-            // Half of the corner's own height, so the arrow stands in the middle.
-            marginTop: arm * Math.SQRT1_2,
-            transform: [{ rotate: '45deg' }],
-            width: arm,
-          }} />
+          {arms.map(({ rotate, translateX }) => (
+            <View
+              key={rotate}
+              style={{
+                backgroundColor: theme.colors.text,
+                borderRadius: stroke / 2,
+                height: stroke,
+                position: 'absolute',
+                transform: [{ translateX }, { rotate }],
+                width: arm,
+              }}
+            />
+          ))}
         </Animated.View>
       </View>
     </Pressable>
@@ -93,5 +95,11 @@ function turned(progress: SeatLayerSheetHandleProps['progress']): Animated.Anima
 }
 
 /** The arrow is 12 by 6 in a box of 24, with a stroke of 2.6. */
-const stroke = 2.6 * bar.chevron / 24;
-const arm = 6 * Math.SQRT2 * bar.chevron / 24 + stroke;
+const unit = bar.chevron / 24;
+const stroke = 2.6 * unit;
+const arm = 6 * Math.SQRT2 * unit + stroke;
+/** Placed by transforms, which the reading direction does not turn round. */
+const arms = [
+  { rotate: '-45deg', translateX: -3 * unit },
+  { rotate: '45deg', translateX: 3 * unit },
+] as const;
