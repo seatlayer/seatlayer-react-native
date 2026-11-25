@@ -6,6 +6,7 @@ import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import { sanitizeSeatLayerPickerStyle } from "./styles";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 const size = seatLayerPickerTokens.size;
 
@@ -129,8 +130,8 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   markStem: { backgroundColor: noticeInk, borderRadius: 1, height: 6, marginBottom: 1.5, width: 1.8 },
   markDot: { backgroundColor: noticeInk, borderRadius: 1.1, height: 2.2, width: 2.2 },
-  title: { color: noticeInk, fontSize: 15, fontWeight: "700" },
-  body: { color: noticeInk, fontSize: 13, lineHeight: 18 },
+  title: { ...seatLayerPickerLineStart, color: noticeInk, fontSize: 15, fontWeight: "700" },
+  body: { ...seatLayerPickerLineStart, color: noticeInk, fontSize: 13, lineHeight: 18 },
   action: {
     alignItems: "center",
     alignSelf: "flex-start",

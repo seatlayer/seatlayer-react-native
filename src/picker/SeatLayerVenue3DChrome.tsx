@@ -32,6 +32,7 @@ import {
   seatLayerPickerImmersiveCaptionGlass,
   seatLayerPickerImmersiveGlass,
 } from './immersiveGlass';
+import { seatLayerPickerDrawnShape } from './drawnShape';
 import { useSeatLayerPickerInsetLease } from './insetLeaseLifecycle';
 import { usePickerSingleFlight } from './pickerNavigation';
 import { useSeatLayerPickerReducedMotion } from './reducedMotion';
@@ -135,7 +136,7 @@ function canChangeNavigationMode(
 }
 
 function OrbitIcon({ color }: { readonly color: string }): React.ReactElement {
-  return <View style={styles.orbitIcon}>
+  return <View style={[seatLayerPickerDrawnShape, styles.orbitIcon]}>
     <View style={[styles.orbitTopArc, { borderColor: color }]} />
     <View style={[styles.orbitBottomArc, { borderColor: color }]} />
     <View style={[styles.orbitArrowLeft, { borderRightColor: color }]} />
@@ -144,7 +145,7 @@ function OrbitIcon({ color }: { readonly color: string }): React.ReactElement {
 }
 
 function FocusIcon({ color }: { readonly color: string }): React.ReactElement {
-  return <View style={styles.focusIcon}>
+  return <View style={[seatLayerPickerDrawnShape, styles.focusIcon]}>
     <View style={[styles.focusCorner, { borderColor: color, left: 0, top: 0 }]} />
     <View style={[styles.focusCorner, { borderColor: color, right: 0, top: 0, transform: [{ rotate: '90deg' }] }]} />
     <View style={[styles.focusCorner, { borderColor: color, bottom: 0, right: 0, transform: [{ rotate: '180deg' }] }]} />
@@ -153,7 +154,7 @@ function FocusIcon({ color }: { readonly color: string }): React.ReactElement {
 }
 
 function PanIcon({ color }: { readonly color: string }): React.ReactElement {
-  return <View style={styles.panIcon}>
+  return <View style={[seatLayerPickerDrawnShape, styles.panIcon]}>
     <View style={[styles.panHorizontal, { backgroundColor: color }]} />
     <View style={[styles.panVertical, { backgroundColor: color }]} />
     <View style={[styles.panArrowUp, { borderBottomColor: color }]} />
@@ -171,7 +172,7 @@ function Icon({ kind, color, rtl }: { readonly kind: 'back' | 'previous' | 'next
     return <Text style={{ color, fontSize: 22, fontWeight: seatLayerPickerBold(500), lineHeight: 24 }}>{kind === 'zoomIn' ? '+' : '−'}</Text>;
   }
   const pointsRight = (kind === 'next') !== rtl;
-  return <View style={[styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
+  return <View style={[seatLayerPickerDrawnShape, styles.chevron, { borderColor: color, transform: [{ rotate: pointsRight ? '135deg' : '-45deg' }] }]} />;
 }
 
 function VenueButton({
@@ -216,7 +217,7 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
   const rtl = I18nManager.isRTL;
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   return <View pointerEvents="box-none" style={[styles.root, slots?.immersiveChromeContainer, sanitizeSeatLayerPickerStyle(props.style), styles.rootSafety]}>
-    <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset, flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+    <View pointerEvents="box-none" style={[styles.backRail, { top: props.topInset }]}>
       {props.backVisible ? <VenueButton enabled={!props.disabled} kind="back" label={props.backLabel} labelled onPress={props.onBack} rtl={rtl} slots={slots} theme={props.theme} /> : null}
       {props.navigationLabel && props.onNavigation ? <VenueButton enabled={!props.disabled && props.navigationEnabled === true} kind="navigation" label={props.navigationLabel} onPress={props.onNavigation} rtl={rtl} slots={slots} theme={props.theme} /> : null}
     </View>
@@ -224,7 +225,7 @@ export function SeatLayerVenue3DChromeView(props: SeatLayerVenue3DChromeViewProp
       {props.caption ? <View pointerEvents="none" style={[styles.caption, { backgroundColor: captionGlass.ground, borderColor: captionGlass.border }]}>
         <Text numberOfLines={1} style={[styles.captionText, { color: captionGlass.ink, fontFamily: props.theme.fontFamily }]}>{props.caption}</Text>
       </View> : null}
-      <View pointerEvents="box-none" style={[styles.controls, { flexDirection: rtl ? 'row-reverse' : 'row' }]}>
+      <View pointerEvents="box-none" style={styles.controls}>
         {props.targeted ? <>
           <VenueButton enabled={!props.disabled && props.previousEnabled} kind="previous" label={props.previousLabel} onPress={props.onPrevious} rtl={rtl} slots={slots} theme={props.theme} />
           {props.primaryVisible ? <VenueButton enabled={!props.disabled} kind="seatView" label={props.primaryLabel} labelled onPress={props.onPrimary} rtl={rtl} slots={slots} theme={props.theme} /> : null}
@@ -392,13 +393,13 @@ export const SeatLayerVenue3D = SeatLayerVenue3DChrome;
 
 const styles = {
   animatedRoot: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,
-  backRail: { gap: 8, position: 'absolute', start: 10 } as ViewStyle,
+  backRail: { flexDirection: 'row', gap: 8, position: 'absolute', start: 10 } as ViewStyle,
   button: { alignItems: 'center', borderWidth: 1, flexDirection: 'row', gap: 6, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: size.immersiveNavChipPaddingX } as ViewStyle,
   buttonText: { fontSize: size.immersiveNavChipFontSize, fontWeight: seatLayerPickerBold(800) } as TextStyle,
   caption: { borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, marginBottom: 8, maxWidth: '90%', paddingHorizontal: 12, paddingVertical: 7 } as ViewStyle,
   captionText: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(700) } as TextStyle,
   chevron: { borderLeftWidth: 2, borderTopWidth: 2, height: size.immersiveBackIconSize / 2, width: size.immersiveBackIconSize / 2 } as ViewStyle,
-  controls: { alignItems: 'center', gap: 8, justifyContent: 'center' } as ViewStyle,
+  controls: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' } as ViewStyle,
   deck: { alignItems: 'center', left: 0, position: 'absolute', right: 0 } as ViewStyle,
   focusCorner: { borderLeftWidth: 2, borderTopWidth: 2, height: 6, position: 'absolute', width: 6 } as ViewStyle,
   focusIcon: { height: 16, width: 16 } as ViewStyle,

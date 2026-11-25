@@ -7,6 +7,7 @@ import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 export interface SeatLayerHoldLapseNoticeProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -38,10 +39,10 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
   });
   return (
     <View accessibilityLiveRegion="polite" style={[sanitizeSeatLayerPickerStyle(props.style), styles.statusContainer, styles.errorContainer, { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.roles.notice.background, borderBottomWidth: 1, borderColor: telling.tone === 'error' ? theme.colors.error : theme.roles.notice.border }]}>
-      <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: seatLayerPickerBold(700) }, styles.statusText, styles.errorText]}>{tellingText}</Text>
-      <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
-      {minutes === undefined ? null : <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { count: minutes })}</Text>}
-      {unrecovered > 0 ? <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { count: unrecovered })}</Text> : null}
+      <Text style={[seatLayerPickerLineStart, { color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: seatLayerPickerBold(700) }, styles.statusText, styles.errorText]}>{tellingText}</Text>
+      <Text style={[seatLayerPickerLineStart, { color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
+      {minutes === undefined ? null : <Text style={[seatLayerPickerLineStart, { color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { count: minutes })}</Text>}
+      {unrecovered > 0 ? <Text style={[seatLayerPickerLineStart, { color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { count: unrecovered })}</Text> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
         {offersReselect ? (
           <Pressable accessibilityRole="button" accessibilityLabel={reselectLabel}

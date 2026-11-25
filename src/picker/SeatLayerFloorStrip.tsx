@@ -24,6 +24,7 @@ import {
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerJoinedLetters } from './drawnShape';
 
 export interface SeatLayerFloorStripProps {
   readonly compact?: boolean;
@@ -270,6 +271,7 @@ function FloorChip({ label, selected, disabled, busy, compact, paint, styles, th
         numberOfLines={1}
         style={[
           nativeStyles.label,
+          seatLayerPickerJoinedLetters(label),
           { color: selected ? theme.colors.onAccent : theme.colors.mutedText, fontFamily: theme.fontFamily },
           compact ? null : nativeStyles.wideLabel,
           styles.floorChipText,

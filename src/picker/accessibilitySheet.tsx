@@ -15,6 +15,7 @@ import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerJoinedLetters, seatLayerPickerScreenSides } from "./drawnShape";
 
 /** iOS starts a line at the side its own language reads from, not the layout's. */
 const readingSide = (): TextStyle | null => (I18nManager.isRTL ? { writingDirection: "rtl" } : null);
@@ -195,7 +196,7 @@ export function SeatLayerPickerAccessibilitySheet(
         ? (
           <Text
             accessibilityRole="header"
-            style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, readingSide(), {
+            style={[styles.groupTitle, props.switchRows.length > 0 ? styles.groupTitleUnder : null, readingSide(), seatLayerPickerJoinedLetters(props.needsTitle), {
               color: props.theme.colors.mutedText,
               fontFamily: props.theme.fontFamily,
             }]}
@@ -227,8 +228,7 @@ export function SeatLayerPickerAccessibilitySheet(
           // control in the map's own corner.
           style={[styles.bounds, {
             paddingTop: insets.top + 16,
-            paddingRight: insets.right,
-            paddingLeft: insets.left,
+            ...seatLayerPickerScreenSides(insets),
           }]}
         >
           <Pressable
@@ -447,7 +447,7 @@ function AccessRow(props: Readonly<{
         <View style={styles.labelCell}>
           <View style={styles.labelLine}>
             <Text
-              style={[styles.rowLabel, readingSide(), {
+              style={[styles.rowLabel, row.note ? null : styles.rowLabelAlone, readingSide(), {
                 color: theme.colors.text,
                 fontFamily: theme.fontFamily,
               }, props.slots.accessibilityNeedText]}
@@ -609,6 +609,10 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     lineHeight: rowLabelLine,
     paddingVertical: rowLabelPadY,
   },
+  // Android can measure a joined word a hair narrower than it draws it, and the
+  // last word then fell to a line nobody saw. With nothing beside it the name
+  // takes the room there is.
+  rowLabelAlone: { flexGrow: 1 },
   noteCell: { width: noteColumn, alignItems: "center", justifyContent: "center" },
   noteTarget: {
     minWidth: size.minimumHitTarget,

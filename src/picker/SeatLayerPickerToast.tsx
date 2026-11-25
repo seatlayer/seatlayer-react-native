@@ -28,6 +28,7 @@ import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerFontWeight } from './fontWeight';
 import { seatLayerPickerBold } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 /**
  * The picker's own toast (spec §3.12) — NOT the host's messenger.
@@ -118,6 +119,7 @@ export function SeatLayerPickerToastCard(props: SeatLayerPickerToastCardProps): 
       <Text
         accessible={false}
         style={{
+          ...seatLayerPickerLineStart,
           color: theme.colors.text,
           flexShrink: 1,
           fontFamily: theme.fontFamily,

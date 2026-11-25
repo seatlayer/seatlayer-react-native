@@ -20,6 +20,7 @@ import {
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 export interface SeatLayerPickerActionErrorProps {
   /** An exact command error may override the current scoped command error. */
@@ -107,8 +108,8 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   scroll: { flex: 1, flexGrow: 1 },
   column: { gap: 2, paddingVertical: 10 },
-  text: { fontSize: 13, fontWeight: "700", lineHeight: 18 },
-  detail: { fontSize: 13, lineHeight: 18 },
+  text: { ...seatLayerPickerLineStart, fontSize: 13, fontWeight: "700", lineHeight: 18 },
+  detail: { ...seatLayerPickerLineStart, fontSize: 13, lineHeight: 18 },
   hit: { minWidth: 44, minHeight: 44, justifyContent: "center" },
   paint: { height: 40, paddingHorizontal: 8, alignItems: "center", justifyContent: "center" },
   actionText: { fontSize: 20, fontWeight: "600" },

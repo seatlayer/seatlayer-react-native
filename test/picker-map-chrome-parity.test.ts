@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock('react-native', () => ({
-  Pressable: 'Pressable', Text: 'Text', View: 'View',
+  I18nManager: { isRTL: false }, Pressable: 'Pressable', Text: 'Text', View: 'View',
   StyleSheet: { create: <T,>(value: T) => value, flatten: (value: unknown) => value, hairlineWidth: 1 },
 }));
 let accessAvailable = false;

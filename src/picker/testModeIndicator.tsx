@@ -13,6 +13,7 @@ import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLa
 import type { SeatLayerPickerThemeData } from "./theme";
 import { seatLayerPickerTokens } from "./tokens.g";
 import { seatLayerPickerBoldStyles } from './boldText';
+import { seatLayerPickerJoinedLetters } from "./drawnShape";
 
 type Slots = Pick<SeatLayerPickerStyles, "statusContainer" | "statusText">;
 /**
@@ -71,7 +72,7 @@ export function SeatLayerPickerTestModeIndicatorView(props: SeatLayerPickerTestM
       ellipsizeMode="tail"
       // The chip keeps its height, so its word stops growing where it fills it.
       maxFontSizeMultiplier={testChipWordScale}
-      style={[styles.text, { color: ink, fontFamily: props.theme.fontFamily }, slots.statusText]}
+      style={[styles.text, seatLayerPickerJoinedLetters(props.strings.translate('testMode')), { color: ink, fontFamily: props.theme.fontFamily }, slots.statusText]}
     >{props.strings.translate("testMode")}</Text>
   </View>;
 }

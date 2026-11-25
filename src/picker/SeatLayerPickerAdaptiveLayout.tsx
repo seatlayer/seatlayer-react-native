@@ -78,6 +78,7 @@ import { seatLayerPickerAdaptiveStyles as styles } from './adaptiveStyles';
 import { seatLayerVenue3DCornerTaken } from './immersiveChrome';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerAdaptiveChromeEligibility } from './adaptiveChromeEligibility';
+import { seatLayerPickerScreenSides } from './drawnShape';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 import type { SelectedSeat } from '../types';
 import type { SeatLayerPickerOptions } from './options';
@@ -678,8 +679,7 @@ export function SeatLayerPickerAdaptiveLayout({
         // own ink does; on the panel's colour the clock was light on light.
         backgroundColor: resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, snapshot).colors.surface,
         paddingBottom: wide ? safeLayout.insets.bottom : 0,
-        paddingEnd: safeLayout.insets.right,
-        paddingStart: safeLayout.insets.left,
+        ...seatLayerPickerScreenSides(safeLayout.insets),
         paddingTop: safeLayout.insets.top,
       }]} testID="seatlayer-adaptive-safe-content">
         {ordered('header', header, { hidden: decisionUp })}

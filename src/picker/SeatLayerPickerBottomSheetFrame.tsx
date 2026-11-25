@@ -14,6 +14,7 @@ import {
   type SeatLayerPickerSafeAreaInsetInput,
 } from './safeAreaInsets';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerScreenSides } from './drawnShape';
 
 export interface SeatLayerPickerBottomSheetFrameProps {
   readonly children: ReactNode;
@@ -46,9 +47,8 @@ export function SeatLayerPickerBottomSheetFrame(
       />
       <View pointerEvents="box-none" style={[styles.safeBounds, {
         paddingTop: insets.top + 16,
-        paddingRight: insets.right + 16,
         paddingBottom: insets.bottom + 16,
-        paddingLeft: insets.left + 16,
+        ...seatLayerPickerScreenSides(insets, 16),
       }]}>
         <View
           accessibilityViewIsModal

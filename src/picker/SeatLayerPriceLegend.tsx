@@ -329,13 +329,16 @@ function SeatLayerPriceLegendView({
   readonly onFormatterError: (error: unknown) => void;
   readonly onHeight: (event: LayoutChangeEvent, token: object) => void;
 }): React.ReactElement {
+  // A row already runs the way the app reads: only a host that asks for the
+  // other way has it turned round here.
+  const reversed = rtl !== I18nManager.isRTL;
   const [edges, setEdges] = useState<LegendEdges>({ leading: false, trailing: false });
   const [pinnedWidth, setPinnedWidth] = useState(0);
-  const metricsRef = useRef<LegendMetrics>({ contentWidth: 0, layoutWidth: 0, offsetX: 0 });
+  const metricsRef = useRef<LegendMetrics>({ contentWidth: 0, layoutWidth: 0, logicalOffsetX: 0, offsetX: 0 });
   const activeMeasurementRef = useRef(measurementToken);
   useLayoutEffect(() => {
     activeMeasurementRef.current = measurementToken;
-    metricsRef.current = { contentWidth: 0, layoutWidth: 0, offsetX: 0 };
+    metricsRef.current = { contentWidth: 0, layoutWidth: 0, logicalOffsetX: 0, offsetX: 0 };
     setEdges({ leading: false, trailing: false });
   }, [measurementToken]);
   const updateEdges = useCallback(() => {
@@ -402,7 +405,7 @@ function SeatLayerPriceLegendView({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{
             alignItems: 'center',
-            flexDirection: rtl ? 'row-reverse' : 'row',
+            flexDirection: reversed ? 'row-reverse' : 'row',
             gap: chipGap,
             paddingEnd: edgeWidth,
             // The pinned chip's own point of inset, its width, and the five
@@ -490,7 +493,7 @@ function SeatLayerPriceLegendView({
             importantForAccessibility="no-hide-descendants"
             style={{
               bottom: 0,
-              flexDirection: rtl ? 'row-reverse' : 'row',
+              flexDirection: reversed ? 'row-reverse' : 'row',
               justifyContent: 'space-between',
               left: 0,
               position: 'absolute',
@@ -498,8 +501,8 @@ function SeatLayerPriceLegendView({
               top: 0,
             }}
           >
-            {edges.leading ? <LegendEdgeFade color={fadeColor} leading rtl={rtl} /> : <View />}
-            {edges.trailing ? <LegendEdgeFade color={fadeColor} leading={false} rtl={rtl} /> : <View />}
+            {edges.leading ? <LegendEdgeFade color={fadeColor} leading reversed={reversed} /> : <View />}
+            {edges.trailing ? <LegendEdgeFade color={fadeColor} leading={false} reversed={reversed} /> : <View />}
           </View>
         ) : null}
       </View>
@@ -508,12 +511,12 @@ function SeatLayerPriceLegendView({
 }
 
 /** Core-RN stepped fade: no masked-view dependency and no touch interception. */
-function LegendEdgeFade({ color, leading, rtl }: {
+function LegendEdgeFade({ color, leading, reversed }: {
   readonly color: string;
   readonly leading: boolean;
-  readonly rtl: boolean;
+  readonly reversed: boolean;
 }): React.ReactElement {
-  const steps = priceLegendFadeSteps(leading, rtl);
+  const steps = priceLegendFadeSteps(leading, reversed);
   return (
     <View style={{ flexDirection: 'row', width: edgeWidth }}>
       {steps.map((opacity, index) => (

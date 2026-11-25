@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({ width: 320, scope: undefined as any, chartMounts: 0, accessibility: false, showToast: vi.fn(), fontScale: 1 }));
 
 vi.mock('react-native', () => ({
+  I18nManager: { isRTL: false },
   View: 'View', ScrollView: 'ScrollView', StyleSheet: { create: (value: unknown) => value, hairlineWidth: 1, absoluteFill: {}, absoluteFillObject: {} }, useWindowDimensions: () => ({ width: state.width }),
   StatusBar: 'StatusBar',
   PixelRatio: { getFontScale: () => state.fontScale },

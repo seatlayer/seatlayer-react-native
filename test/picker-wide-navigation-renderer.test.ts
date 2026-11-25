@@ -94,9 +94,11 @@ describe('wide section and floor navigation', () => {
     await act(async () => { await Promise.resolve(); });
     expect(runtime.callbacks).toEqual(['balcony']);
     expect(balcony.findByType('View' as any).props.style.at(-1).borderRadius).toBe(9);
+    // The platform turns a row with the reading direction: turned here as well,
+    // it would read the wrong way round.
     (I18nManager as { isRTL: boolean }).isRTL = true;
     await act(async () => { renderer.update(React.createElement(SeatLayerPickerSectionNavigator)); });
-    expect(renderer.root.findByType('ScrollView' as any).props.contentContainerStyle[1].flexDirection).toBe('row-reverse');
+    expect(renderer.root.findByType('ScrollView' as any).props.contentContainerStyle.flexDirection).toBe('row');
     (I18nManager as { isRTL: boolean }).isRTL = false;
   });
 

@@ -6,6 +6,7 @@ import {
 
 import { seatLayerPickerColorAlpha } from './colors';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerDrawnShape } from './drawnShape';
 
 /**
  * §3.8.1 / §3.8.2 — the map goes behind glass with a hole in it.
@@ -207,7 +208,7 @@ export function SpotlightGlass(props: SpotlightGlassProps): React.ReactElement |
     importantForAccessibility="no-hide-descendants"
     onLayout={measure}
     pointerEvents="none"
-    style={[StyleSheet.absoluteFill, props.style]}
+    style={[StyleSheet.absoluteFill, seatLayerPickerDrawnShape, props.style]}
     testID="seatLayerSpotlightGlass"
   >
     {Blur === undefined ? null : <Blur blurAmount={seatLayerPickerTokens.size.confirmScrimBlur} pointerEvents="none" style={StyleSheet.absoluteFill} />}

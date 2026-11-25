@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  AccessibilityInfo, Animated, Easing, I18nManager, Pressable, StyleSheet, Text, View,
+  AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View,
   findNodeHandle, useWindowDimensions, type StyleProp, type ViewStyle,
 } from 'react-native';
 
@@ -116,7 +116,6 @@ function Card({ model, props, viewportWidth }: Readonly<{
     viewportWidth - seatLayerPickerTokens.size.confirmCardGutter * 2 - safe.left - safe.right,
   ));
   const styles = resolveSeatLayerPickerStyles(scope.styles, props.slots);
-  const rtl = I18nManager.isRTL;
   const cardRef = React.useRef<View>(null);
   const primaryRef = React.useRef<View>(null);
 
@@ -282,7 +281,7 @@ function Card({ model, props, viewportWidth }: Readonly<{
       {candidate ? <View style={[nativeStyles.tiers, notes.length === 0 ? nativeStyles.tiersUnderBand : null]}>
         <SeatLayerPickerSeatTierSelector candidate={candidate} value={tierId} onValueChange={setTierId} slots={props.slots} />
       </View> : null}
-      <View style={[nativeStyles.actions, { flexDirection: rtl ? 'row-reverse' : 'row' }, bodyContent ? nativeStyles.actionsUnderBody : null]}>
+      <View style={[nativeStyles.actions, bodyContent ? nativeStyles.actionsUnderBody : null]}>
         {squareOnRow ? <Pressable
           accessibilityRole="button"
           accessibilityLabel={scope.strings.translate('seeItIn3D')}
@@ -431,7 +430,7 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   // `EdgeInsets.fromLTRB(10, bodyContent ? 10 : 8, 10, 10)` — the card's
   // OWN inset, not the gutter it keeps from the screen's edges.
-  actions: { gap: 8, paddingBottom: 10, paddingHorizontal: 10, paddingTop: 8 },
+  actions: { flexDirection: 'row', gap: 8, paddingBottom: 10, paddingHorizontal: 10, paddingTop: 8 },
   actionsUnderBody: { paddingTop: 10 },
   tiers: { paddingHorizontal: 10, paddingTop: 10 },
   tiersUnderBand: { paddingTop: 8 },

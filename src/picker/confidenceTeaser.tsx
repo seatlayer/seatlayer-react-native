@@ -1,5 +1,5 @@
 import React from 'react';
-import { I18nManager, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { blendSeatLayerPickerColor } from './colors';
 import { seatLayerPickerReadableAccent } from './confirmCardIdentity';
@@ -7,6 +7,7 @@ import type { SeatLayerPickerSeatConfidence } from './models';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerLineStart } from './drawnShape';
 
 /**
  * §3.8.7 — the confidence teaser, on the 3D card only.
@@ -60,12 +61,10 @@ export function ConfidenceTeaser(props: ConfidenceTeaserProps): React.ReactEleme
   const detail = seatLayerPickerConfidenceDetail(confidence);
   const ground = seatLayerPickerConfidenceTeaserGround(theme.accent, theme.surface);
   const badge = seatLayerPickerReadableAccent(theme.accent, theme.surface, ground, theme.text);
-  const rtl = I18nManager.isRTL;
   const body = <View
     style={[styles.row, {
       backgroundColor: ground,
       borderColor: seatLayerPickerConfidenceTeaserLine(theme.accent, theme.divider, theme.surface),
-      flexDirection: rtl ? 'row-reverse' : 'row',
     }]}
   >
     <View style={styles.column}>
@@ -91,6 +90,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     alignItems: 'center',
     borderRadius: seatLayerPickerTokens.size.confidenceTeaserRadius,
     borderWidth: seatLayerPickerLineWidth,
+    flexDirection: 'row',
     gap: 8,
     marginTop: seatLayerPickerTokens.size.confidenceTeaserTop,
     minHeight: seatLayerPickerTokens.size.confidenceTeaserMinHeight,
@@ -99,7 +99,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     width: '100%',
   },
   column: { flex: 1, gap: 1 },
-  headline: { fontSize: seatLayerPickerTokens.size.confidenceTeaserHeadFont, fontWeight: '700' },
-  detail: { fontSize: seatLayerPickerTokens.size.confidenceTeaserDetailFont },
+  headline: { ...seatLayerPickerLineStart, fontSize: seatLayerPickerTokens.size.confidenceTeaserHeadFont, fontWeight: '700' },
+  detail: { ...seatLayerPickerLineStart, fontSize: seatLayerPickerTokens.size.confidenceTeaserDetailFont },
   badge: { flexShrink: 0, fontSize: seatLayerPickerTokens.size.confidenceTeaserBadgeFont, fontWeight: '700' },
 }));

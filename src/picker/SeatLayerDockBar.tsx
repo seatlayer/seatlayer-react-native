@@ -25,6 +25,7 @@ import { seatLayerPickerBold } from './boldText';
 import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { resolveSeatLayerPickerStyles, sanitizeSeatLayerPickerStyle, type SeatLayerPickerStyles } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
+import { seatLayerPickerDrawnShape, seatLayerPickerLineStart } from './drawnShape';
 
 export interface SeatLayerDockBarProps {
   readonly style?: StyleProp<ViewStyle>;
@@ -540,7 +541,7 @@ function SeatLayerDockBarView({
           borderTopColor: theme.colors.divider,
           borderTopWidth: 1,
           elevation: theme.elevation.dockBar,
-          flexDirection: leftToRight ? 'row' : 'row-reverse',
+          flexDirection: 'row',
           height: drawnDockHeight + bottomInset,
           paddingBottom: bottomInset,
           shadowColor: theme.colors.text,
@@ -602,7 +603,7 @@ function SeatLayerDockBarView({
             style={{
               alignItems: 'center',
               flex: 1,
-              flexDirection: leftToRight ? 'row' : 'row-reverse',
+              flexDirection: 'row',
               minWidth: 0,
             }}
           >
@@ -613,6 +614,7 @@ function SeatLayerDockBarView({
               style={[
                 {
                   ...textStyle,
+                  ...seatLayerPickerLineStart,
                   flexShrink: 1,
                   fontSize: displayPlan.lines === 2
                     ? size.dockNameFontSize - 1
@@ -674,12 +676,7 @@ function SeatLayerDockBarView({
             radius={theme.radii.pill}
             height={size.dockBackHeight}
           >
-            <View
-              style={{
-                alignItems: 'center',
-                flexDirection: leftToRight ? 'row' : 'row-reverse',
-              }}
-            >
+            <View style={{ alignItems: 'center', flexDirection: 'row' }}>
               <VenueOverviewIcon color={theme.colors.text} />
               <View style={{ width: 8 }} />
               <Text maxFontSizeMultiplier={seatLayerPickerTypeScaleClamp('dock')} numberOfLines={1} style={textStyle}>
@@ -761,6 +758,7 @@ function Chevron({
   return (
     <View
       style={{
+        ...seatLayerPickerDrawnShape,
         borderColor: color,
         borderLeftWidth: 2,
         borderTopWidth: 2,

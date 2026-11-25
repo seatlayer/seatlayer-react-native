@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  I18nManager,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -35,6 +34,7 @@ import {
 } from './wideNavigation';
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerLineWidth } from './lineWidth';
+import { seatLayerPickerDrawnShape } from './drawnShape';
 
 export interface SeatLayerPickerFloorSelectorProps {
   readonly safeAreaInsets?: SeatLayerPickerSafeAreaInsetInput;
@@ -169,10 +169,10 @@ function FloorSelectorCurrent({
             color: scope.resolvedTheme.colors.text,
             fontFamily: scope.resolvedTheme.fontFamily,
           }, styles.floorChipText]}>{selectedLabel}</Text>
-          <View accessible={false} style={[nativeStyles.chevron, {
+          <View style={nativeStyles.chevronBox}><View accessible={false} style={[seatLayerPickerDrawnShape, nativeStyles.chevron, {
             borderBottomColor: actionBusy ? scope.resolvedTheme.colors.divider : scope.resolvedTheme.colors.mutedText,
             borderRightColor: actionBusy ? scope.resolvedTheme.colors.divider : scope.resolvedTheme.colors.mutedText,
-          }]} />
+          }]} /></View>
         </View>
       </Pressable>
       <SeatLayerPickerPromptModal visible={visible}>
@@ -191,7 +191,7 @@ function FloorSelectorCurrent({
                 <Text style={[nativeStyles.closeText, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }]}>{scope.strings.translate('close')}</Text>
               </View>
             </Pressable>
-            <ScrollView contentContainerStyle={[nativeStyles.choices, { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row' }]}>
+            <ScrollView contentContainerStyle={nativeStyles.choices}>
               {offersAll ? <Choice label={scope.strings.translate('allFloors')} selected={selectedAll} busy={actionBusy} styles={styles} scope={scope} onPress={() => choose(seatLayerAllFloors)} /> : null}
               {snapshot.map.floors.map((floor) => <Choice key={floor.id} label={floor.name} selected={!selectedAll && floor.id === selectedFloor?.id} busy={actionBusy} styles={styles} scope={scope} onPress={() => choose(floor.id)} />)}
             </ScrollView>
@@ -222,12 +222,13 @@ const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   target: { justifyContent: 'center' },
   trigger: { alignItems: 'center', flexDirection: 'row', height: 40, maxWidth: 180, minWidth: 88, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   triggerText: { flexShrink: 1, fontSize: 12, lineHeight: 16, fontWeight: '800' },
-  chevron: { borderBottomWidth: 1.5, borderRightWidth: 1.5, height: 7, marginStart: 8, marginTop: -4, transform: [{ rotate: '45deg' }], width: 7 },
+  chevronBox: { marginStart: 8, marginTop: -4 },
+  chevron: { borderBottomWidth: 1.5, borderRightWidth: 1.5, height: 7, transform: [{ rotate: '45deg' }], width: 7 },
   sheet: { padding: 8 },
   closeTarget: { alignSelf: 'flex-end', justifyContent: 'center' },
   closePaint: { height: 40, paddingHorizontal: 10, justifyContent: 'center' },
   closeText: { fontSize: 13, fontWeight: '800' },
-  choices: { gap: 6, flexWrap: 'wrap' },
+  choices: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   choiceTarget: { justifyContent: 'center' },
   choicePaint: { height: 40, maxWidth: 220, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   choiceText: { fontSize: 12, lineHeight: 16, fontWeight: '800' },

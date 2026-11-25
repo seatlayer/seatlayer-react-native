@@ -7,6 +7,7 @@ import { useSeatLayerPickerScope } from './SeatLayerPickerScope';
 import { sanitizeSeatLayerPickerStyle } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
 import { seatLayerPickerBold } from './boldText';
+import { seatLayerPickerJoinedLetters } from './drawnShape';
 
 const segmentPaintHeight = seatLayerPickerTokens.size.viewModeButtonHeight;
 /** Air between the two halves, so the bed reads between them and not only around. */
@@ -106,6 +107,7 @@ export function SeatLayerPickerViewModeControlView({
             fontWeight: seatLayerPickerBold(800),
             // Four hundredths of the label's own size, as the reference sets it.
             letterSpacing: theme.layout.viewModeLabelFontSize * .04,
+            ...seatLayerPickerJoinedLetters(label),
           },
           slots?.mapControlLabel,
         ]}

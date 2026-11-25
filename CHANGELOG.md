@@ -85,6 +85,19 @@ stay; the changes below are the ones an app or a buyer can notice.
   the headings stand at the reading side.
   On an iPhone held sideways this sheet and the other prompts open sideways, where
   they turned the screen upright.
+- In a right-to-left language the drawn marks keep their shape: the tick on "Add
+  seat", the cube beside it, the fit button, the wheelchair, the arrows of the 3D
+  bar and of the section bar. The back arrow points to the reading side.
+  - The price chips, the section bar, the seat card's fields and buttons, the 3D
+    bar and the other rows run the way the app reads, where they ran the other way.
+  - The light on a chosen seat stands on that seat, where it stood on the other
+    half of the map.
+  - On an iPhone a text stands at the reading side: the event's name, the seat
+    card's notes, the seats in the cart.
+  - On a phone held sideways the room beside the camera is kept on the camera's
+    side, where it was kept on the other.
+  - On an Android phone a name in the accessibility sheet keeps its last word.
+  - Arabic letters join in the small headings, where spacing drew them apart.
 - `SeatLayerPickerModal` turns with an iPhone, in every way the app itself
   supports: an app that supports only upright stays upright. The hold, the chosen
   seats and an open list stay. In an app that supports only sideways it stopped

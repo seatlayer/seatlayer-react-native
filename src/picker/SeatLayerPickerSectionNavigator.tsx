@@ -1,6 +1,5 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  I18nManager,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -127,7 +126,7 @@ function SectionNavigatorCurrent({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[nativeStyles.scroll, { flexDirection: I18nManager.isRTL ? 'row-reverse' : 'row' }]}
+        contentContainerStyle={nativeStyles.scroll}
       >
         {scope.snapshot?.sections.map((section) => {
           const selected = section.id === active;
@@ -165,7 +164,7 @@ function SectionNavigatorCurrent({
 
 const nativeStyles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: { width: '100%', minHeight: seatLayerPickerTokens.size.minimumHitTarget },
-  scroll: { alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 2 },
+  scroll: { alignItems: 'center', flexDirection: 'row', gap: 7, paddingHorizontal: 12, paddingVertical: 2 },
   target: { justifyContent: 'center' },
   paint: { height: 40, maxWidth: 180, paddingHorizontal: 12, borderWidth: seatLayerPickerLineWidth, justifyContent: 'center' },
   label: { fontSize: 12, lineHeight: 16, fontWeight: '800' },

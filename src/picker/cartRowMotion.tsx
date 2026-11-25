@@ -168,7 +168,7 @@ export function SeatLayerCartSwipeToRemove({ enabled, onRemove, children, radius
             pointerEvents="none"
             testID="seatlayer-cart-swipe-plate"
             style={{
-              alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end',
+              alignItems: 'flex-end',
               backgroundColor: plateColor,
               borderRadius: radius ?? 0,
               bottom: 0,
