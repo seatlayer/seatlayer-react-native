@@ -55,6 +55,12 @@ stay; the changes below are the ones an app or a buyer can notice.
 - The checkout button says "Securing your seats…" until the seats are held, and
   "Seats secured. Opening checkout…" after. `useSeatLayerCheckoutCta` takes a
   third argument for it.
+- A sold-out price can be pressed, so a filter on it can be taken off with the
+  chip it was put on with. Its dot is grey, it is drawn at full strength while it
+  is chosen, and a screen reader hears "Sold out".
+- The word on the "Test mode" badge is not cut at a large text size.
+- With no close button, the hold clock and the "Sales are closed" pill stand
+  eight points clear of the header's edge.
 - In the 3D venue the status bar stands on the dark ground its light text is
   chosen for.
 - A standing area sold as one box offers only the party sizes it is sold in, and

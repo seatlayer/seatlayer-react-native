@@ -99,11 +99,13 @@ describe('3.2 sold out is only what the runtime can be trusted about', () => {
     expect(seatLayerPickerLegendSoldOut({ free: 0 })).toBe(true);
   });
 
-  it('keeps the sold-out chip, disabled and struck through', async () => {
-    setup();
+  it('keeps the sold-out chip, struck through and pressable', async () => {
+    const runtime = setup();
     const renderer = await render();
-    const chip = renderer.root.findByProps({ accessibilityLabel: 'Gods, $15' });
-    expect(chip.props.accessibilityState.disabled).toBe(true);
+    const chip = renderer.root.findByProps({ accessibilityLabel: 'Gods, $15, soldOutTitle' });
+    expect(chip.props.accessibilityState.disabled).toBe(false);
+    expect(chip.findAllByType('View' as never)[0]!.props.style)
+      .toContainEqual(expect.objectContaining({ opacity: 0.55 }));
     const label = chip.findByType('Text' as never);
     expect(label.props.style).toContainEqual(
       expect.objectContaining({ textDecorationLine: 'line-through' }),
@@ -111,6 +113,19 @@ describe('3.2 sold out is only what the runtime can be trusted about', () => {
     const live = renderer.root.findByProps({ accessibilityLabel: 'Circle, $25+' });
     expect(live.findByType('Text' as never).props.style)
       .not.toContainEqual(expect.objectContaining({ textDecorationLine: 'line-through' }));
+    await act(async () => { chip.props.onPress(); });
+    expect(runtime.setCategoryFilter).toHaveBeenCalledWith(['d'], true);
+  });
+
+  it('takes the filter off with the sold-out chip it was put on with', async () => {
+    const runtime = setup('light', ['d']);
+    const renderer = await render();
+    const chip = renderer.root.findByProps({ accessibilityLabel: 'Gods, $15, soldOutTitle' });
+    expect(chip.props.accessibilityState.selected).toBe(true);
+    expect(chip.findAllByType('View' as never)[0]!.props.style)
+      .toContainEqual(expect.objectContaining({ opacity: 1 }));
+    await act(async () => { chip.props.onPress(); });
+    expect(runtime.setCategoryFilter).toHaveBeenCalledWith([], true);
   });
 });
 

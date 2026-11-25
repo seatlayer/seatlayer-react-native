@@ -203,6 +203,12 @@ describe("picker status chrome", () => {
     // raw warning colour, and the accessible name is the long form.
     const chip = renderer.root.findByProps({ accessibilityLabel: "Test mode · books nothing" });
     expect(chip.props.accessibilityHint).toBe("testModeExplained");
+    const word = renderer.root.findAllByType("Text" as any)[0]!;
+    // Never larger than its chip, and never cut at its own line.
+    const drawn = Object.assign({}, ...(word.props.style as object[])) as { lineHeight: number; paddingVertical: number; marginVertical: number };
+    expect(drawn.lineHeight * word.props.maxFontSizeMultiplier).toBeLessThan(26);
+    expect(drawn.paddingVertical + drawn.marginVertical).toBe(0);
+    expect(drawn.paddingVertical).toBeGreaterThan(0);
     expect(chip.props.style[2]).toEqual(expect.objectContaining({
       backgroundColor: expect.stringMatching(/^rgb\(/),
       borderColor: expect.stringMatching(/^rgba\(255, 170, 0, 0\.5\)$/),

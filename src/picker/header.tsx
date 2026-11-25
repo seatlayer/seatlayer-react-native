@@ -382,6 +382,9 @@ export function SeatLayerPickerHeaderView(
         }, slots.headerLogo, { width: logoSize, height: logoSize }]}
       />
     );
+  // With no close control after it, a pill stands clear of the bar's edge.
+  const endsOnPill = !onClose && ((props.holdCountdown === undefined ? showHold : props.holdCountdown !== null && pillOwned) ||
+    (props.salesClosed === true && Boolean(props.salesClosedLabel)));
   const headerHeight = seatLayerPickerTokens.size.headerHeight + boundedInset(topInset);
   // The picker's own ground, through the header's own style slot: a ground and
   // the ink on it must be resolved as a PAIR, or a host that darkened
@@ -413,7 +416,7 @@ export function SeatLayerPickerHeaderView(
         { height: headerHeight, minHeight: headerHeight },
       ]}
     >
-      <View style={styles.row}>
+      <View style={endsOnPill ? [styles.row, styles.rowEnd] : styles.row}>
         {logo}
         {showDetails
           ? (
@@ -632,6 +635,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     // runs out to the corner.
     paddingRight: 0,
   },
+  rowEnd: { paddingRight: 8 },
   mark: { alignItems: "center", justifyContent: "center" },
   titleWrap: { flex: 1, minWidth: 0 },
   title: {

@@ -161,6 +161,24 @@ describe('§3.1 header renderer', () => {
     expect(off.root.findAllByProps({ testID: 'seatlayer-header-hold-pill' })).toHaveLength(0);
   });
 
+  it('keeps a pill eight points clear of the edge where no close control follows it', async () => {
+    const now = 1_000_000;
+    const hold = { active: true, expiresAt: now + 605_000, owner: 'picker' };
+    const trailing = async (extra: object) => {
+      const bar = await render(React.createElement(SeatLayerPickerHeaderView, {
+        ...headerProps, clock: () => now, onClose: undefined, ...extra,
+      }));
+      const row = bar.root.findByProps({ accessibilityRole: 'header', numberOfLines: 1 }).parent!.parent!;
+      return Object.assign({}, ...[row.props.style].flat()).paddingRight;
+    };
+    expect(await trailing({ hold })).toBe(8);
+    expect(await trailing({ hold, holdCountdown: React.createElement('View') })).toBe(8);
+    expect(await trailing({ hold, holdCountdown: null })).toBe(0);
+    expect(await trailing({ salesClosed: true, salesClosedLabel: 'Sales closed' })).toBe(8);
+    expect(await trailing({})).toBe(0);
+    expect(await trailing({ hold, onClose: () => undefined })).toBe(0);
+  });
+
   it('says the throttled sentence rather than the running clock', async () => {
     const now = 1_000_000;
     const said: string[] = [];

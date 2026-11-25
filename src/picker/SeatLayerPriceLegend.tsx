@@ -426,13 +426,16 @@ function SeatLayerPriceLegendView({
             return (
               <LegendChip
                 key={category.key}
-                color={chartSeatLayerPickerColor(category.color, theme.colors.accent)}
-                disabled={disabled || soldOut}
+                // A sold-out price keys the grey the map paints on a seat nobody can
+                // take, not a colour there is nothing left of.
+                color={soldOut ? theme.colors.mutedText : chartSeatLayerPickerColor(category.color, theme.colors.accent)}
+                disabled={disabled}
                 label={category.label}
                 money={money}
                 paintHeight={paintHeight}
                 selected={selected}
                 soldOut={soldOut}
+                soldOutLabel={strings.translate('soldOutTitle')}
                 slots={slots}
                 target={target}
                 theme={theme}
@@ -527,6 +530,7 @@ function LegendChip({
   selected,
   disabled,
   soldOut,
+  soldOutLabel,
   allPrices = false,
   label,
   money,
@@ -539,7 +543,13 @@ function LegendChip({
   readonly target: number;
   readonly selected: boolean;
   readonly disabled: boolean;
+  /**
+   * Every seat at this price is gone. The chip is struck through and quieter,
+   * and stays a toggle: a buyer who chose it must be able to take the filter
+   * off with the chip they put it on with.
+   */
   readonly soldOut: boolean;
+  readonly soldOutLabel?: string;
   /** The pinned first chip: the band's own ground, no colour key, never struck. */
   readonly allPrices?: boolean;
   readonly label: string;
@@ -581,7 +591,7 @@ function LegendChip({
       : blendSeatLayerPickerColor(color, theme.colors.surface, dotWash, color);
   return (
     <Pressable
-      accessibilityLabel={allPrices ? label : `${label}, ${money}`}
+      accessibilityLabel={[label, ...(allPrices ? [] : [money]), ...(soldOut && soldOutLabel ? [soldOutLabel] : [])].join(', ')}
       accessibilityRole="button"
       accessibilityState={{ disabled, selected }}
       disabled={disabled}
@@ -607,7 +617,7 @@ function LegendChip({
             borderWidth: chipBorder,
             flexDirection: 'row',
             height: paintHeight,
-            opacity: soldOut ? 0.55 : 1,
+            opacity: soldOut && !selected ? seatLayerPickerTokens.opacity.legendSoldOut : 1,
             // Seven leading, nine trailing (`picker_legend.dart` §_ink), LESS
             // the hairline: the reference's `Material` paints its stadium's
             // side without insetting what it wraps, where a React Native

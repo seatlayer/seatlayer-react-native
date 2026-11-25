@@ -69,6 +69,8 @@ export function SeatLayerPickerTestModeIndicatorView(props: SeatLayerPickerTestM
     <Text
       numberOfLines={1}
       ellipsizeMode="tail"
+      // The chip keeps its height, so its word stops growing where it fills it.
+      maxFontSizeMultiplier={testChipWordScale}
       style={[styles.text, { color: ink, fontFamily: props.theme.fontFamily }, slots.statusText]}
     >{props.strings.translate("testMode")}</Text>
   </View>;
@@ -81,6 +83,10 @@ export function SeatLayerPickerTestModeIndicator(props: SeatLayerPickerTestModeI
 const dotSize = seatLayerPickerTokens.size.testChipDotSize;
 /** How far the status light's halo stands out past the light itself. */
 const haloSpread = 3;
+/** How far the word grows: the tails of an Arabic or a Thai word stay in the chip. */
+const testChipWordScale = 1.6;
+/** Letters taller than the line box are drawn over this, not cut at its edge. */
+const testChipWordRoom = 6;
 /** The pill's hairline, a whole point as the reference draws it. */
 const chipBorder = 1;
 const styles = seatLayerPickerBoldStyles(StyleSheet.create({
@@ -126,5 +132,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     // point ABOVE where the reference frame prints it once React Native has
     // centred the line box in the pill, so the box keeps its three points.
     lineHeight: seatLayerPickerTokens.size.testChipFontSize + 3,
+    marginVertical: -testChipWordRoom,
+    paddingVertical: testChipWordRoom,
   },
 }));
