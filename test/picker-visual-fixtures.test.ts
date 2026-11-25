@@ -252,7 +252,7 @@ describe('deterministic native picker visual fixtures', () => {
       .toMatchObject({ disabled: true });
 
     await act(async () => {
-      tree.root.findByProps({ accessibilityLabel: 'Drag to rotate venue' }).props.onPress();
+      tree.root.findByProps({ accessibilityLabel: 'Drag to rotate the venue' }).props.onPress();
       await Promise.resolve();
     });
     expect(tree.root.findByProps({ testID: 'seatlayer-immersive-evidence' }).props.accessibilityLabel)

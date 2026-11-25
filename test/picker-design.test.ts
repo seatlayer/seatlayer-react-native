@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   createSeatLayerPickerStringResolver,
   formatSeatLayerPickerString,
+  seatLayerPickerEnglishStrings,
   translateSeatLayerPickerString,
 } from '../src/picker/locale';
 import {
@@ -180,17 +181,17 @@ describe('checked-in picker design output', () => {
       fromPrice: 'From {price}',
       generalAdmission: 'General admission',
       moreCount: '+{count} more',
-      moveVenue: 'Drag to move venue',
+      moveVenue: 'Drag to move the venue',
       placeNumberIdentity: 'Place {place}',
       orbitMode: 'Rotate venue',
       panMode: 'Move venue',
       placesAvailable: '{count} places currently available',
       removeSeat: 'Remove seat',
       rowIdentity: 'Row {row}',
-      rotateVenue: 'Drag to rotate venue',
+      rotateVenue: 'Drag to rotate the venue',
       seatNumberIdentity: 'Seat {seat}',
       selectTicketTier: 'Select a ticket type',
-      tierCompanionGuidance: 'Requires the adjacent wheelchair place.',
+      tierCompanionGuidance: 'Requires the adjacent wheelchair place',
     });
   });
 });
@@ -388,8 +389,28 @@ describe('picker locale', () => {
     expect(formatSeatLayerPickerString('Hello {name}; {missing}', { name: 'Ada' })).toBe('Hello Ada; {missing}');
   });
 
+  it('reads Norwegian for a device that reports Bokmål, and six languages more', () => {
+    expect(translateSeatLayerPickerString('close', { locale: 'nb-NO' }))
+      .toBe(translateSeatLayerPickerString('close', { locale: 'no' }));
+    const english = translateSeatLayerPickerString('close');
+    for (const locale of ['no', 'hi', 'id', 'ko', 'ms', 'th', 'vi']) {
+      expect(translateSeatLayerPickerString('close', { locale })).not.toBe(english);
+    }
+  });
+
+  it('takes wording for a counted sentence under either name, and falls back to the general form', () => {
+    for (const name of ['ticketCount', 'ticketCount.one', 'ticketCountOne']) {
+      expect(translateSeatLayerPickerString('ticketCount', { count: 1, overrides: { [name]: 'one seat' } as never })).toBe('one seat');
+    }
+    expect(translateSeatLayerPickerString('reselectSeats.few', { count: 3, locale: 'ru', overrides: { reselectSeatsOther: 'again' } })).toBe('again');
+    expect(translateSeatLayerPickerString('reselectSeats.few')).toBe('Select them again');
+    expect(translateSeatLayerPickerString('onlyLeft', { count: 8 })).toBe('8 seats left');
+    expect(seatLayerPickerEnglishStrings.onlyLeft).toBe('{count} seats left');
+  });
+
   it('keeps the full native-chrome English surface while overlaying generated locales', () => {
-    expect(translateSeatLayerPickerString('allFloors', { locale: 'de-DE' })).toBe('All floors');
+    expect(translateSeatLayerPickerString('confirmTable', { locale: 'de-DE' })).toBe('Confirm table');
+    expect(translateSeatLayerPickerString('allFloors', { locale: 'de-DE' })).toBe('Alle Etagen');
     expect(translateSeatLayerPickerString('findBestSeats', { count: 1 })).toBe('Find 1 best seat');
     expect(translateSeatLayerPickerString('findBestSeats', { locale: 'unsupported-ZZ', count: 1 })).toBe('Find 1 best seat');
     expect(translateSeatLayerPickerString('findBestSeats', { locale: 'en-GB', count: 1 })).toBe('Find 1 best seat');

@@ -27,7 +27,7 @@ const size = seatLayerPickerTokens.size;
 export function seatLayerPickerAccessibleStepperFigure(
   tour: SeatLayerPickerAccessibleTour,
   sectionCount: number | undefined,
-  translate: (key: string, options?: { values?: Record<string, string | number> }) => string,
+  translate: (key: string, options?: { count?: number; values?: Record<string, string | number> }) => string,
 ): string | undefined {
   if (tour.step) {
     return translate("accessibleStep", {
@@ -36,7 +36,7 @@ export function seatLayerPickerAccessibleStepperFigure(
   }
   return sectionCount === undefined
     ? undefined
-    : translate("accessibleSections", { values: { count: sectionCount } });
+    : translate("accessibleSections", { count: sectionCount, values: { count: sectionCount } });
 }
 
 export interface SeatLayerPickerAccessibleStepperProps {

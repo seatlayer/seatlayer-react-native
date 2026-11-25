@@ -40,8 +40,8 @@ export function SeatLayerHoldLapseNotice(props: SeatLayerHoldLapseNoticeProps): 
     <View accessibilityLiveRegion="polite" style={[sanitizeSeatLayerPickerStyle(props.style), styles.statusContainer, styles.errorContainer, { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.roles.notice.background, borderBottomWidth: 1, borderColor: telling.tone === 'error' ? theme.colors.error : theme.roles.notice.border }]}>
       <Text style={[{ color: theme.colors.text, fontFamily: theme.fontFamily, fontWeight: seatLayerPickerBold(700) }, styles.statusText, styles.errorText]}>{tellingText}</Text>
       <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedTitle')}</Text>
-      {minutes === undefined ? null : <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { values: { n: minutes } })}</Text>}
-      {unrecovered > 0 ? <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { values: { n: unrecovered } })}</Text> : null}
+      {minutes === undefined ? null : <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('holdLapsedBody', { count: minutes })}</Text>}
+      {unrecovered > 0 ? <Text style={[{ color: theme.colors.mutedText, fontFamily: theme.fontFamily }, styles.statusText, styles.errorText]}>{scope.strings.translate('seatsNotRecovered', { count: unrecovered })}</Text> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
         {offersReselect ? (
           <Pressable accessibilityRole="button" accessibilityLabel={reselectLabel}
