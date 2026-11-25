@@ -4,6 +4,7 @@ import {
   Easing,
   Text,
   View,
+  useWindowDimensions,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -31,6 +32,10 @@ import { seatLayerPickerJoinedLetters, seatLayerPickerLineStart } from './drawnS
 
 const captionGlass = seatLayerPickerImmersiveCaptionGlass;
 const size = seatLayerPickerTokens.size;
+
+/** The width the words keep beside the badge, at text size 1. Where the two do
+ *  not fit, at a large text size on a narrow phone, the badge goes under them. */
+const copyWidth = 90;
 
 type PanoramaSlots = Pick<
   SeatLayerPickerStyles,
@@ -81,6 +86,7 @@ function ownsPanorama(scope: ReturnType<typeof useSeatLayerPickerScope>, view: S
 export function SeatLayerSeatPanoramaChromeView(props: SeatLayerSeatPanoramaChromeViewProps): React.ReactElement {
   const slots = resolveSeatLayerPickerStyles({}, props.slots);
   const wording = projectSeatLayerPanoramaWording(props.view);
+  const fontScale = useWindowDimensions().fontScale;
   return <View
     pointerEvents="none"
     style={[
@@ -102,8 +108,8 @@ export function SeatLayerSeatPanoramaChromeView(props: SeatLayerSeatPanoramaChro
         slots?.seatViewChromeContainer,
         sanitizeSeatLayerPickerStyle(props.style),
       ]}>
-        <View pointerEvents="none" style={styles.copy}>
-          {wording.title ? <Text numberOfLines={2} style={[styles.title, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.title}</Text> : null}
+        <View pointerEvents="none" style={[styles.copy, { flexBasis: copyWidth * Math.max(1, fontScale) }]}>
+          {wording.title ? <Text style={[styles.title, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.title}</Text> : null}
           {wording.caption ? <Text numberOfLines={2} style={[styles.caption, { color: captionGlass.ink, fontFamily: props.theme.fontFamily, ...seatLayerPickerLineStart }]}>{wording.caption}</Text> : null}
         </View>
         {wording.badge ? <View pointerEvents="none" style={[
@@ -187,9 +193,9 @@ const styles = {
   } as ViewStyle,
   badgeText: { fontSize: 12, fontWeight: seatLayerPickerBold(800), letterSpacing: 0.2 } as TextStyle,
   caption: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600), lineHeight: 17, marginTop: 3 } as TextStyle,
-  captionStrip: { alignItems: 'flex-start', alignSelf: 'stretch', borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, flexDirection: 'row', gap: 10, maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 10 } as ViewStyle,
+  captionStrip: { alignItems: 'flex-start', alignSelf: 'stretch', borderRadius: seatLayerPickerTokens.radius.chip, borderWidth: 1, columnGap: 10, flexDirection: 'row', flexWrap: 'wrap', maxWidth: '100%', paddingHorizontal: 12, paddingVertical: 10, rowGap: 6 } as ViewStyle,
   content: { alignItems: 'stretch', bottom: 0, justifyContent: 'flex-end', left: 18, position: 'absolute', right: 18, top: 0 } as ViewStyle,
-  copy: { flex: 1, minWidth: 0 } as ViewStyle,
+  copy: { flexGrow: 1, flexShrink: 1, minWidth: 0 } as ViewStyle,
   hint: { fontSize: size.immersiveCaptionFontSize, fontWeight: seatLayerPickerBold(600) } as TextStyle,
   hintChip: { alignSelf: 'center', borderRadius: seatLayerPickerTokens.radius.chip, marginTop: 8, maxWidth: '92%', paddingHorizontal: 10, paddingVertical: 5 } as ViewStyle,
   root: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 } as ViewStyle,

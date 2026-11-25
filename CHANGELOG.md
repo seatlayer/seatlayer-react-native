@@ -121,6 +121,8 @@ stay; the changes below are the ones an app or a buyer can notice.
   more seats were just taken. Please pick again.", and
   `SeatLayerPickerController.holdGA` rejects with `hold_unavailable`, where it
   resolved as if they were held.
+- The view from a seat shows its whole title: at a large text size on a narrow
+  phone the badge goes under the words, where the title ended in "…".
 
 **Words and languages**
 
