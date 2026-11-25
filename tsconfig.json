@@ -25,5 +25,8 @@
     "test",
     "tsup.config.ts",
     "vitest.config.ts"
+  ],
+  "exclude": [
+    "test/pictures/shim"
   ]
 }

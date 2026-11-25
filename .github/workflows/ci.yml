@@ -22,3 +22,36 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm validate
+
+  pictures:
+    runs-on: ubuntu-latest
+    # The browser and the fonts the recorded pictures were drawn with. Keep the
+    # version equal to @playwright/test in package.json.
+    container: mcr.microsoft.com/playwright:v1.65.1-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.10.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm pictures
+        env:
+          PICTURES_COMPARE: '1'
+      # A picture or a finding changed on purpose: take the new files from this
+      # run's "pictures" file.
+      - if: failure()
+        run: pnpm exec playwright test --config test/pictures/playwright.config.ts --update-snapshots
+        env:
+          PICTURES_COMPARE: '1'
+          UPDATE_KNOWN: '1'
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pictures
+          path: |
+            test/pictures/recorded
+            test/pictures/known-layout.json
