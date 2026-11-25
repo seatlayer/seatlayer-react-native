@@ -28,6 +28,7 @@ vi.mock('react-native', () => ({
   BackHandler: { addEventListener: native.addEventListener },
   Modal: 'Modal',
   useColorScheme: () => 'light',
+  useWindowDimensions: () => ({ width: 390, height: 844 }),
 }));
 
 vi.mock('../src/picker/scopeInsets', () => ({

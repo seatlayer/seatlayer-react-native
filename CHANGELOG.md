@@ -59,6 +59,17 @@ stay; the changes below are the ones an app or a buyer can notice.
   chip it was put on with. Its dot is grey, it is drawn at full strength while it
   is chosen, and a screen reader hears "Sold out".
 - The word on the "Test mode" badge is not cut at a large text size.
+- The accessibility sheet starts with the two map switches, and the kinds of
+  seat stand under "SHOW SEATS FOR". The "VIEW" heading is gone, so an override
+  of `viewGroupTitle` changes nothing now.
+  Held sideways, all of it scrolls under the title: the list had no room left.
+  The list runs to the sheet's foot, with the room for the phone's strip after its
+  last row. Names wrap and are never cut; at a large text size a count stands
+  under its name.
+  In a right-to-left language a switch that is on keeps its knob, and on an iPhone
+  the headings stand at the reading side.
+  On an iPhone held sideways this sheet and the other prompts open sideways, where
+  they turned the screen upright.
 - With no close button, the hold clock and the "Sales are closed" pill stand
   eight points clear of the header's edge.
 - In the 3D venue the status bar stands on the dark ground its light text is
