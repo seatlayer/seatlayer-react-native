@@ -75,6 +75,7 @@ export function useSeatLayerCartBarRuler(
         importantForAccessibility="no-hide-descendants"
         pointerEvents="none"
         style={styles.hidden}
+        testID="seatlayer-cart-ruler"
       >
         <View style={styles.sheet}>
           {[...missing].map(([key, { text, style }]) => (

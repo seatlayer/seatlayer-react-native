@@ -15,7 +15,8 @@ export async function openCell(page: Page, cell: Cell): Promise<void> {
   await settle(page);
 }
 
-/** Layout events arrive in real time, and each may draw again. */
+/** Layout events arrive in real time, each may draw again, and the cart row
+ *  draws its words once unseen to measure them. */
 async function settle(page: Page): Promise<void> {
   const read = () => page.evaluate(() => document.getElementById('root')?.innerHTML ?? '');
   let before = await read();
@@ -23,7 +24,7 @@ async function settle(page: Page): Promise<void> {
     await page.waitForTimeout(20);
     await page.clock.runFor(100);
     const after = await read();
-    if (after === before) return;
+    if (after === before && !after.includes('seatlayer-cart-ruler')) return;
     before = after;
   }
 }
