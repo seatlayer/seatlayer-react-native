@@ -1,6 +1,7 @@
 import { SeatLayerError } from '../errors';
-import type { JsonValue } from '../json';
-import type { ReadyInfo } from '../types';
+import type { JsonObject, JsonValue } from '../json';
+
+import type { ReadyInfo, SeatLayerConfiguration } from '../types';
 import {
   decodeSeatLayerPickerAvailabilityOutcome,
   seatLayerAvailabilityRefreshCapability,
@@ -9,6 +10,7 @@ import {
 } from './availability';
 import { SeatLayerPickerChartLoadSubscriptions, type SeatLayerChartLoadListener } from './chartLoadSubscription';
 import { SeatLayerPickerControllerCore } from './controllerCore';
+import { SeatLayerPickerPageRecovery, type SeatLayerPickerReloadHold } from './pageRecovery';
 import {
   SeatLayerPickerBookedDetector,
   seatLayerPickerHoldOwnershipStore,
@@ -96,6 +98,11 @@ export interface SeatLayerPickerLifecycleResult {
 /** Public picker controller; recovery additions retain the original controller identity. */
 export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private reloadGenerationValue = 0;
+  private readonly pageRecovery = new SeatLayerPickerPageRecovery();
+  private pageLostError: SeatLayerError | undefined;
+  private bootEvent: string | undefined;
+  private bootHoldId: string | undefined;
+  private reloadHold: SeatLayerPickerReloadHold | undefined;
   private readonly reloadListeners = new Set<() => void>();
   private availabilityRefreshFlight: Promise<SeatLayerPickerLifecycleResult | undefined> | undefined;
   private readonly chartLoads = new SeatLayerPickerChartLoadSubscriptions(
@@ -172,7 +179,77 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
    * selection and hold recovery remain runtime/server-authoritative.
    */
   retry(): Promise<void> {
+    this.pageRecovery.reset();
+    this.pageLostError = undefined;
+    return this.reload();
+  }
+
+  /** @internal The system ended the page. Everything waiting on it is refused. */
+  pageLost(): void {
+    this.mapController.disconnect(
+      SeatLayerError.transport('The system closed the SeatLayer page.'),
+      false,
+    );
+  }
+
+  /** @internal Replaces a lost page, or says so when pages keep being lost. */
+  recoverLostPage(now: number = Date.now()): Promise<void> {
+    this.pageLostError = this.pageRecovery.lost(now)
+      ? undefined
+      : SeatLayerError.transport('The system keeps closing the SeatLayer page.');
+    return this.reload();
+  }
+
+  /** @internal Set while a lost page is not reloaded by itself any more. */
+  getPageLostError = (): SeatLayerError | undefined => this.pageLostError;
+
+  /**
+   * A replaced page starts without the hold the one before it had, so it is
+   * asked for that hold once it is ready. The hold may be gone by then, which
+   * is why it is not put in the page's start, where it would fail the page.
+   */
+  protected override startConfig(
+    configuration: SeatLayerConfiguration,
+    config: JsonObject | undefined,
+  ): JsonObject | undefined {
+    this.bootEvent = configuration.event;
+    const { initialHoldId, ...rest } = config ?? {};
+    if (this.reloadHold?.event !== configuration.event) {
+      this.reloadHold = undefined;
+      this.bootHoldId = typeof initialHoldId === 'string' ? initialHoldId : undefined;
+      return config;
+    }
+    return rest;
+  }
+
+  protected override onPageStarted(): void {
+    const holdId = this.reloadHold?.holdId;
+    this.reloadHold = undefined;
+    if (holdId !== undefined) this.resumeAfterReload(holdId);
+  }
+
+  private resumeAfterReload(holdId: string): void {
+    void this.resumeHold(holdId).then(
+      (snapshot) => { if (snapshot?.hold.active !== true) this.booked.released(); },
+      () => this.booked.released(),
+    );
+  }
+
+  private rememberHoldForReload(): void {
+    const snapshot = this.getSnapshot();
+    if (snapshot === undefined || this.bootEvent === undefined) return;
+    this.reloadHold = {
+      event: this.bootEvent,
+      holdId: snapshot.hold.active
+        ? this.booked.pendingHandoff?.holdId ?? this.bootHoldId
+        : undefined,
+    };
+  }
+
+  private reload(): Promise<void> {
     return this.serial(async () => {
+      this.rememberHoldForReload();
+      this.booked.reloaded();
       if (
         this.mapController.isReady &&
         this.mapController.supportsPickerCommand('picker.destroy')
@@ -184,6 +261,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
         }
       }
       if (this.disposed) throw SeatLayerError.destroyed();
+      this.booked.reloaded();
       this.resetForRuntimeReload();
       this.reloadGenerationValue += 1;
       for (const listener of this.reloadListeners) listener();

@@ -147,6 +147,15 @@ export class SeatLayerPickerBookedDetector {
     this.booked = undefined;
   }
 
+  /**
+   * A new page starts with no hold. That it reports none says nothing about the
+   * one handed off, until it has taken that hold up again.
+   */
+  reloaded(): void {
+    this.expiryAnnounced = false;
+    this.holdWasActive = false;
+  }
+
   get pendingHandoff(): SeatLayerPickerCheckoutHandoff | undefined {
     return this.handoff;
   }

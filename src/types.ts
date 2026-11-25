@@ -36,9 +36,12 @@ export interface SeatLayerConfiguration {
   initialView?: SeatLayerViewMode;
   /** Leave false when the app renders its own touch-friendly seat sheet. */
   showsWebSeatTooltip?: boolean;
-  /** Native command deadline. Defaults to 15 seconds. */
+  /**
+   * Native command deadline. Defaults to 15 seconds. A command that can place a
+   * hold waits at least 45 seconds, longer than the page waits for the server.
+   */
   commandTimeoutMs?: number;
-  /** Handshake deadline. Defaults to 30 seconds. */
+  /** Handshake deadline. Defaults to 45 seconds. */
   handshakeTimeoutMs?: number;
   /** Free-form, non-secret host diagnostics. */
   hostInfo?: Record<string, string>;

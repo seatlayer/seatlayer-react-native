@@ -41,6 +41,8 @@ export interface SeatLayerRendererProps {
   onReady?: (info: ReadyInfo) => void;
   onLoadError?: (error: SeatLayerError) => void;
   onUnmount?: () => void;
+  /** The system ended the page's process. Nothing on the view answers any more. */
+  onPageLost: () => void;
 }
 
 interface WebViewHandle {
@@ -86,6 +88,7 @@ export function SeatLayerRenderer({
   onReady,
   onLoadError,
   onUnmount,
+  onPageLost,
 }: SeatLayerRendererProps): React.ReactElement {
   const webView = useRef<WebViewHandle | null>(null);
   const onReadyRef = useRef(onReady);
@@ -160,6 +163,8 @@ export function SeatLayerRenderer({
           `SeatLayer page returned HTTP ${event.nativeEvent.statusCode}.`,
         )
       }
+      onContentProcessDidTerminate={onPageLost}
+      onRenderProcessGone={onPageLost}
       onShouldStartLoadWithRequest={(request) =>
         request.url === seatLayerMobilePageUrl
       }

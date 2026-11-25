@@ -12,7 +12,8 @@ export interface SeatLayerViewProps {
   style?: StyleProp<ViewStyle>;
   /**
    * Change this to force a clean renderer and bridge reload without changing
-   * configuration.
+   * configuration. Needed after the system closed the page (low memory), which
+   * the controller reports as an `sl_transport` error.
    */
   reloadKey?: string | number;
   testID?: string;
@@ -41,6 +42,7 @@ export function SeatLayerView({
       accessibilityLabel={accessibilityLabel}
       onReady={onReady}
       onLoadError={onLoadError}
+      onPageLost={() => controller.pageLost()}
       onUnmount={() =>
         controller.disconnect(
           SeatLayerError.transport('SeatLayer view unmounted.'),

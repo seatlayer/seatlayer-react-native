@@ -3,20 +3,27 @@ import TestRenderer, { act } from 'react-test-renderer';
 import { describe, expect, it, vi } from 'vitest';
 
 const rendererLifecycle = vi.hoisted(() => ({ mounts: 0, unmounts: 0 }));
+const app = vi.hoisted(() => ({ state: 'active', listeners: new Set<(state: string) => void>() }));
 
 vi.mock('react-native', () => ({
-  AppState: { currentState: 'active', addEventListener: () => ({ remove: () => undefined }) },
+  AppState: {
+    get currentState() { return app.state; },
+    addEventListener: (_name: string, listener: (state: string) => void) => {
+      app.listeners.add(listener);
+      return { remove: () => app.listeners.delete(listener) };
+    },
+  },
   View: 'View',
   useColorScheme: () => 'light',
 }));
 
 vi.mock('../src/SeatLayerRenderer', () => ({
-  SeatLayerRenderer(props: { readonly onUnmount?: () => void }): React.ReactElement {
+  SeatLayerRenderer(props: { readonly onUnmount?: () => void; readonly onPageLost: () => void }): React.ReactElement {
     useEffect(() => {
       rendererLifecycle.mounts += 1;
       return () => { rendererLifecycle.unmounts += 1; props.onUnmount?.(); };
     }, []);
-    return React.createElement('seatlayer-renderer');
+    return React.createElement('seatlayer-renderer', { onPageLost: props.onPageLost });
   },
 }));
 
@@ -57,5 +64,51 @@ describe('picker chart scope lifecycle', () => {
     expect(rendererLifecycle.mounts).toBe(2);
     expect(rendererLifecycle.unmounts).toBe(1);
     act(() => tree.unmount());
+  });
+
+  async function lose(tree: TestRenderer.ReactTestRenderer): Promise<void> {
+    await act(async () => {
+      tree.root.findByType('seatlayer-renderer' as never).props.onPageLost();
+      for (let index = 0; index < 12; index += 1) await Promise.resolve();
+    });
+  }
+
+  it('replaces a page the system ended, and waits for the app to be in front', async () => {
+    rendererLifecycle.mounts = 0;
+    app.state = 'active';
+    const controller = new SeatLayerPickerController();
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(chartTree(controller, {})); });
+    await lose(tree);
+    expect(rendererLifecycle.mounts).toBe(2);
+
+    app.state = 'background';
+    await lose(tree);
+    expect(rendererLifecycle.mounts).toBe(2);
+    await act(async () => {
+      app.state = 'active';
+      for (const listener of [...app.listeners]) listener('active');
+      for (let index = 0; index < 12; index += 1) await Promise.resolve();
+    });
+    expect(rendererLifecycle.mounts).toBe(3);
+
+    // A third loss inside a minute is left to the buyer's Try again.
+    await lose(tree);
+    expect(tree.root.findAllByType('seatlayer-renderer' as never)).toHaveLength(0);
+    await act(async () => { await controller.retry(); });
+    expect(tree.root.findAllByType('seatlayer-renderer' as never)).toHaveLength(1);
+    act(() => tree.unmount());
+  });
+
+  it('does not reload after the picker is gone', async () => {
+    rendererLifecycle.mounts = 0;
+    app.state = 'background';
+    const controller = new SeatLayerPickerController();
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(chartTree(controller, {})); });
+    await lose(tree);
+    await act(async () => { tree.unmount(); });
+    expect(app.listeners.size).toBe(0);
+    app.state = 'active';
   });
 });

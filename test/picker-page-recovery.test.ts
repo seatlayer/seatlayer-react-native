@@ -1,0 +1,276 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { BridgeTransport } from '../src/bridge/client';
+import type { Envelope } from '../src/bridge/envelope';
+import { pickerBridgeProfile } from '../src/bridge/profile';
+import { SeatLayerController } from '../src/controller';
+import type { JsonObject } from '../src/json';
+import { SeatLayerPickerController } from '../src/picker/controller';
+import { SeatLayerPickerPageRecovery } from '../src/picker/pageRecovery';
+import { seatLayerPickerSnapshotSchema } from '../src/picker/models';
+
+class Transport implements BridgeTransport {
+  readonly frames: Envelope[] = [];
+  send(frame: Envelope): void {
+    this.frames.push(frame);
+  }
+  commands(): string[] {
+    return this.frames.filter((frame) => frame.kind === 'cmd').map((frame) => frame.type);
+  }
+}
+
+const baseConfig = { enable3D: false, enableSeatView: false };
+const profile = pickerBridgeProfile({ config: baseConfig });
+
+const snapshot = (revision: number, hold: object, sessionId = 'page-1') => ({
+  schema: seatLayerPickerSnapshotSchema,
+  sessionId,
+  revision,
+  event: { key: 'ev', currency: 'EUR' },
+  branding: {}, catalog: {}, map: {}, selection: { seats: [] }, cart: { items: [] }, hold, access: {},
+});
+
+async function flush(): Promise<void> {
+  for (let index = 0; index < 12; index += 1) await Promise.resolve();
+}
+
+async function start(
+  picker: SeatLayerPickerController,
+  options: { page?: string; config?: JsonObject; event?: string; hold?: object } = {},
+): Promise<Transport> {
+  const transport = new Transport();
+  const started = picker.beginHandshake(
+    transport, { event: options.event ?? 'ev' }, { config: { ...baseConfig, ...options.config } },
+  );
+  picker.mapController.ingestRaw({
+    sl: 1, k: 'hello', t: 'hello',
+    p: {
+      protocol: { min: 2, max: 2 },
+      capabilities: [...profile.requiredCapabilities, 'hold-ownership-v1', 'checkout-handoff-v1'],
+      commands: [...profile.requiredCommands, 'picker.continue'],
+      events: ['sys.ready', 'picker.snapshot', 'hold.expired'],
+    },
+  });
+  picker.mapController.ingestRaw({
+    sl: 1, k: 'evt', t: 'sys.ready', n: 1,
+    p: { protocol: 2, snapshot: snapshot(1, options.hold ?? { active: false }, options.page) },
+  });
+  await started;
+  await flush();
+  return transport;
+}
+
+function answer(picker: SeatLayerPickerController, transport: Transport, kind: 'res' | 'err', payload: unknown): void {
+  const last = transport.frames[transport.frames.length - 1];
+  picker.mapController.ingestRaw({ sl: 1, k: kind, t: kind, id: last?.id, p: payload });
+}
+
+function push(picker: SeatLayerPickerController, revision: number, hold: object, sessionId = 'page-1'): void {
+  picker.mapController.ingestRaw({
+    sl: 1, k: 'evt', t: 'picker.snapshot', n: revision + 1, p: { snapshot: snapshot(revision, hold, sessionId) },
+  });
+}
+
+async function handOff(picker: SeatLayerPickerController, transport: Transport, sessionId?: string): Promise<void> {
+  const flight = picker.checkout();
+  await flush();
+  answer(picker, transport, 'res', {
+    snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }, sessionId),
+    handoff: { holdId: 'hold-9', expiresAt: 9_000, currency: 'EUR', lineItems: [], total: 0 },
+  });
+  await flight;
+}
+
+function initConfig(transport: Transport): Record<string, unknown> {
+  const init = transport.frames.find((frame) => frame.kind === 'init');
+  return (init?.payload as { config: Record<string, unknown> }).config;
+}
+
+afterEach(() => vi.useRealTimers());
+
+describe('a page the system ended', () => {
+  it('is replaced at once, without waiting for the page that is gone', async () => {
+    const picker = new SeatLayerPickerController();
+    const transport = await start(picker);
+    const waiting = picker.overview();
+    const refused = expect(waiting).rejects.toMatchObject({ code: 'sl_transport' });
+    await flush();
+    const reloads = vi.fn();
+    picker.subscribeReload(reloads);
+
+    picker.pageLost();
+    await refused;
+    expect(picker.mapController.isReady).toBe(false);
+    await picker.recoverLostPage(0);
+    expect(reloads).toHaveBeenCalledTimes(1);
+    expect(picker.getSnapshot()).toBeUndefined();
+    expect(transport.commands()).not.toContain('picker.destroy');
+    picker.dispose();
+  });
+
+  it('is not called booked when a handed-off hold is missing from the new page', async () => {
+    const picker = new SeatLayerPickerController();
+    const first = await start(picker);
+    await handOff(picker, first);
+    const booked = vi.fn();
+    picker.subscribeBooked(booked);
+
+    picker.pageLost();
+    await picker.recoverLostPage(0);
+    const second = await start(picker, { page: 'page-2' });
+    expect(booked).not.toHaveBeenCalled();
+
+    // The new page is asked for the same hold, and only then is it watched again.
+    expect(second.frames[second.frames.length - 1]).toMatchObject({ type: 'picker.resumeHold', payload: { holdId: 'hold-9' } });
+    answer(picker, second, 'res', { snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }, 'page-2') });
+    await flush();
+    expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+    push(picker, 3, { active: false }, 'page-2');
+    expect(booked).toHaveBeenCalledTimes(1);
+    expect(booked).toHaveBeenCalledWith(expect.objectContaining({ holdId: 'hold-9' }));
+    picker.dispose();
+  });
+
+  it('forgets the handed-off hold when the server no longer has it', async () => {
+    const picker = new SeatLayerPickerController();
+    const first = await start(picker);
+    await handOff(picker, first);
+    const booked = vi.fn();
+    picker.subscribeBooked(booked);
+    picker.pageLost();
+    await picker.recoverLostPage(0);
+    const second = await start(picker, { page: 'page-2' });
+    answer(picker, second, 'err', { code: 'hold_not_found', message: 'gone' });
+    await flush();
+    expect(picker.getCheckoutHandoff()).toBeUndefined();
+    // A later hold of the buyer's is not mistaken for the sale of the first.
+    push(picker, 2, { active: true, owner: 'picker' }, 'page-2');
+    push(picker, 3, { active: false }, 'page-2');
+    expect(booked).not.toHaveBeenCalled();
+    picker.dispose();
+  });
+
+  it('asks for the host\'s first hold again without failing the page when it is gone', async () => {
+    const picker = new SeatLayerPickerController();
+    const first = await start(picker, { config: { initialHoldId: 'hold-1' }, hold: { active: true, owner: 'host' } });
+    expect(initConfig(first).initialHoldId).toBe('hold-1');
+    picker.pageLost();
+    await picker.recoverLostPage(0);
+    const second = await start(picker, { page: 'page-2', config: { initialHoldId: 'hold-1' } });
+    expect(initConfig(second)).not.toHaveProperty('initialHoldId');
+    expect(second.frames[second.frames.length - 1]).toMatchObject({ type: 'picker.resumeHold', payload: { holdId: 'hold-1' } });
+    answer(picker, second, 'err', { code: 'hold_not_found', message: 'gone' });
+    await flush();
+    expect(picker.mapController.isReady).toBe(true);
+
+    // A later start that is not a reload is the host's own again.
+    const third = await start(picker, { page: 'page-3', config: { initialHoldId: 'hold-1' } });
+    expect(initConfig(third).initialHoldId).toBe('hold-1');
+    picker.dispose();
+  });
+
+  it('asks for nothing when nothing was held, and never across events', async () => {
+    const picker = new SeatLayerPickerController();
+    await start(picker, { config: { initialHoldId: 'hold-1' } });
+    picker.pageLost();
+    await picker.recoverLostPage(0);
+    const second = await start(picker, { page: 'page-2', config: { initialHoldId: 'hold-1' } });
+    expect(second.commands()).not.toContain('picker.resumeHold');
+    expect(initConfig(second)).not.toHaveProperty('initialHoldId');
+
+    await handOff(picker, second, 'page-2');
+    expect(picker.getSnapshot()?.hold.active).toBe(true);
+    picker.pageLost();
+    await picker.recoverLostPage(1);
+    const other = await start(picker, { page: 'page-3', event: 'other' });
+    expect(other.commands()).not.toContain('picker.resumeHold');
+    picker.dispose();
+  });
+
+  it('keeps the first hold in the boot of a page that never loaded', async () => {
+    const picker = new SeatLayerPickerController();
+    await picker.retry();
+    const transport = await start(picker, { config: { initialHoldId: 'hold-1' } });
+    expect(initConfig(transport).initialHoldId).toBe('hold-1');
+    picker.dispose();
+  });
+
+  it('stops reloading a page that keeps ending, until the buyer tries again', async () => {
+    const picker = new SeatLayerPickerController();
+    await start(picker);
+    for (const at of [0, 1_000]) {
+      picker.pageLost();
+      await picker.recoverLostPage(at);
+      expect(picker.getPageLostError()).toBeUndefined();
+    }
+    picker.pageLost();
+    await picker.recoverLostPage(2_000);
+    expect(picker.getPageLostError()).toMatchObject({ code: 'sl_transport' });
+    await picker.retry();
+    expect(picker.getPageLostError()).toBeUndefined();
+    picker.dispose();
+  });
+
+  it('counts only the losses of the last minute', () => {
+    const recovery = new SeatLayerPickerPageRecovery();
+    expect([0, 30_000, 61_000, 200_000].map((at) => recovery.lost(at))).toEqual([true, true, true, true]);
+    expect([200_001, 200_002].map((at) => recovery.lost(at))).toEqual([true, false]);
+    recovery.reset();
+    expect(recovery.lost(200_003)).toBe(true);
+  });
+
+  it('reaches the host of a raw view as an error it can remount on', async () => {
+    const controller = new SeatLayerController();
+    const errors: unknown[] = [];
+    controller.on('error', (error) => errors.push(error));
+    const transport = new Transport();
+    const started = controller.beginHandshake(transport, { event: 'ev' });
+    controller.ingestRaw({ sl: 1, k: 'hello', t: 'hello', p: { protocol: { min: 1, max: 1 }, commands: [], capabilities: [], events: [] } });
+    controller.ingestRaw({ sl: 1, k: 'evt', t: 'sys.ready', n: 1, p: { protocol: 1 } });
+    await started;
+    const waiting = controller.getSelection();
+    const refused = expect(waiting).rejects.toMatchObject({ code: 'sl_transport' });
+    controller.pageLost();
+    await refused;
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatchObject({ code: 'sl_transport', retryable: true });
+    expect(controller.isReady).toBe(false);
+  });
+});
+
+describe('time limits', () => {
+  it('waits 45 seconds for the page to start', async () => {
+    vi.useFakeTimers();
+    const controller = new SeatLayerController();
+    let outcome: unknown;
+    void controller.beginHandshake(new Transport(), { event: 'ev' }).catch((error: unknown) => { outcome = error; });
+    await vi.advanceTimersByTimeAsync(44_900);
+    expect(outcome).toBeUndefined();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(outcome).toMatchObject({ code: 'sl_timeout' });
+  });
+
+  it('takes a hold the page answers after 41 seconds', async () => {
+    const picker = new SeatLayerPickerController();
+    const transport = await start(picker);
+    vi.useFakeTimers();
+    const flight = picker.checkout();
+    await vi.advanceTimersByTimeAsync(41_000);
+    answer(picker, transport, 'res', {
+      snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }),
+      handoff: { holdId: 'hold-9', expiresAt: 9_000, currency: 'EUR', lineItems: [], total: 0 },
+    });
+    await expect(flight).resolves.toMatchObject({ holdId: 'hold-9' });
+    picker.dispose();
+  });
+
+  it('keeps 15 seconds for a command that holds nothing', async () => {
+    const picker = new SeatLayerPickerController();
+    await start(picker);
+    vi.useFakeTimers();
+    const refused = expect(picker.overview()).rejects.toMatchObject({ code: 'sl_timeout' });
+    await vi.advanceTimersByTimeAsync(15_100);
+    await refused;
+    picker.dispose();
+  });
+});

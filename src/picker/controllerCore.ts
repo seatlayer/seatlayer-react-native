@@ -184,7 +184,7 @@ export class SeatLayerPickerControllerCore {
     }
     let safeConfig: SeatLayerPickerBridgeOptions['config'];
     try {
-      safeConfig = pickerBridgeProfile(options).config;
+      safeConfig = this.startConfig(configuration, pickerBridgeProfile(options).config);
     } catch (error) {
       return Promise.reject(
         error instanceof SeatLayerError
@@ -207,6 +207,7 @@ export class SeatLayerPickerControllerCore {
       })
       .then((ready) => {
         if (ready.snapshot) this.applyPickerSnapshot(ready.snapshot);
+        this.onPageStarted();
         return ready;
       });
   }
@@ -761,6 +762,11 @@ export class SeatLayerPickerControllerCore {
    * it so a later release can name the hold; ordinary snapshots never do.
    */
   protected onCheckoutHandoff(_handoff: SeatLayerPickerCheckoutHandoff): void {}
+  /** What a page is started with, and the moment it is ready. */
+  protected startConfig(_configuration: SeatLayerConfiguration, config: JsonObject | undefined): JsonObject | undefined {
+    return config;
+  }
+  protected onPageStarted(): void {}
   protected available(capability: string, command: string): boolean {
     return this.mapController.isReady &&
       this.mapController.supportsPickerCapability(capability) &&

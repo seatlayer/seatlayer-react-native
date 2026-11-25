@@ -34,6 +34,26 @@ const failableCommands = new Set([
   'releaseLabels',
 ]);
 
+/**
+ * Commands that can place a hold. The page waits up to 40 seconds for the
+ * server's answer, so a shorter limit here would call a hold that worked failed.
+ */
+const holdCommands = new Set([
+  'hold',
+  'holdGA',
+  'bestAvailable',
+  'resumeHold',
+  'extendHold',
+  'picker.continue',
+  'picker.holdSelection',
+  'picker.holdGA',
+  'picker.bestAvailable',
+  'picker.setTableQuantity',
+  'picker.resumeHold',
+  'picker.extendHold',
+]);
+const holdCommandTimeoutMs = 45_000;
+
 export class BridgeClient {
   private readonly pending = new Map<string, Pending>();
   private readonly lastSequence = new Map<string, number>();
@@ -54,14 +74,17 @@ export class BridgeClient {
     if (this.closed) return Promise.reject(SeatLayerError.destroyed());
     const order = ++this.nextId;
     const id = `rn${order}`;
+    const timeoutMs = holdCommands.has(name)
+      ? Math.max(this.timeoutMs, holdCommandTimeoutMs)
+      : this.timeoutMs;
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const entry = this.pending.get(id);
         if (!entry) return;
         this.pending.delete(id);
-        entry.reject(SeatLayerError.timeout(entry.command, this.timeoutMs));
-      }, this.timeoutMs);
+        entry.reject(SeatLayerError.timeout(entry.command, timeoutMs));
+      }, timeoutMs);
 
       this.pending.set(id, { command: name, order, resolve, reject, timer });
       Promise.resolve(
