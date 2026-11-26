@@ -34,6 +34,8 @@ export interface PendingConfirmationState {
   readonly pending: SeatLayerSelectedSeatLike | null;
   /** Tracks a config/read-only policy change even when revision is unchanged. */
   readonly confirmationEnabled: boolean;
+  /** Whether the last applied snapshot carried a live hold. */
+  readonly holdActive: boolean;
 }
 
 /** Inputs are deliberately small so scope policy remains independent of layout. */
@@ -54,6 +56,7 @@ export const initialPendingConfirmationState =
     answered: Object.freeze([]),
     pending: null,
     confirmationEnabled: true,
+    holdActive: false,
   });
 
 /** Starts a new picker session without retaining an answered/pending seat. */
@@ -86,28 +89,36 @@ export function applyPendingConfirmationSnapshot(
   const answered = sessionChanged
     ? Object.freeze([])
     : Object.freeze(state.answered.filter((key) => present.has(key)));
+  const holdActive = snapshot.hold?.active === true;
   const next = {
     sessionId: snapshot.sessionId,
     revision: snapshot.revision,
     selection,
     answered,
     confirmationEnabled,
+    holdActive,
   } as const;
   if (!confirmationEnabled) return Object.freeze({ ...next, pending: null });
-  if (snapshot.hold?.active !== true) return withPending(next);
+  if (!holdActive || (!sessionChanged && state.holdActive)) return withPending(next);
 
-  // A hold already present when this scope/session appears is authoritative
-  // and must not manufacture a confirmation card. A hold that begins while an
-  // exact card is already unanswered is different: inspection did not answer
-  // Select/Cancel, so retain only that same structural seat through the newer
-  // snapshot and continue excluding it from buyer-facing cart totals.
+  // The seats a hold ARRIVES with were not asked about here (a session resumed
+  // with its hold, or seats the runtime held itself), so they are adopted as
+  // answered. A card already unanswered when the hold begins keeps its
+  // question. Seats tapped while the hold lives are asked about as usual.
   const retainedKey = sessionChanged || state.pending === null
     ? null
     : selectionKey(state.pending);
   const retained = retainedKey === null || answered.includes(retainedKey)
     ? undefined
     : selection.find((seat) => selectionKey(seat) === retainedKey);
-  return Object.freeze({ ...next, pending: retained ?? null });
+  const adopted = selection
+    .map(selectionKey)
+    .filter((key): key is string => key !== null && key !== retainedKey && !answered.includes(key));
+  return Object.freeze({
+    ...next,
+    answered: Object.freeze([...answered, ...adopted]),
+    pending: retained ?? null,
+  });
 }
 
 /** Only an explicit bridge opt-out or an active read-only lease suppresses cards. */

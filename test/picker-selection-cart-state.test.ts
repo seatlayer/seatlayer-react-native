@@ -128,6 +128,31 @@ describe('pending confirmation state', () => {
       .toMatchObject({ quantity: 0, total: 0 });
   });
 
+  it('asks about a seat tapped while a hold lives, and only that seat', () => {
+    const held = (revision: number, selected: readonly SeatLayerSelectedSeatLike[]) =>
+      ({ ...snapshot('session-1', revision, selected), hold: { active: true, owner: 'picker' } });
+    let state = applyPendingConfirmationSnapshot(initialPendingConfirmationState(), held(1, [seat('floor', 'Floor-1')]));
+    expect(state.pending).toBeNull();
+    state = applyPendingConfirmationSnapshot(state, held(2, [seat('floor', 'Floor-1'), seat('table-3', 'T3')]));
+    expect(state.pending).toMatchObject({ id: 'table-3', label: 'T3' });
+    expect(confirmedCartForPending(state, [line('floor', 'Floor-1'), line('table-3', 'T3', 60)]))
+      .toMatchObject({ quantity: 1, total: 25 });
+    state = confirmPending(state);
+    expect(state.pending).toBeNull();
+    // The hold ending raises no card for a seat that was never asked about.
+    state = applyPendingConfirmationSnapshot(state, snapshot('session-1', 3, [seat('floor', 'Floor-1'), seat('table-3', 'T3')]));
+    expect(state.pending).toBeNull();
+  });
+
+  it('adopts the seats a hold arrives with as answered', () => {
+    let state = applyPendingConfirmationSnapshot(initialPendingConfirmationState(), snapshot('session-1', 1, [seat('seat-1', 'A-1')]));
+    state = confirmPending(state);
+    state = applyPendingConfirmationSnapshot(state, { ...snapshot('session-1', 2, [seat('seat-1', 'A-1'), seat('seat-2', 'A-2')]), hold: { active: true, owner: 'picker' } });
+    expect(state.pending).toBeNull();
+    state = applyPendingConfirmationSnapshot(state, snapshot('session-1', 3, [seat('seat-1', 'A-1'), seat('seat-2', 'A-2')]));
+    expect(state.pending).toBeNull();
+  });
+
   it('keeps authoritative selection and cart projection while confirmation is disabled or read-only', () => {
     const selected = [seat('seat-1', 'A-1')];
     for (const policy of [
