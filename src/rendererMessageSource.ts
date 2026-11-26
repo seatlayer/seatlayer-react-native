@@ -1,9 +1,17 @@
 import { seatLayerMobileOrigin, seatLayerMobilePageUrl } from './types';
 
-/** The page a renderer opens: the one it was given, on the map's origin only. */
+/** The folder of the map version this release is pinned to, with its trailing slash. */
+const versionFolder = seatLayerMobilePageUrl.slice(0, seatLayerMobilePageUrl.lastIndexOf('/') + 1);
+
+/**
+ * The page a renderer opens: the one it was given, and only a page file in
+ * the folder of the pinned map version. Another version, another folder, a
+ * `..`, a query or a fragment is no page at all.
+ */
 function rendererPage(page: string | undefined): string | undefined {
   const chosen = page ?? seatLayerMobilePageUrl;
-  return chosen.startsWith(`${seatLayerMobileOrigin}/`) ? chosen : undefined;
+  if (!chosen.startsWith(versionFolder)) return undefined;
+  return /^[A-Za-z0-9_-]+\.html$/.test(chosen.slice(versionFolder.length)) ? chosen : undefined;
 }
 
 /**

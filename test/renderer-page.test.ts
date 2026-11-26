@@ -31,6 +31,24 @@ describe('a renderer for another page of the same map version', () => {
     expect(isSeatLayerRendererMessageSource(second)).toBe(false);
   });
 
+  it('never opens a page of another map version, or outside its folder', () => {
+    const folder = `${seatLayerMobileOrigin}/seatlayer-js@${seatLayerHostedWebVersion}/`;
+    for (const page of [
+      `${seatLayerMobileOrigin}/seatlayer-js@0.84.1/season.html`,
+      `${seatLayerMobileOrigin}/seatlayer-js@9.9.9/mobile.html`,
+      `${folder}../seatlayer-js@0.84.1/season.html`,
+      `${folder}%2e%2e/season.html`,
+      `${folder}nested/season.html`,
+      `${folder}season.html?page=other.html`,
+      `${folder}season.html#x`,
+      `${folder}season.js`,
+      folder,
+    ]) {
+      expect(seatLayerRendererAllowsNavigation(page, page), page).toBe(false);
+      expect(isSeatLayerRendererMessageSource(page, page), page).toBe(false);
+    }
+  });
+
   it('never opens a page off the map origin, whatever it is given', () => {
     const elsewhere = 'https://example.com/seatlayer-js/season.html';
     expect(seatLayerRendererAllowsNavigation(elsewhere, elsewhere)).toBe(false);
