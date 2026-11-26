@@ -76,44 +76,31 @@ describe('§3.13.13 seats already in checkout (N1 = B)', () => {
   });
 });
 
-describe('booked waits for the sale (§3.13, Flutter 0.4.0 + 0.7.1)', () => {
-  it('is silent on the hand-off itself', () => {
+describe('a hold that leaves the map is no sale', () => {
+  function handedOff(): SeatLayerPickerBookedDetector {
     const detector = new SeatLayerPickerBookedDetector();
     detector.handedOff(handoff);
-    expect(detector.observe(snapshot(true))).toBeUndefined();
+    detector.observe(snapshot(true));
+    return detector;
+  }
+
+  it('is silent on the hand-off itself', () => {
+    const detector = handedOff();
     expect(detector.bookedHandoff).toBeUndefined();
     expect(detector.pendingHandoff).toBe(handoff);
   });
 
-  it('answers once when the hold settles with no expiry announced', () => {
-    const detector = new SeatLayerPickerBookedDetector();
-    detector.handedOff(handoff);
-    detector.observe(snapshot(true));
-    expect(detector.observe(snapshot(false))).toBe(handoff);
-    expect(detector.bookedHandoff).toBe(handoff);
-    expect(detector.observe(snapshot(false))).toBeUndefined();
-  });
-
-  it('stays silent when the runtime announced the expiry first', () => {
-    const detector = new SeatLayerPickerBookedDetector();
-    detector.handedOff(handoff);
-    detector.observe(snapshot(true));
-    detector.expired();
-    expect(detector.observe(snapshot(false))).toBeUndefined();
+  it('is silent when the hold leaves the map, and has nothing to release then', () => {
+    const detector = handedOff();
+    detector.observe(snapshot(false));
     expect(detector.bookedHandoff).toBeUndefined();
+    expect(detector.pendingHandoff).toBeUndefined();
   });
 
-  it('stays silent for a hold the buyer released back to the picker', () => {
-    const detector = new SeatLayerPickerBookedDetector();
-    detector.handedOff(handoff);
-    detector.observe(snapshot(true));
+  it('is silent for a hold the buyer released back to the picker', () => {
+    const detector = handedOff();
     detector.released();
-    expect(detector.observe(snapshot(false))).toBeUndefined();
-  });
-
-  it('never fires for a hold that was never handed off', () => {
-    const detector = new SeatLayerPickerBookedDetector();
-    detector.observe(snapshot(true));
-    expect(detector.observe(snapshot(false))).toBeUndefined();
+    detector.observe(snapshot(false));
+    expect(detector.bookedHandoff).toBeUndefined();
   });
 });
