@@ -11,7 +11,7 @@
   "3D: cut at the top or bottom": {
     "667x375": 2,
     "844x390": 2,
-    "915x412": 4
+    "915x412": 3
   },
   "C · 10 · Guest tables: text ends in …": {
     "320": 8,
@@ -150,7 +150,7 @@
   "Map: cut at the top or bottom": {
     "667x375": 2,
     "844x390": 2,
-    "915x412": 4
+    "915x412": 3
   },
   "T24 · 7 · Premium: text ends in …": {
     "320": 2
@@ -164,7 +164,7 @@
   "Test mode: cut at the top or bottom": {
     "667x375": 2,
     "844x390": 2,
-    "915x412": 4
+    "915x412": 3
   },
   "إضافة مقعد: text ends in …": {
     "320": 2

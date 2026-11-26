@@ -231,6 +231,25 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  it('keeps the map its line of controls while the foot says why an action was refused', async () => {
+    state.width = 320;
+    const snapshot = { categories: [], capabilities: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map', rung: 'seats', focusedSectionId: 's1' }, sections: [{ id: 's1', label: 'One' }] };
+    const mapMinHeight = async (error: unknown) => {
+      state.scope = scope({ snapshot, error, presentation: { prompt: null, sheet: 'expanded', mapRung: 'seats' } });
+      let tree!: TestRenderer.ReactTestRenderer;
+      await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+      expect(tree.root.findAllByType('cart-sheet' as any)).toHaveLength(1);
+      let map = tree.root.findByType('chart' as any).parent!;
+      while ((map.type as unknown) !== 'View' || typeof map.props.onLayout !== 'function') map = map.parent!;
+      const style = Object.assign({}, ...[map.props.style].flat(2).filter(Boolean));
+      await act(async () => { tree.unmount(); });
+      return style.minHeight;
+    };
+    // The open list gives way first: the map keeps the line its controls stand on.
+    expect(await mapMinHeight(new Error('refused'))).toBe(60);
+    expect(await mapMinHeight(undefined)).toBeUndefined();
+  });
+
   it('keeps one chart instance across a theme rebuild, uses the phone band, and collapses a pending sheet', async () => {
     state.width = 320;
     state.chartMounts = 0;

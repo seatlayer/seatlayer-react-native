@@ -38,3 +38,6 @@ export const seatLayerPickerAdaptiveStyles = StyleSheet.create({
   owner: { ...absoluteFillObject, justifyContent: 'center' },
   phoneFooter: { alignSelf: 'stretch', width: '100%' },
 });
+
+/** The map's line of controls at its top edge, and the room around it. */
+export const seatLayerPickerMapTopLine = 60;

@@ -63,6 +63,8 @@ stay; the changes below are the ones an app or a buyer can notice.
   - An app's own `checkoutBar` part keeps the full width, under the words.
     `SeatLayerBookButton` placed anywhere else looks as it did.
 - While a seat card asks, the row is faded and takes no press.
+- While the row says why an action was refused, the open cart list gives way
+  before the map does: the map keeps the line its Map/3D control stands on.
 - The standing and table prompts fit a short screen, as sideways or at a large
   text size: they open with the number and the buttons in sight, and the name
   is a scroll away. They ran off the top of the screen.
