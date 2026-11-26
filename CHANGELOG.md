@@ -66,6 +66,9 @@ stay; the changes below are the ones an app or a buyer can notice.
 - The spotlight on the seat a card asks about stands on the seat. On a map at
   its edge, which could not move that far, it stood up to 120 points above it.
   The card always named the right seat.
+- Under the seat card the map is darkened a little more than before. An app
+  that installed a blur with `setSeatLayerPickerSpotlightBlur` keeps its blur
+  and the lighter veil over it.
 - On a phone the map's + stays in its place and dims when there is nothing more to
   zoom in to, where it left a gap between the other two buttons. The accessibility
   button stands over the others, 4 points further in, and is pressed over 44
