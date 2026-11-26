@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { SeatLayerPickerController } from './controller';
 import {
@@ -58,6 +58,7 @@ export function useSeatLayerPickerSeatLiftBinding(
     return () => { lift.setAnchorListener(undefined); };
   }, [lift]);
   useEffect(() => () => { liftRef.current.forget(); }, [lift]);
+  const [, drawAgain] = useState(0);
   useLayoutEffect(() => {
     if (!pans) return;
     lift.sync({
@@ -68,6 +69,13 @@ export function useSeatLayerPickerSeatLiftBinding(
       sheet: input.sheet,
       revision: input.revision,
     });
+    if (!lift.isSettling) return;
+    // A lift is sent once two renders agree on the map's height. Where nothing
+    // else draws again after the card opens (a phone held sideways has no
+    // sheet collapsing under it), the next frame has to be asked for, or the
+    // lift waits for ever and the card covers its seat.
+    const frame = nextFrame(() => drawAgain((count) => count + 1));
+    return () => { frame.cancel(); };
   });
   if (pans || input.seatId === null || !(input.sheet > 0)) return 0;
   return seatLayerPickerSeatCardInsetBand({
@@ -75,4 +83,17 @@ export function useSeatLayerPickerSeatLiftBinding(
     cardTop: input.mapHeight - input.sheet,
     mapHeight: input.mapHeight,
   });
+}
+
+function nextFrame(callback: () => void): { cancel(): void } {
+  const host = globalThis as typeof globalThis & {
+    requestAnimationFrame?: (callback: () => void) => number;
+    cancelAnimationFrame?: (handle: number) => void;
+  };
+  if (host.requestAnimationFrame && host.cancelAnimationFrame) {
+    const handle = host.requestAnimationFrame(callback);
+    return { cancel: () => { host.cancelAnimationFrame!(handle); } };
+  }
+  const handle = setTimeout(callback, 16);
+  return { cancel: () => { clearTimeout(handle); } };
 }
