@@ -1,9 +1,24 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.5`. Public names
 stay; the changes below are the ones an app or a buyer can notice.
+
+**Upgrading from 0.4**
+
+- A phone held sideways now keeps the phone layout: the one-row cart at the
+  foot, the levels at the top of the map. The wide layout needs a window whose
+  shorter side is at least 600 points. An app that wants the wide layout on a
+  phone held sideways passes `options.layout: 'wide'`.
+- Take a sale from your own server. After it has booked, call
+  `controller.markBooked({ holdId })`; only then do `onBooked` and "You're all
+  set" come.
+- 3D touch changed: one finger moves, a two-finger twist turns. For the earlier
+  gestures and the Rotate / Move control, pass
+  `options.touchNavigation3D: 'classic'`.
+- "Powered by SeatLayer" is gone. `SeatLayerPickerAttribution` draws nothing,
+  and the `sheetHandle…` and `sheetHeadHeight` sizes change nothing.
 
 **The map**
 
