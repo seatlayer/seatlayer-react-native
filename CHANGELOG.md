@@ -2,11 +2,14 @@
 
 ## Unreleased
 
-The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.4`. Public names
+The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.5`. Public names
 stay; the changes below are the ones an app or a buyer can notice.
 
 **The map**
 
+- A standing area's line in the cart reads the area's name, for example
+  "Floor".
+- A standing area keeps its "N left" count after a theme or language switch.
 - A hold the server never answers ends after 40 seconds with "Check your
   connection and try again." What else changed on the map is in the
   [changelog](https://docs.seatlayer.io/changelog/).
