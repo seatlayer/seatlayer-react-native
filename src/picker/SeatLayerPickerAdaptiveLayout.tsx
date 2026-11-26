@@ -29,6 +29,7 @@ import { useSeatLayerPickerSeatLiftBinding } from './seatLiftBinding';
 import { SeatLayerPickerToastLayer, useSeatLayerPickerToastQueue } from './SeatLayerPickerToast';
 import { seatLayerPickerHoldLapseNews, seatLayerPickerToastRequest } from './toastBridge';
 import { SeatLayerHoldOwnershipNotice } from './SeatLayerHoldOwnershipNotice';
+import { seatLayerPickerHoldOwnershipStore } from './holdOwnership';
 import {
   SeatLayerPickerAccessPanel, SeatLayerPickerSalesClosedStatement,
 } from './SeatLayerPickerAccessPanel';
@@ -75,7 +76,7 @@ import { SeatLayerVenue3DBackSizeContext } from './venue3DBackSize';
 import { seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { chartSeatLayerPickerColor } from './chartColor';
 import { renderSeatLayerPickerAdaptivePart as part } from './adaptiveParts';
-import { seatLayerPickerAdaptiveStyles as styles } from './adaptiveStyles';
+import { seatLayerPickerAdaptiveStyles as styles, seatLayerPickerMapTopLine } from './adaptiveStyles';
 import { seatLayerVenue3DCornerTaken } from './immersiveChrome';
 import { resolveSeatLayerPickerMapChromeTheme } from './mapChromeTheme';
 import { resolveSeatLayerPickerAdaptiveChromeEligibility } from './adaptiveChromeEligibility';
@@ -222,6 +223,8 @@ export function SeatLayerPickerAdaptiveLayout({
     scope.controller.getGACandidate,
     scope.controller.getGACandidate,
   );
+  const holdNotices = seatLayerPickerHoldOwnershipStore(scope.controller);
+  const holdNotice = useSyncExternalStore(holdNotices.subscribe, holdNotices.getSnapshot, holdNotices.getSnapshot);
   const snapshot = scope.snapshot;
   const nativeChrome = scope.controller.mapController.isReady &&
     scope.controller.mapController.supportsPickerCapability('native-chrome-contract-v1');
@@ -695,7 +698,11 @@ export function SeatLayerPickerAdaptiveLayout({
           const next = event.nativeEvent.layout.height;
           if (!Number.isFinite(next) || next < 0) return;
           setMapHeight((current) => Math.abs(current - next) < .5 ? current : next);
-        }} style={styles.map}>
+        }} style={[styles.map, !wide && cartSheet !== null && (holdNotice !== undefined || (scope.isReady && scope.error !== undefined))
+          // While the foot says why an action was refused, the open list gives
+          // way before the map loses its line of controls.
+          ? { minHeight: seatLayerPickerMapTopLine }
+          : null]}>
           {chart}
           {wide ? null : <SpotlightGlass anchorDy={anchorDy} screenPoint={cardSeat?.screenPoint} visible={cardActive} />}
           {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(decisionUp)}>
