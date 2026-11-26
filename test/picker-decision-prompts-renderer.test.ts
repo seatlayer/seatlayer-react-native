@@ -292,14 +292,23 @@ describe('picker decision prompt renderer', () => {
     const tiers = Array.from({ length: 12 }, (_, index) => ({ id: `tier-${index}`, name: `Tier ${index}`, price: index + 1 }));
     setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 12, tiers }] })); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
-    expect(renderer.root.findAllByType('ScrollView' as any)).toHaveLength(1);
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-prompt-tiers' })).toHaveLength(1);
     expect(renderer.root.findAllByProps({ accessibilityRole: 'radio' })).toHaveLength(12);
+  });
+
+  it('holds the whole prompt, name to buttons, in one scroll that opens at its foot', async () => {
+    setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 3 }] })); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
+    const scroll = renderer.root.findByProps({ testID: 'seatlayer-prompt-scroll' });
+    const words = scroll.findAllByType('Text' as any).map((node) => node.children.join(''));
+    expect(words[0]).toBe('GA');
+    expect(scroll.findAllByProps({ accessibilityRole: 'button' }).length).toBeGreaterThanOrEqual(2);
   });
 
   it('does not leave a blank tier scroll surface for a no-tier GA decision', async () => {
     setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 3 }] })); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
-    expect(renderer.root.findAllByType('ScrollView' as any)).toHaveLength(0);
+    expect(renderer.root.findAllByProps({ testID: 'seatlayer-prompt-tiers' })).toHaveLength(0);
   });
 
   it('resyncs uncontrolled tier choice for an authoritative same-candidate tier change without clobbering unrelated local choices', async () => {

@@ -63,6 +63,9 @@ stay; the changes below are the ones an app or a buyer can notice.
   - An app's own `checkoutBar` part keeps the full width, under the words.
     `SeatLayerBookButton` placed anywhere else looks as it did.
 - While a seat card asks, the row is faded and takes no press.
+- The standing and table prompts fit a short screen, as sideways or at a large
+  text size: they open with the number and the buttons in sight, and the name
+  is a scroll away. They ran off the top of the screen.
 - The spotlight on the seat a card asks about stands on the seat. On a map at
   its edge, which could not move that far, it stood up to 120 points above it.
   The card always named the right seat.
