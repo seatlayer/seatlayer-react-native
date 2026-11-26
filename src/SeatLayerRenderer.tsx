@@ -20,7 +20,10 @@ import {
   SeatLayerRendererHandshakeLease,
 } from './rendererHandshake';
 import { captureSeatLayerRendererUnmount } from './rendererCleanup';
-import { isSeatLayerRendererMessageSource } from './rendererMessageSource';
+import {
+  isSeatLayerRendererMessageSource,
+  seatLayerRendererAllowsNavigation,
+} from './rendererMessageSource';
 
 export interface SeatLayerRendererController {
   beginHandshake(
@@ -43,6 +46,11 @@ export interface SeatLayerRendererProps {
   onUnmount?: () => void;
   /** The system ended the page's process. Nothing on the view answers any more. */
   onPageLost: () => void;
+  /**
+   * The map page to open, by its full address on the map's origin. The event
+   * page when not given.
+   */
+  page?: string;
 }
 
 interface WebViewHandle {
@@ -89,6 +97,7 @@ export function SeatLayerRenderer({
   onLoadError,
   onUnmount,
   onPageLost,
+  page,
 }: SeatLayerRendererProps): React.ReactElement {
   const webView = useRef<WebViewHandle | null>(null);
   const onReadyRef = useRef(onReady);
@@ -99,7 +108,7 @@ export function SeatLayerRenderer({
   onUnmountRef.current = onUnmount;
   const viewKey = `${configurationIdentity(configuration)}:${String(
     reloadKey ?? 'seatlayer',
-  )}`;
+  )}${page === undefined ? '' : `:${page}`}`;
 
   useLayoutEffect(() => {
     const transport = new ReactNativeWebViewTransport(() => webView.current);
@@ -125,7 +134,7 @@ export function SeatLayerRenderer({
   }, [configuration, controller, reloadKey]);
 
   const onMessage = (event: WebViewMessageEvent): void => {
-    if (isSeatLayerRendererMessageSource(event.nativeEvent.url)) {
+    if (isSeatLayerRendererMessageSource(event.nativeEvent.url, page)) {
       controller.ingestRaw(event.nativeEvent.data);
     }
   };
@@ -141,7 +150,7 @@ export function SeatLayerRenderer({
       testID={testID}
       accessibilityLabel={accessibilityLabel}
       style={[styles.webView, style]}
-      source={{ uri: seatLayerMobilePageUrl }}
+      source={{ uri: page ?? seatLayerMobilePageUrl }}
       originWhitelist={[seatLayerMobileOrigin]}
       javaScriptEnabled
       domStorageEnabled
@@ -166,7 +175,7 @@ export function SeatLayerRenderer({
       onContentProcessDidTerminate={onPageLost}
       onRenderProcessGone={onPageLost}
       onShouldStartLoadWithRequest={(request) =>
-        request.url === seatLayerMobilePageUrl
+        seatLayerRendererAllowsNavigation(page, request.url)
       }
     />
   );
