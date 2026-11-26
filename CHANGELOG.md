@@ -65,6 +65,10 @@ stay; the changes below are the ones an app or a buyer can notice.
 - While a seat card asks, the row is faded and takes no press.
 - While the row says why an action was refused, the open cart list gives way
   before the map does: the map keeps the line its Map/3D control stands on.
+- The notice that seats are already in checkout is never cut. Wherever it fits,
+  it stands whole as before. Where the screen has no room left for all of it,
+  only its words scroll, and "Release and change seats" stands whole under them,
+  on two lines where it needs them.
 - The standing and table prompts fit a short screen, as sideways or at a large
   text size: they open with the number and the buttons in sight, and the name
   is a scroll away. They ran off the top of the screen.

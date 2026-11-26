@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useSyncExternalStore } from "react";
-import { Pressable, StyleSheet, Text, type StyleProp, View, type ViewStyle } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, type StyleProp, View, type ViewStyle } from "react-native";
 
 import { seatLayerPickerHoldOwnershipStore } from "./holdOwnership";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
@@ -61,16 +61,22 @@ export function SeatLayerHoldOwnershipNotice(
         <View style={styles.markDot} />
       </View>
       <View style={styles.column}>
-        <Text
-          accessibilityRole="header"
-          numberOfLines={2}
-          style={[styles.title, { fontFamily: theme.fontFamily }]}
+        {/* The notice stands whole wherever it fits. Only where the screen
+            has no more room for it do the words scroll, and the button under
+            them stays whole and in reach. */}
+        <ScrollView
+          contentContainerStyle={styles.wordsContent}
+          nestedScrollEnabled
+          style={styles.words}
+          testID="seatlayer-hold-notice-words"
         >
-          {scope.strings.translate(notice.titleKey)}
-        </Text>
-        <Text numberOfLines={3} style={[styles.body, { fontFamily: theme.fontFamily }]}>
-          {scope.strings.translate(notice.bodyKey)}
-        </Text>
+          <Text accessibilityRole="header" style={[styles.title, { fontFamily: theme.fontFamily }]}>
+            {scope.strings.translate(notice.titleKey)}
+          </Text>
+          <Text style={[styles.body, { fontFamily: theme.fontFamily }]}>
+            {scope.strings.translate(notice.bodyKey)}
+          </Text>
+        </ScrollView>
         {notice.actionKey
           ? (
             <Pressable
@@ -84,7 +90,7 @@ export function SeatLayerHoldOwnershipNotice(
                 opacity: releasing ? 0.6 : 1,
               }]}
             >
-              <Text numberOfLines={1} style={[styles.actionText, { fontFamily: theme.fontFamily }]}>
+              <Text style={[styles.actionText, { fontFamily: theme.fontFamily }]}>
                 {scope.strings.translate(notice.actionKey)}
               </Text>
             </Pressable>
@@ -113,11 +119,16 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   root: {
     alignItems: "flex-start",
     flexDirection: "row",
+    // It is the one part of the cart's foot that gives way, and only once the
+    // open list over it has none left to give.
+    flexShrink: 1,
     paddingEnd: 4,
     paddingStart: 12,
     paddingVertical: 10,
   },
-  column: { flex: 1, gap: 2, paddingStart: 9 },
+  column: { alignSelf: "stretch", flex: 1, gap: 2, paddingStart: 9 },
+  words: { flexGrow: 0, flexShrink: 1 },
+  wordsContent: { gap: 2 },
   markRing: {
     alignItems: "center",
     borderColor: noticeInk,
@@ -142,7 +153,7 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     minHeight: 34,
     paddingHorizontal: 14,
   },
-  actionText: { color: noticeInk, fontSize: 13, fontWeight: "700" },
+  actionText: { color: noticeInk, fontSize: 13, fontWeight: "700", textAlign: "center" },
   dismiss: {
     alignItems: "center",
     height: size.minimumHitTarget,

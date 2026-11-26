@@ -48,9 +48,9 @@ export function SeatLayerSheetFoot(props: SeatLayerSheetFootProps): React.ReactE
   const besideDisc = Math.max(0, width - bar.padX * 2 - bar.disc - bar.gap);
   const room = button === null || props.checkoutBarIsCustom ? besideDisc : besideButton ?? besideDisc;
   return (
-    <View testID="seatlayer-cart-foot">
-      <View style={{ paddingHorizontal: bar.padX, paddingTop: news ? bar.padY : 0 }}>
-        <View onLayout={(event) => setNews(event.nativeEvent.layout.height > 0)}>
+    <View style={giveWay} testID="seatlayer-cart-foot">
+      <View style={[giveWay, { paddingHorizontal: bar.padX, paddingTop: news ? bar.padY : 0 }]}>
+        <View onLayout={(event) => setNews(event.nativeEvent.layout.height > 0)} style={giveWay}>
           {props.holdLapse}
           {props.actionError}
         </View>
@@ -117,3 +117,9 @@ export function SeatLayerSheetFoot(props: SeatLayerSheetFootProps): React.ReactE
     </View>
   );
 }
+
+/**
+ * A notice over the row may give way on a screen with no room left for it; the
+ * row itself never does.
+ */
+const giveWay = { flexShrink: 1 } as const;
