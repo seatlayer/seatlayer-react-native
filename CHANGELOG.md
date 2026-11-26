@@ -72,6 +72,9 @@ stay; the changes below are the ones an app or a buyer can notice.
 - The standing and table prompts fit a short screen, as sideways or at a large
   text size: they open with the number and the buttons in sight, and the name
   is a scroll away. They ran off the top of the screen.
+- On a phone held sideways the map moves the seat out from under its card, as
+  it does upright. The lift waited for a second layout that never came there,
+  so the card covered the seat.
 - The buttons in the standing and table prompts grow with their words at a large
   text size, and the two at the foot stand the same height. The words ran out
   of a 44-point box. At the default size nothing moves.
