@@ -17,6 +17,7 @@ import {
   seatLayerPickerSpotlightVeil,
   setSeatLayerPickerSpotlightBlur,
 } from '../src/picker/SpotlightGlass';
+import { seatLayerPickerColorAlpha } from '../src/picker/colors';
 import { seatLayerPickerTokens } from '../src/picker/tokens.g';
 
 function render(element: React.ReactElement): ReactTestRenderer {
@@ -100,6 +101,29 @@ describe('§3.8.1 the glass never takes a pointer event', () => {
     expect(root.props.accessibilityElementsHidden).toBe(true);
     for (const child of tree.root.findAllByType('View' as never)) {
       expect(child.props.pointerEvents).toBe('none');
+    }
+  });
+});
+
+describe('the veil is the deeper one wherever nothing blurs behind it', () => {
+  const outside = (tree: ReactTestRenderer) => tree.root.findAllByType('View' as never)
+    .find((view) => view.props.style?.backgroundColor !== undefined)?.props.style.backgroundColor as string;
+  const alpha = (veil: number) => seatLayerPickerColorAlpha('#000000', veil);
+
+  it('draws confirmScrimFlat with no blur installed', () => {
+    const plain = render(React.createElement(SpotlightGlass, { visible: true, screenPoint: { x: 10, y: 10 } }));
+    expect(outside(plain)).toBe(alpha(seatLayerPickerTokens.opacity.confirmScrimFlat));
+  });
+
+  it('keeps confirmScrim over a blur the host installed, and the deeper veil under reduced transparency', () => {
+    setSeatLayerPickerSpotlightBlur((props: { blurAmount: number }) => React.createElement('Blur', props));
+    try {
+      const blurred = render(React.createElement(SpotlightGlass, { visible: true, screenPoint: { x: 10, y: 10 } }));
+      expect(outside(blurred)).toBe(alpha(seatLayerPickerTokens.opacity.confirmScrim));
+      const reduced = render(React.createElement(SpotlightGlass, { visible: true, reducedTransparency: true, screenPoint: { x: 10, y: 10 } }));
+      expect(outside(reduced)).toBe(alpha(seatLayerPickerTokens.opacity.confirmScrimFlat));
+    } finally {
+      setSeatLayerPickerSpotlightBlur(undefined);
     }
   });
 });

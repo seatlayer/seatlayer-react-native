@@ -11,8 +11,9 @@ import { seatLayerPickerDrawnShape } from './drawnShape';
 /**
  * §3.8.1 / §3.8.2 — the map goes behind glass with a hole in it.
  *
- * While a seat card is up the map takes a veil at `opacity.confirmScrim`
- * behind a `size.confirmScrimBlur` blur, cleared to
+ * While a seat card is up the map takes a veil at `opacity.confirmScrimFlat`,
+ * or at `opacity.confirmScrim` over a `size.confirmScrimBlur` blur where the
+ * host has installed one, cleared to
  * `size.confirmScrimClearRadius` around the tapped seat and reaching full
  * strength at `size.confirmScrimFeatherRadius`. The hole is what makes this a
  * spotlight rather than a curtain: the buyer is being asked about one seat and
@@ -21,7 +22,8 @@ import { seatLayerPickerDrawnShape } from './drawnShape';
  *
  * Three rules bind it: it is only drawn where there is a seat to spotlight, it
  * never takes a pointer event, and reduced transparency drops the blur and
- * deepens the veil to `opacity.confirmScrimFlat`.
+ * draws the deeper veil. With no blur behind it, the deeper veil is what sets
+ * the card apart from the map, so the plain glass always uses it.
  */
 
 /** How many rings the feather is drawn with; 32 px of feather over 8 steps. */
@@ -168,9 +170,9 @@ export function seatLayerPickerSpotlightLayers(
   return Object.freeze(layers);
 }
 
-/** The veil strength: deeper, and with no blur behind it, under reduced transparency. */
-export function seatLayerPickerSpotlightVeil(reducedTransparency: boolean): number {
-  return reducedTransparency
+/** The veil strength: the deeper one wherever no blur is drawn behind it. */
+export function seatLayerPickerSpotlightVeil(flat: boolean): number {
+  return flat
     ? seatLayerPickerTokens.opacity.confirmScrimFlat
     : seatLayerPickerTokens.opacity.confirmScrim;
 }
@@ -199,9 +201,9 @@ export function SpotlightGlass(props: SpotlightGlassProps): React.ReactElement |
       ? current
       : Object.freeze({ height, width }));
   }, []);
-  const flat = props.reducedTransparency ?? platform;
-  const veil = seatLayerPickerSpotlightVeil(flat);
-  const Blur = flat ? undefined : installedBlur;
+  const reduced = props.reducedTransparency ?? platform;
+  const Blur = reduced ? undefined : installedBlur;
+  const veil = seatLayerPickerSpotlightVeil(Blur === undefined);
   if (!props.visible) return null;
   return <View
     accessibilityElementsHidden
