@@ -37,6 +37,7 @@ export const seatLayerPickerSheetRestoreFraction = 0.5;
 export const seatLayerPickerSheetSettleDelaysMs: readonly number[] = Object.freeze([350, 800]);
 
 export interface SeatLayerPickerSeatFrame {
+  /** The pan the runtime asked of its map; a map at its edge moves less. */
   readonly dy: number;
   readonly gestures: number;
 }
@@ -96,6 +97,13 @@ export class SeatLayerPickerSeatLift {
   private fraction = 0;
   private total = 0;
   private anchor = 0;
+  /** How much of the way to the seat's resting place the answers still say is missing. */
+  private short = 0;
+  /** Whether the question that stands was answered before, and whether that answer found the seat in place. */
+  private answered = false;
+  private arrived = false;
+  /** How often the question that stands was asked again because an answer was news. */
+  private news = 0;
   private gestures: number | undefined;
   private revision = -1;
   private generation = 0;
@@ -179,6 +187,10 @@ export class SeatLayerPickerSeatLift {
     // lift has already moved, so the pans folded into it are no longer the
     // shell's to add.
     if (input.revision !== this.revision) this.publishAnchor(0);
+    if (input.seatId !== this.seatId || fraction !== this.fraction) this.short = 0;
+    this.answered = false;
+    this.arrived = false;
+    this.news = 0;
     this.seatId = input.seatId;
     this.fraction = fraction;
     this.revision = input.revision;
@@ -217,6 +229,10 @@ export class SeatLayerPickerSeatLift {
     this.seatId = null;
     this.fraction = 0;
     this.total = 0;
+    this.short = 0;
+    this.answered = false;
+    this.arrived = false;
+    this.news = 0;
     this.publishAnchor(0);
     this.gestures = undefined;
     this.revision = -1;
@@ -235,15 +251,57 @@ export class SeatLayerPickerSeatLift {
     // was, so the restore is refused for the same reason.
     if (this.gestures !== undefined && answer.gestures !== this.gestures) return;
     this.gestures = answer.gestures;
-    this.total += answer.dy;
-    this.publishAnchor(this.anchor + answer.dy);
-    if (this.timers.length > 0) return;
-    for (const delay of this.settleDelaysMs) {
+    const again = this.answered;
+    const wasThere = this.arrived;
+    const moved = this.movedBy(answer.dy);
+    if (moved !== 0) {
+      this.total += moved;
+      this.publishAnchor(this.anchor + moved);
+    }
+    const ask = (delay: number) => {
       this.timers.push(this.clock.setTimeout(() => {
         if (generation !== this.generation || this.seatId !== seatId) return;
         void this.lift(seatId, fraction, generation);
       }, delay));
+    };
+    if (this.timers.length === 0) {
+      for (const delay of this.settleDelaysMs) ask(delay);
+    } else if (
+      again && answer.dy !== 0 && (moved !== 0 || wasThere)
+      && this.news < this.settleDelaysMs.length
+    ) {
+      // The answer was news: the map moved less than asked, or a refit put
+      // it back. Ask once more to learn where it stands now.
+      this.news += 1;
+      ask(this.settleDelaysMs[0]!);
     }
+  }
+
+  /**
+   * How far the seat has moved, now that the runtime asks its map for `dy`.
+   *
+   * `dy` is the way still left when the runtime was asked, and it answers so
+   * whether or not its map can go there. The first time the map is taken at
+   * its word. A map that is still short the next time stands at its edge, and
+   * the seat is where that answer says it is; one that had arrived was put
+   * back by a refit, and is brought back by this very pan.
+   */
+  private movedBy(dy: number): number {
+    let moved: number;
+    if (!this.answered) {
+      // The same way short of the same place, on a newer snapshot.
+      const stuck = dy !== 0 && dy === this.short;
+      moved = stuck ? 0 : dy;
+      if (!stuck) this.short = 0;
+    } else if (this.arrived) {
+      moved = 0;
+    } else {
+      moved = this.short - dy;
+      this.short = dy;
+    }
+    this.answered = true;
+    this.arrived = dy === 0;
+    return moved;
   }
 
   private publishAnchor(value: number): void {

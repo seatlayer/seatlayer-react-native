@@ -581,7 +581,8 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   /**
    * Pans — never zooms — so the seat rests in the band the reported insets
    * leave clear. Answers `dy: 0` for a seat already in place, an unknown seat,
-   * insets that leave no band, and a stale gesture count.
+   * insets that leave no band, and a stale gesture count. `dy` is the pan the
+   * runtime asked of its map; a map at its edge moves less.
    */
   frameSeat(
     seatId: string,
