@@ -219,6 +219,38 @@ describe('a hold the app has booked', () => {
   });
 });
 
+describe('a booked hold is told once', () => {
+  it('also after the buyer starts a second cart', async () => {
+    const { picker, reply } = await open(page);
+    const flight = picker.checkout();
+    await flush();
+    await reply({
+      snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }),
+      handoff: { holdId: 'hold-9', expiresAt: 9_000, currency: 'EUR', lineItems: [], total: 0 },
+    });
+    await flight;
+    const booked = vi.fn();
+    picker.subscribeBooked(booked);
+    const first = picker.markBooked({ holdId: 'hold-9' });
+    await flush();
+    await reply({ booked: true, status: 'booked', holdId: 'hold-9', revision: 3, snapshot: snapshot(3) });
+    await expect(first).resolves.toBe(true);
+    expect(booked).toHaveBeenCalledOnce();
+    // The buyer picks again: a new hold of the picker's own.
+    const again = { active: true, owner: 'picker', expiresAt: 12_000 };
+    picker.mapController.ingestRaw({
+      sl: 1, k: 'evt', t: 'picker.snapshot', n: 20, p: { snapshot: snapshot(4, again) } as never,
+    });
+    for (const options of [{ holdId: 'hold-9' }, {}]) {
+      const marked = picker.markBooked(options);
+      await flush();
+      await reply({ booked: true, status: 'booked', holdId: 'hold-9', revision: 5, snapshot: snapshot(5, again) });
+      await marked;
+    }
+    expect(booked).toHaveBeenCalledOnce();
+  });
+});
+
 describe('a map page that knows neither', () => {
   it.each([
     [{ capabilities: [], commands: [] }],
