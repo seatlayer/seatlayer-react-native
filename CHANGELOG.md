@@ -214,6 +214,16 @@ stay; the changes below are the ones an app or a buyer can notice.
   waits for the server, so a hold that worked is not reported as failed. Other
   commands keep `commandTimeoutMs`, 15 seconds by default.
 
+## 0.4.1
+
+- **`onBooked` and "You're all set" (behaviour change)** no longer come. They
+  came when the handed-off hold left the map for any reason: the page was loaded
+  again, by `retry()` or a changed setting such as the language, the checkout
+  was rejected, as for a declined payment, or the hold was lost on the server.
+  The buyer then read that their tickets were confirmed, and nothing was booked.
+  The map page of this version says nothing of a sale, so the picker cannot
+  know. Take a sale from your own server and show the confirmation from there.
+
 ## 0.4.0
 
 The hosted runtime moves to `seatlayer-js@0.84.1`, and the phone picker is
