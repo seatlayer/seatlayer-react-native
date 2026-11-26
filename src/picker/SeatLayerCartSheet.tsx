@@ -364,7 +364,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
           paddingBottom: underRow,
         }, styles.sheetContainer]}
       >
-        <Animated.View style={[shrinks, { height: body, overflow: 'hidden' }]} testID="seatlayer-cart-region">
+        <Animated.View style={[listGivesWayFirst, { height: body, overflow: 'hidden' }]} testID="seatlayer-cart-region">
           <ScrollView
             // The list scrolls inside its own box rather than pushing the
             // sheet: the map keeps its room whatever the cart holds.
@@ -413,7 +413,7 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
             </View>
           </ScrollView>
         </Animated.View>
-        <View onLayout={(event) => setFootHeight(event.nativeEvent.layout.height)}>
+        <View onLayout={(event) => setFootHeight(event.nativeEvent.layout.height)} style={shrinks}>
           {props.expanded ? <View style={{ backgroundColor: theme.colors.divider, height: seatLayerPickerLineWidth }} /> : null}
           <SeatLayerSheetFoot
             actionError={actionError}
@@ -439,6 +439,12 @@ export function SeatLayerCartSheet(props: SeatLayerCartSheetProps): React.ReactE
 }
 
 const shrinks = { flexShrink: 1 } as const;
+/**
+ * The open list gives way long before a notice in the foot does: the share a
+ * surface gives up is its own height times this, so the foot's words only
+ * scroll once the list has nothing left.
+ */
+const listGivesWayFirst = { flexShrink: 1000 } as const;
 
 /** The ready-made button, which the row measures; anything else is an app's own part. */
 function isOwnButton(part: ReactNode): boolean {
