@@ -305,6 +305,22 @@ describe('picker decision prompt renderer', () => {
     expect(scroll.findAllByProps({ accessibilityRole: 'button' }).length).toBeGreaterThanOrEqual(2);
   });
 
+  it('grows each button with its words at a large text size, never under the action height', async () => {
+    setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 3 }] })); let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
+    const buttons = renderer.root.findAllByProps({ accessibilityRole: 'button' }).filter((node) => node.type === ('Pressable' as any));
+    expect(buttons.length).toBeGreaterThanOrEqual(4);
+    for (const button of buttons) {
+      const paint = button.findByType('View' as any);
+      const style = Object.assign({}, ...[paint.props.style].flat(Infinity).filter(Boolean));
+      expect(style.height).toBeUndefined();
+      expect(style.minHeight).toBe(44);
+      expect(style.flexGrow).toBe(1);
+      const label = paint.findByType('Text' as any);
+      expect(label.props.numberOfLines).toBeUndefined();
+    }
+  });
+
   it('does not leave a blank tier scroll surface for a no-tier GA decision', async () => {
     setup(snapshot({ generalAdmissionAreas: [{ id: 'ga', label: 'GA', available: 3 }] })); let renderer!: ReactTestRenderer;
     await act(async () => { renderer = create(React.createElement(SeatLayerPickerGAPrompt)); });
