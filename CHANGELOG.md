@@ -84,6 +84,8 @@ stay; the changes below are the ones an app or a buyer can notice.
   chip it was put on with. Its dot is grey, it is drawn at full strength while it
   is chosen, and a screen reader hears "Sold out".
 - The word on the "Test mode" badge is not cut at a large text size.
+- The Map and 3D words grow with the text size until they are as tall as the
+  button, and stay at that size past it, where they spilled out of the button.
 - A screen reader reads the "Test mode" badge's name and no sentence after it.
 - On a phone the levels of a venue stand at the top of the map as one pill, under
   the Map / 3D control, and the "Test mode" badge one line lower. The list in the
