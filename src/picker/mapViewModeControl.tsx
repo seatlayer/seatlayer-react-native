@@ -30,6 +30,20 @@ const trackLine = 1;
  * target clears the touch floor. The anchor takes it back, or the track lands
  * a bed's depth below the line the test chip opposite it stands on.
  */
+/** A line of text is about this many times its font size tall. */
+const lineBox = 1.2;
+
+/**
+ * How far a label may grow with the platform's text size: until its line is
+ * as tall as the lit half. The map holds the control at its own height, so a
+ * taller line would spill out of the pill; past this the words stay at this
+ * size instead. Never below 1, which React Native reads as no limit.
+ */
+export function seatLayerPickerViewModeLabelScaleClamp(fontSize: number): number {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return 1;
+  return Math.max(1, segmentPaintHeight / (fontSize * lineBox));
+}
+
 export const seatLayerPickerViewModeTrackInset =
   (seatLayerPickerTokens.size.minimumHitTarget -
     seatLayerPickerTokens.size.viewModeControlHeight) / 2;
@@ -99,6 +113,7 @@ export function SeatLayerPickerViewModeControlView({
         ]}
       />
       <Text
+        maxFontSizeMultiplier={seatLayerPickerViewModeLabelScaleClamp(theme.layout.viewModeLabelFontSize)}
         style={[
           {
             color: selected ? theme.colors.onAccent : theme.colors.mutedText,
