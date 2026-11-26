@@ -2,11 +2,14 @@
 
 ## Unreleased
 
-The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.3`. Public names
+The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.4`. Public names
 stay; the changes below are the ones an app or a buyer can notice.
 
 **The map**
 
+- A hold the server never answers ends after 40 seconds with "Check your
+  connection and try again." What else changed on the map is in the
+  [changelog](https://docs.seatlayer.io/changelog/).
 - A venue with several levels opens on its lowest level.
 - 3D touch: one finger moves the view, a pinch zooms, a two-finger twist turns
   the venue and a two-finger drag tilts it. The Rotate / Move control is drawn
