@@ -169,7 +169,11 @@ export class SeatLayerPickerSeatLift {
       return;
     }
     const band = input.mapHeight - input.top - input.bottom;
-    if (!(band > 0) || !(input.sheet > 0)) return;
+    if (!(band > 0) || !(input.sheet > 0)) {
+      // Nothing to wait for without a band or a card.
+      this.settling = false;
+      return;
+    }
     // The map is a web view that resizes as the cart sheet collapses under an
     // opening card, and the runtime pans against ITS height at the moment the
     // command lands. A fraction folded against a height caught mid-animation
