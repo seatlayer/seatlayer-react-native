@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 
 import type { SeatLayerPickerPromptLease } from './promptOwnership';
+import { SeatLayerPickerPromptFootScroll } from './promptFootScroll';
 import { SeatLayerPickerPromptModal } from './promptModal';
 import { useSeatLayerPickerScope, type SeatLayerPickerScopeValue } from './SeatLayerPickerScope';
 import {
@@ -379,15 +380,17 @@ function ModalPrompt({
     <Pressable accessible={false} onPress={dismiss} style={[stylesNative.scrim, { backgroundColor: scope.resolvedTheme.colors.text, opacity: .42, paddingTop: insets.top, paddingBottom: insets.bottom, ...seatLayerPickerScreenSides(insets) }]} />
     <View accessibilityViewIsModal style={[stylesNative.modalLayer, { paddingTop: insets.top, paddingBottom: insets.bottom, ...seatLayerPickerScreenSides(insets) }]} pointerEvents="box-none">
       <View style={[stylesNative.card, { backgroundColor: scope.resolvedTheme.colors.surface, borderColor: scope.resolvedTheme.colors.divider, borderRadius: seatLayerPickerTokens.radius.card, padding: seatLayerPickerTokens.size.confirmCardGutter }, styles.card, localCard]}>
+        <SeatLayerPickerPromptFootScroll>
         <Text accessibilityRole="header" style={[stylesNative.title, { color: scope.resolvedTheme.colors.text, fontFamily: scope.resolvedTheme.fontFamily }, styles.title]}>{title}</Text>
         <Text style={[stylesNative.subtitle, { color: scope.resolvedTheme.colors.mutedText, fontFamily: scope.resolvedTheme.fontFamily }]}>{subtitle}</Text>
         <Quantity value={decision.quantity} minimum={decision.minimum} maximum={decision.maximum} onChange={setQuantity} disabled={inFlight} guests={decision.kind === 'table'} label={scope.strings.translate(decision.kind === 'table' ? 'numberOfGuests' : 'chooseTickets')} scope={scope} styles={styles} />
-        {decision.kind === 'ga' && (decision.area.tiers?.length ?? 0) > 0 ? <ScrollView style={stylesNative.tierScroll} contentContainerStyle={stylesNative.tierScrollContent}><TierChoices decision={decision} value={tierId ?? decision.tierId} onChange={setTierId} disabled={inFlight} scope={scope} styles={styles} /></ScrollView> : null}
+        {decision.kind === 'ga' && (decision.area.tiers?.length ?? 0) > 0 ? <ScrollView nestedScrollEnabled style={stylesNative.tierScroll} contentContainerStyle={stylesNative.tierScrollContent} testID="seatlayer-prompt-tiers"><TierChoices decision={decision} value={tierId ?? decision.tierId} onChange={setTierId} disabled={inFlight} scope={scope} styles={styles} /></ScrollView> : null}
         {refused ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{[refused.message, refused.detail].filter(Boolean).join(' ')}</Text> : null}
         <View style={stylesNative.actions}>
           <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeWord')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
           <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate(inCart ? 'updateTable' : 'selectTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />
         </View>
+        </SeatLayerPickerPromptFootScroll>
       </View>
     </View>
   </SeatLayerPickerPromptModal>;
@@ -455,7 +458,7 @@ export function SeatLayerPickerSeatTierSelector(props: SeatLayerPickerSeatTierSe
 const stylesNative = seatLayerPickerBoldStyles(StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill },
   modalLayer: { flex: 1, justifyContent: 'flex-end' },
-  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: seatLayerPickerLineWidth },
+  card: { width: '100%', maxWidth: 520, alignSelf: 'center', borderWidth: seatLayerPickerLineWidth, flexShrink: 1 },
   title: { ...seatLayerPickerLineStart, fontSize: 17, fontWeight: '900' }, subtitle: { ...seatLayerPickerLineStart, marginTop: 3, fontSize: 14 },
   quantity: { minHeight: seatLayerPickerTokens.size.minimumHitTarget, marginTop: 14, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
   quantityValue: { minWidth: 70, minHeight: seatLayerPickerTokens.size.minimumHitTarget, justifyContent: 'center', alignItems: 'center' }, quantityText: { fontSize: 24, fontWeight: '700' },
