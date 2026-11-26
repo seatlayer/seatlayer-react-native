@@ -378,10 +378,19 @@ export function SeatLayerPickerAdaptiveLayout({
       setSelectionFlight(Object.freeze({ id: ++flightSequenceRef.current, color, ...path }));
     });
   };
+  // The table prompt answers the pending table: Update confirms it, Remove or a
+  // dismissal takes it back. Once its lease has closed it stays mounted for that
+  // dismissal but no longer owns the screen, and the seat is not auto-confirmed.
+  const tableKey = tableActive ? `table:${pendingId ?? ''}:${candidateEpoch ?? ''}` : undefined;
+  const tableLeaseLive = scope.presentation.prompt?.kind === 'tableDecision';
+  const openedTableRef = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => { if (tableKey !== undefined && tableLeaseLive) openedTableRef.current = tableKey; }, [tableKey, tableLeaseLive]);
+  const tableEnded = tableKey !== undefined && openedTableRef.current === tableKey && !tableLeaseLive;
+  const cancelTable = () => { void scope.cancelPending(); };
   const promptPart = gaActive
     ? part(builders, scope, 'generalAdmissionPrompt', <SeatLayerPickerGAPrompt safeAreaInsets={safeLayout.insets} />)
     : tableActive
-      ? part(builders, scope, 'tablePrompt', <SeatLayerPickerTablePrompt candidate={tableCandidate} safeAreaInsets={safeLayout.insets} />)
+      ? part(builders, scope, 'tablePrompt', <SeatLayerPickerTablePrompt candidate={tableCandidate} safeAreaInsets={safeLayout.insets} onConfirm={() => scope.confirmPending()} onRemoved={cancelTable} onDismiss={cancelTable} />)
       : (wide ? seatActive : cardActive)
         ? part(builders, scope, wide ? 'seatConfirmation' : 'confirmCard', wide
           ? <SeatLayerPickerSeatConfirmation showSeatView={plan.options.enableSeatView} show3D={plan.options.enable3D} onAction={confirmationAction} />
@@ -394,7 +403,7 @@ export function SeatLayerPickerAdaptiveLayout({
           />)
         : null;
   const prompt = promptPart;
-  const promptVisible = prompt !== null;
+  const promptVisible = prompt !== null && !tableEnded;
   // A card, a general-admission prompt or a table prompt: any of them owns the
   // screen while it is up.
   const decisionUp = promptVisible || scope.presentation.prompt !== null;
@@ -403,7 +412,7 @@ export function SeatLayerPickerAdaptiveLayout({
       : seatActive ? `seat:${pendingId ?? ''}:${candidateEpoch ?? ''}`
         : removeActive ? `remove:${removalSeat?.label ?? ''}` : null;
   const shouldRetirePending = scope.pendingSeat !== null && !gaActive && !immersiveInspectionVisible && !promptVisible &&
-    scope.presentation.prompt === null;
+    !tableEnded && scope.presentation.prompt === null;
   const retiredPendingRef = useRef<string | undefined>(undefined);
   useLayoutEffect(() => {
     const key = pendingId === undefined || candidateEpoch === undefined ? undefined : `${pendingId}:${candidateEpoch}`;

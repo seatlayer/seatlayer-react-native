@@ -575,6 +575,55 @@ describe('adaptive picker composition', () => {
     await act(async () => { tree.unmount(); });
   });
 
+  function pendingTableScope(overrides: Record<string, unknown> = {}): any {
+    const snapshot = { sessionId: 'runtime', revision: 2, hold: { active: false }, capabilities: [], categories: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' }, selection: [{ id: 'table-3', label: 'T3', objectType: 'table', bookingMode: 'variable', minOccupancy: 2, maxOccupancy: 6 }] };
+    const controller = {
+      mapController: { isReady: true, supportsPickerCapability: () => true, supportsPickerCommand: () => true, supportsPickerEvent: () => true },
+      setInteractionEnabled: vi.fn(() => Promise.resolve()), getGACandidate: () => undefined,
+      subscribeGACandidate: () => () => undefined, getSnapshot: () => snapshot,
+    };
+    return scope({ pendingSeat: { id: 'table-3', label: 'T3' }, controller, snapshot, cancelPending: vi.fn(() => Promise.resolve(true)), ...overrides });
+  }
+
+  it('answers the pending table from its prompt: Update keeps it, Remove and a dismissal take it back', async () => {
+    state.width = 320;
+    const current = pendingTableScope();
+    state.scope = current;
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+    const prompt = () => tree.root.findByType('table-prompt' as any).props;
+    expect(current.confirmPending).not.toHaveBeenCalled();
+    await act(async () => { prompt().onConfirm({ decision: { kind: 'table' } }); });
+    expect(current.confirmPending).toHaveBeenCalledTimes(1);
+    expect(current.cancelPending).not.toHaveBeenCalled();
+    await act(async () => { prompt().onRemoved({ decision: { kind: 'table' } }); });
+    expect(current.cancelPending).toHaveBeenCalledTimes(1);
+    await act(async () => { prompt().onDismiss({ decision: { kind: 'table' } }); });
+    expect(current.cancelPending).toHaveBeenCalledTimes(2);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('hands the map back once the table lease closes, without putting the table in the cart', async () => {
+    vi.useFakeTimers();
+    state.width = 320;
+    const open = pendingTableScope({ presentation: { prompt: { kind: 'tableDecision', context: {} }, sheet: 'collapsed' } });
+    state.scope = open;
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+    expect(open.controller.setInteractionEnabled).toHaveBeenLastCalledWith(false);
+    // Update has run and closed the lease; the snapshot still carries the
+    // table as the unanswered seat until the prompt's answer lands.
+    state.scope = { ...open, presentation: { prompt: null, sheet: 'collapsed' } };
+    await act(async () => { tree.update(React.createElement(SeatLayerPickerAdaptiveLayout, { onCheckout: checkout })); });
+    await act(async () => { vi.runAllTimers(); });
+    expect(open.controller.setInteractionEnabled).toHaveBeenLastCalledWith(true);
+    expect(open.confirmPending).not.toHaveBeenCalled();
+    // Still mounted, so a dismissal can still reach it.
+    expect(tree.root.findAllByType('table-prompt' as any)).toHaveLength(1);
+    await act(async () => { tree.unmount(); });
+    vi.useRealTimers();
+  });
+
   it('retires a null variable-table builder without exposing an invisible prompt', async () => {
     const snapshot = { sessionId: 'runtime', revision: 1, hold: { active: false }, capabilities: [], categories: [], event: { mode: 'live' }, map: { floors: [], buyerView: 'map' }, selection: [{ id: 'table-1', label: 'Table 1', objectType: 'table', bookingMode: 'variable' }] };
     const controller = {
