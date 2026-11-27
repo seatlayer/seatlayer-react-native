@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+**The map: 1.0.5 to 1.0.6**
+
+- On a phone the level stack no longer narrows the whole map: the venue fits
+  the full width above it, or beside it when it is too tall, and the stack
+  never covers seats.
+- When the accessibility filter takes the map to another level, the level
+  stack marks that level.
+- `selectObjects` with a seat on a level that is not drawn returns that seat
+  and puts it in the cart at once. A closed section and the accessibility
+  filter still refuse it.
+- A whole or party table's `screenPoint` is the middle of its chairs, so the
+  seat card sits on the table.
+
 ## 0.5.0
 
 The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.5`. Public names
