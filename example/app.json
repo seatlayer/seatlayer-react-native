@@ -9,7 +9,8 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "io.seatlayer.example"
+      "package": "io.seatlayer.example",
+      "permissions": ["ACCESS_NETWORK_STATE"]
     }
   }
 }
