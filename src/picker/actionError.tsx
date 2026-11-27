@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { seatLayerPickerBuyerError } from './errorWords';
+import { seatLayerPickerToldAsMessage } from './connectionMessages';
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
 import {
   resolveSeatLayerPickerStyles,
@@ -44,7 +45,9 @@ export function SeatLayerPickerActionError(
   const scope = useSeatLayerPickerScope();
   const { height } = useWindowDimensions();
   const error = props.error ?? (scope.isReady ? scope.error : undefined);
-  if (error === undefined) return null;
+  // A lost line, or a server fault while securing seats, is said by the small
+  // message instead.
+  if (error === undefined || (props.error === undefined && seatLayerPickerToldAsMessage(error))) return null;
   const slots = resolveSeatLayerPickerStyles(scope.styles, props.slots);
   // The current scoped command error is dismissible by default. An explicitly
   // supplied error is observational and must never clear unrelated scope state.

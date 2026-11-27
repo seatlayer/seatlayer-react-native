@@ -92,6 +92,7 @@ import type { SeatLayerPickerSafeAreaInsetInput } from './safeAreaInsets';
 import { sanitizeSeatLayerPickerStyle } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
 import { SeatLayerPickerConnectionStatus, seatLayerPickerWideConnectionPlace } from './connectionStatus';
+import { useSeatLayerPickerConnectionMessages } from './connectionMessages';
 
 const noSeatView = () => undefined;
 const noSeatViewSubscription = () => () => undefined;
@@ -609,6 +610,7 @@ export function SeatLayerPickerAdaptiveLayout({
     toldRef.current = news.key;
     toasts.show(seatLayerPickerToastRequest(news, scope));
   }, [scope.holdLapse, scope.holdLapsed, scope.strings, toasts]);
+  useSeatLayerPickerConnectionMessages(scope, toasts.show);
   const toastLayer = <SeatLayerPickerToastLayer
     lift={wide ? undefined : bottomInset + seatLayerPickerTokens.size.toastCardLift}
     onFocusReturn={() => seatLayerPickerFocusOn(mapRegionRef.current)}
