@@ -1,8 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: 8100f3ab98781df3f8318cceeee180f85a4ea00e2beb2f043422865f34f98439
+// Canonical token input SHA-256: b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85
 // Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = '8100f3ab98781df3f8318cceeee180f85a4ea00e2beb2f043422865f34f98439' as const;
+export const seatLayerPickerTokenSourceSha256 = 'b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -12,6 +12,8 @@ export const seatLayerPickerTokens = {
       "background": "#0F1522",
       "chrome": "#556278",
       "chromeLine": "#E9EEF78C",
+      "connectionBack": "#4CC38A",
+      "connectionLost": "#E0B04A",
       "divider": "#A5AEC23D",
       "error": "#FF6B6B",
       "immersiveCaption": "#0A0E16D1",
@@ -39,6 +41,8 @@ export const seatLayerPickerTokens = {
       "background": "#FFFFFF",
       "chrome": "#d6dce6",
       "chromeLine": "#1720338C",
+      "connectionBack": "#1B7F52",
+      "connectionLost": "#B7791F",
       "divider": "#17203329",
       "error": "#B42318",
       "mapBackground": "#E9EDF4",
@@ -109,6 +113,8 @@ export const seatLayerPickerTokens = {
       "bump": 240,
       "cardEnter": 240,
       "chevron": 240,
+      "connectionIn": 200,
+      "connectionWords": 160,
       "crossfade": 120,
       "dock": 240,
       "enter": 260,
@@ -124,6 +130,7 @@ export const seatLayerPickerTokens = {
     },
     "durationOutsideBudget": {
       "confirmFlight": 500,
+      "connectionRing": 900,
       "inviteBreathe": 2400,
       "inviteBreatheDelay": 1000,
       "inviteDelay": 300,
@@ -164,6 +171,7 @@ export const seatLayerPickerTokens = {
     "card": 18,
     "chip": 999,
     "confirmCard": 15,
+    "connectionStatusTwoLines": 18,
     "control": 9,
     "explainerToast": 14,
     "headerLogo": 6,
@@ -267,6 +275,16 @@ export const seatLayerPickerTokens = {
     "confirmSightPadX": 8,
     "confirmSightPadY": 3,
     "confirmTierHeight": 38,
+    "connectionStatusHeight": 36,
+    "connectionStatusLineFont": 12.5,
+    "connectionStatusPadEnd": 14,
+    "connectionStatusPadStart": 12,
+    "connectionStatusRise": 4,
+    "connectionStatusSign": 16,
+    "connectionStatusSignGap": 8,
+    "connectionStatusSwitchGap": 8,
+    "connectionStatusTitleFont": 13,
+    "connectionStatusTwoLineHeight": 52,
     "dockBackChevronSize": 18,
     "dockBackFontSize": 12.5,
     "dockBackHeight": 36,
