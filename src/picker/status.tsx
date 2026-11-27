@@ -373,7 +373,9 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   text: { textAlign: "center", fontSize: 15, lineHeight: 22 },
   failure: { gap: 10 },
-  title: { textAlign: "center", fontSize: 15, fontWeight: "800", lineHeight: 20 },
+  // Full width: Android measures a heavy title narrower than it draws it, and
+  // a word that wraps past the measured line is not drawn.
+  title: { alignSelf: "stretch", textAlign: "center", fontSize: 15, fontWeight: "800", lineHeight: 20 },
   line: { textAlign: "center", fontSize: 13, fontWeight: "600", lineHeight: 18 },
   emptyMark: {
     alignItems: 'center',
