@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import type { SeatLayerPickerStringResolver } from './locale';
 import {
@@ -33,6 +33,8 @@ export interface SeatLayerPickerLoadingSurfaceProps {
   readonly style?: StyleProp<ViewStyle>;
   /** Fraction of the strip that is lit, 0..1. Indeterminate by default. */
   readonly progress?: number;
+  /** The opening has run long: say so under the venue. */
+  readonly slow?: boolean;
 }
 
 /** Outer to inner, as fractions of the surface's short side. */
@@ -51,7 +53,7 @@ export function SeatLayerPickerLoadingSurface(
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={props.strings.translate('loading')}
+      accessibilityLabel={props.strings.translate(props.slow === true ? 'loadingTakingLonger' : 'loading')}
       style={[
         styles.root,
         { backgroundColor: props.theme.colors.background },
@@ -95,11 +97,16 @@ export function SeatLayerPickerLoadingSurface(
           ]}
         />
       </View>
+      {props.slow === true ? <Text
+        accessible={false}
+        style={[styles.slow, { color: props.theme.colors.mutedText, fontFamily: props.theme.fontFamily }]}
+      >{props.strings.translate('loadingTakingLonger')}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  slow: { bottom: 24, fontSize: 13, left: 24, lineHeight: 18, position: 'absolute', right: 24, textAlign: 'center' },
   root: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   strip: { left: 0, position: 'absolute', right: 0, top: 0 },
   venue: { alignItems: 'center', aspectRatio: 1, justifyContent: 'flex-end', maxHeight: '70%', width: '78%' },
