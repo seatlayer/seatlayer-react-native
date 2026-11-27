@@ -45,6 +45,8 @@ import type {
 } from './models';
 import {
   seatLayerAccessibilityFocusCapability,
+  seatLayerConnectionChangedEvent,
+  seatLayerConnectionStateCapability,
   seatLayerFocusAccessibilityFilterCommand,
   seatLayerFocusNextAccessibleSectionCommand,
   seatLayerFrameSeatCommand,
@@ -52,6 +54,12 @@ import {
   seatLayerSetBlockedRegionsCommand,
   seatLayerSetSelectionFocusCommand,
 } from '../bridge/protocol';
+import {
+  SeatLayerConnectionWatch,
+  seatLayerConnectionStateFrom,
+  type SeatLayerConnectionShown,
+  type SeatLayerConnectionState,
+} from './connection';
 import { validateNonEmpty, validateOptions, validatePositiveInteger, validateStrings } from './validation';
 
 export type SeatLayerPickerSeatRetapListener = (
@@ -133,11 +141,22 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private readonly seatRetapListeners = new Set<SeatLayerPickerSeatRetapListener>();
   private readonly booked = new SeatLayerPickerBookedDetector();
   private readonly bookedListeners = new Set<SeatLayerPickerBookedListener>();
-  private readonly unsubscribeBookedWatch = this.subscribe(
-    () => this.booked.observe(this.getSnapshot()),
-  );
+  private readonly connectionWatch = new SeatLayerConnectionWatch();
+  private readonly unsubscribeBookedWatch = this.subscribe(() => {
+    this.booked.observe(this.getSnapshot());
+    this.connectionWatch.seatsRead();
+  });
   private readonly unsubscribeChartLoad = this.mapController.on('unknownEvent', ({ name, payload }) => {
     if (name === 'telemetry.chartLoad') this.chartLoads.accept(payload);
+    if (
+      name === seatLayerConnectionChangedEvent &&
+      this.mapController.supportsPickerCapability(seatLayerConnectionStateCapability)
+    ) {
+      const state = payload !== null && typeof payload === 'object' && !Array.isArray(payload)
+        ? payload.state
+        : undefined;
+      this.connectionWatch.heard(seatLayerConnectionStateFrom(state));
+    }
     if (
       name === seatLayerSeatRetapEvent &&
       this.mapController.supportsPickerEvent(seatLayerSeatRetapEvent)
@@ -154,6 +173,22 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
       }
     }
   });
+
+  /** The page's line to the server, or null until a page with `connection-state-v1` reports one. */
+  getConnection = (): SeatLayerConnectionState | null => this.connectionWatch.state;
+
+  /** What the picker's connection status says now. */
+  getConnectionShown = (): SeatLayerConnectionShown => this.connectionWatch.shown;
+
+  /** Called when the page's line or the status it leads to changes. */
+  subscribeConnection = (listener: () => void): () => void => {
+    const offShown = this.connectionWatch.subscribe(() => listener());
+    const offState = this.connectionWatch.subscribeState(listener);
+    return () => {
+      offShown();
+      offState();
+    };
+  };
 
   /** Starts timing at a scope mount or accepted retry, never at construction. */
   beginChartLoadAttempt(startedAt?: number): void {
@@ -312,6 +347,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
       if (this.disposed) throw SeatLayerError.destroyed();
       this.booked.reloaded();
       this.resetForRuntimeReload();
+      this.connectionWatch.reset();
       this.reloadGenerationValue += 1;
       for (const listener of this.reloadListeners) listener();
     });
@@ -325,6 +361,7 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     this.chartLoads.dispose();
     this.reloadListeners.clear();
     this.seatRetapListeners.clear();
+    this.connectionWatch.dispose();
     super.dispose();
   }
 

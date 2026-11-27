@@ -57,3 +57,6 @@ export const seatLayerFocusNextAccessibleSectionCommand = 'picker.focusNextAcces
 
 /** A seat already in the selection tapped again — the runtime's Remove ask. */
 export const seatLayerSeatRetapEvent = 'seat.retap';
+/** The page reports its line to the server as `connection.changed`. */
+export const seatLayerConnectionStateCapability = 'connection-state-v1';
+export const seatLayerConnectionChangedEvent = 'connection.changed';
