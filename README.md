@@ -73,6 +73,22 @@ npx pod-install
 React Native autolinks `react-native-webview` on Android and iOS. The package
 ships no custom native module of its own, so there is nothing else to link.
 
+On Android, let the app see the network state. With Expo, in `app.json`:
+
+```json
+{ "expo": { "android": { "permissions": ["ACCESS_NETWORK_STATE"] } } }
+```
+
+With the React Native Community CLI, beside `INTERNET` in
+`android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+```
+
+Without it the map's web view never learns that the phone went offline, so the
+picker says "Updating…" where it should say "You’re offline". iOS needs nothing.
+
 Peer requirements are `react >= 18.2.0`, `react-native >= 0.72.0`, and
 `react-native-webview >= 13.0.0`. TypeScript declarations are published with the
 package (`dist/index.d.ts` for ESM and `dist/index.d.cts` for CommonJS), so no

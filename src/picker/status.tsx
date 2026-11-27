@@ -37,6 +37,9 @@ export {
 } from "./testModeIndicator";
 import { seatLayerPickerBoldStyles } from './boldText';
 import { seatLayerPickerOwnBuyerMessage } from './errorWords';
+import { seatLayerPickerFailureKind } from './connectionMessages';
+import { SeatLayerPickerConnectionSign } from './connectionSign';
+import { useSeatLayerPickerOfflineRetries } from './offlineRetry';
 
 type StatusSlots = Pick<
   SeatLayerPickerStyles,
@@ -73,6 +76,9 @@ interface StatusViewProps extends SeatLayerPickerStatusProps {
   readonly themeStyles?: SeatLayerPickerThemeStyles;
 }
 
+/** How long an opening runs before the buyer is told it is taking longer. */
+export const seatLayerPickerSlowOpeningMs = 8_000;
+
 /** Context-free loading status. */
 export function SeatLayerPickerLoadingStatus({
   theme,
@@ -80,10 +86,12 @@ export function SeatLayerPickerLoadingStatus({
   slots: componentSlots,
   style,
   themeStyles,
-}: StatusViewProps): React.ReactElement {
+  slow,
+}: StatusViewProps & { readonly slow?: boolean }): React.ReactElement {
   // §4.7: the wait is the venue taking shape, not a spinner on a blank page.
   return (
     <SeatLayerPickerLoadingSurface
+      slow={slow}
       slots={componentSlots}
       strings={strings}
       style={style}
@@ -112,6 +120,14 @@ export function SeatLayerPickerLoadingView(
   );
   const framed = props.framed ?? false;
   useEffect(() => { dispatch('reset'); }, [scope.controller, scope.sessionId]);
+  // An opening that runs past 8 s says so.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (scope.isReady) return undefined;
+    const handle = setTimeout(() => setSlow(true), seatLayerPickerSlowOpeningMs);
+    return () => clearTimeout(handle);
+  }, [scope.controller, scope.isReady, scope.sessionId]);
   useEffect(() => { if (scope.isReady) dispatch('ready'); }, [scope.isReady]);
   useEffect(() => { if (framed) dispatch('insetsReported'); }, [framed]);
   useEffect(() => {
@@ -126,6 +142,7 @@ export function SeatLayerPickerLoadingView(
   );
   return (
     <SeatLayerPickerLoadingStatus
+      slow={slow}
       slots={props.slots}
       style={props.style}
       theme={theme}
@@ -182,6 +199,8 @@ export interface SeatLayerPickerErrorStatusProps extends StatusViewProps {
   readonly retry?: () => void | Promise<void>;
   readonly onActionError?: (error: unknown) => void;
   readonly sessionId?: number;
+  /** Whose tries the offline panel counts: the picker it opens again. */
+  readonly retryOwner?: object;
 }
 /** Context-free error status. No retry affordance exists without a real action. */
 export function SeatLayerPickerErrorStatus({
@@ -194,6 +213,7 @@ export function SeatLayerPickerErrorStatus({
   theme,
   themeStyles,
   sessionId = 0,
+  retryOwner,
 }: SeatLayerPickerErrorStatusProps): React.ReactElement {
   const [busy, setBusy] = useState(false);
   const mounted = useRef(false);
@@ -248,10 +268,16 @@ export function SeatLayerPickerErrorStatus({
       mounted.current = false;
     };
   }, []);
-  const title = strings.translate("mapDidNotLoad");
+  // Nothing answered: the buyer is offline, and the page is opened again by
+  // itself. A server that answered with a fault says nothing of a connection.
+  const kind = seatLayerPickerFailureKind(error);
+  const offline = kind === "connection";
+  useSeatLayerPickerOfflineRetries(retryOwner, offline && retry !== undefined, runRetry);
+  const title = strings.translate(offline ? "offline" : "mapDidNotLoad");
   // What the app says itself stands under the title, unless it is the title.
-  const own = [seatLayerPickerOwnBuyerMessage(error), strings.translate("errorMessage")]
+  const own = offline ? undefined : [seatLayerPickerOwnBuyerMessage(error), strings.translate("errorMessage")]
     .find((sentence) => sentence !== undefined && sentence !== title);
+  const palette = theme.themeMode === "dark" ? seatLayerPickerTokens.color.dark : seatLayerPickerTokens.color.light;
   const line = [
     styles.line,
     { color: theme.colors.mutedText, fontFamily: theme.fontFamily },
@@ -262,6 +288,9 @@ export function SeatLayerPickerErrorStatus({
       accessibilityRole="none"
       style={[styles.root, styles.failure, slots.statusContainer, slots.errorContainer, safeStyle]}
     >
+      {offline ? <View style={[styles.offlineSign, { borderColor: theme.colors.divider }]}>
+        <SeatLayerPickerConnectionSign color={palette.connectionLost} shown="offline" size={24} />
+      </View> : null}
       <Text accessibilityRole="alert"
         style={[
           styles.title,
@@ -273,7 +302,7 @@ export function SeatLayerPickerErrorStatus({
         {title}
       </Text>
       {own === undefined ? null : <Text style={line}>{own}</Text>}
-      <Text style={line}>{strings.translate("checkConnection")}</Text>
+      {kind === "server" ? null : <Text style={line}>{strings.translate("checkConnection")}</Text>}
       {retry === undefined ? null : (
         <Pressable
           accessibilityRole="button"
@@ -326,6 +355,7 @@ export function SeatLayerPickerErrorView(
       error={actualError}
       onActionError={scope.reportError}
       retry={props.retry ?? scope.retry}
+      retryOwner={scope.controller}
       sessionId={scope.sessionId}
       strings={scope.strings}
       theme={theme}
@@ -343,7 +373,9 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
   },
   text: { textAlign: "center", fontSize: 15, lineHeight: 22 },
   failure: { gap: 10 },
-  title: { textAlign: "center", fontSize: 15, fontWeight: "800", lineHeight: 20 },
+  // Full width: Android measures a heavy title narrower than it draws it, and
+  // a word that wraps past the measured line is not drawn.
+  title: { alignSelf: "stretch", textAlign: "center", fontSize: 15, fontWeight: "800", lineHeight: 20 },
   line: { textAlign: "center", fontSize: 13, fontWeight: "600", lineHeight: 18 },
   emptyMark: {
     alignItems: 'center',
@@ -360,6 +392,15 @@ const styles = seatLayerPickerBoldStyles(StyleSheet.create({
     width: 28,
   },
   emptySeatBase: { borderRadius: 2, height: 4, marginTop: 4, width: 36 },
+  offlineSign: {
+    alignItems: "center",
+    borderRadius: 28,
+    borderWidth: 1,
+    height: 56,
+    justifyContent: "center",
+    marginBottom: 4,
+    width: 56,
+  },
   retry: {
     minHeight: 44,
     marginTop: 6,

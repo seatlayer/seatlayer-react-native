@@ -21,6 +21,11 @@ const holdCommands: ReadonlySet<string | undefined> = new Set([
   'picker.resumeHold', 'picker.setTableQuantity',
 ]);
 
+/** Whether `command` secures seats: a hold, or the step to checkout. */
+export function seatLayerPickerSecuresSeats(command: string | undefined): boolean {
+  return command !== undefined && holdCommands.has(command);
+}
+
 /**
  * Failures of the app, the page or the call itself, where asking again cannot
  * help: a page the app cannot speak to, or a call made wrongly.
@@ -51,7 +56,7 @@ const takenCodes: ReadonlySet<string> = new Set([
  * no code of its own: it arrives under the page's fallback code with only the
  * browser's message.
  */
-const noConnection = new RegExp(
+export const seatLayerPickerNoConnection = new RegExp(
   'failed to fetch|load failed|network ?error|network connection was lost|'
   + 'internet connection appears to be offline|could not connect to the server|'
   + 'request timed out|hostname could not be found',
@@ -154,7 +159,7 @@ export function seatLayerPickerErrorWords(
     return say('accessUnverifiedTitle', 'accessUnverifiedCopy');
   }
   const unanswered = status === undefined
-    ? noConnection.test(pageMessage)
+    ? seatLayerPickerNoConnection.test(pageMessage)
     : status === 503 || (status >= 500 && pageMessage.startsWith('request_failed'));
   if (unanswered) return say('checkConnection');
   if (pageMessage.includes('seat sales are closed')) return say('salesClosedToast');

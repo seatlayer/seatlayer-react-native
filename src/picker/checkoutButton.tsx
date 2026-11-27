@@ -23,6 +23,7 @@ import {
 } from './styles';
 import { supportsSeatLayerPickerSurface } from './surfaces';
 import { seatLayerPickerTokens } from './tokens.g';
+import { seatLayerPickerPressWatch } from './connectionMessages';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type BookSlots = Pick<SeatLayerPickerStyles, 'continueButton' | 'continueButtonText'>;
@@ -90,6 +91,7 @@ function useSeatLayerCheckoutFlight(
     flightRef.current = flight;
     // A hold that is already there is only handed over.
     setBusy(before.controller.getSnapshot()?.hold.active === true ? 'handing' : 'holding');
+    const ended = seatLayerPickerPressWatch(before.controller).begin();
     // Why the last try was refused is not what this one is about.
     before.clearError();
     try {
@@ -118,6 +120,7 @@ function useSeatLayerCheckoutFlight(
         try { scopeRef.current.reportError(error); } catch { /* contained */ }
       }
     } finally {
+      ended();
       if (mountedRef.current && flightRef.current === flight &&
         isSeatLayerCartActionCurrent(lease, scopeRef.current)) {
         flightRef.current = 0;
@@ -125,6 +128,15 @@ function useSeatLayerCheckoutFlight(
       }
     }
   };
+  const checkoutRef = useRef(checkout);
+  checkoutRef.current = checkout;
+  // "Try again" after a server fault runs the checkout through this same path.
+  useEffect(() => {
+    const watch = seatLayerPickerPressWatch(scope.controller);
+    const retry = () => { void checkoutRef.current(); };
+    watch.setRetry(retry);
+    return () => { if (watch.retry === retry) watch.setRetry(undefined); };
+  }, [scope.controller]);
   return { busy, press: () => { void checkout(); } };
 }
 

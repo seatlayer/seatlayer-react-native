@@ -271,6 +271,31 @@ describe('picker chrome pure plans', () => {
     expect(renderer.toJSON()).toBeNull();
   });
 
+  it('waits at 0:00 in grey while the page says its line is down, and only then', () => {
+    const theme = {
+      colors: { accent: '#5b4b8a', onAccent: '#ffffff', mutedText: '#666666', surface: '#ffffff', text: '#111111' },
+      fontFamily: undefined,
+    } as any;
+    const inkAt = (expiresAt: number, lineDown: boolean) => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      act(() => {
+        renderer = TestRenderer.create(React.createElement(SeatLayerPickerHoldCountdownView, {
+          clock: () => 100_000, heldFor: (clock: string) => clock, hold: { active: true, expiresAt }, lineDown, theme,
+        }));
+      });
+      const text = renderer.root.findByType('Text' as any);
+      const style = Object.assign({}, ...[text.props.style].flat(3).filter(Boolean));
+      act(() => renderer.unmount());
+      return style.color;
+    };
+    // 0:00 with the line down: grey, not the expiring accent.
+    expect(inkAt(100_000, true)).toBe('#666666');
+    // 0:00 with the line up: the expiring look, as before.
+    expect(inkAt(100_000, false)).toBe('#ffffff');
+    // Time left with the line down: the clock runs as usual.
+    expect(inkAt(400_000, true)).toBe('#5b4b8a');
+  });
+
   it('keeps its header lease through top-inset and layout measurement changes', () => {
     const reportInset = vi.fn();
     const oldRemove = vi.fn();

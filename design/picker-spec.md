@@ -594,6 +594,82 @@ drawn** — not merely whenever the scene is up.
 
 **Snapshot.** `event.mode`.
 
+### 3.4.2 Connection status
+
+**Name** `SeatLayerPickerConnectionStatus` · **file**
+`lib/src/picker/picker_connection_status.dart`; the rules in
+`lib/src/picker/picker_connection.dart` (`SeatLayerConnectionWatch`).
+
+Drawn only when the page names the capability `connection-state-v1`. The page
+reports its line with the event `connection.changed {state}` and the snapshot's
+`map.connection`: `live`, `reconnecting`, `polling` or `offline`. A value the
+SDK does not know is ignored. An older page draws nothing new.
+
+**What it says, and when.**
+
+| Page reports | Shown |
+| --- | --- |
+| `offline` for `3 s` | `strings.offline`; with a hold the server confirmed and time left on its clock, a second line `strings.stillHeld` until `0:00` |
+| `reconnecting` after an outage that was shown | `strings.updating` |
+| `reconnecting` for `10 s`, nothing shown before | `strings.updating`; when the line returns it goes without `Back online` |
+| `live` or `polling` after an outage that was shown | `strings.updating` until the next snapshot (the seats read again), then `strings.backOnline` for `2.5 s` |
+| `offline` again while still out | `strings.offline` at once |
+
+A new page (reload) forgets what the old one said.
+
+**Anatomy.** `size.connectionStatusHeight` high with one line,
+`size.connectionStatusTwoLineHeight` with two; title
+`size.connectionStatusTitleFont` w600 in `color.*.text`, the second line
+`size.connectionStatusLineFont` w400 in `color.*.mutedText`. `radius.pill`, or
+`radius.connectionStatusTwoLines` with two lines. Ground `color.*.background`
+(dark: `color.*.surface`), a 1 px `color.*.divider` line and the map buttons'
+shadow. Padding `size.connectionStatusPadStart` / `…PadEnd`. A sign of
+`size.connectionStatusSign` (growing with the text to the `type.scaleClamp.sheet`
+clamp), then `size.connectionStatusSignGap`. The three signs differ in shape
+and colour: a crossed-out wifi sign in `color.*.connectionLost`, a ring in the
+muted text colour, a tick in `color.*.connectionBack`. A club's accent never
+colours them.
+
+**Placement.** The map's top line at the start side, after the test chip (and
+on a phone after the back pill or the floor strip, wherever the chip stands),
+as wide as its words up to the Map / 3D switch less
+`size.connectionStatusSwitchGap`. When the words do not fit there on one line
+each (large text, a narrow phone), it goes under the chip and the switch and
+takes the map's whole width between the insets. On a wide map it is at most
+360 wide. When the levels share the phone's top line (sideways), it goes under
+that line.
+
+**Motion.** Arrives over `motion.duration.connectionIn`, rising
+`size.connectionStatusRise` and fading; the words change in place over
+`motion.duration.connectionWords`; the ring turns once per
+`motion.durationOutsideBudget.connectionRing`. Reduced motion: the ring stands
+still and every change is a fade of `motion.duration.crossfade`.
+
+**Touch and reading.** It takes no touches: the map under it still pans.
+`strings.offline` (with `strings.stillHeld`) and `strings.backOnline` are
+announced once; `strings.updating` is not announced.
+
+**Messages by the button.** A press that got no answer (no network, a time
+limit, a request the browser could not send) is told in the small message,
+amber, as `strings.checkConnection`, not in the red line; the red line stays
+for refusals (a seat taken, sales closed). A server that answered a hold or the
+step to checkout with a fault (5xx) is told as `strings.couldNotReachCheckout`
+with `strings.retry`, which runs the app's checkout again; another press it
+failed is told as `strings.checkConnection`. From
+`seatLayerSlowPressAfter` (10 s) into a hold or a best-seats search without an
+answer the small message says `strings.takingLonger`. The hold commands' own
+time limit stays 45 s.
+
+**Opening.** The loading view's line becomes `strings.loadingTakingLonger`
+after 8 s. A page that did not load because nothing answered (no network) shows
+its own panel: the crossed-out wifi sign in a 56 circle, `strings.offline`,
+`strings.checkConnection` and `strings.retry`; while the app is in front it
+tries again by itself after 10 s, 20 s, then every 30 s. A page whose server
+answered with a fault shows `strings.mapDidNotLoad` and `strings.retry`
+without the connection line. A page that only answered too slowly keeps the
+panel as before. An app's own error builder still takes the place of all of
+them, the access panel included.
+
 ### 3.5 Map corner controls
 
 **Name** `SeatLayerPickerMapControls` · **slot** `iconButtonStyle` · **file**
@@ -2456,6 +2532,11 @@ gone**, even when the snapshot in hand still describes a live one: it was read
 before the reconciliation that ended it, and a clock still running over released
 seats is the one thing that can leave a buyer reassured right up to a failed
 checkout.
+
+While the connection status says `strings.offline` or `strings.updating`, a
+clock that reaches `0:00` stays at `0:00` in the muted text colour on a muted
+wash, without the expiring accent: the hold's end is the server's to say, and
+it is asked once the line is back (§3.4.2).
 
 #### 3.13.7 Hold expired, and hold lapsed
 

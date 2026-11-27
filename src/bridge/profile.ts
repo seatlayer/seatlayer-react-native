@@ -6,6 +6,7 @@ import {
   pickerProtocolRange,
   seatLayerAccessibilityFocusCapability,
   seatLayerCategoryAvailabilityCapability,
+  seatLayerConnectionStateCapability,
   seatLayerSeatScreenPointCapability,
   seatLayerSeatViewThumbnailCapability,
   seatLayerSectionAccessCountsCapability,
@@ -220,6 +221,7 @@ export function pickerBridgeProfile(
       'availability-refresh-v1',
       'access-needs-v1',
       'hold-selection-v1',
+      seatLayerConnectionStateCapability,
       // Additive, present-only snapshot fields from the 0.80.3 native-chrome
       // contract. Each stays optional: a runtime that does not advertise one
       // simply never reports its field, and the chrome offers less rather

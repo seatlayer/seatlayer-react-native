@@ -27,6 +27,7 @@ import {
 import { resolveSeatLayerPickerMotion } from "./motion";
 import { useSeatLayerPickerReducedMotion } from "./reducedMotion";
 import { useSeatLayerPickerScope } from "./SeatLayerPickerScope";
+import { useSeatLayerPickerLineDown } from "./connectionHooks";
 import { supportsSeatLayerPickerNativeChrome } from "./surfaces";
 import {
   resolveSeatLayerPickerStyles,
@@ -89,6 +90,8 @@ export interface SeatLayerPickerHeaderViewProps
   readonly themeStyles?: SeatLayerPickerThemeStyles;
   readonly hold?: Readonly<{ active: boolean; expiresAt?: number; owner?: string }>;
   readonly holdLapsed?: boolean;
+  /** The page says its line is down: a clock at 0:00 waits in grey. */
+  readonly lineDown?: boolean;
   readonly salesClosed?: boolean;
   readonly closeLabel: string;
   readonly salesClosedLabel?: string;
@@ -274,7 +277,11 @@ export function SeatLayerPickerHeaderView(
     ? 0
     : Math.max(0, Math.floor((expiry - now) / 1_000));
   const clockText = seatLayerHoldClockText(remaining);
-  const expiring = showHold && seatLayerHoldExpiring(remaining);
+  // While the line is down a clock at 0:00 waits in grey: the server has not
+  // yet said what became of the hold.
+  const waiting = showHold && props.lineDown === true && remaining === 0;
+  const expiring = showHold && !waiting && seatLayerHoldExpiring(remaining);
+  const holdInk = waiting ? theme.colors.mutedText : expiring ? theme.colors.onAccent : theme.colors.accent;
   const captureRenderFailure = (error: unknown): void => {
     renderFailure ??= error;
   };
@@ -445,19 +452,19 @@ export function SeatLayerPickerHeaderView(
               accessibilityLabel={spokenRef.current ?? heldFor}
               testID="seatlayer-header-hold-pill"
               style={[styles.pill, {
-                backgroundColor: expiring
-                  ? theme.colors.accent
-                  : seatLayerPickerColorAlpha(theme.colors.accent, .12),
+                backgroundColor: waiting
+                  ? seatLayerPickerColorAlpha(theme.colors.mutedText, .12)
+                  : expiring ? theme.colors.accent : seatLayerPickerColorAlpha(theme.colors.accent, .12),
               }, slots.holdPillContainer]}
             >
               <HoldDot
-                color={expiring ? theme.colors.onAccent : theme.colors.accent}
+                color={holdInk}
                 pulsing={expiring && !reducedMotion}
               />
               <Text
                 allowFontScaling={false}
                 style={[styles.pillText, {
-                  color: expiring ? theme.colors.onAccent : theme.colors.accent,
+                  color: holdInk,
                   fontFamily: theme.fontFamily,
                 }, slots.holdPillText]}
               >
@@ -574,6 +581,7 @@ export function SeatLayerPickerHeader(
   props: SeatLayerPickerHeaderProps,
 ): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
+  const lineDown = useSeatLayerPickerLineDown(scope.controller);
   const mapTheme = resolveSeatLayerPickerMapChromeTheme(
     scope.resolvedTheme,
     scope.snapshot,
@@ -596,6 +604,7 @@ export function SeatLayerPickerHeader(
         scope.strings.translate("heldFor", { values: { clock } })}
       hold={scope.snapshot?.hold}
       holdLapsed={scope.holdLapsed}
+      lineDown={lineDown}
       logoSource={mapTheme.logoSource}
       removeInset={removeInset}
       reportError={scope.reportError}

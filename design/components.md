@@ -747,6 +747,7 @@ specification. Names, slots and files:
 | --- | --- | --- |
 | `SeatLayerFloorStrip` | `floorStripStyle` | §3.7 |
 | `SeatLayerBestSeatsForm` | — | §3.11 — lives ONLY in the open sheet (the empty cart's way in is the footer's own full-width `strings.findBestSeatsCta`). A one-line `✦ strings.findSeatsTogether` title, truncating rather than wrapping, with an **ⓘ immediately after the title** that toggles a one-line `strings.closestGroupChosenInstantly` under it (animated size, muted 12 pt, named `strings.aboutBestSeats`). **No premium chip** — the snapshot carries no chart-level premium fact; see §4.9 |
+| `SeatLayerPickerConnectionStatus` | — | §3.4.2 — `You’re offline`, `Updating…`, `Back online` on the map's top line after the test chip; only with the page's `connection-state-v1`; takes no touches |
 | `SeatLayerPickerToast` / `…ToastQueue` / `…ToastLayer` | — | §3.12 |
 | `SeatLayerPickerLoadingView` / `…ErrorView` / `…EmptyView` | — | §3.13.1–2 |
 | `SeatLayerPickerAccessPanel` | — | §3.13.3 |

@@ -38,6 +38,7 @@ import { blendSeatLayerPickerColor } from './pickerNavigation';
 import { seatLayerPickerColorAlpha } from './mapChromeTheme';
 import { seatLayerPickerBold } from './boldText';
 import { seatLayerPickerDrawnShape, seatLayerPickerLineStart } from './drawnShape';
+import { seatLayerPickerPressWatch } from './connectionMessages';
 
 type Scope = ReturnType<typeof useSeatLayerPickerScope>;
 type ChoiceKind = 'category' | 'zone';
@@ -178,6 +179,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
     flightRef.current = flight;
     setSubmitting(true);
     before.clearError();
+    const ended = seatLayerPickerPressWatch(before.controller).begin();
     try {
       await before.controller.bestAvailable(request.quantity, {
         ...(request.categoryKey ? { categoryKey: request.categoryKey } : {}),
@@ -197,6 +199,7 @@ export function SeatLayerBestSeatsForm(props: SeatLayerBestSeatsFormProps): Reac
         try { scopeRef.current.reportError(error); } catch { /* contained */ }
       }
     } finally {
+      ended();
       if (mountedRef.current && flightRef.current === flight &&
         isSeatLayerCartActionCurrent(action, scopeRef.current)) {
         flightRef.current = 0;

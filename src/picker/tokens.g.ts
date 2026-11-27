@@ -1,8 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: 8100f3ab98781df3f8318cceeee180f85a4ea00e2beb2f043422865f34f98439
+// Canonical token input SHA-256: b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85
 // Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = '8100f3ab98781df3f8318cceeee180f85a4ea00e2beb2f043422865f34f98439' as const;
+export const seatLayerPickerTokenSourceSha256 = 'b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -12,6 +12,8 @@ export const seatLayerPickerTokens = {
       "background": "#0F1522",
       "chrome": "#556278",
       "chromeLine": "#E9EEF78C",
+      "connectionBack": "#4CC38A",
+      "connectionLost": "#E0B04A",
       "divider": "#A5AEC23D",
       "error": "#FF6B6B",
       "immersiveCaption": "#0A0E16D1",
@@ -39,6 +41,8 @@ export const seatLayerPickerTokens = {
       "background": "#FFFFFF",
       "chrome": "#d6dce6",
       "chromeLine": "#1720338C",
+      "connectionBack": "#1B7F52",
+      "connectionLost": "#B7791F",
       "divider": "#17203329",
       "error": "#B42318",
       "mapBackground": "#E9EDF4",
@@ -109,6 +113,8 @@ export const seatLayerPickerTokens = {
       "bump": 240,
       "cardEnter": 240,
       "chevron": 240,
+      "connectionIn": 200,
+      "connectionWords": 160,
       "crossfade": 120,
       "dock": 240,
       "enter": 260,
@@ -124,6 +130,7 @@ export const seatLayerPickerTokens = {
     },
     "durationOutsideBudget": {
       "confirmFlight": 500,
+      "connectionRing": 900,
       "inviteBreathe": 2400,
       "inviteBreatheDelay": 1000,
       "inviteDelay": 300,
@@ -164,6 +171,7 @@ export const seatLayerPickerTokens = {
     "card": 18,
     "chip": 999,
     "confirmCard": 15,
+    "connectionStatusTwoLines": 18,
     "control": 9,
     "explainerToast": 14,
     "headerLogo": 6,
@@ -267,6 +275,16 @@ export const seatLayerPickerTokens = {
     "confirmSightPadX": 8,
     "confirmSightPadY": 3,
     "confirmTierHeight": 38,
+    "connectionStatusHeight": 36,
+    "connectionStatusLineFont": 12.5,
+    "connectionStatusPadEnd": 14,
+    "connectionStatusPadStart": 12,
+    "connectionStatusRise": 4,
+    "connectionStatusSign": 16,
+    "connectionStatusSignGap": 8,
+    "connectionStatusSwitchGap": 8,
+    "connectionStatusTitleFont": 13,
+    "connectionStatusTwoLineHeight": 52,
     "dockBackChevronSize": 18,
     "dockBackFontSize": 12.5,
     "dockBackHeight": 36,
@@ -423,6 +441,7 @@ export const seatLayerPickerTokens = {
     "allSetTitle": "You’re all set",
     "anyTicketType": "Any ticket type",
     "anyVenueZone": "Any venue zone",
+    "backOnline": "Back online",
     "backToMap": "Back to map",
     "backToVenue": "Back to venue",
     "bestSeats": "Best seats",
@@ -449,6 +468,7 @@ export const seatLayerPickerTokens = {
     "continueWord": "Continue",
     "couldNotAddMoreTime": "Couldn’t add more time. Please head to checkout now.",
     "couldNotFindSeatsTogether": "We couldn’t find {count} seats together. Try fewer seats or another ticket type.",
+    "couldNotReachCheckout": "Couldn’t reach checkout.",
     "couldNotRemoveLabel": "Couldn’t remove {label}. Your hold is unchanged.",
     "dismissError": "Dismiss error",
     "displayOptions": "Display options",
@@ -499,6 +519,7 @@ export const seatLayerPickerTokens = {
     "labelNoLongerAvailable": "{labels} is no longer available. Choose another seat.",
     "labelsNoLongerAvailable": "{labels} are no longer available. Choose another group.",
     "loading": "Loading seat map…",
+    "loadingTakingLonger": "The seat map is taking longer to load. Please wait…",
     "maintenancePausedOne": "Booking is paused for maintenance. Please try again in about {count} minute.",
     "maintenancePausedOther": "Booking is paused for maintenance. Please try again in about {count} minutes.",
     "maintenancePausedShortly": "Booking is paused for a few minutes for maintenance. Please try again shortly.",
@@ -518,6 +539,7 @@ export const seatLayerPickerTokens = {
     "notAvailable": "Not available",
     "numberOfGuests": "Number of guests",
     "obstructedView": "Obstructed view",
+    "offline": "You’re offline",
     "onlyLeftOther": "{count} seats left",
     "openVenue360": "Open venue 360°",
     "openingCheckout": "Opening secure checkout…",
@@ -594,6 +616,8 @@ export const seatLayerPickerTokens = {
     "soldOutCopy": "No reserved seats are currently available for this event.",
     "soldOutEyebrow": "This event",
     "soldOutTitle": "Sold out",
+    "stillHeld": "Your seats are still held.",
+    "takingLonger": "This is taking longer than usual. Please wait…",
     "testMode": "Test mode",
     "testModeExplained": "Bookings here are not real and no card is charged",
     "testModeLong": "Test mode · books nothing",
@@ -607,6 +631,7 @@ export const seatLayerPickerTokens = {
     "tooManyAttempts": "Too many attempts. Wait a moment and try again.",
     "undo": "Undo",
     "updateTable": "Update table",
+    "updating": "Updating…",
     "venue3D": "3D",
     "venueMap": "{venue} seat map",
     "venueMapHint": "Seats are picked with the controls around the map: the price rail above it, the section controls below it, and the ticket panel at the foot.",

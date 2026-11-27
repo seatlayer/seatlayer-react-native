@@ -2,6 +2,38 @@
 
 ## Unreleased
 
+**When the connection goes** (with a map page that names
+`connection-state-v1`, map 1.0.7 or later; with an older page nothing new is
+drawn)
+
+- **Android apps need `ACCESS_NETWORK_STATE`** (see Install). Without it the
+  map's web view is never told the phone is offline, and the picker only says
+  "Updating…".
+- "You’re offline" on the map's top line three seconds after the page reports
+  the line gone, so a blink of the network says nothing. "Updating…" while it
+  comes back, and "Back online" for 2.5 seconds once the seats have been read
+  again. A line that is only retrying says "Updating…" after 10 seconds.
+- With seats held, a second line: "Your seats are still held.", until the
+  clock reaches 0:00. While the line is down a clock at 0:00 waits in grey
+  until the server has said what happened.
+- The status stands after the test badge, short of the Map/3D control. When
+  its words do not fit there it takes the map's whole width under that line.
+  It takes no touches. "You’re offline" and "Back online" are read once.
+- A press without an answer says "Check your connection and try again." in
+  the small message, not the red line; the red line stays for refusals. A
+  server fault while securing seats says "Couldn’t reach checkout." with "Try
+  again", which runs the app's checkout again. From 10 seconds into a hold or
+  a best-seats search: "This is taking longer than usual. Please wait…".
+- Opening: after 8 seconds, "The seat map is taking longer to load. Please
+  wait…". A page that did not load because nothing answered shows "You’re
+  offline" with "Try again", and while the app is in front opens itself again
+  after 10 and 20 seconds, then every 30. A page whose server failed says
+  "The seat map didn’t load" without the line about the connection.
+- `SeatLayerPickerController` has `getConnection()`, `getConnectionShown()`
+  and `subscribeConnection()`.
+- Seven new words in the 43 languages: `offline`, `backOnline`, `stillHeld`,
+  `updating`, `takingLonger`, `loadingTakingLonger`, `couldNotReachCheckout`.
+
 **The map: 1.0.5 to 1.0.6**
 
 - On a phone the level stack no longer narrows the whole map: the venue fits

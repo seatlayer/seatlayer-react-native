@@ -190,6 +190,7 @@ export {
   type SeatLayerPickerZone,
   type SeatLayerSeatView,
 } from './picker/models';
+export type { SeatLayerConnectionShown, SeatLayerConnectionState } from './picker/connection';
 export type { JsonObject, JsonPrimitive, JsonValue } from './json';
 export type {
   SeatLayerPickerFocusedSectionState,
