@@ -91,6 +91,7 @@ import {
 import type { SeatLayerPickerSafeAreaInsetInput } from './safeAreaInsets';
 import { sanitizeSeatLayerPickerStyle } from './styles';
 import { seatLayerPickerTokens } from './tokens.g';
+import { SeatLayerPickerConnectionStatus, seatLayerPickerWideConnectionPlace } from './connectionStatus';
 
 const noSeatView = () => undefined;
 const noSeatViewSubscription = () => () => undefined;
@@ -277,6 +278,10 @@ export function SeatLayerPickerAdaptiveLayout({
     scope.controller.mapController.supportsPickerCommand('picker.setFloor');
   const testBadgeVisible = snapshot?.event.mode === 'test' && nativeChrome;
   const [testBadgeWidth, setTestBadgeWidth] = useState<number | undefined>(undefined);
+  const measureBadge = (event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout.width;
+    if (Number.isFinite(next) && next > 0) setTestBadgeWidth((current) => current !== undefined && Math.abs(current - next) < .5 ? current : next);
+  };
   // §3.5, 0.9.1: the disc HEADS the map's control column on both compositions,
   // so it is drawn BY that column and cannot outlive it. A host that turns the
   // column off turns the disc off with it — and, decisively, stops the phone
@@ -302,7 +307,7 @@ export function SeatLayerPickerAdaptiveLayout({
   const immersiveTopInset = seatLayerPickerMapControlsEdgeInset;
   const backPillDrawn = venueMode && venueVisible;
   const badgeCleared = backPillDrawn && seatLayerVenue3DCornerTaken(snapshot, scope.bridgeConfig);
-  const { backTop, badgeTop, floorBottom, floorRail, topHeight } = planSeatLayerPickerPhoneTop({
+  const { backTop, badgeTop, connection, floorBottom, floorRail, topHeight } = planSeatLayerPickerPhoneTop({
     backPillDrawn, badgeCleared, floorStripVisible, immersiveTopInset, testBadgeVisible,
     ownFloorStrip: builders?.floorStrip !== undefined,
     controls: phoneControls.left || phoneControls.right, viewModeVisible: phoneControls.right,
@@ -717,15 +722,8 @@ export function SeatLayerPickerAdaptiveLayout({
           {wide ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.phoneOverlays} {...underDialog(decisionUp)}>
             <View pointerEvents="box-none" style={styles.controlsOverlay}>{controls}</View>
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorRail, floorRail]}>{floors}</View>}
-            {testBadgeVisible ? <View
-              onLayout={(event) => {
-                const next = event.nativeEvent.layout.width;
-                if (!Number.isFinite(next) || next <= 0) return;
-                setTestBadgeWidth((current) => current !== undefined && Math.abs(current - next) < .5 ? current : next);
-              }}
-              pointerEvents="box-none"
-              style={[styles.testRail, { top: badgeTop }]}
-            ><SeatLayerPickerTestModeIndicator compact /></View> : null}
+            {testBadgeVisible ? <View onLayout={measureBadge} pointerEvents="box-none" style={[styles.testRail, { top: badgeTop }]}><SeatLayerPickerTestModeIndicator compact /></View> : null}
+            {venueMode || panoramaUp ? null : <SeatLayerPickerConnectionStatus place={connection} />}
             {/* The accessibility disc has moved into the control column, so
                 the bottom-left corner is the floor selector's alone. */}
             {venueMode ? null : <View pointerEvents="box-none" style={[styles.floorSelectorRail, { bottom: bottomInset + seatLayerPickerMapControlsEdgeInset }]}>{floorSelector}</View>}
@@ -735,7 +733,8 @@ export function SeatLayerPickerAdaptiveLayout({
               way, so lifting it out of the overlay stack paints identically. */}
           {dock === null ? null : <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('dock')} pointerEvents="box-none" style={styles.dockRail} {...underDialog(decisionUp)}>{dock}</View>}
           {wide ? <View collapsable={false} nativeID={seatLayerPickerReadingOrderId('mapChrome')} pointerEvents="box-none" style={styles.wideMapOverlays} {...underDialog(decisionUp)}>
-            {testBadgeVisible ? <View pointerEvents="box-none" style={[styles.wideTestRail, { top: badgeCleared ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
+            {testBadgeVisible ? <View onLayout={measureBadge} pointerEvents="box-none" style={[styles.wideTestRail, { top: badgeCleared ? 62 : 12 }]}><SeatLayerPickerTestModeIndicator compact={false} /></View> : null}
+            {venueMode || panoramaUp ? null : <SeatLayerPickerConnectionStatus place={seatLayerPickerWideConnectionPlace(badgeCleared ? 62 : 12, testBadgeVisible ? testBadgeWidth : 0, viewModeWidth)} />}
             <View pointerEvents="box-none" style={styles.wideControlsRail}>{controls}</View>
             <View pointerEvents="box-none" style={styles.wideFloorSelectorRail}>{floorSelector}</View>
           </View> : null}

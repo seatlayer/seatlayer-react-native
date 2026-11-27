@@ -1,5 +1,6 @@
 import { seatLayerPickerPhoneChromeTop } from './adaptiveLayoutState';
 import { seatLayerPickerMapControlsEdgeInset, seatLayerPickerMapControlsRailTop } from './SeatLayerMapControls';
+import type { SeatLayerPickerConnectionPlace } from './connectionStatus';
 import { seatLayerPickerTestModeIndicatorCompactHeight } from './testModeIndicator';
 import { seatLayerPickerTokens } from './tokens.g';
 
@@ -36,6 +37,8 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
   /** Where the scene's way back stands. */
   backTop: number;
   badgeTop: number;
+  /** Where the connection status stands: on the badge's line, after it. */
+  connection: SeatLayerPickerConnectionPlace;
   floorBottom: number | undefined;
   /** The room the chips leave at the map's start and end. */
   floorRail: Readonly<{ paddingStart: number; paddingEnd: number; top: number }>;
@@ -81,9 +84,30 @@ export function planSeatLayerPickerPhoneTop(input: Readonly<{
     : input.floorStripVisible && !oneLine
       ? chipsEnd + size.mapAnchorGap
       : seatLayerPickerMapControlsRailTop;
+  // The status shares the badge's line, short of the Map/3D control where that
+  // line is the control's too. Sideways, with the levels on the top line, it
+  // goes under that line.
+  const controlLine = !input.floorStripVisible || oneLine;
+  // On the badge's own line it is centred on the badge.
+  const lineTop = oneLine
+    ? lineBelow
+    : controlLine
+      ? seatLayerPickerMapControlsRailTop
+      : badgeTop - (size.connectionStatusHeight - seatLayerPickerTestModeIndicatorCompactHeight) / 2;
+  const lineHeight = controlLine && !oneLine ? size.viewModeControlHeight : size.connectionStatusHeight;
+  const connection: SeatLayerPickerConnectionPlace = {
+    top: lineTop,
+    start: oneLine ? edge : start,
+    end: controlLine && !oneLine && input.viewModeVisible
+      ? edge + (input.viewModeWidth ?? Number.POSITIVE_INFINITY) + size.connectionStatusSwitchGap
+      : edge,
+    belowTop: oneLine ? lineTop : lineTop + lineHeight + size.mapAnchorGap,
+    inset: edge,
+  };
   return {
     backTop,
     badgeTop,
+    connection,
     floorBottom: input.floorStripVisible && !oneLine ? chipsEnd : undefined,
     floorRail: {
       paddingStart: input.ownFloorStrip ? 0 : !oneLine ? edge : centred ? middle : start,

@@ -17,6 +17,7 @@ import {
 } from './styles';
 import type { SeatLayerPickerThemeData } from './theme';
 import { seatLayerPickerTokens } from './tokens.g';
+import { useSeatLayerPickerLineDown } from './connectionHooks';
 import { seatLayerPickerBoldStyles } from './boldText';
 
 type HoldSlots = Pick<SeatLayerPickerStyles, 'holdPillContainer' | 'holdPillText'>;
@@ -34,6 +35,8 @@ export interface SeatLayerPickerHoldCountdownViewProps extends SeatLayerPickerHo
   readonly heldFor: (clock: string) => string;
   readonly hold?: Readonly<{ active: boolean; expiresAt?: number; owner?: string }>;
   readonly holdLapsed?: boolean;
+  /** The page says its line is down: a clock at 0:00 waits in grey. */
+  readonly lineDown?: boolean;
   readonly reportError?: (error: unknown) => void;
   readonly sessionId?: number;
   readonly theme: SeatLayerPickerThemeData;
@@ -97,7 +100,10 @@ export function SeatLayerPickerHoldCountdownView(
   );
   const remaining = expiry === undefined ? 0 : Math.max(0, Math.floor((expiry - now) / 1_000));
   const clockText = seatLayerHoldClockText(remaining);
-  const expiring = visible && seatLayerHoldExpiring(remaining);
+  // While the line is down a clock at 0:00 waits in grey: the server has not
+  // yet said what became of the hold.
+  const waiting = visible && props.lineDown === true && remaining === 0;
+  const expiring = visible && !waiting && seatLayerHoldExpiring(remaining);
   const formatted = useMemo(() => {
     if (!visible) return Object.freeze({ label: clockText, spoken: clockText, error: undefined });
     let label = clockText;
@@ -140,6 +146,7 @@ export function SeatLayerPickerHoldCountdownView(
     report(reportError, formatted.error);
   }, [formatted.error, reportError, sessionId]);
   if (!visible) return null;
+  const ink = waiting ? theme.colors.mutedText : expiring ? theme.colors.onAccent : theme.colors.accent;
   return <View
     accessible
     accessibilityLiveRegion="polite"
@@ -148,18 +155,18 @@ export function SeatLayerPickerHoldCountdownView(
     style={[nativeStyles.hold, {
       // Resting is the accent mixed lightly into the surface with accent-toned
       // ink; expiring inverts to the full accent.
-      backgroundColor: expiring ? theme.colors.accent : seatLayerPickerColorAlpha(theme.colors.accent, .12),
+      backgroundColor: waiting ? seatLayerPickerColorAlpha(theme.colors.mutedText, .12) : expiring ? theme.colors.accent : seatLayerPickerColorAlpha(theme.colors.accent, .12),
     }, slots.holdPillContainer, sanitizeSeatLayerPickerStyle(style)]}
   >
     <View accessible={false} style={[nativeStyles.timer, {
-      borderColor: expiring ? theme.colors.onAccent : theme.colors.accent,
+      borderColor: ink,
     }]}>
       <View style={[nativeStyles.timerHand, {
-        backgroundColor: expiring ? theme.colors.onAccent : theme.colors.accent,
+        backgroundColor: ink,
       }]} />
     </View>
     <Text style={[nativeStyles.holdText, {
-      color: expiring ? theme.colors.onAccent : theme.colors.accent,
+      color: ink,
       fontFamily: theme.fontFamily,
     }, slots.holdPillText]}>{formatted.label}</Text>
   </View>;
@@ -171,12 +178,14 @@ export function SeatLayerPickerHoldCountdown(
 ): React.ReactElement | null {
   const scope = useSeatLayerPickerScope();
   const theme = resolveSeatLayerPickerMapChromeTheme(scope.resolvedTheme, scope.snapshot);
+  const lineDown = useSeatLayerPickerLineDown(scope.controller);
   return <SeatLayerPickerHoldCountdownView
     {...props}
     announceHold={(key, count) => scope.strings.translate(key, { count, values: { count } })}
     heldFor={(clock) => scope.strings.translate('heldFor', { values: { clock } })}
     hold={scope.snapshot?.hold}
     holdLapsed={scope.holdLapsed}
+    lineDown={lineDown}
     reportError={scope.reportError}
     sessionId={scope.sessionId}
     theme={theme}
