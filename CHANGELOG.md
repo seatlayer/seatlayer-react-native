@@ -69,7 +69,17 @@ drawn)
 - Seven new words in the 43 languages: `offline`, `backOnline`, `stillHeld`,
   `updating`, `takingLonger`, `loadingTakingLonger`, `couldNotReachCheckout`.
 
-**The map: 1.0.5 to 1.0.6**
+**The map: 1.0.5 to 1.0.8**
+
+- The page names `connection-state-v1`, so the connection status, the offline
+  panel and the button's messages above are on.
+- A standing-area hold made while seats or tables were selected no longer
+  says "Seat T3 was just taken by another buyer." for the buyer's own seats
+  the moment the hold lands. A seat another buyer takes later is still
+  reported.
+- On a map 640 wide or more, "+" stays on until the seat numbers show.
+- Screen readers name the map's ⓘ buttons and display disc in the page's
+  language.
 
 - On a phone the level stack no longer narrows the whole map: the venue fits
   the full width above it, or beside it when it is too tall, and the stack
