@@ -29,6 +29,7 @@ import {
   validateOptions,
   validatePositiveInteger,
   validateStrings,
+  validateThemeMode,
   validateViewportInsets,
 } from './validation';
 
@@ -545,15 +546,8 @@ export class SeatLayerPickerControllerCore {
     mapTheme?: SeatLayerPickerMapTheme | null,
   ): Promise<void> {
     if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
-    if (
-      mode !== null && mode !== 'auto' && mode !== 'light' && mode !== 'dark'
-    ) {
-      return Promise.reject(
-        new SeatLayerError('bad_payload', 'SeatLayer theme mode is invalid.'),
-      );
-    }
-    const mapThemeError = validateMapTheme(mapTheme);
-    if (mapThemeError) return Promise.reject(mapThemeError);
+    const themeError = validateThemeMode(mode) ?? validateMapTheme(mapTheme);
+    if (themeError) return Promise.reject(themeError);
     if (!this.mapController.supportsPickerCommand('picker.setThemeMode')) {
       return Promise.resolve();
     }

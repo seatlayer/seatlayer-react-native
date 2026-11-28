@@ -10,6 +10,12 @@
   The hold was left on the server and forgotten by the picker: the cart came
   back empty, and "Release and change seats" had nothing to release.
 
+**A theme set before the map is ready**
+
+- `controller.setThemeMode` called before the map is ready is kept, and the
+  latest one is sent once the map is ready, as on Flutter. It was dropped
+  without a word, so the map opened in the other colours.
+
 ## 0.6.1
 
 **The map: 1.0.8 to 1.0.9**

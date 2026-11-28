@@ -78,6 +78,12 @@ const mapThemeKeys = new Set<keyof SeatLayerPickerMapTheme>([
   'selectionColor',
 ]);
 
+export function validateThemeMode(value: unknown): SeatLayerError | undefined {
+  return value === null || value === 'auto' || value === 'light' || value === 'dark'
+    ? undefined
+    : new SeatLayerError('bad_payload', 'SeatLayer theme mode is invalid.');
+}
+
 const hexColor = /^#[0-9a-fA-F]{6}$/;
 
 export function validateMapTheme(value: unknown): SeatLayerError | undefined {
