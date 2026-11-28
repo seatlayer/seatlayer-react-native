@@ -7,10 +7,13 @@ import {
 } from 'react-native';
 import {
   SeatLayerPicker,
+  SeatLayerRunPicker,
   SeatLayerSeasonPicker,
   type BuyerAccessTokenProvider,
   type SeatLayerConfiguration,
   type SeatLayerPickerCheckoutHandoff,
+  type SeatLayerRunConfiguration,
+  type SeatLayerRunHandoff,
   type SeatLayerSeasonConfiguration,
   type SeatLayerSeasonHandoff,
 } from '@seatlayer/react-native';
@@ -23,6 +26,8 @@ const event = process.env.EXPO_PUBLIC_SEATLAYER_EVENT?.trim() ?? '';
 const publicKey = process.env.EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY?.trim() ?? '';
 /** Optional. A Season key (`sea_...`) opens the Season picker instead of the event. */
 const season = process.env.EXPO_PUBLIC_SEATLAYER_SEASON?.trim() ?? '';
+/** Optional. A run key (`pg_...`) opens the run picker instead of the event. */
+const run = process.env.EXPO_PUBLIC_SEATLAYER_RUN?.trim() ?? '';
 
 /**
  * Optional. A private event needs a buyer access token, and only your own
@@ -65,6 +70,16 @@ function SeatLayerExample(): React.ReactElement {
   const [handoff, setHandoff] = useState<SeatLayerPickerCheckoutHandoff>();
   const [seasonHold, setSeasonHold] = useState<SeatLayerSeasonHandoff>();
   const [seasonPage, setSeasonPage] = useState(0);
+  const [runHold, setRunHold] = useState<SeatLayerRunHandoff>();
+  const [runPage, setRunPage] = useState(0);
+  const runConfiguration = useMemo<SeatLayerRunConfiguration>(
+    () => ({
+      run,
+      hostInfo: { app: 'SeatLayer React Native example' },
+      ...(buyerTokenUrl ? { buyerAccessTokenProvider } : {}),
+    }),
+    [],
+  );
   const seasonConfiguration = useMemo<SeatLayerSeasonConfiguration>(
     () => ({
       season,
@@ -86,7 +101,8 @@ function SeatLayerExample(): React.ReactElement {
     [],
   );
 
-  if ((!event && !season) || !publicKey) {
+  // A run opens without a publishable key.
+  if (!run && ((!event && !season) || !publicKey)) {
     return (
       <View
         style={[
@@ -126,7 +142,7 @@ function SeatLayerExample(): React.ReactElement {
     );
   }
 
-  const held = handoff ?? seasonHold;
+  const held = handoff ?? seasonHold ?? runHold;
   if (held) {
     return (
       <View
@@ -161,11 +177,28 @@ function SeatLayerExample(): React.ReactElement {
           onPress={() => {
             setHandoff(undefined);
             setSeasonHold(undefined);
+            setRunHold(undefined);
           }}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
           <Text style={styles.buttonText}>Back to picker</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  if (run) {
+    return (
+      <View style={styles.pickerPage}>
+        <SeatLayerRunPicker
+          key={runPage}
+          configuration={runConfiguration}
+          onContinue={setRunHold}
+          // This example has no screen to go back to: a closed run opens again.
+          onClose={() => setRunPage((page) => page + 1)}
+          safeAreaInsets={insets}
+          style={styles.picker}
+        />
       </View>
     );
   }
