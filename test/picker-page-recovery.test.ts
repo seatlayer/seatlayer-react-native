@@ -214,6 +214,27 @@ describe('a page the system ended', () => {
     picker.dispose();
   });
 
+  it('is taken up by the page that new start inputs bring, and that page is not called booked meanwhile', async () => {
+    const picker = new SeatLayerPickerController();
+    const first = await start(picker);
+    await handOff(picker, first);
+    const booked = vi.fn();
+    picker.subscribeBooked(booked);
+
+    // A new language: the scope keeps the controller and mounts a new page.
+    picker.keepHoldForNextPage();
+    picker.mapController.disconnect(undefined, false);
+    const second = await start(picker, { page: 'page-2', config: { locale: 'ar', initialHoldId: 'hold-1' } });
+    expect(initConfig(second)).not.toHaveProperty('initialHoldId');
+    expect(booked).not.toHaveBeenCalled();
+    expect(second.frames[second.frames.length - 1]).toMatchObject({ type: 'picker.resumeHold', payload: { holdId: 'hold-9' } });
+    answer(picker, second, 'res', { snapshot: snapshot(2, { active: true, owner: 'host', expiresAt: 9_000 }, 'page-2') });
+    await flush();
+    expect(picker.getCheckoutHandoff()?.holdId).toBe('hold-9');
+    expect(booked).not.toHaveBeenCalled();
+    picker.dispose();
+  });
+
   it('forgets the handed-off hold when the server no longer has it', async () => {
     const picker = new SeatLayerPickerController();
     const first = await start(picker);

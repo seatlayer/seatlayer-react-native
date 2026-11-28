@@ -317,6 +317,9 @@ export function SeatLayerPickerScope(props: SeatLayerPickerScopeProps): React.Re
       !replaceSeatLayerPickerScopeSession(session, suppliedController, reportError)) {
       return;
     }
+    // The same controller on the same event gets a new page: it takes up the
+    // hold the page that goes handed to checkout.
+    if (!suppliedChanged && !eventChanged) activeController.keepHoldForNextPage();
     // Every accepted boot-input revision is a logical chrome session.  This
     // retires bands/prompts before paint even when the controller is retained.
     ownershipEpochRef.current += 1;

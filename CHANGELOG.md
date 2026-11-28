@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+**A hold at checkout survives a new language or setting**
+
+- A change to the picker's start inputs while the buyer is at checkout, such
+  as a new language or option, brings a new page. That page now takes up the
+  hold the old one handed to checkout, as a page the system ended already did.
+  The hold was left on the server and forgotten by the picker: the cart came
+  back empty, and "Release and change seats" had nothing to release.
+
 ## 0.6.1
 
 **The map: 1.0.8 to 1.0.9**

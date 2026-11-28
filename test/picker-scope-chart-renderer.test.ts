@@ -68,6 +68,18 @@ describe('picker chart scope lifecycle', () => {
     act(() => tree.unmount());
   });
 
+  it('asks the new page of a real boot change to take up the hold, and only then', async () => {
+    const controller = new SeatLayerPickerController();
+    const keep = vi.spyOn(controller, 'keepHoldForNextPage');
+    let tree!: TestRenderer.ReactTestRenderer;
+    await act(async () => { tree = TestRenderer.create(chartTree(controller, { locale: 'en' })); });
+    await act(async () => { tree.update(chartTree(controller, { locale: 'en' }, 'dark')); });
+    expect(keep).not.toHaveBeenCalled();
+    await act(async () => { tree.update(chartTree(controller, { locale: 'ar' })); });
+    expect(keep).toHaveBeenCalledTimes(1);
+    act(() => tree.unmount());
+  });
+
   async function lose(tree: TestRenderer.ReactTestRenderer): Promise<void> {
     await act(async () => {
       tree.root.findByType('seatlayer-renderer' as never).props.onPageLost();
