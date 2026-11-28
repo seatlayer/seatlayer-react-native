@@ -101,6 +101,9 @@ drawn)
 - It needs `EXPO_PUBLIC_SEATLAYER_API_BASE` and shows setup guidance without it.
   It no longer falls back to the production API, so a test key never goes
   there.
+- It runs on Expo 57.0.34 and React Native 0.86.3 (was 57.0.8 and 0.86.0).
+  React Native 0.86.3 fixes an Android fault that could close the app while
+  the map updates.
 
 ## 0.5.0
 

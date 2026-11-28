@@ -89,6 +89,10 @@ With the React Native Community CLI, beside `INTERNET` in
 Without it the map's web view never learns that the phone went offline, so the
 picker says "Updating…" where it should say "You’re offline". iOS needs nothing.
 
+Android: use React Native 0.86.3 or later. Earlier versions have a React Native
+fault that can close the app while the map updates (fixed in React Native
+0.86.3).
+
 Peer requirements are `react >= 18.2.0`, `react-native >= 0.72.0`, and
 `react-native-webview >= 13.0.0`. TypeScript declarations are published with the
 package (`dist/index.d.ts` for ESM and `dist/index.d.cts` for CommonJS), so no
