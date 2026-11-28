@@ -60,7 +60,15 @@ import {
   type SeatLayerConnectionShown,
   type SeatLayerConnectionState,
 } from './connection';
-import { validateNonEmpty, validateOptions, validatePositiveInteger, validateStrings } from './validation';
+import type { SeatLayerPickerMapTheme, SeatLayerThemeMode } from './theme';
+import {
+  validateMapTheme,
+  validateNonEmpty,
+  validateOptions,
+  validatePositiveInteger,
+  validateStrings,
+  validateThemeMode,
+} from './validation';
 
 export type SeatLayerPickerSeatRetapListener = (
   seat: SeatLayerPickerSelectedSeat,
@@ -131,6 +139,11 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
   private bootHoldId: string | undefined;
   private reloadHold: SeatLayerPickerReloadHold | undefined;
   private resuming: SeatLayerPickerResume | undefined;
+  /** The colours asked for while no page was ready. */
+  private themeForReady: {
+    readonly mode: SeatLayerThemeMode | null;
+    readonly mapTheme: SeatLayerPickerMapTheme | null | undefined;
+  } | undefined;
   private readonly reloadListeners = new Set<() => void>();
   private availabilityRefreshFlight: Promise<SeatLayerPickerLifecycleResult | undefined> | undefined;
   private readonly chartLoads = new SeatLayerPickerChartLoadSubscriptions(
@@ -277,7 +290,27 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     return rest;
   }
 
+  /**
+   * Nothing can be asked of a page before it is ready, so the latest colours
+   * asked for meanwhile are kept and sent once it is.
+   */
+  override setThemeMode(
+    mode: SeatLayerThemeMode | null,
+    mapTheme?: SeatLayerPickerMapTheme | null,
+  ): Promise<void> {
+    if (this.disposed || this.mapController.isReady) return super.setThemeMode(mode, mapTheme);
+    const error = validateThemeMode(mode) ?? validateMapTheme(mapTheme);
+    if (error) return Promise.reject(error);
+    this.themeForReady = { mode, mapTheme };
+    return Promise.resolve();
+  }
+
   protected override onPageStarted(): void {
+    const theme = this.themeForReady;
+    this.themeForReady = undefined;
+    if (theme !== undefined) {
+      void this.setThemeMode(theme.mode, theme.mapTheme).catch(() => undefined);
+    }
     const holdId = this.reloadHold?.holdId;
     this.reloadHold = undefined;
     if (holdId !== undefined) this.resumeAfterReload(holdId);
