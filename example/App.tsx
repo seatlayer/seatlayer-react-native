@@ -22,6 +22,12 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
+/**
+ * Required. The SeatLayer API the example calls, e.g. `https://api.seatlayer.io`.
+ * It is never assumed, so a key from a test environment is never sent to
+ * another environment's API.
+ */
+const apiBase = process.env.EXPO_PUBLIC_SEATLAYER_API_BASE?.trim() ?? '';
 const event = process.env.EXPO_PUBLIC_SEATLAYER_EVENT?.trim() ?? '';
 const publicKey = process.env.EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY?.trim() ?? '';
 /** Optional. A Season key (`sea_...`) opens the Season picker instead of the event. */
@@ -75,6 +81,7 @@ function SeatLayerExample(): React.ReactElement {
   const runConfiguration = useMemo<SeatLayerRunConfiguration>(
     () => ({
       run,
+      apiBase,
       hostInfo: { app: 'SeatLayer React Native example' },
       ...(buyerTokenUrl ? { buyerAccessTokenProvider } : {}),
     }),
@@ -83,6 +90,7 @@ function SeatLayerExample(): React.ReactElement {
   const seasonConfiguration = useMemo<SeatLayerSeasonConfiguration>(
     () => ({
       season,
+      apiBase,
       publicKey,
       hostInfo: { app: 'SeatLayer React Native example' },
       ...(buyerTokenUrl ? { buyerAccessTokenProvider } : {}),
@@ -92,6 +100,7 @@ function SeatLayerExample(): React.ReactElement {
   const configuration = useMemo<SeatLayerConfiguration>(
     () => ({
       event,
+      apiBase,
       publicKey,
       currency: 'USD',
       maxSelection: 8,
@@ -102,7 +111,7 @@ function SeatLayerExample(): React.ReactElement {
   );
 
   // A run opens without a publishable key.
-  if (!run && ((!event && !season) || !publicKey)) {
+  if (!apiBase || (!run && ((!event && !season) || !publicKey))) {
     return (
       <View
         style={[
@@ -118,10 +127,13 @@ function SeatLayerExample(): React.ReactElement {
         <Text style={styles.eyebrow}>SEATLAYER EXAMPLE</Text>
         <Text style={styles.title}>Connect a test event</Text>
         <Text style={styles.body}>
-          Set EXPO_PUBLIC_SEATLAYER_EVENT and
+          Set EXPO_PUBLIC_SEATLAYER_API_BASE, EXPO_PUBLIC_SEATLAYER_EVENT and
           EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY, then restart Expo.
         </Text>
         <View style={styles.codeCard}>
+          <Text selectable style={styles.code}>
+            EXPO_PUBLIC_SEATLAYER_API_BASE=https://api.seatlayer.io
+          </Text>
           <Text selectable style={styles.code}>
             EXPO_PUBLIC_SEATLAYER_EVENT=ev_your_test_event
           </Text>
