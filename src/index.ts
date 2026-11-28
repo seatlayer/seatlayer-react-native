@@ -667,3 +667,39 @@ export {
   seatLayerPickerRemovalPolicy,
   useSeatLayerPickerSeatRemovalSeat,
 } from './picker/seatConfirmationRemoval';
+
+export {
+  SeatLayerSeasonPicker,
+  SeatLayerSeasonPickerModal,
+  SeatLayerSeasonView,
+  type SeatLayerSeasonCloseCallback,
+  type SeatLayerSeasonContinueCallback,
+  type SeatLayerSeasonPickerHandle,
+  type SeatLayerSeasonPickerModalProps,
+  type SeatLayerSeasonPickerProps,
+  type SeatLayerSeasonViewProps,
+} from './season/SeatLayerSeasonPicker';
+export {
+  SeatLayerSeasonController,
+  type SeatLayerSeasonClose,
+  type SeatLayerSeasonEvents,
+} from './season/controller';
+export {
+  seatLayerSeasonPageUrl,
+  type SeatLayerSeasonConfiguration,
+} from './season/configuration';
+export type {
+  SeatLayerSeasonBookedStatus,
+  SeatLayerSeasonCloseOutcome,
+  SeatLayerSeasonDate,
+  SeatLayerSeasonHandoff,
+  SeatLayerSeasonHeldOrder,
+  SeatLayerSeasonStatus,
+  SeatLayerSeasonStatusKind,
+} from './season/models';
+export type {
+  SeatLayerPageEvents,
+  SeatLayerPageHold,
+  SeatLayerPageInsets,
+} from './surface/pageController';
+export type { SeatLayerSurfaceConfiguration } from './types';

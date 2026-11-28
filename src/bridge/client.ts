@@ -59,6 +59,9 @@ const holdCommands = new Set([
   'picker.setTableQuantity',
   'picker.resumeHold',
   'picker.extendHold',
+  'season.holdSameSeat',
+  'season.holdBestAvailable',
+  'season.restoreOperation',
 ]);
 const holdCommandTimeoutMs = 45_000;
 

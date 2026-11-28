@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+**Season tickets** (with a map page that names `season-surface-v1` and
+`season-app-shell-v1`)
+
+- `SeatLayerSeasonPicker` and `SeatLayerSeasonPickerModal` open a Season:
+  packages, map and cart under the event picker's header, with the Season's
+  name, the club's mark and the hold clock. `onContinue` gives your server the
+  hold to book; then call `controller.markBooked({ operationId })`. On ✕ or
+  system Back the page asks the buyer first, and `onClose` receives the answer
+  (`closed`, `released`, `kept` with the hold's operation id, or `booked`).
+- With no page up and seats held, `onClose` receives `kept` and the hold's
+  operation id.
+- When the system ends the page (low memory), a new one opens on the same hold
+  once the app is in front. A third time within a minute the failure view
+  opens, with Try again. A Season that cannot open gets the event picker's
+  failure view too.
+- With `safeAreaInsets`, the page's cart runs to the bottom edge when the page
+  takes the inset; otherwise a band of the cart's colour keeps it clear.
+- `SeatLayerSeasonController`, `SeatLayerSeasonConfiguration` and
+  `SeatLayerSeasonView` are there for a layout of your own; the page leaves the
+  Season's name and the hold clock to your bar. A Season hold opens again with
+  `initialOperationId` only for the buyer who placed it: pass that buyer's
+  token too.
+
 **When the connection goes** (with a map page that names
 `connection-state-v1`, map 1.0.7 or later; with an older page nothing new is
 drawn)
