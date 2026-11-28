@@ -1,8 +1,8 @@
 // This file is generated. Do not edit by hand.
-// Canonical token input SHA-256: b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85
+// Canonical token input SHA-256: e674bc558af12b83b2455f4b09913479300db2480f4a469620a7d6a5fa4fec36
 // Canonical #AARRGGBB colours are emitted as React Native #RRGGBBAA.
 
-export const seatLayerPickerTokenSourceSha256 = 'b0187b285ef352212f9ecfb0ef868a7e92e06aaa014b48e2c59bf5df435fec85' as const;
+export const seatLayerPickerTokenSourceSha256 = 'e674bc558af12b83b2455f4b09913479300db2480f4a469620a7d6a5fa4fec36' as const;
 export const seatLayerPickerTokenVersion = 1 as const;
 
 export const seatLayerPickerTokens = {
@@ -493,6 +493,7 @@ export const seatLayerPickerTokens = {
     "generalAdmission": "General admission",
     "guestChoiceClosed": "Seat choice isn’t open right now.",
     "guestsOnly": "This event is for invited guests.",
+    "guestsWord": "Guests",
     "heldFor": "{clock}",
     "hideLimitedView": "Hide limited-view seats",
     "holdAlreadyHeldBody": "Continue to checkout to keep them.",
@@ -617,6 +618,7 @@ export const seatLayerPickerTokens = {
     "soldOutEyebrow": "This event",
     "soldOutTitle": "Sold out",
     "stillHeld": "Your seats are still held.",
+    "tableWord": "Table",
     "takingLonger": "This is taking longer than usual. Please wait…",
     "testMode": "Test mode",
     "testModeExplained": "Bookings here are not real and no card is charged",

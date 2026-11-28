@@ -27,7 +27,8 @@ export interface SeatLayerPickerConfirmIdentityCell {
  *
  * Section only where the chart named one — the grid is then two equal cells —
  * row only where there is a row, and the place cell always, so the buyer
- * always reads the same three (or two) places.
+ * always reads the same three (or two) places. A table booked as one has no
+ * row or seat: its guests and its name take those two cells.
  */
 export function seatLayerPickerConfirmIdentityCells(
   seat: SelectedSeat,
@@ -41,9 +42,37 @@ export function seatLayerPickerConfirmIdentityCells(
     ...(section
       ? [cell(translate("sectionWord"), section, section.length > seatLayerPickerTokens.size.confirmSectionShortMax)]
       : []),
-    ...(row ? [cell(rowWord(seat, translate), row)] : []),
-    cell(placeWord(seat, translate), place || seatLayerPickerConfirmMissingValue),
+    ...(tableCells(seat, translate) ?? [
+      ...(row ? [cell(rowWord(seat, translate), row)] : []),
+      cell(placeWord(seat, translate), place || seatLayerPickerConfirmMissingValue),
+    ]),
   ]);
+}
+
+/**
+ * The cells a table booked as one names itself with, after the section: its
+ * party size and its name, "Guests 4 · Table T2" ("Guests 2–6" where the buyer
+ * chooses how many), or undefined for anything else.
+ *
+ * The runtime sends such a table with its name as the row and no seat number,
+ * so the row and seat cells would print the name twice. The name is shown with
+ * or without a section.
+ */
+function tableCells(
+  seat: SelectedSeat,
+  translate: Translator,
+): readonly SeatLayerPickerConfirmIdentityCell[] | undefined {
+  const mode = clean(seat.bookingMode);
+  if (seat.objectType !== "table" || !mode) return undefined;
+  const { minOccupancy: min, maxOccupancy: max } = seat;
+  const guests = mode === "variable" && count(min) && count(max)
+    ? (min === max ? `${min}` : `${min}\u2013${max}`)
+    : count(seat.capacity) ? `${seat.capacity}` : "";
+  const name = clean(seat.rowLabel) || clean(seat.displayLabel) || clean(seat.label);
+  return [
+    ...(guests ? [cell(translate("guestsWord"), guests)] : []),
+    cell(translate("tableWord"), name || seatLayerPickerConfirmMissingValue),
+  ];
 }
 
 /**
@@ -58,10 +87,13 @@ export function seatLayerPickerConfirmIdentity(
   const section = clean(seat.sectionLabel);
   const row = normalizeSeatLayerPickerRowLabel(clean(seat.rowLabel), section, sectionId);
   const place = clean(seat.seatNumber) || clean(seat.displayLabel) || clean(seat.label);
+  const table = tableCells(seat, translate)?.map((entry) => `${entry.key} ${entry.value}`);
   const parts = [
     section,
-    row ? translate("rowIdentity", { values: { row } }) : "",
-    place ? translate("seatNumberIdentity", { values: { seat: place } }) : "",
+    ...(table ?? [
+      row ? translate("rowIdentity", { values: { row } }) : "",
+      place ? translate("seatNumberIdentity", { values: { seat: place } }) : "",
+    ]),
   ].filter(Boolean).join(" \u00b7 ");
   return translate("seatIdentity", { values: { parts } });
 }
@@ -160,6 +192,10 @@ function relativeLuminance(color: string): number | undefined {
     return scaled <= 0.03928 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
   };
   return 0.2126 * channel(parsed.red) + 0.7152 * channel(parsed.green) + 0.0722 * channel(parsed.blue);
+}
+
+function count(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 function clean(value: unknown): string {
