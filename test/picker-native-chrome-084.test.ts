@@ -21,7 +21,7 @@ const snapshot = (revision = 1, extra: object = {}) => ({
 
 describe('runtime pin', () => {
   it('pins the newest published hosted runtime', () => {
-    expect(seatLayerHostedWebVersion).toBe('1.0.8');
+    expect(seatLayerHostedWebVersion).toBe('1.0.9');
   });
 });
 
