@@ -22,7 +22,7 @@ function composeScopeThemeOptions(
   options: Omit<SeatLayerPickerThemeOptions, 'themeMode' | 'systemThemeMode'> | undefined,
   themeMode: SeatLayerThemeMode,
   systemThemeMode: 'light' | 'dark',
-  snapshot: SeatLayerPickerSnapshot | undefined,
+  snapshot: Pick<SeatLayerPickerSnapshot, 'branding'> | undefined,
 ): SeatLayerPickerThemeOptions {
   const output: Record<string, unknown> = { themeMode, systemThemeMode };
   for (const key of ['hostThemeMode', 'brand', 'brands', 'theme', 'mapTheme', 'logoSource']) {
@@ -42,7 +42,7 @@ export function resolveSeatLayerPickerScopeTheme(
   themeOptions: Omit<SeatLayerPickerThemeOptions, 'themeMode' | 'systemThemeMode'> | undefined,
   themeMode: SeatLayerThemeMode,
   systemThemeMode: 'light' | 'dark',
-  snapshot: SeatLayerPickerSnapshot | undefined,
+  snapshot: Pick<SeatLayerPickerSnapshot, 'branding'> | undefined,
 ): SeatLayerPickerThemeData {
   return resolveSeatLayerPickerTheme(
     composeScopeThemeOptions(themeOptions, themeMode, systemThemeMode, snapshot),

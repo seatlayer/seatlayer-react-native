@@ -52,6 +52,25 @@ export interface SeatLayerConfiguration {
   hostInfo?: Record<string, string>;
 }
 
+/**
+ * What every SeatLayer page's configuration shares, the event's and a page of
+ * its own (the Season's, a run's): where the API is, who may buy, the
+ * language and the deadlines. Each page's own configuration adds what only it
+ * needs.
+ */
+export type SeatLayerSurfaceConfiguration = Pick<
+  SeatLayerConfiguration,
+  | 'apiBase'
+  | 'publicKey'
+  | 'buyerAccessToken'
+  | 'buyerAccessTokenProvider'
+  | 'locale'
+  | 'colorblindSafe'
+  | 'commandTimeoutMs'
+  | 'handshakeTimeoutMs'
+  | 'hostInfo'
+>;
+
 export type BuyerAccessRefreshReason =
   | 'initial'
   | 'expiring'
