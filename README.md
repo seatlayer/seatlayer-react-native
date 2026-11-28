@@ -590,10 +590,11 @@ cd example && pnpm install && pnpm start
 ```
 
 `example/App.tsx` is a minimal Expo app using the production ready-made picker
-and secure checkout handoff. Set
+and secure checkout handoff. Set `EXPO_PUBLIC_SEATLAYER_API_BASE` (for example
+`https://api.seatlayer.io`; the example never assumes one),
 `EXPO_PUBLIC_SEATLAYER_EVENT` and, for public startup,
-`EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the event is absent,
-the example shows setup guidance and does not mount a picker. Set
+`EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the API base or the
+event is absent, the example shows setup guidance and does not mount a picker. Set
 `EXPO_PUBLIC_SEATLAYER_SEASON` (with the public key) or
 `EXPO_PUBLIC_SEATLAYER_RUN` instead to open the Season or the run picker. The browser-based
 [buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) is a preview of the

@@ -82,6 +82,12 @@ drawn)
 - A whole or party table's `screenPoint` is the middle of its chairs, so the
   seat card sits on the table.
 
+**The example app**
+
+- It needs `EXPO_PUBLIC_SEATLAYER_API_BASE` and shows setup guidance without it.
+  It no longer falls back to the production API, so a test key never goes
+  there.
+
 ## 0.5.0
 
 The map moves from `seatlayer-js@0.84.1` to `seatlayer-js@1.0.5`. Public names
