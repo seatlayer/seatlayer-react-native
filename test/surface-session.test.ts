@@ -96,7 +96,7 @@ describe('a page of its own on the shared session', () => {
       type: 'init',
       payload: {
         protocol: { min: 2, max: 2 },
-        host: { platform: 'react-native', sdk: '0.5.0', app: 'demo' },
+        host: { platform: 'react-native', sdk: '0.6.0', app: 'demo' },
         surface: { kind: 'season' },
         config: {
           apiBase: 'https://api.example.test',
