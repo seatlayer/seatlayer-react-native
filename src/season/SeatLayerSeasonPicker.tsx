@@ -1,8 +1,7 @@
 import React, { forwardRef, useMemo, useRef } from 'react';
-import type { ModalProps, StyleProp, ViewStyle } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 import type { SeatLayerError } from '../errors';
-import type { SeatLayerPickerModalPresentation } from '../picker/modalPresentation';
 import type { ReadyInfo } from '../types';
 import {
   SeatLayerPagePicker,
@@ -10,9 +9,8 @@ import {
   type SeatLayerPagePickerHandle,
   type SeatLayerPagePickerLook,
 } from '../surface/PagePicker';
+import { SeatLayerPageModal, type SeatLayerPageModalOptions } from '../surface/PageModal';
 import { SeatLayerPageView } from '../surface/PageView';
-import { useSeatLayerSurfaceLook } from '../surface/SurfaceHeader';
-import { SeatLayerSurfaceModal } from '../surface/SurfaceModal';
 import {
   seatLayerSeasonConfigurationKey,
   seatLayerSeasonConfigurationProblem,
@@ -148,14 +146,9 @@ export function SeatLayerSeasonView(props: SeatLayerSeasonViewProps): React.Reac
   );
 }
 
-export interface SeatLayerSeasonPickerModalProps extends SeatLayerSeasonPickerProps {
-  readonly visible: boolean;
+export interface SeatLayerSeasonPickerModalProps extends SeatLayerSeasonPickerProps, SeatLayerPageModalOptions {
   /** The buyer closed the Season: hide the modal. */
   readonly onClose: SeatLayerSeasonCloseCallback;
-  readonly presentation?: SeatLayerPickerModalPresentation;
-  /** A tap beside the dialog asks the page, as ✕ does. Off unless asked for. */
-  readonly barrierDismissible?: boolean;
-  readonly supportedOrientations?: ModalProps['supportedOrientations'];
 }
 
 /**
@@ -165,28 +158,11 @@ export interface SeatLayerSeasonPickerModalProps extends SeatLayerSeasonPickerPr
  */
 export function SeatLayerSeasonPickerModal(props: SeatLayerSeasonPickerModalProps): React.ReactElement {
   const picker = useRef<SeatLayerSeasonPickerHandle>(null);
-  // The organizer's brand never sets the ground, so the frame needs no status.
-  const look = useSeatLayerSurfaceLook({
-    themeMode: props.themeMode,
-    themeOptions: props.themeOptions,
-    locale: props.locale,
-    strings: props.strings,
-  });
   const { visible, presentation, barrierDismissible, supportedOrientations, ...pickerProps } = props;
   const style = useMemo(() => [{ flex: 1 }, props.style], [props.style]);
   return (
-    <SeatLayerSurfaceModal
-      visible={visible}
-      presentation={presentation}
-      barrierDismissible={barrierDismissible}
-      supportedOrientations={supportedOrientations}
-      surfaceColor={look.theme.colors.surface}
-      cardRadius={look.theme.radii.card}
-      closeLabel={look.strings.translate('close')}
-      usesHostInsets={props.safeAreaInsets !== undefined}
-      onRequestClose={() => { void picker.current?.requestClose(); }}
-    >
+    <SeatLayerPageModal {...props} picker={picker}>
       <SeatLayerSeasonPicker ref={picker} {...pickerProps} style={style} />
-    </SeatLayerSurfaceModal>
+    </SeatLayerPageModal>
   );
 }
