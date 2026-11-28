@@ -252,6 +252,18 @@ describe('SeatLayerSeasonController commands', () => {
     await expect(foreground).resolves.toBe(false);
   });
 
+  it('gives a Season hold as long as the page gives the server', async () => {
+    vi.useFakeTimers();
+    const { controller, transport } = await started();
+    const held = controller.holdSameSeat(['A-1']);
+    vi.advanceTimersByTime(44_000);
+    answer(controller, transport, { handoff: handoff() });
+    await expect(held).resolves.toMatchObject({ operationId: 'sop_1' });
+    const best = controller.holdBestAvailable(1);
+    vi.advanceTimersByTime(45_001);
+    await expect(best).rejects.toMatchObject({ code: 'sl_timeout' });
+  });
+
   it('waits for the buyer to answer the close question', async () => {
     vi.useFakeTimers();
     const { controller, transport } = await started();
