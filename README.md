@@ -134,6 +134,54 @@ export function TicketPicker({
 `onCheckout` receives the typed hold handoff. Send it only to your trusted
 backend for payment and idempotent booking.
 
+## Sell a Season or a run
+
+A **Season** is a package of dates sold as the same seat for every date. A
+**run** is a few performances sold to one buyer as one hold.
+
+```tsx
+import { SeatLayerSeasonPickerModal } from '@seatlayer/react-native';
+
+<SeatLayerSeasonPickerModal
+  visible={open}
+  configuration={{ season: 'sea_your_season', publicKey: 'pk_test_your_key' }}
+  onContinue={async (handoff) => {
+    await bookOnYourBackend(handoff.operationId);
+    setOpen(false);
+  }}
+  onClose={() => setOpen(false)}
+/>
+```
+
+```tsx
+import { SeatLayerRunPickerModal } from '@seatlayer/react-native';
+
+<SeatLayerRunPickerModal
+  visible={open}
+  configuration={{ run: 'pg_your_run' }}
+  onContinue={async (handoff) => {
+    await bookOnYourBackend(handoff.operationId);
+    setOpen(false);
+  }}
+  onClose={() => setOpen(false)}
+/>
+```
+
+- `onContinue` runs while the buyer is still on the picker; throw there to keep
+  the buyer on their seats. Your server books the hold by `operationId`, at
+  your prices. A run's handoff carries no prices.
+- Closing a Season with seats held asks the buyer to release or keep them, and
+  `onClose(outcome, operationId)` says which. Closing a run releases the seats
+  that were not handed off.
+- `initialOperationId` (and a run's `initialHoldId`) opens a hold again only
+  for the buyer who placed it, so pass that buyer's `buyerAccessToken` or
+  `buyerAccessTokenProvider` with it. A buyer without a token is new to every
+  page: once the app or the page has ended, their hold cannot be opened again.
+- In these two the header is a React Native view; the packages, map and cart
+  are SeatLayer's page, shown inside your app. `SeatLayerSeasonPicker` and
+  `SeatLayerRunPicker` are the same pickers without the modal: give them a
+  definite size and your `safeAreaInsets`.
+
 ## Use the lower-level seating chart
 
 Give the map a definite height or a full-screen parent. Keep the configuration
@@ -545,7 +593,9 @@ cd example && pnpm install && pnpm start
 and secure checkout handoff. Set
 `EXPO_PUBLIC_SEATLAYER_EVENT` and, for public startup,
 `EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY` before starting it; when the event is absent,
-the example shows setup guidance and does not mount a picker. The browser-based
+the example shows setup guidance and does not mount a picker. Set
+`EXPO_PUBLIC_SEATLAYER_SEASON` (with the public key) or
+`EXPO_PUBLIC_SEATLAYER_RUN` instead to open the Season or the run picker. The browser-based
 [buyer seat-map demo](https://app.seatlayer.io/demo/play/grand-theatre) is a preview of the
 wider SeatLayer buyer experience, not a React Native app.
 
@@ -727,6 +777,12 @@ fixed-height parent. That one component is the whole buyer flow: the live seat
 map, filters, seat confirmation, cart, holds, best available, 3D for venues up
 to 60,000 seats, and the checkout hand-off. Use `SeatLayerView` with
 `useSeatLayerController()` only when your app draws every control itself.
+
+### Can I sell season tickets in a React Native app?
+
+Yes. `SeatLayerSeasonPickerModal` opens a Season: the buyer picks a package and
+one seat that is the same at every date, and your server books the hold.
+`SeatLayerRunPickerModal` sells a run of performances the same way, as one hold.
 
 ### What is native in the SeatLayer React Native SDK?
 
