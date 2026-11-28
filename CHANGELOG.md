@@ -25,6 +25,18 @@
   `initialOperationId` only for the buyer who placed it: pass that buyer's
   token too.
 
+**Runs** (with a map page that names `group-surface-v1` and
+`group-app-shell-v1`)
+
+- `SeatLayerRunPicker` and `SeatLayerRunPickerModal` open a run, a few
+  performances sold to one buyer as one hold, under the same header.
+  `onContinue` gives your server a hold without prices, to price and book.
+  Close and system Back release seats that were not handed off. It stays light
+  or dark as it opened. `SeatLayerRunController`, `SeatLayerRunConfiguration`
+  and `SeatLayerRunView` are there for a layout of your own.
+- A lost page, a run that cannot open and `safeAreaInsets` work as on the
+  Season.
+
 **When the connection goes** (with a map page that names
 `connection-state-v1`, map 1.0.7 or later; with an older page nothing new is
 drawn)
