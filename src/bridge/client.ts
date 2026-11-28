@@ -62,6 +62,7 @@ const holdCommands = new Set([
   'season.holdSameSeat',
   'season.holdBestAvailable',
   'season.restoreOperation',
+  'group.continue',
 ]);
 const holdCommandTimeoutMs = 45_000;
 

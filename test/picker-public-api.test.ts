@@ -63,6 +63,12 @@ describe('picker public API', () => {
       'SeatLayerSeasonController',
       'SeatLayerSeasonConfiguration',
       'SeatLayerSeasonHandoff',
+      'SeatLayerRunPicker',
+      'SeatLayerRunPickerModal',
+      'SeatLayerRunView',
+      'SeatLayerRunController',
+      'SeatLayerRunConfiguration',
+      'SeatLayerRunHandoff',
     ] as const;
 
     for (const name of required) expect(source).toMatch(new RegExp(`\\b${name}\\b`));
