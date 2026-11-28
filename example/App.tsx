@@ -7,9 +7,12 @@ import {
 } from 'react-native';
 import {
   SeatLayerPicker,
+  SeatLayerSeasonPicker,
   type BuyerAccessTokenProvider,
   type SeatLayerConfiguration,
   type SeatLayerPickerCheckoutHandoff,
+  type SeatLayerSeasonConfiguration,
+  type SeatLayerSeasonHandoff,
 } from '@seatlayer/react-native';
 import {
   SafeAreaProvider,
@@ -18,6 +21,8 @@ import {
 
 const event = process.env.EXPO_PUBLIC_SEATLAYER_EVENT?.trim() ?? '';
 const publicKey = process.env.EXPO_PUBLIC_SEATLAYER_PUBLIC_KEY?.trim() ?? '';
+/** Optional. A Season key (`sea_...`) opens the Season picker instead of the event. */
+const season = process.env.EXPO_PUBLIC_SEATLAYER_SEASON?.trim() ?? '';
 
 /**
  * Optional. A private event needs a buyer access token, and only your own
@@ -58,6 +63,17 @@ export default function App(): React.ReactElement {
 function SeatLayerExample(): React.ReactElement {
   const insets = useSafeAreaInsets();
   const [handoff, setHandoff] = useState<SeatLayerPickerCheckoutHandoff>();
+  const [seasonHold, setSeasonHold] = useState<SeatLayerSeasonHandoff>();
+  const [seasonPage, setSeasonPage] = useState(0);
+  const seasonConfiguration = useMemo<SeatLayerSeasonConfiguration>(
+    () => ({
+      season,
+      publicKey,
+      hostInfo: { app: 'SeatLayer React Native example' },
+      ...(buyerTokenUrl ? { buyerAccessTokenProvider } : {}),
+    }),
+    [],
+  );
   const configuration = useMemo<SeatLayerConfiguration>(
     () => ({
       event,
@@ -70,7 +86,7 @@ function SeatLayerExample(): React.ReactElement {
     [],
   );
 
-  if (!event || !publicKey) {
+  if ((!event && !season) || !publicKey) {
     return (
       <View
         style={[
@@ -110,7 +126,8 @@ function SeatLayerExample(): React.ReactElement {
     );
   }
 
-  if (handoff) {
+  const held = handoff ?? seasonHold;
+  if (held) {
     return (
       <View
         style={[
@@ -131,19 +148,40 @@ function SeatLayerExample(): React.ReactElement {
         </Text>
         <View style={styles.holdCard}>
           <Text style={styles.holdLabel}>Hold ID</Text>
-          <Text selectable style={styles.holdValue}>{handoff.holdId}</Text>
-          <Text style={styles.holdSummary}>
-            {handoff.lineItems.length} line item{handoff.lineItems.length === 1 ? '' : 's'} ·{' '}
-            {handoff.currency} {handoff.total.toFixed(2)}
-          </Text>
+          <Text selectable style={styles.holdValue}>{held.holdId}</Text>
+          {handoff ? (
+            <Text style={styles.holdSummary}>
+              {handoff.lineItems.length} line item{handoff.lineItems.length === 1 ? '' : 's'} ·{' '}
+              {handoff.currency} {handoff.total.toFixed(2)}
+            </Text>
+          ) : null}
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => setHandoff(undefined)}
+          onPress={() => {
+            setHandoff(undefined);
+            setSeasonHold(undefined);
+          }}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
           <Text style={styles.buttonText}>Back to picker</Text>
         </Pressable>
+      </View>
+    );
+  }
+
+  if (season) {
+    return (
+      <View style={styles.pickerPage}>
+        <SeatLayerSeasonPicker
+          key={seasonPage}
+          configuration={seasonConfiguration}
+          onContinue={setSeasonHold}
+          // This example has no screen to go back to: a closed Season opens again.
+          onClose={() => setSeasonPage((page) => page + 1)}
+          safeAreaInsets={insets}
+          style={styles.picker}
+        />
       </View>
     );
   }
