@@ -19,6 +19,7 @@ import {
 } from './cartCompletion';
 import {
   type SeatLayerPickerAccessNeed,
+  type SeatLayerPickerBranding,
   type SeatLayerPickerCartLine,
   type SeatLayerPickerCategory,
   type SeatLayerPickerCheckoutHandoff,
@@ -343,6 +344,27 @@ function enabledCapabilities(value: unknown): string[] {
 }
 
 /** Tolerant on additive fields; rejects only an invalid v1 identity. */
+/** The organizer's brand as a page sends it: the event's snapshot or a Season's status. */
+export function decodeSeatLayerPickerBranding(value: unknown): SeatLayerPickerBranding {
+  const branding = asObject(value);
+  const tokens = asObject(branding?.tokens);
+  return {
+    brandName: asString(branding?.brandName),
+    logoUrl: asString(branding?.logoUrl),
+    attributionRequired: asBoolean(branding?.attributionRequired) ?? true,
+    accent: asString(branding?.accent) ?? asString(tokens?.accent),
+    accentInk: asString(branding?.accentInk) ?? asString(tokens?.accentInk),
+    background: asString(branding?.background) ??
+      asString(tokens?.background),
+    surface: asString(tokens?.surface),
+    text: asString(branding?.textColor) ?? asString(tokens?.text),
+    muted: asString(tokens?.muted),
+    line: asString(tokens?.line),
+    fontFamily: asString(tokens?.fontFamily),
+    radius: asFiniteNumber(tokens?.radius),
+  };
+}
+
 export function decodeSeatLayerPickerSnapshot(
   value: unknown,
 ): SeatLayerPickerSnapshot | undefined {
@@ -364,8 +386,6 @@ export function decodeSeatLayerPickerSnapshot(
   const hold = asObject(root?.hold);
   const access = asObject(root?.access);
   const map = asObject(root?.map);
-  const branding = asObject(root?.branding);
-  const tokens = asObject(branding?.tokens);
   const categories = asArray(catalog?.categories)
     .map(decodeCategory)
     .filter((entry): entry is SeatLayerPickerCategory => entry !== undefined);
@@ -442,21 +462,7 @@ export function decodeSeatLayerPickerSnapshot(
         : { startsAt: asFiniteNumber(event?.startsAt) }),
       salesClosed: asBoolean(event?.salesClosed) ?? false,
     },
-    branding: {
-      brandName: asString(branding?.brandName),
-      logoUrl: asString(branding?.logoUrl),
-      attributionRequired: asBoolean(branding?.attributionRequired) ?? true,
-      accent: asString(branding?.accent) ?? asString(tokens?.accent),
-      accentInk: asString(branding?.accentInk) ?? asString(tokens?.accentInk),
-      background: asString(branding?.background) ??
-        asString(tokens?.background),
-      surface: asString(tokens?.surface),
-      text: asString(branding?.textColor) ?? asString(tokens?.text),
-      muted: asString(tokens?.muted),
-      line: asString(tokens?.line),
-      fontFamily: asString(tokens?.fontFamily),
-      radius: asFiniteNumber(tokens?.radius),
-    },
+    branding: decodeSeatLayerPickerBranding(root?.branding),
     categories,
     zones,
     sections,
