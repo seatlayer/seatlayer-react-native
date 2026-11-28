@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.1
 
 **The map: 1.0.8 to 1.0.9**
 
