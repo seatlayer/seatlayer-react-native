@@ -103,6 +103,11 @@ describe('what a refused action says', () => {
       .toEqual({ message: word('accessUnverifiedTitle'), detail: word('accessUnverifiedCopy') });
   });
 
+  it('says a page could not open what it was given when the server did not find it', async () => {
+    expect((await words(refused('not_found', { status: 404 }))).message).toBe(word('eventUnavailable'));
+    expect((await words(refused('forbidden', { status: 403 }))).message).toBe(word('eventUnavailable'));
+  });
+
   it('never prints a code, a message or the app’s own exception', async () => {
     expect((await words(new Error('not for buyers'))).message).toBe(word('checkConnection'));
     expect((await words('not for buyers')).message).toBe(word('checkConnection'));

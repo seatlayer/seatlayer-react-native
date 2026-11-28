@@ -64,6 +64,10 @@ drawn)
   offline" with "Try again", and while the app is in front opens itself again
   after 10 and 20 seconds, then every 30. A page whose server failed says
   "The seat map didn’t load" without the line about the connection.
+  A page the server refused (a run, Season or event it does not have, or one
+  not open to this buyer) says why under "The seat map didn’t load", for
+  example "Tickets can’t be booked here right now.", instead of "Check your
+  connection and try again.".
 - `SeatLayerPickerController` has `getConnection()`, `getConnectionShown()`
   and `subscribeConnection()`.
 - Seven new words in the 43 languages: `offline`, `backOnline`, `stillHeld`,

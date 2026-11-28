@@ -32,6 +32,7 @@ const words: Record<string, string> = {
   offline: 'You’re offline', checkConnection: 'Check your connection and try again.', retry: 'Try again',
   mapDidNotLoad: 'The seat map didn’t load', errorMessage: 'Something went wrong.', loading: 'Loading the seat map',
   loadingTakingLonger: 'The seat map is taking longer to load. Please wait…',
+  eventUnavailable: 'Tickets can’t be booked here right now.',
 };
 const strings = { translate: (key: string) => words[key] ?? key };
 const theme = {
@@ -93,6 +94,14 @@ describe('opening the seat map', () => {
   it('says a server fault without the line about the connection, and does not retry by itself', async () => {
     const { tree, retry } = panel(SeatLayerError.transport('SeatLayer page returned HTTP 502.'));
     expect(said(tree)).toEqual([words.mapDidNotLoad, words.errorMessage, words.retry]);
+    await act(async () => { vi.advanceTimersByTime(60_000); });
+    expect(retry).not.toHaveBeenCalled();
+  });
+
+  it('says why a server refused the page, not to check the connection, and does not retry by itself', async () => {
+    // A run that does not exist: the page reports the server's 404.
+    const { tree, retry } = panel(SeatLayerError.bridge({ code: 'not_found', message: 'not_found', details: { status: 404 } }));
+    expect(said(tree)).toEqual([words.mapDidNotLoad, words.errorMessage, words.eventUnavailable, words.retry]);
     await act(async () => { vi.advanceTimersByTime(60_000); });
     expect(retry).not.toHaveBeenCalled();
   });
