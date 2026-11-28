@@ -6,16 +6,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Modal,
-  Pressable,
-  SafeAreaView,
-  useWindowDimensions,
-  View,
-  type ModalProps,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import type { ModalProps, StyleProp, ViewStyle } from 'react-native';
 
 import type { SeatLayerConfiguration } from '../types';
 import type { SeatLayerPickerBuilders } from './builders';
@@ -26,14 +17,8 @@ import { SeatLayerPickerBoldTextRoot } from './boldText';
 import { SeatLayerPickerCloseLifecycle } from './closeLifecycle';
 import type { SeatLayerPickerController } from './controller';
 import type { SeatLayerPickerHapticAdapter } from './hapticPlayer';
-import {
-  seatLayerPickerModalMaximumHeight,
-  seatLayerPickerModalMaximumWidth,
-  seatLayerPickerModalOrientations,
-  seatLayerPickerModalPresentationInset,
-  resolveSeatLayerPickerModalPresentation,
-  type SeatLayerPickerModalPresentation,
-} from './modalPresentation';
+import type { SeatLayerPickerModalPresentation } from './modalPresentation';
+import { SeatLayerSurfaceModal } from '../surface/SurfaceModal';
 import type { SeatLayerPickerCheckoutHandoff } from './models';
 import {
   resolveSeatLayerPickerOptions,
@@ -163,8 +148,6 @@ function ModalBody(
   },
 ): React.ReactElement {
   const scope = useSeatLayerPickerScope();
-  const { width, height } = useWindowDimensions();
-  const presentation = resolveSeatLayerPickerModalPresentation(props.presentation, width, height);
   const scopeRef = useRef(scope);
   const callbacksRef = useRef(props.callbacks);
   const hostCloseRef = useRef(props.onRequestClose);
@@ -260,82 +243,21 @@ function ModalBody(
       presentationActive={props.renderedVisible}
     />
   );
-  const dialog = presentation === 'dialog';
-  const barrierDismissible = props.barrierDismissible === true;
-  const usesHostInsets = props.safeAreaInsets !== undefined;
-  const boundedContent = dialog ? (
-    <View pointerEvents="box-none" style={dialogBoundsStyle}>
-      <View testID="seatlayer-modal-card" pointerEvents="auto" style={[
-        dialogCardStyle,
-        {
-          backgroundColor: scope.resolvedTheme.colors.surface,
-          borderRadius: scope.resolvedTheme.radii.card,
-        },
-      ]}>
-        {content}
-      </View>
-    </View>
-  ) : content;
-  const safeContent = usesHostInsets ? boundedContent : (
-    <SafeAreaView style={[
-      modalRootStyle,
-      dialog ? undefined : { backgroundColor: scope.resolvedTheme.colors.surface },
-    ]}>
-      {boundedContent}
-    </SafeAreaView>
-  );
   return (
-    <Modal
+    <SeatLayerSurfaceModal
       visible={props.renderedVisible}
-      transparent={dialog}
-      animationType={dialog ? 'fade' : 'slide'}
-      presentationStyle={dialog ? 'overFullScreen' : 'fullScreen'}
-      statusBarTranslucent={usesHostInsets}
-      supportedOrientations={props.supportedOrientations?.length
-        ? props.supportedOrientations : seatLayerPickerModalOrientations}
-      onRequestClose={() => { void request('systemBack'); }}
+      presentation={props.presentation}
+      barrierDismissible={props.barrierDismissible}
+      supportedOrientations={props.supportedOrientations}
+      surfaceColor={scope.resolvedTheme.colors.surface}
+      cardRadius={scope.resolvedTheme.radii.card}
+      closeLabel={scope.strings.translate('close')}
+      usesHostInsets={props.safeAreaInsets !== undefined}
+      onRequestClose={(reason) => { void request(reason); }}
+      within={SeatLayerPickerScopeReprovider}
+      testID={props.testID}
     >
-      <SeatLayerPickerScopeReprovider>
-        <View testID={props.testID} style={modalRootStyle}>
-          {dialog ? (
-            <View style={modalRootStyle}>
-              <Pressable
-                testID="seatlayer-modal-barrier"
-                accessible={barrierDismissible}
-                accessibilityElementsHidden={!barrierDismissible}
-                accessibilityLabel={barrierDismissible ? scope.strings.translate('close') : undefined}
-                accessibilityRole={barrierDismissible ? 'button' : undefined}
-                onPress={barrierDismissible ? () => { void request('barrier'); } : undefined}
-                style={barrierStyle}
-              />
-              {safeContent}
-            </View>
-          ) : safeContent}
-        </View>
-      </SeatLayerPickerScopeReprovider>
-    </Modal>
+      {content}
+    </SeatLayerSurfaceModal>
   );
 }
-
-const modalRootStyle = Object.freeze({ flex: 1 });
-const barrierStyle = Object.freeze({
-  position: 'absolute' as const,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  backgroundColor: '#0000008A',
-});
-const dialogBoundsStyle = Object.freeze({
-  flex: 1,
-  justifyContent: 'center' as const,
-  padding: seatLayerPickerModalPresentationInset,
-});
-const dialogCardStyle = Object.freeze({
-  alignSelf: 'center' as const,
-  width: '100%' as const,
-  maxWidth: seatLayerPickerModalMaximumWidth,
-  maxHeight: seatLayerPickerModalMaximumHeight,
-  flex: 1,
-  overflow: 'hidden' as const,
-});
