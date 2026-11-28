@@ -369,8 +369,10 @@ function ModalPrompt({
     active.handle.dismiss();
     observe(callbacks.current.removed, result);
   };
-  const inCart = decision.kind === 'table' &&
-    scope.snapshot?.cartLines.some((line) => line.label === decision.seat.label) === true;
+  // The page puts a tapped table in the selection, and so in the cart, before
+  // this asks; only a table the buyer already holds is updated.
+  const held = decision.kind === 'table' &&
+    scope.snapshot?.selection.some((seat) => seat.label === decision.seat.label && seat.status === 'held') === true;
   const title = decision.kind === 'ga' ? decision.area.label ?? scope.strings.translate('generalAdmission') : decision.seat.displayLabel ?? decision.seat.label;
   const subtitle = decision.kind === 'ga'
     ? scope.strings.translate('placesAvailable', { values: { count: decision.available }, count: decision.available })
@@ -388,7 +390,7 @@ function ModalPrompt({
         {refused ? <Text accessibilityLiveRegion="assertive" style={[stylesNative.error, { color: scope.resolvedTheme.colors.error, fontFamily: scope.resolvedTheme.fontFamily }]}>{[refused.message, refused.detail].filter(Boolean).join(' ')}</Text> : null}
         <View style={stylesNative.actions}>
           <PromptButton label={kind === 'ga' ? scope.strings.translate('cancel') : scope.strings.translate('removeWord')} disabled={inFlight} busy={inFlight} primary={false} onPress={kind === 'ga' ? dismiss : () => { void remove(); }} scope={scope} styles={styles} />
-          <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate(inCart ? 'updateTable' : 'selectTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />
+          <PromptButton label={kind === 'ga' ? scope.strings.translate('addTickets') : scope.strings.translate(held ? 'updateTable' : 'selectTable')} disabled={!canConfirm} busy={inFlight} primary onPress={() => { void confirm(); }} scope={scope} styles={styles} />
         </View>
         </SeatLayerPickerPromptFootScroll>
       </View>
