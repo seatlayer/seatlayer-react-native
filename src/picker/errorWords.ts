@@ -174,8 +174,10 @@ export function seatLayerPickerErrorWords(
     }
     const refusal = own(refusalSentences, code);
     if (refusal) return say(refusal);
+    // Not found or forbidden when no command was sent: the page could not
+    // open what it was given.
     if ((code === 'forbidden' || code === 'not_found')
-      && (command === 'picker.bestAvailable' || holdCommands.has(command))) {
+      && (command === undefined || command === 'picker.bestAvailable' || holdCommands.has(command))) {
       return say('eventUnavailable');
     }
   }

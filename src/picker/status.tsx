@@ -36,8 +36,8 @@ export {
   type SeatLayerPickerTestModeIndicatorViewProps,
 } from "./testModeIndicator";
 import { seatLayerPickerBoldStyles } from './boldText';
-import { seatLayerPickerOwnBuyerMessage } from './errorWords';
-import { seatLayerPickerFailureKind } from './connectionMessages';
+import { seatLayerPickerErrorWords, seatLayerPickerOwnBuyerMessage } from './errorWords';
+import { seatLayerPickerFailureKind, seatLayerPickerServerRefused } from './connectionMessages';
 import { SeatLayerPickerConnectionSign } from './connectionSign';
 import { useSeatLayerPickerOfflineRetries } from './offlineRetry';
 
@@ -274,6 +274,10 @@ export function SeatLayerPickerErrorStatus({
   const offline = kind === "connection";
   useSeatLayerPickerOfflineRetries(retryOwner, offline && retry !== undefined, runRetry);
   const title = strings.translate(offline ? "offline" : "mapDidNotLoad");
+  // A server that said no is told why, never to check the connection.
+  const refused = seatLayerPickerServerRefused(error)
+    ? seatLayerPickerErrorWords(error, strings).message
+    : undefined;
   // What the app says itself stands under the title, unless it is the title.
   const own = offline ? undefined : [seatLayerPickerOwnBuyerMessage(error), strings.translate("errorMessage")]
     .find((sentence) => sentence !== undefined && sentence !== title);
@@ -302,7 +306,7 @@ export function SeatLayerPickerErrorStatus({
         {title}
       </Text>
       {own === undefined ? null : <Text style={line}>{own}</Text>}
-      {kind === "server" ? null : <Text style={line}>{strings.translate("checkConnection")}</Text>}
+      {kind === "server" ? null : <Text style={line}>{refused === undefined ? strings.translate("checkConnection") : refused}</Text>}
       {retry === undefined ? null : (
         <Pressable
           accessibilityRole="button"

@@ -36,6 +36,17 @@ export function seatLayerPickerFailureKind(error: unknown): SeatLayerPickerFailu
 }
 
 /**
+ * Whether the server answered and said no (a 4xx the page passes on): the
+ * run, Season or event is not there, or not for this buyer. Nothing a
+ * connection would change.
+ */
+export function seatLayerPickerServerRefused(error: unknown): boolean {
+  if (!(error instanceof SeatLayerError) || error.code === 'sl_transport') return false;
+  const status = error.details?.meta?.status;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
+
+/**
  * Whether `error` is told by the small message rather than the red line: no
  * answer, or a server fault while securing seats.
  */
