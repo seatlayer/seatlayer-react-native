@@ -243,6 +243,17 @@ export class SeatLayerPickerController extends SeatLayerPickerControllerCore {
     return this.reload();
   }
 
+  /**
+   * @internal New start inputs (a language, an option) replace the page while
+   * this controller stays. The new page takes up the hold the old one handed
+   * to checkout, as a reloaded page does, and until it has, its missing hold
+   * says nothing about the handoff.
+   */
+  keepHoldForNextPage(): void {
+    this.rememberHoldForReload();
+    this.booked.reloaded();
+  }
+
   /** @internal Set while a lost page is not reloaded by itself any more. */
   getPageLostError = (): SeatLayerError | undefined => this.pageLostError;
 
