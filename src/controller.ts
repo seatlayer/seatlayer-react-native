@@ -1,11 +1,18 @@
-import { BridgeClient, type BridgeSignal, type BridgeTransport } from './bridge/client';
+import {
+  BridgeClient,
+  type BridgeCommandOptions,
+  type BridgeSignal,
+  type BridgeTransport,
+} from './bridge/client';
 import { decodeEnvelope, type Envelope } from './bridge/envelope';
 import {
   chartBridgeProfile,
+  isPageBridgeProfile,
   pickerBridgeProfile,
   type BridgeProfile,
   type PickerBridgeProfileOptions,
 } from './bridge/profile';
+import { seatLayerEventInit, seatLayerPageInit } from './bridge/init';
 import {
   decodeProtocolRange,
   negotiateProtocol,
@@ -36,7 +43,6 @@ import {
   type JsonValue,
 } from './json';
 import {
-  seatLayerSdkVersion,
   type BestAvailableResult,
   type BundleInfo,
   type FloorInfo,
@@ -45,6 +51,7 @@ import {
   type ReadyInfo,
   type SeatLayerConfiguration,
   type SeatLayerEventMap,
+  type SeatLayerSurfaceConfiguration,
   type SeatLayerViewMode,
   type SelectedSeat,
   type SelectionValidity,
@@ -78,7 +85,7 @@ function elapsedMilliseconds(startedAt: number, endedAt: number): number {
 export class SeatLayerController {
   private readonly events = new TypedEmitter<SeatLayerEventMap>();
   private client: BridgeClient | undefined;
-  private configuration: SeatLayerConfiguration | undefined;
+  private configuration: SeatLayerConfiguration | SeatLayerSurfaceConfiguration | undefined;
   private profile: BridgeProfile = chartBridgeProfile;
   private handshake: Handshake | undefined;
   private queuedFrames: Envelope[] = [];
@@ -138,13 +145,31 @@ export class SeatLayerController {
     ) as Promise<SeatLayerPickerReadyInfo>;
   }
 
+  /**
+   * Starts a page of its own (the Season page, the run page) on the same
+   * handshake as the event: `profile` names the page and its own init fields.
+   */
+  beginSurfaceHandshake(
+    transport: BridgeTransport,
+    configuration: SeatLayerSurfaceConfiguration,
+    profile: BridgeProfile,
+  ): Promise<ReadyInfo> {
+    if (!isPageBridgeProfile(profile)) {
+      return Promise.reject(new SeatLayerError(
+        'bad_payload',
+        'SeatLayer surface handshake needs a page profile.',
+      ));
+    }
+    return this.beginHandshakeWithProfile(transport, configuration, profile);
+  }
+
   private beginHandshakeWithProfile(
     transport: BridgeTransport,
-    configuration: SeatLayerConfiguration,
+    configuration: SeatLayerConfiguration | SeatLayerSurfaceConfiguration,
     profile: BridgeProfile,
   ): Promise<ReadyInfo> {
     if (this.disposed) return Promise.reject(SeatLayerError.destroyed());
-    if (!configuration.event.trim()) {
+    if (!isPageBridgeProfile(profile) && !(configuration as SeatLayerConfiguration).event.trim()) {
       return Promise.reject(
         new SeatLayerError('bad_payload', 'SeatLayer configuration.event is required.'),
       );
@@ -390,6 +415,30 @@ export class SeatLayerController {
     return this.run(command, payload);
   }
 
+  /**
+   * Runs one command on an attached page of its own once it is ready.
+   * `untimed` waits for the buyer: the page asks them a question first.
+   */
+  runSurfaceCommand(
+    command: string,
+    payload?: JsonValue,
+    options: BridgeCommandOptions = {},
+  ): Promise<JsonValue | undefined> {
+    if (!isPageBridgeProfile(this.profile) || !this.readyInfo) {
+      return Promise.reject(
+        SeatLayerError.incompatible('No SeatLayer page of its own is ready.'),
+      );
+    }
+    return this.run(command, payload, options);
+  }
+
+  /** Whether the ready page of its own names `command` in its hello. */
+  supportsSurfaceCommand(command: string): boolean {
+    return isPageBridgeProfile(this.profile)
+      && this.readyInfo !== undefined
+      && this.bundleCommands.includes(command);
+  }
+
   supportsPickerCommand(command: string): boolean {
     return this.profile.surface === 'picker'
       && this.readyInfo !== undefined
@@ -419,10 +468,14 @@ export class SeatLayerController {
     this.events.clear();
   }
 
-  private run(command: string, payload?: JsonValue): Promise<JsonValue | undefined> {
+  private run(
+    command: string,
+    payload?: JsonValue,
+    options?: BridgeCommandOptions,
+  ): Promise<JsonValue | undefined> {
     const client = this.client;
     return client
-      ? client.command(command, payload)
+      ? client.command(command, payload, options)
       : Promise.reject(SeatLayerError.transport('No SeatLayer view is attached.'));
   }
 
@@ -478,10 +531,15 @@ export class SeatLayerController {
         ...missingEvents.map((event) => `event ${event}`),
       ].join(', ');
       this.finishHandshake(SeatLayerError.incompatible(
-        `The loaded picker does not satisfy the required protocol-2 contract: ${missing}.`,
+        `The loaded ${isPageBridgeProfile(this.profile) ? `${this.profile.surface} page` : 'picker'} does not satisfy the required protocol-2 contract: ${missing}.`,
       ));
       return;
     }
+    if (isPageBridgeProfile(this.profile)) {
+      this.client?.sendInit(seatLayerPageInit(configuration, this.profile));
+      return;
+    }
+    if (!('event' in configuration)) return;
     const privateAccess = configuration.buyerAccessToken !== undefined || configuration.buyerAccessTokenProvider !== undefined;
     if (privateAccess && !info.capabilities.includes('native-access-provider')) {
       this.finishHandshake(SeatLayerError.incompatible('The loaded web bundle cannot securely handle buyer access. Refusing to initialize private inventory.'));
@@ -499,57 +557,7 @@ export class SeatLayerController {
       ));
       return;
     }
-    const config = compactObject({
-      event: configuration.event,
-      apiBase: configuration.apiBase,
-      publicKey: configuration.publicKey,
-      buyerAccessToken: configuration.buyerAccessToken === undefined
-        ? undefined
-        : compactObject({
-            token: configuration.buyerAccessToken.token,
-            expiresAt: configuration.buyerAccessToken.expiresAt,
-          }),
-      nativeAccessProvider: configuration.buyerAccessTokenProvider === undefined ? undefined : true,
-      maxSelection: configuration.maxSelection,
-      selectedObjects: configuration.selectedObjects,
-      selectableObjects: configuration.selectableObjects,
-      numberOfPlacesToSelect: configuration.numberOfPlacesToSelect,
-      selectionValidators: configuration.selectionValidators,
-      locale: configuration.locale,
-      messages: configuration.messages,
-      currency: configuration.currency,
-      colorblindSafe: configuration.colorblindSafe,
-      initialView: configuration.initialView,
-      telemetry: configuration.telemetry,
-    });
-    const host: JsonObject = {
-      platform: 'react-native',
-      sdk: seatLayerSdkVersion,
-      ...(configuration.hostInfo ?? {}),
-    };
-    this.client?.sendInit({
-      protocol: {
-        min: this.profile.protocolRange.min,
-        max: this.profile.protocolRange.max,
-      },
-      host,
-      chrome: this.profile.surface === 'picker'
-        ? {
-            owner: 'native', seatTooltip: false, testModeIndicator: false, attribution: false,
-            ...(info.capabilities.includes('native-seat-view-chrome-v1')
-              && info.events.includes('seatView.changed')
-              ? { seatViewTitle: false, seatViewCaption: false, seatViewBadge: false }
-              : {}),
-          }
-        : { seatTooltip: configuration.showsWebSeatTooltip ?? false },
-      config: this.profile.surface === 'picker'
-        ? { ...config, ...(this.profile.config ?? {}) }
-        : config,
-      ...(this.profile.surface === 'picker' ? {
-        surface: { kind: 'picker', stateContract: 1, chromeOwner: 'native' },
-        requirements: { capabilities: [...this.profile.requiredCapabilities] },
-      } : {}),
-    });
+    this.client?.sendInit(seatLayerEventInit(configuration, this.profile, info));
   }
 
   private handleEvent(name: string, payload: JsonValue | undefined): void {

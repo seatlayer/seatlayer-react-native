@@ -21,7 +21,15 @@ interface Pending {
   order: number;
   resolve(value: JsonValue | undefined): void;
   reject(reason: unknown): void;
-  timer: ReturnType<typeof setTimeout>;
+  timer: ReturnType<typeof setTimeout> | undefined;
+}
+
+export interface BridgeCommandOptions {
+  /**
+   * The page puts a question to the buyer and answers when they do, so the
+   * command has no deadline. Only a closed client refuses it.
+   */
+  untimed?: boolean;
 }
 
 const failableCommands = new Set([
@@ -70,7 +78,11 @@ export class BridgeClient {
     this.signalHandler = handler;
   }
 
-  command(name: string, payload?: JsonValue): Promise<JsonValue | undefined> {
+  command(
+    name: string,
+    payload?: JsonValue,
+    options: BridgeCommandOptions = {},
+  ): Promise<JsonValue | undefined> {
     if (this.closed) return Promise.reject(SeatLayerError.destroyed());
     const order = ++this.nextId;
     const id = `rn${order}`;
@@ -79,7 +91,7 @@ export class BridgeClient {
       : this.timeoutMs;
 
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const timer = options.untimed === true ? undefined : setTimeout(() => {
         const entry = this.pending.get(id);
         if (!entry) return;
         this.pending.delete(id);

@@ -12,7 +12,10 @@ import {
   seatLayerSectionAccessCountsCapability,
 } from './protocol';
 
-export type BridgeSurface = 'chart' | 'picker';
+/** A page of its own on the map's origin: the Season page or the run page. */
+export type PageBridgeSurface = 'season' | 'group';
+
+export type BridgeSurface = 'chart' | 'picker' | PageBridgeSurface;
 
 export interface BridgeProfile {
   readonly surface: BridgeSurface;
@@ -22,6 +25,13 @@ export interface BridgeProfile {
   readonly requiredEvents: readonly string[];
   readonly optionalCapabilities: readonly string[];
   readonly config?: JsonObject;
+}
+
+/** Whether `profile` boots a page of its own rather than the event's. */
+export function isPageBridgeProfile(
+  profile: BridgeProfile,
+): profile is BridgeProfile & { readonly surface: PageBridgeSurface; readonly config: JsonObject } {
+  return profile.surface === 'season' || profile.surface === 'group';
 }
 
 export const chartBridgeProfile: BridgeProfile = {
@@ -237,3 +247,29 @@ export function pickerBridgeProfile(
       : {}),
   }) as BridgeProfile;
 }
+
+/**
+ * A page of its own (`season.html`, `group.html`): protocol 2, the
+ * capabilities it must name, and the page's own `init.config` fields. The
+ * fields every page shares (API origin, key, buyer access, language) come
+ * from the configuration the handshake is given, so they are reserved here.
+ */
+export function pageBridgeProfile(
+  surface: PageBridgeSurface,
+  requiredCapabilities: readonly string[],
+  config?: unknown,
+): BridgeProfile {
+  if (surface !== 'season' && surface !== 'group') {
+    throw badConfig('SeatLayer page profile must name the season or group surface.');
+  }
+  return freezeConfig({
+    surface,
+    protocolRange: pickerProtocolRange,
+    requiredCapabilities: [...requiredCapabilities],
+    requiredCommands: [],
+    requiredEvents: [],
+    optionalCapabilities: [],
+    config: sanitizeSeatLayerPickerBridgeConfig(config),
+  }) as BridgeProfile;
+}
+

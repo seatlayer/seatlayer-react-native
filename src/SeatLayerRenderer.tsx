@@ -25,18 +25,19 @@ import {
   seatLayerRendererAllowsNavigation,
 } from './rendererMessageSource';
 
-export interface SeatLayerRendererController {
+/** `Configuration` is the page's own: the event's, or a Season's or run's. */
+export interface SeatLayerRendererController<Configuration extends object = SeatLayerConfiguration> {
   beginHandshake(
     transport: BridgeTransport,
-    configuration: SeatLayerConfiguration,
+    configuration: Configuration,
   ): Promise<ReadyInfo>;
   ingestRaw(input: unknown): void;
   failWithTransport(detail: string, cause?: unknown): void;
 }
 
-export interface SeatLayerRendererProps {
-  controller: SeatLayerRendererController;
-  configuration: SeatLayerConfiguration;
+export interface SeatLayerRendererProps<Configuration extends object = SeatLayerConfiguration> {
+  controller: SeatLayerRendererController<Configuration>;
+  configuration: Configuration;
   style?: StyleProp<ViewStyle>;
   reloadKey?: string | number;
   testID?: string;
@@ -86,7 +87,7 @@ function invokeSeatLayerRendererCallback<Argument>(
 }
 
 /** Internal native renderer shared by the raw chart and protocol-2 picker chart. */
-export function SeatLayerRenderer({
+export function SeatLayerRenderer<Configuration extends object = SeatLayerConfiguration>({
   controller,
   configuration,
   style,
@@ -98,7 +99,7 @@ export function SeatLayerRenderer({
   onUnmount,
   onPageLost,
   page,
-}: SeatLayerRendererProps): React.ReactElement {
+}: SeatLayerRendererProps<Configuration>): React.ReactElement {
   const webView = useRef<WebViewHandle | null>(null);
   const onReadyRef = useRef(onReady);
   const onLoadErrorRef = useRef(onLoadError);

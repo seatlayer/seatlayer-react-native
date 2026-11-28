@@ -1,18 +1,20 @@
 import type { BridgeTransport } from './bridge/client';
 import type { ReadyInfo, SeatLayerConfiguration } from './types';
 
-export interface SeatLayerRendererHandshakeController {
+export interface SeatLayerRendererHandshakeController<
+  Configuration extends object = SeatLayerConfiguration,
+> {
   beginHandshake(
     transport: BridgeTransport,
-    configuration: SeatLayerConfiguration,
+    configuration: Configuration,
   ): Promise<ReadyInfo>;
 }
 
 /** One renderer mount owns one explicit handshake, regardless of bridge profile. */
-export function beginSeatLayerRendererHandshake(
-  controller: SeatLayerRendererHandshakeController,
+export function beginSeatLayerRendererHandshake<Configuration extends object>(
+  controller: SeatLayerRendererHandshakeController<Configuration>,
   transport: BridgeTransport,
-  configuration: SeatLayerConfiguration,
+  configuration: Configuration,
 ): Promise<ReadyInfo> {
   return controller.beginHandshake(transport, configuration);
 }
