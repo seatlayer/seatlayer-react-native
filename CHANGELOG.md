@@ -16,6 +16,15 @@
   latest one is sent once the map is ready, as on Flutter. It was dropped
   without a word, so the map opened in the other colours.
 
+**A table booked as one says how many guests and which table**
+
+- The seat card and the 3D view's caption name a whole table or a party table
+  as Section | Guests 4 | Table T2 (a party table: Guests 2–6), where they read
+  Row T2 | Seat T2. The table's name is shown with or without a section. The
+  two words, Guests and Table, are the map's own, in every language it has.
+- The guests prompt for a table just tapped says "Select table". It said
+  "Update table", which is now kept for a table the buyer already holds.
+
 ## 0.6.1
 
 **The map: 1.0.8 to 1.0.9**

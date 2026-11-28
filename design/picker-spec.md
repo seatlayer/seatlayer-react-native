@@ -1416,6 +1416,13 @@ same card over flat glass, which is a correct state, not a degraded one.
    `strings.rowWord`, `strings.seatWord`, `strings.placeWord` — the row eyebrow
    follows the object's own word (Row, Table, Booth). **Print the row with its
    section prefix stripped**, or the card reads `Stalls D · Row Stalls D C`.
+   **A table booked as one** (`objectType` table with a `bookingMode`) has no
+   row or seat: its cells after the section are `strings.guestsWord` with its
+   party size (`capacity` for a whole table, `minOccupancy`–`maxOccupancy`
+   for a party table, "2–6") and `strings.tableWord` with its name (the row
+   label, else the display label). The name is drawn with or without a
+   section; the spoken lines say the same cells. Both cards and the 3D
+   view's caption follow this.
    The eyebrows are drawn upper-cased, but the card's spoken lines say the
    English place word as "Place", not the locale's capitals "PLACE", which a
    screen reader may spell out. **The wide layout's tap card**

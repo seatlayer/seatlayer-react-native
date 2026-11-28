@@ -18,7 +18,7 @@ const update = process.env.UPDATE_KNOWN === '1';
 const found: Counts = {};
 
 /** Where the picker asks over the map, what is under it is out of reach. */
-const asking = new Set(['confirmation', 'general-admission', 'variable-table']);
+const asking = new Set(['confirmation', 'table-card', 'general-admission', 'variable-table']);
 
 for (const screen of [...upright, ...sideways]) {
   test(`layout ${screen.name}`, async ({ page }) => {

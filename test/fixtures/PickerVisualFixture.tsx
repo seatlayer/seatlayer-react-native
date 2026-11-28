@@ -88,6 +88,7 @@ export const seatLayerVisualFixtureScenarios = Object.freeze([
   'general-admission',
   'seat-tier',
   'variable-table',
+  'table-card',
   'wide',
   'rtl',
 ] as const);
@@ -255,6 +256,23 @@ function fixtureVariableTable(): Readonly<SelectedSeat> {
   });
 }
 
+/** A table booked as one, as the runtime sends it: its name as the row, no seat number. */
+function fixtureWholeTable(): Readonly<SelectedSeat> {
+  const { seatNumber: _seatNumber, ...seat } = fixtureSeat(2, { rowLabel: 'T2' });
+  return Object.freeze({
+    ...seat,
+    id: 'table-t2',
+    objectId: 'table-t2',
+    label: 'Guest Tables-T2',
+    displayLabel: 'T2',
+    objectType: 'table',
+    bookingMode: 'whole',
+    quantity: 4,
+    capacity: 4,
+    price: 380,
+  });
+}
+
 function fixtureTierSeat(tierId: 'adult' | 'child'): Readonly<SelectedSeat> {
   const tier = fixtureSeatTiers.find((candidate) => candidate.id === tierId) ?? fixtureSeatTiers[0]!;
   return Object.freeze({
@@ -315,6 +333,7 @@ function scenarioSeats(
   if (cartRowScenarios.has(scenario)) return scenario === 'long-total' ? longTotalSeats : oneSectionSeats;
   if (scenario === 'seat-tier') return Object.freeze([fixtureTierSeat(tierId)]);
   if (scenario === 'variable-table') return Object.freeze([fixtureVariableTable()]);
+  if (scenario === 'table-card') return Object.freeze([fixtureWholeTable()]);
   if (scenario === 'wide') return Object.freeze([
     fixtureSeat(1),
     fixtureSeat(2),
@@ -602,7 +621,8 @@ function fixtureScope(
   const overview = snapshot.map.rung !== 'seats';
   const ready = scenario !== 'loading' && scenario !== 'error';
   const bridgeConfig: SeatLayerPickerScopeValue['bridgeConfig'] = Object.freeze({ ...(touchNavigation3D === undefined ? {} : { touchNavigation3D }) });
-  const pendingSeat = scenario === 'confirmation' || (scenario === 'seat-tier' && tierValidation?.pending)
+  const pendingSeat = scenario === 'confirmation' || scenario === 'table-card' ||
+    (scenario === 'seat-tier' && tierValidation?.pending)
     ? snapshot.selection[0] ?? null
     : null;
   return Object.freeze({

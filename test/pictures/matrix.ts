@@ -57,6 +57,7 @@ const scenarios: readonly SeatLayerVisualFixtureScenario[] = [
   'empty',
   'general-admission',
   'variable-table',
+  'table-card',
 ];
 
 function cells(
@@ -85,7 +86,7 @@ export const layoutCells: readonly Cell[] = [
   ...cells(sideways, [1, 1.3]),
 ];
 
-const main: Cell['scenario'][] = ['overview', 'confirmation', 'cart-expanded', 'venue-3d'];
+const main: Cell['scenario'][] = ['overview', 'confirmation', 'table-card', 'cart-expanded', 'venue-3d'];
 
 /** The cells that are drawn and compared. */
 export const pictureCells: readonly Cell[] = [
@@ -94,10 +95,11 @@ export const pictureCells: readonly Cell[] = [
   }),
   ...cells(pick('390'), [1], { mode: 'dark', only: main }),
   ...cells(pick('320'), [1], { only: main }),
-  ...cells(pick('320', '390'), [2], { only: ['overview', 'confirmation', 'cart-expanded'] }),
-  ...cells(pick('430'), [1], { only: ['overview', 'cart-expanded'] }),
+  ...cells(pick('320', '390'), [2], { only: ['overview', 'confirmation', 'table-card', 'cart-expanded'] }),
+  ...cells(pick('430'), [1], { only: ['overview', 'table-card', 'cart-expanded'] }),
+  ...cells(pick('390'), [1.3], { only: ['table-card'] }),
   ...cells(pick('390'), [1], { rtl: true, only: main }),
-  ...cells(sideways, [1], { only: ['overview', 'confirmation', 'cart-expanded'] }),
+  ...cells(sideways, [1], { only: ['overview', 'confirmation', 'table-card', 'cart-expanded'] }),
   ...cells([tablet], [1], { only: ['overview', 'cart-expanded'] }),
 ];
 

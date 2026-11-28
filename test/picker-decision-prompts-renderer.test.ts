@@ -244,6 +244,21 @@ describe('picker decision prompt renderer', () => {
     expect(runtime.claims()).toBe(0);
   });
 
+  it('selects a table just tapped, even though the page already put it in the cart', async () => {
+    setup(snapshot({ cartLines: [{ label: 'Table A' }] as never })); const candidate = createSeatLayerPickerTableCandidate(scope as never, 'table', 1)!;
+    let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerTablePrompt, { candidate })); });
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'selectTable' }).length).toBeGreaterThan(0);
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'updateTable' })).toHaveLength(0);
+  });
+
+  it('updates a table the buyer already holds', async () => {
+    setup(snapshot({ selection: [{ id: 'table', label: 'Table A', objectType: 'table', bookingMode: 'variable', minOccupancy: 2, maxOccupancy: 4, quantity: 2, status: 'held' }], hold: { active: true } }));
+    const candidate = createSeatLayerPickerTableCandidate(scope as never, 'table', 1)!; let renderer!: ReactTestRenderer;
+    await act(async () => { renderer = create(React.createElement(SeatLayerPickerTablePrompt, { candidate })); });
+    expect(renderer.root.findAllByProps({ accessibilityLabel: 'updateTable' }).length).toBeGreaterThan(0);
+  });
+
   it('retires a same-epoch table replacement before its stale action can commit', async () => {
     const value = snapshot({ selection: [
       { id: 'table', label: 'Table A', objectType: 'table', bookingMode: 'variable', minOccupancy: 2, maxOccupancy: 4, quantity: 2 },
