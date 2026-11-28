@@ -52,7 +52,7 @@ More from SeatLayer:
 
 ## Install
 
-> **Latest release:** 0.5.0 on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
+> **Latest release:** 0.6.0 on [npm](https://www.npmjs.com/package/@seatlayer/react-native).
 > Pin the version you tested, and test your event, checkout hand-off and target
 > devices before release.
 

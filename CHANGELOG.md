@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 **Season tickets** (with a map page that names `season-surface-v1` and
 `season-app-shell-v1`)
